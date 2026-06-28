@@ -26,3 +26,6 @@ Thumbs.db
 .vscode/
 *.swp
 npm-debug.log*
+
+# ── graphify working dir (committed copy lives in main/graphify/) ─────────────
+graphify-out/
