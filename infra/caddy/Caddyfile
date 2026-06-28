@@ -1,18 +1,31 @@
-# Caddy reverse proxy + automatic HTTPS.
+# Caddy reverse proxy + automatic HTTPS (Let's Encrypt).
 #
-# DOMAIN drives the site address:
-#   - A real hostname (e.g. api.kasbana.net) -> Caddy gets a Let's Encrypt cert
-#     automatically. REQUIRED for Apple Wallet (it needs valid HTTPS).
-#   - ":80" -> plain HTTP for first bring-up before DNS is pointed at the box.
+# Two public subdomains, both pointing (A record) at this EC2 box:
+#   api.kasbana.net   -> REST API (+ Apple Wallet web service; needs valid HTTPS)
+#   admin.kasbana.net -> Django admin panel (root redirects to /admin/)
 #
-# Set DOMAIN in infra/.env on the server.
+# Certs are issued automatically once DNS resolves to this server. The bare-IP
+# HTTP block is a fallback for health checks before/without DNS.
 
-{$DOMAIN} {
+api.kasbana.net {
 	encode zstd gzip
-
-	# App + admin + API.
 	reverse_proxy web:8000 {
 		header_up X-Forwarded-Proto {scheme}
 		header_up X-Forwarded-For {remote_host}
 	}
+}
+
+admin.kasbana.net {
+	encode zstd gzip
+	@root path /
+	redir @root /admin/ 308
+	reverse_proxy web:8000 {
+		header_up X-Forwarded-Proto {scheme}
+		header_up X-Forwarded-For {remote_host}
+	}
+}
+
+# Plain-HTTP access by IP (health checks / fallback) — no TLS on a bare IP.
+http://13.49.70.197 {
+	reverse_proxy web:8000
 }

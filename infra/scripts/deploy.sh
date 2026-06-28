@@ -32,6 +32,10 @@ $COMPOSE run --rm web python manage.py migrate --noinput
 echo "▶ Starting / updating services"
 $COMPOSE up -d
 
+echo "▶ Reloading Caddy config"
+$COMPOSE exec -T caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile 2>/dev/null \
+  || $COMPOSE restart caddy
+
 echo "▶ Pruning old images"
 docker image prune -f >/dev/null || true
 
