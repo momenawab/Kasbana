@@ -24,8 +24,10 @@ services:
     <<: *app
     expose: ["8000"]
     healthcheck:
+      # Send X-Forwarded-Proto so SECURE_SSL_REDIRECT (HTTPS_ENABLED=true) treats
+      # this internal request as secure and returns 200 instead of a 308 to https.
       test: ["CMD", "python", "-c",
-             "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/api/health/').status==200 else 1)"]
+             "import urllib.request,sys; r=urllib.request.Request('http://localhost:8000/api/health/', headers={'X-Forwarded-Proto':'https'}); sys.exit(0 if urllib.request.urlopen(r).status==200 else 1)"]
       interval: 30s
       timeout: 5s
       retries: 5
