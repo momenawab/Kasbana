@@ -64,6 +64,25 @@ Then promote to `prod` to ship.
 
 `GITHUB_TOKEN` (auto-provided) is used to push to and pull from GHCR.
 
+## Wallet credentials (Phase 1.1)
+
+Certs/keys live in `/opt/kasbana/secrets` (mounted read-only into the
+containers at `/secrets`). The app runs as uid **10001**, so the files must be
+readable by it:
+
+```bash
+# Google service-account key
+scp -i key.pem google-sa.json ubuntu@13.49.70.197:/opt/kasbana/secrets/
+ssh -i key.pem ubuntu@13.49.70.197 \
+  'sudo chmod 755 /opt/kasbana/secrets && \
+   sudo chown 10001:10001 /opt/kasbana/secrets/google-sa.json && \
+   sudo chmod 600 /opt/kasbana/secrets/google-sa.json'
+```
+
+Then set in `infra/.env`: `GOOGLE_WALLET_ISSUER_ID`, `GOOGLE_SA_KEY_PATH=/secrets/google-sa.json`
+(Apple: `APPLE_PASS_CERT_PATH=/secrets/pass.p12`, `APPLE_WWDR_CERT_PATH=/secrets/wwdr.pem`).
+Verify with: `docker compose -f compose.prod.yml exec web python manage.py google_wallet_check`.
+
 ## HTTPS / Apple Wallet
 
 Apple Wallet requires valid HTTPS on a real hostname. Point an A record
