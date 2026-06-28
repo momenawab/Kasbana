@@ -1,0 +1,104 @@
+"""Enrollment endpoints (contract §3.6 · Phase 1.1 · public).
+
+GET  /enroll/{token}  — program details for the join page.
+POST /enroll/{token}  — create a CustomerCard (PDPL consent), record the opening
+                        ledger event, provision Apple + Google passes.
+"""
+
+from __future__ import annotations
+
+from django.db import IntegrityError, transaction
+from django.utils import timezone
+from drf_spectacular.utils import extend_schema
+from rest_framework import status
+from rest_framework.permissions import AllowAny
+from rest_framework.request import Request
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from common.errors import AlreadyEnrolled
+from core import ledger
+from core.models import CustomerCard
+from enrollment.serializers import (
+    EnrollLandingSerializer,
+    EnrollRequestSerializer,
+    EnrollResponseSerializer,
+)
+from enrollment.tokens import resolve_active_token
+from wallets import service as wallet
+
+
+class EnrollView(APIView):
+    """Public join flow behind a QR token."""
+
+    permission_classes = [AllowAny]
+    authentication_classes: list = []
+
+    def _get_token_or_404(self, token: str):
+        row = resolve_active_token(token)  # raises TokenExpired (410) if expired
+        if row is None:
+            from rest_framework.exceptions import NotFound
+
+            raise NotFound("Enrollment link not found.")
+        return row
+
+    @extend_schema(responses=EnrollLandingSerializer)
+    def get(self, request: Request, token: str) -> Response:
+        row = self._get_token_or_404(token)
+        card = row.card
+        merchant = row.merchant
+        data = EnrollLandingSerializer(
+            {
+                "merchant_name": merchant.name,
+                "card_name": card.name,
+                "reward_title": card.reward_title,
+                "stamps_required": card.stamps_required,
+                "color_bg": card.color_bg or merchant.color_bg,
+                "color_fg": card.color_fg or merchant.color_fg,
+                "logo_url": card.logo_url or merchant.logo_url,
+            }
+        ).data
+        return Response(data)
+
+    @extend_schema(request=EnrollRequestSerializer, responses=EnrollResponseSerializer)
+    def post(self, request: Request, token: str) -> Response:
+        row = self._get_token_or_404(token)
+        card = row.card
+
+        body = EnrollRequestSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+        phone = body.validated_data["customer_phone"]
+        name = body.validated_data["customer_name"]
+
+        # One card per phone per program (contract §3.4 uniqueness).
+        if CustomerCard.objects.filter(card=card, customer_phone=phone).exists():
+            raise AlreadyEnrolled()
+
+        try:
+            with transaction.atomic():
+                customer_card = CustomerCard.objects.create(
+                    card=card,
+                    merchant=card.merchant,
+                    customer_phone=phone,
+                    customer_name=name,
+                    consent_at=timezone.now(),
+                    enrolled_at=timezone.now(),
+                )
+                ledger.record_enrollment(customer_card)
+        except IntegrityError:
+            # Lost the race against a concurrent enroll of the same phone.
+            raise AlreadyEnrolled()
+
+        # Provision passes (Apple + Google). Returns null URLs if creds absent.
+        result = wallet.provision(customer_card)
+
+        payload = EnrollResponseSerializer(
+            {
+                "customer_card_id": customer_card.id,
+                "stamp_count": customer_card.stamp_count,
+                "stamps_required": card.stamps_required,
+                "apple_pass_url": result.apple_pass_url,
+                "google_save_url": result.google_save_url,
+            }
+        ).data
+        return Response(payload, status=status.HTTP_201_CREATED)

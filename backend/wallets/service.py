@@ -1,34 +1,40 @@
 """wallets/service.py — the façade both phases import (contract §3.5).
 
-Phase 1.0 ships working stubs so Joe is never blocked: ``provision`` returns
-empty URLs and ``push_update`` is a no-op (it will enqueue
-``wallets.tasks.push_pass_update`` once Phase 1.1 lands). Joe's loyalty code does
-not change when these become real — that's the point of freezing the seam.
+Dispatches to the Apple + Google backends. ``loyalty/`` (Joe) calls only this
+module — never ``wallets/apple`` or ``wallets/google`` directly. Each platform
+degrades to a no-op / null URL when its credentials are absent, so enrollment
+and stamping keep working in environments without wallet secrets.
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from wallets.apple.client import AppleWalletBackend
+from wallets.google.client import GoogleWalletBackend
 from wallets.interfaces import ProvisionResult
 
 if TYPE_CHECKING:
     from core.models import CustomerCard
 
+_apple = AppleWalletBackend()
+_google = GoogleWalletBackend()
+
 
 def provision(customer_card: CustomerCard) -> ProvisionResult:
-    """Provision Apple + Google passes for a card.
-
-    STUB (Phase 1.0): returns empty URLs. Phase 1.1 dispatches to the Apple and
-    Google backends and returns real ``apple_pass_url`` / ``google_save_url``.
-    """
-    return ProvisionResult(apple_pass_url=None, google_save_url=None)
+    """Provision Apple + Google passes; returns the add-to-wallet URLs."""
+    return ProvisionResult(
+        apple_pass_url=_apple.provision(customer_card),
+        google_save_url=_google.provision(customer_card),
+    )
 
 
 def push_update(customer_card: CustomerCard) -> None:
-    """Push a live update to a card's wallet passes.
+    """Push a live update to a card's wallet passes (both platforms).
 
-    STUB (Phase 1.0): no-op. Phase 1.1 enqueues ``wallets.tasks.push_pass_update``
-    which sends the Google PATCH and the Apple APNs empty push.
+    Enqueues ``wallets.tasks.push_pass_update`` so the HTTP request returns fast;
+    the Celery worker does the Google PATCH + Apple APNs push.
     """
-    return None
+    from wallets.tasks import push_pass_update
+
+    push_pass_update.delay(str(customer_card.id))

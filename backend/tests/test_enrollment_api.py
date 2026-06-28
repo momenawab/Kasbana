@@ -1,0 +1,106 @@
+"""Tests for the enrollment endpoints (contract §3.6 · Phase 1.1)."""
+
+from __future__ import annotations
+
+import pytest
+from django.utils import timezone
+
+from core.models import CustomerCard, StampLedger
+from enrollment.tokens import issue_enrollment_token
+
+pytestmark = pytest.mark.django_db
+
+
+@pytest.fixture
+def token(card):
+    return issue_enrollment_token(card)
+
+
+def test_get_landing_returns_program_details(api_client, card, token):
+    resp = api_client.get(f"/api/v1/enroll/{token.token}")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["card_name"] == card.name
+    assert body["reward_title"] == card.reward_title
+    assert body["stamps_required"] == card.stamps_required
+    assert body["merchant_name"] == card.merchant.name
+
+
+def test_get_landing_unknown_token_404(api_client):
+    resp = api_client.get("/api/v1/enroll/does-not-exist")
+    assert resp.status_code == 404
+    assert resp.json()["error"]["code"] == "NOT_FOUND"
+
+
+def test_get_landing_expired_token_410(api_client, card):
+    tok = issue_enrollment_token(card)
+    tok.expires_at = timezone.now() - timezone.timedelta(days=1)
+    tok.save(update_fields=["expires_at"])
+    resp = api_client.get(f"/api/v1/enroll/{tok.token}")
+    assert resp.status_code == 410
+    assert resp.json()["error"]["code"] == "TOKEN_EXPIRED"
+
+
+def test_post_enroll_creates_card_and_ledger(api_client, card, token):
+    resp = api_client.post(
+        f"/api/v1/enroll/{token.token}",
+        {"customer_phone": "+201234567890", "customer_name": "Sara", "consent": True},
+        format="json",
+    )
+    assert resp.status_code == 201
+    body = resp.json()
+    assert body["stamp_count"] == 0
+    assert body["stamps_required"] == card.stamps_required
+    assert "customer_card_id" in body
+    assert "apple_pass_url" in body and "google_save_url" in body
+
+    cc = CustomerCard.objects.get(id=body["customer_card_id"])
+    assert cc.customer_phone == "+201234567890"
+    assert cc.customer_name == "Sara"
+    assert cc.consent_at is not None
+    assert cc.merchant_id == card.merchant_id
+    # Opening ENROLL ledger row exists.
+    assert StampLedger.objects.filter(customer_card=cc, event_type="ENROLL").count() == 1
+
+
+def test_post_enroll_requires_consent(api_client, token):
+    resp = api_client.post(
+        f"/api/v1/enroll/{token.token}",
+        {"customer_phone": "+201234567890", "consent": False},
+        format="json",
+    )
+    assert resp.status_code == 400
+    body = resp.json()
+    assert body["error"]["code"] == "VALIDATION_ERROR"
+    assert "consent" in body["error"]["fields"]
+
+
+def test_post_enroll_rejects_bad_phone(api_client, token):
+    resp = api_client.post(
+        f"/api/v1/enroll/{token.token}",
+        {"customer_phone": "abc", "consent": True},
+        format="json",
+    )
+    assert resp.status_code == 400
+    assert "customer_phone" in resp.json()["error"]["fields"]
+
+
+def test_post_enroll_duplicate_phone_conflicts(api_client, card, token):
+    payload = {"customer_phone": "+201234567890", "consent": True}
+    first = api_client.post(f"/api/v1/enroll/{token.token}", payload, format="json")
+    assert first.status_code == 201
+    second = api_client.post(f"/api/v1/enroll/{token.token}", payload, format="json")
+    assert second.status_code == 409
+    assert second.json()["error"]["code"] == "ALREADY_ENROLLED"
+    # Only one card created.
+    assert CustomerCard.objects.filter(card=card, customer_phone="+201234567890").count() == 1
+
+
+def test_post_enroll_normalizes_phone_spaces(api_client, token):
+    resp = api_client.post(
+        f"/api/v1/enroll/{token.token}",
+        {"customer_phone": "+20 123 456 7890", "consent": True},
+        format="json",
+    )
+    assert resp.status_code == 201
+    assert CustomerCard.objects.filter(customer_phone="+201234567890").exists()

@@ -13,6 +13,11 @@ x-app: &app
   env_file: [.env]
   environment:
     DJANGO_SETTINGS_MODULE: config.settings.prod
+  # Wallet certs/keys (Phase 1.1) live outside the image. Drop them in
+  # /opt/kasbana/secrets on the host; the env paths (APPLE_PASS_CERT_PATH,
+  # GOOGLE_SA_KEY_PATH, …) point at /secrets/<file>. Read-only.
+  volumes:
+    - /opt/kasbana/secrets:/secrets:ro
   depends_on:
     db:
       condition: service_healthy

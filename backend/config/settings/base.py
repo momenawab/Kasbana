@@ -76,6 +76,7 @@ THIRD_PARTY_APPS = [
 # the only schema source of truth in Phase 1.0.
 LOCAL_APPS = [
     "core",
+    "enrollment",
     "wallets",
     "billing",
 ]

@@ -34,9 +34,11 @@ else
   echo "✓ docker already installed"
 fi
 
-# ── App directory ─────────────────────────────────────────────────────────────
-sudo mkdir -p /opt/kasbana/infra /opt/kasbana/backups
+# ── App directories ───────────────────────────────────────────────────────────
+# secrets/ holds wallet certs (Phase 1.1), mounted read-only into the containers.
+sudo mkdir -p /opt/kasbana/infra /opt/kasbana/backups /opt/kasbana/secrets
 sudo chown -R "$USER" /opt/kasbana
+chmod 700 /opt/kasbana/secrets
 
 echo "✓ Provisioning complete."
 echo "  Next: place infra/.env at /opt/kasbana/infra/.env, then deploy."

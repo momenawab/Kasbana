@@ -23,14 +23,14 @@ def health(_request):
     return JsonResponse({"status": "ok", "service": "kasbana-backend"})
 
 
-api_v1 = [
+api_v1: list = [
     # Auth (Phase 1.0)
     path("auth/token", EmailTokenObtainPairView.as_view(), name="auth-token"),
     path("auth/refresh", TokenRefreshView.as_view(), name="auth-refresh"),
     # Enrollment (Phase 1.1 — You)
-    # path("", include("enrollment.urls")),
+    path("", include("enrollment.urls")),
     # Wallet web service (Phase 1.1 — You)
-    # path("wallet/", include("wallets.urls")),
+    path("wallet/", include("wallets.urls")),
     # Loyalty (Phase 1.2 — Joe)
     # path("loyalty/", include("loyalty.urls")),
     # Dashboard (Phase 1.3 — Joe)
