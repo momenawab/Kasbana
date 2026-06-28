@@ -64,10 +64,13 @@ Write-Host @"
 ----------------------------------------------------------------------------
  KASBANA — HOW THE REPO WORKS
 ----------------------------------------------------------------------------
- * Edit ONLY the 'dev' branch (monorepo: main/ frontend/ backend/ contracts/).
+ * Edit ONLY the 'dev' branch (monorepo: main/ frontend/ backend/ infra/ contracts/).
  * Pushing 'dev' auto-distributes each folder to its own branch (distribute.yml)
    and runs backend CI (backend-ci.yml). Never edit generated branches directly.
- * Ship:  git add -A; git commit -m "msg"; git push origin dev
+ * Ship:  git add -A; git commit -m "msg"; git push origin dev   (no deploy)
+ * Production (Momen owns it): promote dev -> prod to deploy onto EC2:
+     git checkout prod; git merge --ff-only dev; git push origin prod; git checkout dev
+     Live: https://api.kasbana.net  ·  admin https://admin.kasbana.net/admin/
  * Ownership: Momen -> core/common/config/enrollment/wallets/billing/infra;
    Joe -> loyalty/dashboard. Shared core/, common/, contracts/ change by PR only.
 ----------------------------------------------------------------------------

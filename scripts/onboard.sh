@@ -10,7 +10,7 @@
 #   1. Clones github.com/momenawab/Kasbana (if not already inside it) on `dev`
 #   2. Backend: venv + deps + .env + migrate + run tests
 #   3. Frontend: npm install (if Node is available)
-#   4. Prints the golden push-flow rules
+#   4. Prints the golden push-flow rules (dev distribution + prod deploy)
 #
 # Prereqs: git, python3 (3.11+), and optionally node/npm. You need write access
 # to the repo (ask Momen to add you as a collaborator) to push to `dev`.
@@ -81,19 +81,25 @@ cat <<'RULES'
          main/      → docs              (auto-published to `main` branch)
          frontend/  → React app         (auto-published to `frontend` branch)
          backend/   → Django API        (auto-published to `Backend` branch)
+         infra/     → DevOps (docker)   (auto-published to `infra` branch)
          contracts/ → frozen openapi.yaml (the API source of truth)
 
  • Pushing to `dev` triggers .github/workflows/distribute.yml, which fans each
-   folder out to its own branch automatically. NEVER edit main/frontend/Backend/
-   deployment directly — they are generated and will be overwritten.
-
- • Pushing also runs .github/workflows/backend-ci.yml (ruff · black · mypy ·
-   pytest) on any backend change. Keep it green.
+   folder out to its own branch automatically, AND backend-ci.yml (ruff · black
+   · mypy · pytest) on any backend change. Keep CI green.
+   NEVER edit the main/frontend/Backend/infra/deployment branches directly —
+   they are generated and will be overwritten on the next dev push.
 
  • Ship a change:
        git add -A
        git commit -m "your message"
-       git push origin dev          # → CI runs, branches distribute
+       git push origin dev          # → CI runs, branches distribute (NO deploy)
+
+ • Production is a SEPARATE, deliberate step (Momen owns deploys). Promoting
+   dev → prod triggers deploy-prod.yml (build image → GHCR → roll onto EC2):
+       git checkout prod && git merge --ff-only dev && git push origin prod
+       git checkout dev
+   Live: https://api.kasbana.net  ·  admin https://admin.kasbana.net/admin/
 
  • Ownership (Backend Plan & Variable Contract, see main/docs/):
        Momen → core, common, config, enrollment, wallets, billing, infra
