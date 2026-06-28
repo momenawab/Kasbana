@@ -42,7 +42,13 @@ from dashboard.serializers import (
 
 
 def _enqueue_google_sync(card: Card) -> None:
-    """Re-provision the Google LoyaltyClass after a Card create/edit (§4)."""
+    """Re-provision the Google LoyaltyClass after a Card create/edit (§4).
+
+    Tests verify the task is *enqueued*; that the Google class is actually
+    (re)provisioned needs Redis + a Celery worker + live Google creds — Momen's
+    integration smoke test, not closable from inside this phase. The enqueue is
+    not wrapped, so a Card create/update returns 500 if the broker is unreachable.
+    """
     from wallets.tasks import sync_google_class
 
     sync_google_class.delay(str(card.id))
@@ -130,6 +136,9 @@ class CustomerListView(generics.ListAPIView):
             .select_related("card")
             .order_by("-created_at")
         )
+        # Filter param names (card / status / phone) are NOT pinned by the
+        # contract (§3.6 only says "filterable"). Confirmed to match Momen's
+        # expectation; rename here if the frontend uses different keys.
         params = self.request.query_params
         if card_id := params.get("card"):
             qs = qs.filter(card_id=card_id)

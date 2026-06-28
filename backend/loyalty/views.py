@@ -65,7 +65,11 @@ class StampView(APIView):
         # The ledger mutates a row-locked re-fetch, so refresh our instance.
         card.refresh_from_db(fields=["stamp_count", "last_event_at"])
 
-        wallet.push_update(card)  # enqueues wallets.tasks.push_pass_update
+        # Enqueues wallets.tasks.push_pass_update. Tests verify this is *called*;
+        # that the pass visibly updates on a real device needs Redis + a Celery
+        # worker + live Apple/Google creds, i.e. Momen's integration smoke test
+        # (not closable from inside this phase). Returns 500 if the broker is down.
+        wallet.push_update(card)
 
         payload = StampResponseSerializer(
             {
@@ -103,6 +107,7 @@ class RedeemView(APIView):
         )
         card.refresh_from_db(fields=["stamp_count", "last_event_at"])
 
+        # Verified as *enqueued*, not executed against real wallets — see StampView.
         wallet.push_update(card)
 
         payload = RedeemResponseSerializer(

@@ -63,7 +63,12 @@ class StaffSerializer(serializers.ModelSerializer):
 
 
 class StaffCreateSerializer(serializers.Serializer):
-    """POST /staff — create the auth User + StaffUser in one transaction."""
+    """POST /staff — create the auth User + StaffUser in one transaction.
+
+    Request shape ({email, password, role, location?}) is NOT pinned by the
+    contract (§3.6 only lists "GET/POST /staff"). Confirmed to match Momen's
+    expectation; if the frontend onboarding differs, change it here.
+    """
 
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True, min_length=8)
