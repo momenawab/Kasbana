@@ -1,0 +1,56 @@
+# core/enums.py — IMPORT FROM HERE. NEVER REDEFINE THESE VALUES.
+# Frozen in Phase 1.0 (contract §3.2). Any change is a joint PR to the contract.
+from django.db import models
+
+
+class Role(models.TextChoices):
+    OWNER = "OWNER", "Owner"
+    ADMIN = "ADMIN", "Admin"
+    SCANNER = "SCANNER", "Scanner"
+
+
+class MerchantStatus(models.TextChoices):
+    ACTIVE = "ACTIVE", "Active"
+    SUSPENDED = "SUSPENDED", "Suspended"
+
+
+class PlanTier(models.TextChoices):
+    FREE = "FREE", "Free"
+    STARTER = "STARTER", "Starter"
+    GROWTH = "GROWTH", "Growth"
+    CHAIN = "CHAIN", "Chain / Custom"
+
+
+class CardType(models.TextChoices):
+    STAMP = "STAMP", "Stamp card"
+    POINTS = "POINTS", "Points card"
+
+
+class CardStatus(models.TextChoices):
+    DRAFT = "DRAFT", "Draft"
+    ACTIVE = "ACTIVE", "Active"
+    ARCHIVED = "ARCHIVED", "Archived"
+
+
+class CustomerCardStatus(models.TextChoices):
+    ACTIVE = "ACTIVE", "Active"
+    COMPLETED = "COMPLETED", "Completed"
+    BLOCKED = "BLOCKED", "Blocked"
+
+
+class LedgerEvent(models.TextChoices):
+    ENROLL = "ENROLL", "Enrollment"
+    STAMP = "STAMP", "Stamp added"
+    REDEEM = "REDEEM", "Reward redeemed"
+    ADJUST = "ADJUST", "Manual adjustment"
+
+
+class WalletPlatform(models.TextChoices):
+    APPLE = "APPLE", "Apple Wallet"
+    GOOGLE = "GOOGLE", "Google Wallet"
+
+
+class RedemptionStatus(models.TextChoices):
+    PENDING = "PENDING", "Pending"
+    CLAIMED = "CLAIMED", "Claimed"
+    VOID = "VOID", "Void"

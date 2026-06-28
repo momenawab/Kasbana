@@ -1,8 +1,32 @@
-Django>=5.0,<5.2
+# Kasbana backend — production requirements.
+# Phase 1.0 foundation stack (see docs/Walaa_Backend_Plan_and_Contract.md §1).
+
+# --- Core framework ---
+Django>=5.1,<5.3
 djangorestframework>=3.15
+djangorestframework-simplejwt>=5.3
+drf-spectacular>=0.27
 django-cors-headers>=4.4
+
+# --- Data / async ---
+dj-database-url>=2.2
+psycopg[binary]>=3.2          # PostgreSQL driver (prod). Local dev falls back to SQLite.
+redis>=5.0
+celery>=5.4
+django-celery-beat>=2.7
+
+# --- Config ---
 python-dotenv>=1.0
+
+# --- Server ---
 gunicorn>=22.0
-# Database drivers (uncomment the one you use in production):
-# mysqlclient>=2.2        # MySQL / MariaDB (Hostinger)
-# psycopg[binary]>=3.2    # PostgreSQL
+uvicorn[standard]>=0.30
+
+# --- Wallets (Phase 1.1) ---
+# PyJWT>=2.9
+# google-auth>=2.34
+# cryptography>=43.0
+# httpx[http2]>=0.27
+
+# --- Billing / Messaging (Phase 1.4) ---
+# (Paymob / Fawry / WhatsApp accessed via httpx)

@@ -1,0 +1,480 @@
+openapi: 3.0.3
+info:
+  title: Kasbana API
+  version: "1.0.0"
+  description: >
+    Kasbana — digital loyalty & wallet-pass platform. This is the **frozen v1
+    contract** authored in Phase 1.0 from the Backend Plan & Variable Contract
+    (§3.6). Both backend phases and the frontend build against these exact paths
+    and snake_case JSON keys. Any change is a joint PR to the contract first.
+
+    Ownership: Auth + Enrollment + Apple Wallet web service + Billing webhooks =
+    Momen (Phases 1.0/1.1/1.4). Loyalty + Dashboard = Joe (Phases 1.2/1.3).
+
+servers:
+  - url: https://api.kasbana.net
+    description: Production
+  - url: http://localhost:8000
+    description: Local
+
+security:
+  - bearerJWT: []
+
+tags:
+  - name: Auth
+  - name: Enrollment
+  - name: Loyalty
+  - name: Dashboard
+  - name: Apple Wallet
+  - name: Billing
+
+paths:
+  # ── Auth (Phase 1.0 · Momen) ───────────────────────────────────────────────
+  /api/v1/auth/token:
+    post:
+      tags: [Auth]
+      summary: Obtain JWT access + refresh tokens
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, format: password }
+      responses:
+        "200":
+          description: Token pair
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access: { type: string }
+                  refresh: { type: string }
+        "401": { $ref: "#/components/responses/Error" }
+
+  /api/v1/auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Refresh an access token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh]
+              properties:
+                refresh: { type: string }
+      responses:
+        "200":
+          description: New access token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access: { type: string }
+        "401": { $ref: "#/components/responses/Error" }
+
+  # ── Enrollment (Phase 1.1 · Momen) ─────────────────────────────────────────
+  /api/v1/enroll/{token}:
+    parameters:
+      - $ref: "#/components/parameters/EnrollToken"
+    get:
+      tags: [Enrollment]
+      summary: Public enrollment landing — describes the program behind a QR token
+      security: []
+      responses:
+        "200":
+          description: Program details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  merchant_name: { type: string }
+                  card_name: { type: string }
+                  reward_title: { type: string }
+                  stamps_required: { type: integer }
+                  color_bg: { type: string }
+                  color_fg: { type: string }
+                  logo_url: { type: string }
+        "404": { $ref: "#/components/responses/Error" }
+        "410": { $ref: "#/components/responses/Error" }
+    post:
+      tags: [Enrollment]
+      summary: Enroll a customer and provision wallet passes
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [customer_phone, consent]
+              properties:
+                customer_phone: { type: string, description: E.164 }
+                customer_name: { type: string }
+                consent: { type: boolean, description: PDPL consent }
+      responses:
+        "201":
+          description: Enrolled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  customer_card_id: { type: string, format: uuid }
+                  stamp_count: { type: integer }
+                  stamps_required: { type: integer }
+                  apple_pass_url: { type: string, nullable: true }
+                  google_save_url: { type: string, nullable: true }
+        "400": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "410": { $ref: "#/components/responses/Error" }
+
+  # ── Loyalty (Phase 1.2 · Joe) ──────────────────────────────────────────────
+  /api/v1/loyalty/stamp:
+    post:
+      tags: [Loyalty]
+      summary: Add a stamp to a card
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [customer_card_id]
+              properties:
+                customer_card_id: { type: string, format: uuid }
+                delta: { type: integer, default: 1 }
+      responses:
+        "200":
+          description: Updated balance
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  customer_card_id: { type: string, format: uuid }
+                  stamp_count: { type: integer }
+                  stamps_required: { type: integer }
+                  reward_ready: { type: boolean }
+        "422": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+
+  /api/v1/loyalty/redeem:
+    post:
+      tags: [Loyalty]
+      summary: Redeem a reward
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [customer_card_id, reward_id]
+              properties:
+                customer_card_id: { type: string, format: uuid }
+                reward_id: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Redemption result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  redemption_id: { type: string, format: uuid }
+                  status: { type: string }
+                  stamp_count: { type: integer }
+        "422": { $ref: "#/components/responses/Error" }
+
+  /api/v1/loyalty/cards/{customer_card_id}:
+    parameters:
+      - name: customer_card_id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [Loyalty]
+      summary: Read a customer card's current state
+      responses:
+        "200":
+          description: Card state
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  customer_card_id: { type: string, format: uuid }
+                  customer_name: { type: string }
+                  stamp_count: { type: integer }
+                  stamps_required: { type: integer }
+                  reward_ready: { type: boolean }
+                  status: { type: string }
+        "404": { $ref: "#/components/responses/Error" }
+
+  # ── Dashboard (Phase 1.3 · Joe) ────────────────────────────────────────────
+  /api/v1/cards:
+    get:
+      tags: [Dashboard]
+      summary: List cards
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200": { $ref: "#/components/responses/PaginatedList" }
+    post:
+      tags: [Dashboard]
+      summary: Create a card
+      responses:
+        "201": { description: Created }
+
+  /api/v1/customers:
+    get:
+      tags: [Dashboard]
+      summary: List customer cards (filterable)
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200": { $ref: "#/components/responses/PaginatedList" }
+
+  /api/v1/staff:
+    get:
+      tags: [Dashboard]
+      summary: List staff
+      responses:
+        "200": { $ref: "#/components/responses/PaginatedList" }
+    post:
+      tags: [Dashboard]
+      summary: Create staff
+      responses:
+        "201": { description: Created }
+
+  /api/v1/locations:
+    get:
+      tags: [Dashboard]
+      summary: List locations
+      responses:
+        "200": { $ref: "#/components/responses/PaginatedList" }
+    post:
+      tags: [Dashboard]
+      summary: Create location
+      responses:
+        "201": { description: Created }
+
+  /api/v1/analytics/summary:
+    get:
+      tags: [Dashboard]
+      summary: Merchant analytics summary
+      responses:
+        "200":
+          description: Summary
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  enrollments: { type: integer }
+                  active_cards: { type: integer }
+                  redemptions: { type: integer }
+                  apple_count: { type: integer }
+                  google_count: { type: integer }
+                  repeat_rate: { type: number, format: float }
+
+  # ── Apple Wallet web service (Phase 1.1 · Momen — Apple's camelCase spec) ───
+  /api/v1/wallet/apple/v1/devices/{device_library_id}/registrations/{pass_type_id}/{serial}:
+    parameters:
+      - { name: device_library_id, in: path, required: true, schema: { type: string } }
+      - { name: pass_type_id, in: path, required: true, schema: { type: string } }
+      - { name: serial, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [Apple Wallet]
+      summary: Register a device for a pass
+      description: Body uses Apple's camelCase (e.g. `pushToken`). External spec — not snake_case.
+      security:
+        - applePassAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                pushToken: { type: string }
+      responses:
+        "201": { description: Registered }
+        "200": { description: Already registered }
+        "401": { description: Unauthorized }
+    delete:
+      tags: [Apple Wallet]
+      summary: Unregister a device for a pass
+      security:
+        - applePassAuth: []
+      responses:
+        "200": { description: Unregistered }
+        "401": { description: Unauthorized }
+
+  /api/v1/wallet/apple/v1/devices/{device_library_id}/registrations/{pass_type_id}:
+    parameters:
+      - { name: device_library_id, in: path, required: true, schema: { type: string } }
+      - { name: pass_type_id, in: path, required: true, schema: { type: string } }
+      - name: passesUpdatedSince
+        in: query
+        required: false
+        schema: { type: string }
+    get:
+      tags: [Apple Wallet]
+      summary: List serials updated since a tag
+      responses:
+        "200":
+          description: Serials + last updated tag
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  serialNumbers:
+                    type: array
+                    items: { type: string }
+                  lastUpdated: { type: string }
+        "204": { description: No matching passes }
+
+  /api/v1/wallet/apple/v1/passes/{pass_type_id}/{serial}:
+    parameters:
+      - { name: pass_type_id, in: path, required: true, schema: { type: string } }
+      - { name: serial, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [Apple Wallet]
+      summary: Fetch the latest .pkpass for a serial
+      security:
+        - applePassAuth: []
+      responses:
+        "200":
+          description: The signed pass
+          content:
+            application/vnd.apple.pkpass:
+              schema: { type: string, format: binary }
+        "401": { description: Unauthorized }
+        "304": { description: Not modified }
+
+  /api/v1/wallet/apple/v1/log:
+    post:
+      tags: [Apple Wallet]
+      summary: Apple device log sink
+      security: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                logs:
+                  type: array
+                  items: { type: string }
+      responses:
+        "200": { description: Logged }
+
+  # ── Billing webhooks (Phase 1.4 · Momen) ───────────────────────────────────
+  /api/v1/billing/webhook/paymob:
+    post:
+      tags: [Billing]
+      summary: Paymob subscription webhook
+      security: []
+      responses:
+        "200": { description: Acknowledged }
+
+  /api/v1/billing/webhook/fawry:
+    post:
+      tags: [Billing]
+      summary: Fawry subscription webhook
+      security: []
+      responses:
+        "200": { description: Acknowledged }
+
+components:
+  securitySchemes:
+    bearerJWT:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    applePassAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: "ApplePass <CustomerCard.auth_token>"
+
+  parameters:
+    EnrollToken:
+      name: token
+      in: path
+      required: true
+      schema: { type: string }
+    Cursor:
+      name: cursor
+      in: query
+      required: false
+      schema: { type: string }
+    PageSize:
+      name: page_size
+      in: query
+      required: false
+      schema: { type: integer, default: 25, maximum: 100 }
+
+  responses:
+    Error:
+      description: Error (contract §3.7 envelope)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    PaginatedList:
+      description: Cursor-paginated list (contract §3.7)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/PaginatedList" }
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              enum:
+                - VALIDATION_ERROR
+                - UNAUTHENTICATED
+                - PERMISSION_DENIED
+                - NOT_FOUND
+                - CONFLICT
+                - ALREADY_ENROLLED
+                - TOKEN_EXPIRED
+                - COOLDOWN_ACTIVE
+                - RATE_LIMITED
+                - REWARD_NOT_READY
+                - PLAN_LIMIT
+                - WALLET_PROVISION_FAILED
+                - SERVER_ERROR
+            message: { type: string }
+            fields:
+              type: object
+              additionalProperties:
+                type: array
+                items: { type: string }
+    PaginatedList:
+      type: object
+      properties:
+        next: { type: string, nullable: true }
+        previous: { type: string, nullable: true }
+        results:
+          type: array
+          items: { type: object }
