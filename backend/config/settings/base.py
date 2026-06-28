@@ -78,6 +78,7 @@ LOCAL_APPS = [
     "core",
     "enrollment",
     "wallets",
+    "loyalty",
     "billing",
 ]
 

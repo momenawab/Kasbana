@@ -34,6 +34,22 @@ def customer_card(card):
 
 
 @pytest.fixture
+def staff_user(merchant):
+    """An active staff member of ``merchant`` (Admin by factory default)."""
+    return factories.StaffUserFactory(merchant=merchant)
+
+
+@pytest.fixture
+def auth_client(api_client, staff_user):
+    """APIClient authenticated as ``staff_user`` via a SimpleJWT access token."""
+    from rest_framework_simplejwt.tokens import RefreshToken
+
+    access = RefreshToken.for_user(staff_user.user).access_token
+    api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
+    return api_client
+
+
+@pytest.fixture
 def no_cooldown(monkeypatch):
     """Disable the inter-stamp cooldown so balance math can be exercised."""
     from core import constants

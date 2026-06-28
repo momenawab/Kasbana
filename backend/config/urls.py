@@ -31,9 +31,9 @@ api_v1: list = [
     path("", include("enrollment.urls")),
     # Wallet web service (Phase 1.1 — You)
     path("wallet/", include("wallets.urls")),
-    # Loyalty (Phase 1.2 — Joe)
-    # path("loyalty/", include("loyalty.urls")),
-    # Dashboard (Phase 1.3 — Joe)
+    # Loyalty (Phase 2)
+    path("loyalty/", include("loyalty.urls")),
+    # Dashboard (Phase 3)
     # path("", include("dashboard.urls")),
     # Billing (Phase 1.4 — You)
     # path("billing/", include("billing.urls")),
