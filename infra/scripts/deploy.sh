@@ -32,9 +32,13 @@ $COMPOSE run --rm web python manage.py migrate --noinput
 echo "▶ Starting / updating services"
 $COMPOSE up -d
 
-echo "▶ Reloading Caddy config"
-$COMPOSE exec -T caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile 2>/dev/null \
-  || $COMPOSE restart caddy
+# Force-recreate Caddy on its own so a changed Caddyfile is actually re-read.
+# The Caddyfile is a single-file bind mount; `caddy reload` reads the old inode
+# still bound in the running container ("config is unchanged"). Recreating
+# re-binds the current file. --no-deps avoids re-pulling the app image (whose
+# GHCR login is per-deploy and may have expired by now).
+echo "▶ Recreating Caddy (pick up Caddyfile changes)"
+$COMPOSE up -d --force-recreate --no-deps caddy
 
 echo "▶ Pruning old images"
 docker image prune -f >/dev/null || true
