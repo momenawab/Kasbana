@@ -46,19 +46,37 @@ def build_save_url(customer_card: CustomerCard) -> str | None:
 
 
 def _access_token() -> str | None:
-    """OAuth2 bearer token for the Wallet API via the service account."""
+    """OAuth2 bearer token for the Wallet API via the service-account JWT grant.
+
+    Uses the standard JWT-bearer flow (PyJWT + httpx) so we don't pull in the
+    ``requests`` library that google-auth's default transport requires.
+    """
     sa = load_service_account()
     if sa is None:
         return None
     try:
-        from google.auth.transport.requests import Request as GoogleRequest
-        from google.oauth2 import service_account as gsa
-
-        from wallets.google.config import sa_key_path
-
-        creds = gsa.Credentials.from_service_account_file(sa_key_path(), scopes=[_SCOPE])
-        creds.refresh(GoogleRequest())
-        return creds.token
+        now = int(time.time())
+        assertion = jwt.encode(
+            {
+                "iss": sa.client_email,
+                "scope": _SCOPE,
+                "aud": sa.token_uri,
+                "iat": now,
+                "exp": now + 3600,
+            },
+            sa.private_key,
+            algorithm="RS256",
+        )
+        resp = httpx.post(
+            sa.token_uri,
+            data={
+                "grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer",
+                "assertion": assertion,
+            },
+            timeout=15,
+        )
+        resp.raise_for_status()
+        return resp.json().get("access_token")
     except Exception:  # pragma: no cover - network/credential dependent
         logger.exception("Google Wallet: failed to obtain access token")
         return None

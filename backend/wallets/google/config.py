@@ -14,11 +14,14 @@ from typing import Any, cast
 
 from django.conf import settings
 
+_DEFAULT_TOKEN_URI = "https://oauth2.googleapis.com/token"
+
 
 @dataclass
 class ServiceAccount:
     client_email: str
     private_key: str  # PEM
+    token_uri: str = _DEFAULT_TOKEN_URI
 
 
 def _google() -> dict[str, Any]:
@@ -42,7 +45,11 @@ def load_service_account() -> ServiceAccount | None:
         data = json.load(fh)
     if "client_email" not in data or "private_key" not in data:
         return None
-    return ServiceAccount(client_email=data["client_email"], private_key=data["private_key"])
+    return ServiceAccount(
+        client_email=data["client_email"],
+        private_key=data["private_key"],
+        token_uri=data.get("token_uri", _DEFAULT_TOKEN_URI),
+    )
 
 
 def is_configured() -> bool:

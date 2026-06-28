@@ -202,6 +202,12 @@ WALLET = {
 WALLET_AUTH_TOKEN_SECRET = env("WALLET_AUTH_TOKEN_SECRET", "")
 PASS_BARCODE_SECRET = env("PASS_BARCODE_SECRET", "")
 
+# Google Wallet requires every LoyaltyClass to carry a program logo. When a
+# merchant/card has no logo_url, fall back to this self-hosted default (served
+# by WhiteNoise at <BASE_URL>/static/wallet/logo.png). Must be publicly
+# reachable over HTTPS for Google to fetch it.
+WALLET_DEFAULT_LOGO_URL = env("WALLET_DEFAULT_LOGO_URL", "") or f"{BASE_URL}/static/wallet/logo.png"
+
 # Mirror selected contract constants into settings for callers that read them
 # from settings (contract §3.10).
 STAMP_COOLDOWN_SECONDS = constants.STAMP_COOLDOWN_SECONDS

@@ -24,8 +24,9 @@ uvicorn[standard]>=0.30
 whitenoise>=6.7
 
 # --- Wallets (Phase 1.1) ---
+# Google Wallet auth uses the JWT-bearer grant directly (PyJWT + httpx); the
+# Apple pass is signed with cryptography; APNs over httpx HTTP/2.
 PyJWT>=2.9
-google-auth>=2.34
 cryptography>=43.0
 httpx[http2]>=0.27
 

@@ -7,6 +7,8 @@ issuer id and must be `[issuerId].[alphanumeric._-]`.
 
 from __future__ import annotations
 
+from django.conf import settings
+
 from core import constants
 from core.models import Card, CustomerCard
 from wallets.google.config import issuer_id
@@ -26,7 +28,8 @@ def _hex_color(value: str, fallback: str) -> str:
 
 def build_loyalty_class(card: Card) -> dict:
     merchant = card.merchant
-    program_logo = card.logo_url or merchant.logo_url
+    # Google requires a program logo on every class; fall back to the default.
+    program_logo = card.logo_url or merchant.logo_url or settings.WALLET_DEFAULT_LOGO_URL
     payload: dict = {
         "id": class_id_for(card),
         "issuerName": merchant.name,
@@ -34,14 +37,13 @@ def build_loyalty_class(card: Card) -> dict:
         "reviewStatus": "UNDER_REVIEW",
         "hexBackgroundColor": _hex_color(card.color_bg or merchant.color_bg, "#0b7a5b"),
         "countryCode": "EG",
-    }
-    if program_logo:
-        payload["programLogo"] = {
+        "programLogo": {
             "sourceUri": {"uri": program_logo},
             "contentDescription": {
                 "defaultValue": {"language": "en", "value": f"{merchant.name} logo"}
             },
-        }
+        },
+    }
     if card.reward_title:
         payload["rewardsTier"] = card.reward_title
     return payload
