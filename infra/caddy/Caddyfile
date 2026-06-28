@@ -1,0 +1,18 @@
+# Caddy reverse proxy + automatic HTTPS.
+#
+# DOMAIN drives the site address:
+#   - A real hostname (e.g. api.kasbana.net) -> Caddy gets a Let's Encrypt cert
+#     automatically. REQUIRED for Apple Wallet (it needs valid HTTPS).
+#   - ":80" -> plain HTTP for first bring-up before DNS is pointed at the box.
+#
+# Set DOMAIN in infra/.env on the server.
+
+{$DOMAIN} {
+	encode zstd gzip
+
+	# App + admin + API.
+	reverse_proxy web:8000 {
+		header_up X-Forwarded-Proto {scheme}
+		header_up X-Forwarded-For {remote_host}
+	}
+}

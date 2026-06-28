@@ -61,6 +61,17 @@ jobs:
           enable_jekyll: true
           commit_message: "sync: backend from dev"
 
+      # ── infra/ -> infra branch (devops) ─────────────────────────────────────
+      - name: Sync infra source
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: infra
+          publish_dir: ./infra
+          force_orphan: true
+          enable_jekyll: true
+          commit_message: "sync: infra from dev"
+
       # ── build frontend/ -> deployment branch ────────────────────────────────
       - name: Set up Node
         uses: actions/setup-node@v4

@@ -21,4 +21,11 @@ SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 
+# Hashed + compressed static assets served by WhiteNoise (collected at image
+# build time). Caddy stays a pure reverse proxy + TLS terminator.
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
+}
+
 # Sentry is wired in Phase 5; the DSN env var is read there.

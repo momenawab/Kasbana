@@ -1,0 +1,82 @@
+# Kasbana production stack for the EC2 box (t3.small).
+# Run from this directory so the sibling .env is loaded for ${...} interpolation:
+#   IMAGE_TAG=<sha> docker compose -f compose.prod.yml up -d
+#
+# The web/worker/beat images are pulled from GHCR (built in CI). Postgres, Redis
+# and Caddy run alongside. Memory is kept modest to fit 2 GB + swap.
+
+name: kasbana
+
+x-app: &app
+  image: ghcr.io/momenawab/kasbana-backend:${IMAGE_TAG:-latest}
+  restart: unless-stopped
+  env_file: [.env]
+  environment:
+    DJANGO_SETTINGS_MODULE: config.settings.prod
+  depends_on:
+    db:
+      condition: service_healthy
+    redis:
+      condition: service_started
+
+services:
+  web:
+    <<: *app
+    expose: ["8000"]
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/api/health/').status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+  worker:
+    <<: *app
+    command: celery -A config worker -Q default,wallet,messaging --concurrency 2 -l info
+
+  beat:
+    <<: *app
+    command: celery -A config beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --save "" --appendonly no
+    volumes:
+      - redisdata:/data
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on: [web]
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  pgdata:
+  redisdata:
+  caddy_data:
+  caddy_config:

@@ -1,0 +1,19 @@
+# Build context = backend/. Keep the image small and reproducible.
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+db.sqlite3
+db.sqlite3-journal
+staticfiles/
+media/
+.env
+.env.*
+!.env.example
+tests/
+*.log
+.DS_Store

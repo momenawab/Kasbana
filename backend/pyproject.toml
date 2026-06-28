@@ -37,4 +37,5 @@ addopts = "-q"
 filterwarnings = [
     "ignore::DeprecationWarning:factory.*",
     "ignore:.*HMAC key.*:Warning",
+    "ignore:No directory at:UserWarning",
 ]
