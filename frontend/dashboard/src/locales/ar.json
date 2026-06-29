@@ -104,6 +104,48 @@
     "back": "رجوع",
     "publish": "نشر الكارت"
   },
+  "cards": {
+    "title": "الكروت",
+    "new": "كارت جديد",
+    "holders": "الحاملون",
+    "stamps": "الأختام",
+    "emptyTitle": "أنشئ أول كارت",
+    "emptyBody": "صمّم كارت أختام وشاركه — العملاء بيضيفوه في محفظتهم.",
+    "status": { "ACTIVE": "نشط", "DRAFT": "مسودة", "ARCHIVED": "مؤرشف" },
+    "planLimit": "وصلت لحد عدد الكروت في باقتك."
+  },
+  "designer": {
+    "newTitle": "كارت جديد",
+    "editTitle": "تعديل الكارت",
+    "stampsRequired": "عدد الأختام للمكافأة",
+    "stampsRange": "لازم يكون بين ١ و٣٠.",
+    "rewardDescription": "وصف المكافأة",
+    "collectBirthday": "اجمع تاريخ ميلاد العميل",
+    "saveDraft": "حفظ كمسودة",
+    "publish": "نشر",
+    "savedDraft": "تم حفظ المسودة.",
+    "published": "تم نشر الكارت.",
+    "unsaved": "عندك تعديلات مش محفوظة. تخرج برضه؟",
+    "reprovisionWarning": "تعديل كارت منشور بيعيد توفير كروت الحاملين الحاليين."
+  },
+  "detail": {
+    "edit": "تعديل",
+    "qr": "QR",
+    "holders": "الحاملون",
+    "stampsIssued": "الأختام الصادرة",
+    "rewardsRedeemed": "المكافآت المستبدلة",
+    "completion": "الإكمال",
+    "walletSplit": "Apple مقابل Google"
+  },
+  "qr": {
+    "title": "QR التسجيل",
+    "copy": "نسخ",
+    "copied": "تم النسخ",
+    "copyFailed": "تعذّر نسخ الرابط.",
+    "poster": "تحميل الملصق",
+    "whatsapp": "مشاركة على واتساب",
+    "shareMsg": "انضم لكارت الولاء بتاعنا:"
+  },
   "validation": {
     "required": "هذا الحقل مطلوب.",
     "email": "اكتب بريدًا إلكترونيًا صحيحًا.",

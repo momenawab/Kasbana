@@ -104,6 +104,48 @@
     "back": "Back",
     "publish": "Publish card"
   },
+  "cards": {
+    "title": "Cards",
+    "new": "New card",
+    "holders": "Holders",
+    "stamps": "Stamps",
+    "emptyTitle": "Create your first card",
+    "emptyBody": "Design a stamp card and share it — customers add it to their wallet.",
+    "status": { "ACTIVE": "Active", "DRAFT": "Draft", "ARCHIVED": "Archived" },
+    "planLimit": "Your plan's card limit has been reached."
+  },
+  "designer": {
+    "newTitle": "New card",
+    "editTitle": "Edit card",
+    "stampsRequired": "Stamps to reward",
+    "stampsRange": "Must be between 1 and 30.",
+    "rewardDescription": "Reward description",
+    "collectBirthday": "Collect customer birthday",
+    "saveDraft": "Save draft",
+    "publish": "Publish",
+    "savedDraft": "Draft saved.",
+    "published": "Card published.",
+    "unsaved": "You have unsaved changes. Leave anyway?",
+    "reprovisionWarning": "Editing a published card re-provisions existing holders' passes."
+  },
+  "detail": {
+    "edit": "Edit",
+    "qr": "QR",
+    "holders": "Holders",
+    "stampsIssued": "Stamps issued",
+    "rewardsRedeemed": "Rewards redeemed",
+    "completion": "Completion",
+    "walletSplit": "Apple vs Google"
+  },
+  "qr": {
+    "title": "Enrollment QR",
+    "copy": "Copy",
+    "copied": "Copied",
+    "copyFailed": "Couldn't copy the link.",
+    "poster": "Download poster",
+    "whatsapp": "Share on WhatsApp",
+    "shareMsg": "Join our loyalty card:"
+  },
   "validation": {
     "required": "This field is required.",
     "email": "Enter a valid email address.",
