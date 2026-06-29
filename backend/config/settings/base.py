@@ -244,3 +244,22 @@ CELERY_BEAT_SCHEDULE = {
 }
 CELERY_TASK_ACKS_LATE = True
 CELERY_TIMEZONE = TIME_ZONE
+
+# ── Observability — Sentry (Phase 5) ──────────────────────────────────────────
+# No-op unless SENTRY_DSN is set, so dev/CI stay silent. In prod the DSN comes
+# from infra/.env; SENTRY_RELEASE is the deployed image tag (compose passes
+# IMAGE_TAG) so every issue is tied to the exact deploy it came from.
+SENTRY_DSN = env("SENTRY_DSN", "")
+if SENTRY_DSN:
+    import sentry_sdk
+    from sentry_sdk.integrations.celery import CeleryIntegration
+    from sentry_sdk.integrations.django import DjangoIntegration
+
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        environment=env("SENTRY_ENVIRONMENT", "production"),
+        release=env("SENTRY_RELEASE") or None,
+        integrations=[DjangoIntegration(), CeleryIntegration()],
+        traces_sample_rate=float(env("SENTRY_TRACES_SAMPLE_RATE", "0.1") or 0.1),
+        send_default_pii=env_bool("SENTRY_SEND_PII", False),
+    )

@@ -34,4 +34,5 @@ STORAGES = {
     "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
 }
 
-# Sentry is wired in Phase 5; the DSN env var is read there.
+# Sentry is initialised in base.py (guarded by SENTRY_DSN); set the DSN +
+# SENTRY_ENVIRONMENT in infra/.env. SENTRY_RELEASE is injected by compose.
