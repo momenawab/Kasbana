@@ -48,8 +48,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 # ── Security ──────────────────────────────────────────────────────────────────
 SECRET_KEY = env("SECRET_KEY") or env("DJANGO_SECRET_KEY", "dev-insecure-change-me")
 DEBUG = env_bool("DEBUG", False)
-ALLOWED_HOSTS = env_list("ALLOWED_HOSTS", "localhost,127.0.0.1")
-CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS", "https://kasbana.net")
+ALLOWED_HOSTS = env_list("ALLOWED_HOSTS", "localhost,127.0.0.1,api.kasbana.net")
+CSRF_TRUSTED_ORIGINS = env_list(
+    "DJANGO_CSRF_TRUSTED_ORIGINS",
+    "https://kasbana.net,https://app.kasbana.net,https://api.kasbana.net",
+)
 
 # Public HTTPS origin — used to build Apple webServiceURL and Google save URLs.
 BASE_URL = env("BASE_URL", "http://localhost:8000")
@@ -154,7 +157,8 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # ── CORS ──────────────────────────────────────────────────────────────────────
 CORS_ALLOWED_ORIGINS = env_list(
     "CORS_ALLOWED_ORIGINS",
-    "http://localhost:5173,https://kasbana.net",
+    # localhost:5173 marketing dev · 5174 dashboard dev · prod marketing + dashboard
+    "http://localhost:5173,http://localhost:5174,https://kasbana.net,https://app.kasbana.net",
 )
 
 # ── Django REST Framework (contract §3.7, §3.10) ──────────────────────────────
