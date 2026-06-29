@@ -52,14 +52,61 @@ api.interceptors.response.use(
   }
 )
 
-/** Turn an axios error into the contract envelope shape for callers/forms. */
-export function normalizeError(error) {
-  const body = error?.response?.data?.error
-  return {
-    code: body?.code || 'SERVER_ERROR',
-    message: body?.message || 'Something went wrong.',
-    fields: body?.fields || null,
+function toFieldText(value) {
+  if (Array.isArray(value)) return value.map(toFieldText).filter(Boolean).join('; ')
+  return value == null ? '' : String(value)
+}
+
+function flattenFields(fields) {
+  if (!fields || typeof fields !== 'object') return null
+  const out = {}
+  for (const [key, value] of Object.entries(fields)) {
+    const text = toFieldText(value)
+    if (text) out[key] = text
   }
+  return Object.keys(out).length ? out : null
+}
+
+/**
+ * Turn an axios error into the contract envelope shape for callers/forms.
+ *
+ * Returns:
+ *  - code:   contract error code (or NETWORK_ERROR / SERVER_ERROR)
+ *  - message: single human-readable line = backend message + field reasons
+ *  - fields:  { field: 'reason string' } for inline form binding (DRF sends arrays)
+ *  - status:  HTTP status (null when the request never reached the backend)
+ *
+ * In dev the raw envelope is logged so you can tell at a glance whether the
+ * failure is backend (status + fields) or frontend (network/offline).
+ */
+export function normalizeError(error) {
+  const status = error?.response?.status
+  const body = error?.response?.data?.error
+
+  // No HTTP response => the request never reached the backend (network/CORS/down).
+  if (!error?.response) {
+    const message =
+      "Network error — couldn't reach the server. Check your connection or that the backend is running."
+    if (import.meta.env.DEV) {
+      console.error('[api error] no response (network/offline)', error?.message)
+    }
+    return { code: 'NETWORK_ERROR', message, fields: null, status: null }
+  }
+
+  const code = body?.code || 'SERVER_ERROR'
+  const base = body?.message || 'Something went wrong.'
+  const fields = flattenFields(body?.fields)
+  const message = fields
+    ? `${base} — ${Object.entries(fields)
+        .map(([k, v]) => `${k}: ${v}`)
+        .join('; ')}`
+    : base
+
+  if (import.meta.env.DEV) {
+    console.error('[api error]', { status, code, message, fields })
+  }
+
+  return { code, message, fields, status }
 }
 
 export async function login(email, password) {

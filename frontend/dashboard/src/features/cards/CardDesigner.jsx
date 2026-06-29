@@ -94,7 +94,7 @@ export default function CardDesigner() {
         reward_description: form.reward_description,
         color_bg: form.color_bg,
         color_fg: form.color_fg,
-        logo_url: form.logo_url || null,
+        logo_url: form.logo_url || '',
         status,
       }
       const card = await save.mutateAsync(payload)
