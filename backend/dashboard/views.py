@@ -27,6 +27,7 @@ from rest_framework.response import Response
 from rest_framework.serializers import BaseSerializer
 from rest_framework.views import APIView
 
+from billing import entitlements
 from common.permissions import IsAdminOrAbove, IsOwner
 from core.enums import CustomerCardStatus, LedgerEvent, WalletPlatform
 from core.models import Card, CustomerCard, Location, Redemption, StaffUser, WalletRegistration
@@ -65,7 +66,9 @@ class CardListCreateView(generics.ListCreateAPIView):
         return Card.objects.for_merchant(get_request_merchant(self.request)).order_by("-created_at")
 
     def perform_create(self, serializer: BaseSerializer) -> None:
-        card = serializer.save(merchant=get_request_merchant(self.request))
+        merchant = get_request_merchant(self.request)
+        entitlements.enforce(merchant, "max_cards")  # PLAN_LIMIT (402) if over plan
+        card = serializer.save(merchant=merchant)
         _enqueue_google_sync(card)
 
 
@@ -98,7 +101,9 @@ class LocationListCreateView(generics.ListCreateAPIView):
         )
 
     def perform_create(self, serializer: BaseSerializer) -> None:
-        serializer.save(merchant=get_request_merchant(self.request))
+        merchant = get_request_merchant(self.request)
+        entitlements.enforce(merchant, "max_locations")  # PLAN_LIMIT (402) if over plan
+        serializer.save(merchant=merchant)
 
 
 # ── Staff ─────────────────────────────────────────────────────────────────────
@@ -121,6 +126,11 @@ class StaffListCreateView(generics.ListCreateAPIView):
             .select_related("user", "location")
             .order_by("-created_at")
         )
+
+    def perform_create(self, serializer: BaseSerializer) -> None:
+        # POST /staff escalates access; gate it on the plan's seat count too.
+        entitlements.enforce(get_request_merchant(self.request), "max_staff")
+        serializer.save()
 
 
 # ── Customers ─────────────────────────────────────────────────────────────────

@@ -27,6 +27,8 @@ api_v1: list = [
     # Auth (Phase 1.0)
     path("auth/token", EmailTokenObtainPairView.as_view(), name="auth-token"),
     path("auth/refresh", TokenRefreshView.as_view(), name="auth-refresh"),
+    # Account & session: signup/forgot/reset/invite, /me, settings (Phase 1.5 — You)
+    path("", include("accounts.urls")),
     # Enrollment (Phase 1.1 — You)
     path("", include("enrollment.urls")),
     # Wallet web service (Phase 1.1 — You)

@@ -76,6 +76,7 @@ THIRD_PARTY_APPS = [
 # the only schema source of truth in Phase 1.0.
 LOCAL_APPS = [
     "core",
+    "accounts",
     "enrollment",
     "wallets",
     "loyalty",
@@ -230,5 +231,12 @@ CELERY_TASK_ROUTES = {
     "core.tasks.*": {"queue": "default"},
 }
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
+CELERY_BEAT_SCHEDULE = {
+    # Lock merchants whose 14-day trial elapsed without converting (Phase 1.4).
+    "billing-expire-trials": {
+        "task": "billing.tasks.expire_trials",
+        "schedule": 3600.0,  # hourly
+    },
+}
 CELERY_TASK_ACKS_LATE = True
 CELERY_TIMEZONE = TIME_ZONE
