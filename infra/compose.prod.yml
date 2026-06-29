@@ -10,6 +10,10 @@ name: stampn
 x-app: &app
   image: ghcr.io/momenawab/stampn-backend:${IMAGE_TAG:-latest}
   restart: unless-stopped
+  # The host uses systemd-resolved (127.0.0.53 stub) which is unreachable from
+  # inside a container, so Docker's copied resolv.conf breaks outbound DNS
+  # (Apple APNS, Google Wallet, Sentry, ACME). Pin public resolvers.
+  dns: ["8.8.8.8", "1.1.1.1"]
   env_file: [.env]
   environment:
     DJANGO_SETTINGS_MODULE: config.settings.prod
@@ -75,6 +79,8 @@ services:
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
+    # Needs working outbound DNS to reach Let's Encrypt (ACME); see x-app note.
+    dns: ["8.8.8.8", "1.1.1.1"]
     depends_on: [web]
     ports:
       - "80:80"
