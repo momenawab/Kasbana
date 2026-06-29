@@ -1,5 +1,5 @@
 import { Link, NavLink, useLocation } from 'react-router-dom'
-import { BRAND_NAME, BRAND_NAME_AR } from '../config.js'
+import { BRAND_NAME, BRAND_NAME_AR, DASHBOARD_LOGIN_URL, DASHBOARD_SIGNUP_URL } from '../config.js'
 import { useLang, localizePath, PAGE_PATHS } from '../i18n/index.js'
 
 export default function Header() {
@@ -36,6 +36,14 @@ export default function Header() {
           <Link to={switchHref} className="lang-switch" hrefLang={t.switchTo}>
             {t.switchLabel}
           </Link>
+
+          {/* Auth entry points → the Client Dashboard (separate subdomain) */}
+          <a href={DASHBOARD_LOGIN_URL} className="nav-link header-login">
+            {t.nav.login}
+          </a>
+          <a href={DASHBOARD_SIGNUP_URL} className="btn btn-primary header-cta">
+            {t.nav.getStarted}
+          </a>
         </div>
       </div>
     </header>

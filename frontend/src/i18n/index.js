@@ -18,7 +18,13 @@ export const PAGE_PATHS = {
 export const translations = {
   en: {
     dir: 'ltr',
-    nav: { home: 'Home', support: 'Support', privacy: 'Privacy' },
+    nav: {
+      home: 'Home',
+      support: 'Support',
+      privacy: 'Privacy',
+      login: 'Log in',
+      getStarted: 'Get started',
+    },
     switchLabel: 'العربية', // shown on the EN site to jump to Arabic
     switchTo: 'ar',
     home: {
@@ -118,7 +124,13 @@ export const translations = {
 
   ar: {
     dir: 'rtl',
-    nav: { home: 'الرئيسية', support: 'الدعم', privacy: 'الخصوصية' },
+    nav: {
+      home: 'الرئيسية',
+      support: 'الدعم',
+      privacy: 'الخصوصية',
+      login: 'تسجيل الدخول',
+      getStarted: 'ابدأ الآن',
+    },
     switchLabel: 'English', // shown on the AR site to jump to English
     switchTo: 'en',
     home: {

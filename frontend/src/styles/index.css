@@ -250,6 +250,15 @@ img {
   width: 100%;
 }
 
+/* Header auth entry points (compact). */
+.header-cta {
+  padding: 8px 16px;
+  font-size: 0.9rem;
+}
+.header-login {
+  font-weight: 600;
+}
+
 /* ── Hero ───────────────────────────────────────────────────────────────── */
 .hero {
   position: relative;

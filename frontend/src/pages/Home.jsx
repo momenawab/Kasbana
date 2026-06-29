@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import Seo from '../components/Seo.jsx'
 import { useLang, PAGE_PATHS } from '../i18n/index.js'
+import { DASHBOARD_SIGNUP_URL } from '../config.js'
 
 export default function Home() {
   const { lang, t } = useLang()
@@ -21,11 +22,11 @@ export default function Home() {
           <p className="hero-lead">{h.lead}</p>
 
           <div className="hero-actions">
-            <Link to={PAGE_PATHS.support[lang]} className="btn btn-primary">
+            <a href={DASHBOARD_SIGNUP_URL} className="btn btn-primary">
+              {t.nav.getStarted}
+            </a>
+            <Link to={PAGE_PATHS.support[lang]} className="btn btn-ghost">
               {h.contactCta}
-            </Link>
-            <Link to={PAGE_PATHS.privacy[lang]} className="btn btn-ghost">
-              {h.privacyCta}
             </Link>
           </div>
 
