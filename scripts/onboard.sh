@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 #
-# Kasbana onboarding — clone the repo and set up an identical local environment.
+# Stampn onboarding — clone the repo and set up an identical local environment.
 #
 # Usage:
 #   curl -fsSL <raw-url>/scripts/onboard.sh | bash      # fresh machine
 #   ./scripts/onboard.sh                                 # from inside a clone
 #
 # What it does:
-#   1. Clones github.com/momenawab/Kasbana (if not already inside it) on `dev`
+#   1. Clones github.com/momenawab/Stampn (if not already inside it) on `dev`
 #   2. Backend: venv + deps + .env + migrate + run tests
 #   3. Frontend: npm install (if Node is available)
 #   4. Prints the golden push-flow rules (dev distribution + prod deploy)
@@ -17,7 +17,7 @@
 
 set -euo pipefail
 
-REPO_URL="https://github.com/momenawab/Kasbana.git"
+REPO_URL="https://github.com/momenawab/Stampn.git"
 BRANCH="dev"
 
 say()  { printf "\n\033[1;36m▶ %s\033[0m\n" "$*"; }
@@ -29,13 +29,13 @@ PY="$(command -v python3 || command -v python)"
 
 # ── 1. Locate or clone the repo ───────────────────────────────────────────────
 if git rev-parse --is-inside-work-tree >/dev/null 2>&1 && \
-   git remote get-url origin 2>/dev/null | grep -qi "Kasbana"; then
+   git remote get-url origin 2>/dev/null | grep -qi "Stampn"; then
   ROOT="$(git rev-parse --show-toplevel)"
   say "Using existing clone at $ROOT"
 else
   say "Cloning $REPO_URL"
   git clone "$REPO_URL"
-  ROOT="$(pwd)/Kasbana"
+  ROOT="$(pwd)/Stampn"
 fi
 cd "$ROOT"
 
@@ -74,7 +74,7 @@ fi
 cat <<'RULES'
 
 ────────────────────────────────────────────────────────────────────────────
- KASBANA — HOW THE REPO WORKS  (read this once)
+ STAMPN — HOW THE REPO WORKS  (read this once)
 ────────────────────────────────────────────────────────────────────────────
  • You edit ONLY the `dev` branch. It is a monorepo:
        dev/
@@ -99,7 +99,7 @@ cat <<'RULES'
    dev → prod triggers deploy-prod.yml (build image → GHCR → roll onto EC2):
        git checkout prod && git merge --ff-only dev && git push origin prod
        git checkout dev
-   Live: https://api.kasbana.net  ·  admin https://admin.kasbana.net/admin/
+   Live: https://api.stampn.net  ·  admin https://admin.stampn.net/admin/
 
  • Ownership (Backend Plan & Variable Contract, see main/docs/):
        Momen → core, common, config, enrollment, wallets, billing, infra

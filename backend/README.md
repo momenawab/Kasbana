@@ -1,6 +1,7 @@
-# Kasbana — Backend (Django)
+# Stampn — Backend (Django)
 
-API and business logic for **Kasbana**, the digital loyalty platform. This is the
+
+API and business logic for **Stampn**, the digital loyalty platform. This is the
 **`Backend`** branch.
 
 > Status: **Phase 1.0 (Foundation & Contract) complete** — frozen `core/`,

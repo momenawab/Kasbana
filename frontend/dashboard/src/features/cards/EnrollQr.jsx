@@ -51,7 +51,7 @@ export default function EnrollQr() {
           <Skeleton h={240} w={240} rounded="card" />
         ) : (
           <>
-            <QrBlock value={joinUrl} size={240} downloadName={`kasbana-card-${id}`} />
+            <QrBlock value={joinUrl} size={240} downloadName={`stampn-card-${id}`} />
 
             <div className="flex w-full items-center gap-2 rounded-ctl border border-line bg-paper px-3 py-2">
               <span dir="ltr" className="flex-1 truncate text-sm text-tx-2">

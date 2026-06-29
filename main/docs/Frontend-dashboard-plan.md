@@ -1,4 +1,4 @@
-# Kasbana — Client Dashboard — Full Build Specification
+# Stampn — Client Dashboard — Full Build Specification
 
 > **This is a complete implementation spec for the merchant-facing Client Dashboard.** It is meant to be handed to an AI coding agent or a developer and built exactly as written. Use the exact names, paths, tokens, routes, and API shapes — do not invent or rename anything. Build in the order in §17. Each screen has acceptance criteria; it's done only when all pass. This document is self-contained — no other file is required. **Scope:** the whole dashboard (every screen). **Out of scope:** the separate Admin Panel and the backend itself (it's consumed via the API contracts in §6).
 >
@@ -22,7 +22,7 @@ npm i react-router-dom @tanstack/react-query axios react-hook-form zod @hookform
       react-i18next i18next recharts qrcode.react lucide-react dayjs
 npm i -D tailwindcss postcss autoprefixer && npx tailwindcss init -p
 ```
-Env: `VITE_API_URL` (e.g. `https://staging-api.kasbana.app`). API base = `VITE_API_URL + "/api/v1"`.
+Env: `VITE_API_URL` (e.g. `https://staging-api.stampn.app`). API base = `VITE_API_URL + "/api/v1"`.
 
 ## 2. Project structure (exact)
 
@@ -166,11 +166,11 @@ POST /settings/account/password {current,new} -> {ok}
 
 ## 7. i18n + RTL (`lib/i18n.js`)
 
-i18next init; `lng` from localStorage `kasbana_lang` (default `ar`); resources from `locales/`. **Every visible string is an i18n key — no hardcoded copy.** On language change set `document.documentElement.lang` + `dir` (`ar`→`rtl`, `en`→`ltr`). Use Tailwind logical utilities (`ps/pe/ms/me`, `text-start/end`) only — never `pl/pr/left/right`. `ar.json` is the source of truth; `en.json` mirrors its keys.
+i18next init; `lng` from localStorage `stampn_lang` (default `ar`); resources from `locales/`. **Every visible string is an i18n key — no hardcoded copy.** On language change set `document.documentElement.lang` + `dir` (`ar`→`rtl`, `en`→`ltr`). Use Tailwind logical utilities (`ps/pe/ms/me`, `text-start/end`) only — never `pl/pr/left/right`. `ar.json` is the source of truth; `en.json` mirrors its keys.
 
 ## 8. Auth (`lib/auth.js`, `layout/RequireAuth.jsx`)
 
-`access` in memory + `refresh` in `localStorage` (`kasbana_refresh`). `login()` → `POST /auth/token` → save → `GET /me` cache merchant+entitlements. `logout()` clears tokens + query cache → `/login`. `RequireAuth` guards protected routes (no session → `/login?next=<path>`). After login: if `merchant.status==="trial"` and onboarding incomplete → `/onboarding`.
+`access` in memory + `refresh` in `localStorage` (`stampn_refresh`). `login()` → `POST /auth/token` → save → `GET /me` cache merchant+entitlements. `logout()` clears tokens + query cache → `/login`. `RequireAuth` guards protected routes (no session → `/login?next=<path>`). After login: if `merchant.status==="trial"` and onboarding incomplete → `/onboarding`.
 
 ## 9. App shell + routing
 
@@ -279,7 +279,7 @@ Current plan + **trial countdown**; plan comparison (Starter/Growth/Chain, EGP p
 - **Business:** name, legal_name, logo, default color_bg/color_fg, contact, address → `PATCH /settings/business`.
 - **Branding:** defaults inherited by new cards.
 - **Notifications:** owner email/WhatsApp alert toggles → `PATCH /settings/account`.
-- **Language:** AR/EN default (writes `kasbana_lang` + pref).
+- **Language:** AR/EN default (writes `stampn_lang` + pref).
 - **Data & privacy:** export my data, retention note, request deletion (PDPL).
 - **Account:** change password (`/settings/account/password`), sessions/logout, delete account (confirm).
 **Accept:** each tab saves + reflects immediately; language toggle flips `dir`.

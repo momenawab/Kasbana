@@ -5,7 +5,7 @@
 #
 #   IMAGE_TAG=<sha> bash scripts/deploy.sh
 #
-# Run from /opt/kasbana/infra (so ./.env and ./caddy/Caddyfile resolve).
+# Run from /opt/stampn/infra (so ./.env and ./caddy/Caddyfile resolve).
 
 set -euo pipefail
 

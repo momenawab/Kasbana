@@ -8,7 +8,7 @@
 
 set -euo pipefail
 
-echo "▶ Provisioning Kasbana host..."
+echo "▶ Provisioning Stampn host..."
 
 # ── Swap (4 GB) ───────────────────────────────────────────────────────────────
 if ! sudo swapon --show | grep -q '/swapfile'; then
@@ -36,10 +36,10 @@ fi
 
 # ── App directories ───────────────────────────────────────────────────────────
 # secrets/ holds wallet certs (Phase 1.1), mounted read-only into the containers.
-sudo mkdir -p /opt/kasbana/infra /opt/kasbana/backups /opt/kasbana/secrets
-sudo chown -R "$USER" /opt/kasbana
-chmod 700 /opt/kasbana/secrets
+sudo mkdir -p /opt/stampn/infra /opt/stampn/backups /opt/stampn/secrets
+sudo chown -R "$USER" /opt/stampn
+chmod 700 /opt/stampn/secrets
 
 echo "✓ Provisioning complete."
-echo "  Next: place infra/.env at /opt/kasbana/infra/.env, then deploy."
+echo "  Next: place infra/.env at /opt/stampn/infra/.env, then deploy."
 echo "  NOTE: log out/in once so the docker group applies to your shell."

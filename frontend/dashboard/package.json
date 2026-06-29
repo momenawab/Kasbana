@@ -1,9 +1,9 @@
 {
-  "name": "kasbana-dashboard",
+  "name": "stampn-dashboard",
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Kasbana merchant Client Dashboard (Direction C). Standalone app — independent of the marketing site.",
+  "description": "Stampn merchant Client Dashboard (Direction C). Standalone app — independent of the marketing site.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

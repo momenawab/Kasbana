@@ -80,7 +80,7 @@ export const translations = {
       title: 'Privacy Policy',
       updated: 'Last updated: 28 June 2026',
       intro:
-        'This policy explains what information Kasbana collects through this website and how we use it. Kasbana is a digital loyalty and rewards platform; this site is currently a pre-launch “coming soon” page with a contact form.',
+        'This policy explains what information Stampn collects through this website and how we use it. Stampn is a digital loyalty and rewards platform; this site is currently a pre-launch “coming soon” page with a contact form.',
       collectH: 'What we collect',
       collectP: 'When you submit the support form, we collect the information you choose to send us:',
       collectList: ['Your name', 'Your email address', 'The subject and message you write'],
@@ -107,17 +107,17 @@ export const translations = {
     },
     seo: {
       home: {
-        title: "Kasbana — Digital loyalty cards in your customers' wallet",
+        title: "Stampn — Digital loyalty cards in your customers' wallet",
         description:
-          'Kasbana is a digital loyalty and rewards platform for cafés, restaurants, salons, gyms, and shops. Customers add stamp and points cards to Apple Wallet and Google Wallet — no app needed. Built for Egypt, Arabic-first.',
+          'Stampn is a digital loyalty and rewards platform for cafés, restaurants, salons, gyms, and shops. Customers add stamp and points cards to Apple Wallet and Google Wallet — no app needed. Built for Egypt, Arabic-first.',
       },
       support: {
-        title: 'Support — Kasbana',
-        description: "Questions about Kasbana? Send us a message and we'll reply by email.",
+        title: 'Support — Stampn',
+        description: "Questions about Stampn? Send us a message and we'll reply by email.",
       },
       privacy: {
-        title: 'Privacy Policy — Kasbana',
-        description: 'How Kasbana handles the information you submit through our contact form.',
+        title: 'Privacy Policy — Stampn',
+        description: 'How Stampn handles the information you submit through our contact form.',
       },
     },
   },
@@ -185,7 +185,7 @@ export const translations = {
       title: 'سياسة الخصوصية',
       updated: 'آخر تحديث: ٢٨ يونيو ٢٠٢٦',
       intro:
-        'بتوضّح السياسة دي إيه المعلومات اللي كسبانة بتجمعها من خلال الموقع ده وإزاي بنستخدمها. كسبانة منصّة ولاء ومكافآت رقمية، والموقع ده حاليًا صفحة «قريبًا» قبل الإطلاق فيها فورم تواصل.',
+        'بتوضّح السياسة دي إيه المعلومات اللي Stampn بتجمعها من خلال الموقع ده وإزاي بنستخدمها. Stampn منصّة ولاء ومكافآت رقمية، والموقع ده حاليًا صفحة «قريبًا» قبل الإطلاق فيها فورم تواصل.',
       collectH: 'إيه اللي بنجمعه',
       collectP: 'لمّا تبعت فورم الدعم، بنجمع المعلومات اللي إنت بتختار تبعتها لنا:',
       collectList: ['اسمك', 'بريدك الإلكتروني', 'الموضوع والرسالة اللي بتكتبها'],
@@ -211,17 +211,17 @@ export const translations = {
     },
     seo: {
       home: {
-        title: 'كسبانة — كروت ولاء رقمية في محفظة عملائك',
+        title: 'Stampn — كروت ولاء رقمية في محفظة عملائك',
         description:
-          'كسبانة منصّة ولاء ومكافآت رقمية للكافيهات والمطاعم والصالونات والجيمات والمحلات. العملاء بيضيفوا كروت الأختام والنقاط على Apple Wallet و Google Wallet — من غير أي تطبيق. اتعملت لمصر، بالعربي الأول.',
+          'Stampn منصّة ولاء ومكافآت رقمية للكافيهات والمطاعم والصالونات والجيمات والمحلات. العملاء بيضيفوا كروت الأختام والنقاط على Apple Wallet و Google Wallet — من غير أي تطبيق. اتعملت لمصر، بالعربي الأول.',
       },
       support: {
-        title: 'الدعم — كسبانة',
-        description: 'عندك سؤال عن كسبانة؟ ابعتلنا رسالة وهنرد عليك على الإيميل.',
+        title: 'الدعم — Stampn',
+        description: 'عندك سؤال عن Stampn؟ ابعتلنا رسالة وهنرد عليك على الإيميل.',
       },
       privacy: {
-        title: 'سياسة الخصوصية — كسبانة',
-        description: 'إزاي كسبانة بتتعامل مع المعلومات اللي بتبعتها من خلال فورم التواصل.',
+        title: 'سياسة الخصوصية — Stampn',
+        description: 'إزاي Stampn بتتعامل مع المعلومات اللي بتبعتها من خلال فورم التواصل.',
       },
     },
   },

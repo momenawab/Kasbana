@@ -9,8 +9,8 @@
         "nodes": [
           "docs_walaa_backend_plan_and_contract_variable_contract",
           "docs_walaa_backend_plan_and_contract_core_ledger",
-          "docs_kasbana_backend_brief_momen_brief",
-          "docs_kasbana_backend_brief_joe_brief",
+          "docs_stampn_backend_brief_momen_brief",
+          "docs_stampn_backend_brief_joe_brief",
           "docs_walaa_backend_plan_and_contract_parallel_merge"
         ],
         "relation": "participate_in",
@@ -36,8 +36,8 @@
         "id": "wallet_loyalty_flow",
         "label": "Enrollment-Stamp-Wallet Loyalty Flow",
         "nodes": [
-          "docs_kasbana_backend_brief_momen_enrollment_wallets",
-          "docs_kasbana_backend_brief_joe_loyalty_engine",
+          "docs_stampn_backend_brief_momen_enrollment_wallets",
+          "docs_stampn_backend_brief_joe_loyalty_engine",
           "docs_walaa_backend_plan_and_contract_wallets_facade",
           "readme_wallet_loyalty"
         ],
@@ -52,142 +52,142 @@
     {
       "label": "__init__.py",
       "file_type": "code",
-      "source_file": "backend/kasbana/__init__.py",
+      "source_file": "backend/stampn/__init__.py",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "kasbana_init",
+      "id": "stampn_init",
       "community": 12,
       "norm_label": "__init__.py"
     },
     {
       "label": "asgi.py",
       "file_type": "code",
-      "source_file": "backend/kasbana/asgi.py",
+      "source_file": "backend/stampn/asgi.py",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "kasbana_asgi",
+      "id": "stampn_asgi",
       "community": 9,
       "norm_label": "asgi.py"
     },
     {
-      "label": "ASGI config for the Kasbana backend.",
+      "label": "ASGI config for the Stampn backend.",
       "file_type": "rationale",
-      "source_file": "backend/kasbana/asgi.py",
+      "source_file": "backend/stampn/asgi.py",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "kasbana_asgi_rationale_1",
+      "id": "stampn_asgi_rationale_1",
       "community": 9,
-      "norm_label": "asgi config for the kasbana backend."
+      "norm_label": "asgi config for the stampn backend."
     },
     {
       "label": "settings.py",
       "file_type": "code",
-      "source_file": "backend/kasbana/settings.py",
+      "source_file": "backend/stampn/settings.py",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "kasbana_settings",
+      "id": "stampn_settings",
       "community": 5,
       "norm_label": "settings.py"
     },
     {
       "label": "env()",
       "file_type": "code",
-      "source_file": "backend/kasbana/settings.py",
+      "source_file": "backend/stampn/settings.py",
       "source_location": "L20",
       "_origin": "ast",
-      "id": "kasbana_settings_env",
+      "id": "stampn_settings_env",
       "community": 5,
       "norm_label": "env()"
     },
     {
       "label": "env_bool()",
       "file_type": "code",
-      "source_file": "backend/kasbana/settings.py",
+      "source_file": "backend/stampn/settings.py",
       "source_location": "L24",
       "_origin": "ast",
-      "id": "kasbana_settings_env_bool",
+      "id": "stampn_settings_env_bool",
       "community": 5,
       "norm_label": "env_bool()"
     },
     {
       "label": "env_list()",
       "file_type": "code",
-      "source_file": "backend/kasbana/settings.py",
+      "source_file": "backend/stampn/settings.py",
       "source_location": "L28",
       "_origin": "ast",
-      "id": "kasbana_settings_env_list",
+      "id": "stampn_settings_env_list",
       "community": 5,
       "norm_label": "env_list()"
     },
     {
-      "label": "Django settings for the Kasbana backend.  Configuration is driven by environment",
+      "label": "Django settings for the Stampn backend.  Configuration is driven by environment",
       "file_type": "rationale",
-      "source_file": "backend/kasbana/settings.py",
+      "source_file": "backend/stampn/settings.py",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "kasbana_settings_rationale_1",
+      "id": "stampn_settings_rationale_1",
       "community": 5,
-      "norm_label": "django settings for the kasbana backend.  configuration is driven by environment"
+      "norm_label": "django settings for the stampn backend.  configuration is driven by environment"
     },
     {
       "label": "urls.py",
       "file_type": "code",
-      "source_file": "backend/kasbana/urls.py",
+      "source_file": "backend/stampn/urls.py",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "kasbana_urls",
+      "id": "stampn_urls",
       "community": 6,
       "norm_label": "urls.py"
     },
     {
       "label": "health()",
       "file_type": "code",
-      "source_file": "backend/kasbana/urls.py",
+      "source_file": "backend/stampn/urls.py",
       "source_location": "L8",
       "_origin": "ast",
-      "id": "kasbana_urls_health",
+      "id": "stampn_urls_health",
       "community": 6,
       "norm_label": "health()"
     },
     {
-      "label": "URL configuration for the Kasbana backend.",
+      "label": "URL configuration for the Stampn backend.",
       "file_type": "rationale",
-      "source_file": "backend/kasbana/urls.py",
+      "source_file": "backend/stampn/urls.py",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "kasbana_urls_rationale_1",
+      "id": "stampn_urls_rationale_1",
       "community": 6,
-      "norm_label": "url configuration for the kasbana backend."
+      "norm_label": "url configuration for the stampn backend."
     },
     {
       "label": "Simple health check so deploys can be verified.",
       "file_type": "rationale",
-      "source_file": "backend/kasbana/urls.py",
+      "source_file": "backend/stampn/urls.py",
       "source_location": "L9",
       "_origin": "ast",
-      "id": "kasbana_urls_rationale_9",
+      "id": "stampn_urls_rationale_9",
       "community": 6,
       "norm_label": "simple health check so deploys can be verified."
     },
     {
       "label": "wsgi.py",
       "file_type": "code",
-      "source_file": "backend/kasbana/wsgi.py",
+      "source_file": "backend/stampn/wsgi.py",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "kasbana_wsgi",
+      "id": "stampn_wsgi",
       "community": 10,
       "norm_label": "wsgi.py"
     },
     {
-      "label": "WSGI config for the Kasbana backend.",
+      "label": "WSGI config for the Stampn backend.",
       "file_type": "rationale",
-      "source_file": "backend/kasbana/wsgi.py",
+      "source_file": "backend/stampn/wsgi.py",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "kasbana_wsgi_rationale_1",
+      "id": "stampn_wsgi_rationale_1",
       "community": 10,
-      "norm_label": "wsgi config for the kasbana backend."
+      "norm_label": "wsgi config for the stampn backend."
     },
     {
       "label": "manage.py",
@@ -762,7 +762,7 @@
       "norm_label": "frontend build to deployment branch"
     },
     {
-      "label": "Kasbana Loyalty Platform",
+      "label": "Stampn Loyalty Platform",
       "file_type": "concept",
       "source_file": "README.md",
       "source_location": null,
@@ -770,9 +770,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "readme_kasbana_platform",
+      "id": "readme_stampn_platform",
       "community": 1,
-      "norm_label": "kasbana loyalty platform"
+      "norm_label": "stampn loyalty platform"
     },
     {
       "label": "dev Branch as Single Source of Truth",
@@ -827,7 +827,7 @@
       "norm_label": "apple/google wallet loyalty cards"
     },
     {
-      "label": "Kasbana Django Backend API",
+      "label": "Stampn Django Backend API",
       "file_type": "document",
       "source_file": "backend/README.md",
       "source_location": null,
@@ -837,7 +837,7 @@
       "contributor": null,
       "id": "backend_readme_django_api",
       "community": 1,
-      "norm_label": "kasbana django backend api"
+      "norm_label": "stampn django backend api"
     },
     {
       "label": "Environment-driven Django Settings",
@@ -879,7 +879,7 @@
       "norm_label": "backend python dependencies"
     },
     {
-      "label": "Kasbana Vite+React Frontend",
+      "label": "Stampn Vite+React Frontend",
       "file_type": "document",
       "source_file": "frontend/README.md",
       "source_location": null,
@@ -889,7 +889,7 @@
       "contributor": null,
       "id": "frontend_readme_react_site",
       "community": 1,
-      "norm_label": "kasbana vite+react frontend"
+      "norm_label": "stampn vite+react frontend"
     },
     {
       "label": "Bilingual EN/AR (RTL) i18n",
@@ -957,7 +957,7 @@
       "norm_label": "frontend index.html seo shell"
     },
     {
-      "label": "Kasbana main/ Docs Overview",
+      "label": "Stampn main/ Docs Overview",
       "file_type": "document",
       "source_file": "main/README.md",
       "source_location": null,
@@ -967,10 +967,10 @@
       "contributor": null,
       "id": "main_readme_overview",
       "community": 1,
-      "norm_label": "kasbana main/ docs overview"
+      "norm_label": "stampn main/ docs overview"
     },
     {
-      "label": "Kasbana Architecture Doc",
+      "label": "Stampn Architecture Doc",
       "file_type": "document",
       "source_file": "main/docs/ARCHITECTURE.md",
       "source_location": null,
@@ -980,7 +980,7 @@
       "contributor": null,
       "id": "docs_architecture_overview",
       "community": 1,
-      "norm_label": "kasbana architecture doc"
+      "norm_label": "stampn architecture doc"
     },
     {
       "label": "CI/CD Distribution Pipeline",
@@ -1154,145 +1154,145 @@
     {
       "label": "Backend Work Brief \u2014 Momen",
       "file_type": "document",
-      "source_file": "main/docs/Kasbana_Backend_Brief_Momen.md",
+      "source_file": "main/docs/Stampn_Backend_Brief_Momen.md",
       "source_location": null,
       "source_url": null,
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "docs_kasbana_backend_brief_momen_brief",
+      "id": "docs_stampn_backend_brief_momen_brief",
       "community": 2,
       "norm_label": "backend work brief \u2014 momen"
     },
     {
       "label": "Phase 1.0 Foundation & Contract (Momen)",
       "file_type": "concept",
-      "source_file": "main/docs/Kasbana_Backend_Brief_Momen.md",
+      "source_file": "main/docs/Stampn_Backend_Brief_Momen.md",
       "source_location": null,
       "source_url": null,
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "docs_kasbana_backend_brief_momen_foundation",
+      "id": "docs_stampn_backend_brief_momen_foundation",
       "community": 2,
       "norm_label": "phase 1.0 foundation & contract (momen)"
     },
     {
       "label": "Phase 1.1 Enrollment + Wallets (Momen)",
       "file_type": "concept",
-      "source_file": "main/docs/Kasbana_Backend_Brief_Momen.md",
+      "source_file": "main/docs/Stampn_Backend_Brief_Momen.md",
       "source_location": null,
       "source_url": null,
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "docs_kasbana_backend_brief_momen_enrollment_wallets",
+      "id": "docs_stampn_backend_brief_momen_enrollment_wallets",
       "community": 2,
       "norm_label": "phase 1.1 enrollment + wallets (momen)"
     },
     {
       "label": "Phase 1.4 Billing + Messaging (Momen)",
       "file_type": "concept",
-      "source_file": "main/docs/Kasbana_Backend_Brief_Momen.md",
+      "source_file": "main/docs/Stampn_Backend_Brief_Momen.md",
       "source_location": null,
       "source_url": null,
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "docs_kasbana_backend_brief_momen_billing_messaging",
+      "id": "docs_stampn_backend_brief_momen_billing_messaging",
       "community": 2,
       "norm_label": "phase 1.4 billing + messaging (momen)"
     },
     {
       "label": "Billing Entitlements Engine",
       "file_type": "concept",
-      "source_file": "main/docs/Kasbana_Backend_Brief_Momen.md",
+      "source_file": "main/docs/Stampn_Backend_Brief_Momen.md",
       "source_location": null,
       "source_url": null,
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "docs_kasbana_backend_brief_momen_entitlements",
+      "id": "docs_stampn_backend_brief_momen_entitlements",
       "community": 2,
       "norm_label": "billing entitlements engine"
     },
     {
       "label": "Backend Work Brief \u2014 Joe",
       "file_type": "document",
-      "source_file": "main/docs/Kasbana_Backend_Brief_Joe.md",
+      "source_file": "main/docs/Stampn_Backend_Brief_Joe.md",
       "source_location": null,
       "source_url": null,
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "docs_kasbana_backend_brief_joe_brief",
+      "id": "docs_stampn_backend_brief_joe_brief",
       "community": 2,
       "norm_label": "backend work brief \u2014 joe"
     },
     {
       "label": "Phase 1.2 Loyalty Engine + Anti-Fraud (Joe)",
       "file_type": "concept",
-      "source_file": "main/docs/Kasbana_Backend_Brief_Joe.md",
+      "source_file": "main/docs/Stampn_Backend_Brief_Joe.md",
       "source_location": null,
       "source_url": null,
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "docs_kasbana_backend_brief_joe_loyalty_engine",
+      "id": "docs_stampn_backend_brief_joe_loyalty_engine",
       "community": 2,
       "norm_label": "phase 1.2 loyalty engine + anti-fraud (joe)"
     },
     {
       "label": "Phase 1.3 Dashboard API (Joe)",
       "file_type": "concept",
-      "source_file": "main/docs/Kasbana_Backend_Brief_Joe.md",
+      "source_file": "main/docs/Stampn_Backend_Brief_Joe.md",
       "source_location": null,
       "source_url": null,
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "docs_kasbana_backend_brief_joe_dashboard_api",
+      "id": "docs_stampn_backend_brief_joe_dashboard_api",
       "community": 2,
       "norm_label": "phase 1.3 dashboard api (joe)"
     },
     {
       "label": "Server-side Anti-Fraud (cooldown/velocity)",
       "file_type": "rationale",
-      "source_file": "main/docs/Kasbana_Backend_Brief_Joe.md",
+      "source_file": "main/docs/Stampn_Backend_Brief_Joe.md",
       "source_location": null,
       "source_url": null,
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "docs_kasbana_backend_brief_joe_antifraud",
+      "id": "docs_stampn_backend_brief_joe_antifraud",
       "community": 2,
       "norm_label": "server-side anti-fraud (cooldown/velocity)"
     },
     {
       "label": "Code-Against-Stubs Strategy",
       "file_type": "rationale",
-      "source_file": "main/docs/Kasbana_Backend_Brief_Joe.md",
+      "source_file": "main/docs/Stampn_Backend_Brief_Joe.md",
       "source_location": null,
       "source_url": null,
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "docs_kasbana_backend_brief_joe_stub_strategy",
+      "id": "docs_stampn_backend_brief_joe_stub_strategy",
       "community": 2,
       "norm_label": "code-against-stubs strategy"
     },
     {
-      "label": "Kasbana Full Project Plan (PDF)",
+      "label": "Stampn Full Project Plan (PDF)",
       "file_type": "document",
-      "source_file": "main/docs/Kasbana_Full_Project_Plan.pdf",
+      "source_file": "main/docs/Stampn_Full_Project_Plan.pdf",
       "source_location": null,
       "source_url": null,
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "docs_kasbana_full_project_plan_pdf",
+      "id": "docs_stampn_full_project_plan_pdf",
       "community": 1,
-      "norm_label": "kasbana full project plan (pdf)"
+      "norm_label": "stampn full project plan (pdf)"
     },
     {
       "label": "Walaa Backend Plan & Contract (PDF)",
@@ -1308,7 +1308,7 @@
       "norm_label": "walaa backend plan & contract (pdf)"
     },
     {
-      "label": "Kasbana Favicon (SVG)",
+      "label": "Stampn Favicon (SVG)",
       "file_type": "image",
       "source_file": "frontend/public/favicon.svg",
       "source_location": null,
@@ -1318,7 +1318,7 @@
       "contributor": null,
       "id": "public_favicon_svg",
       "community": 4,
-      "norm_label": "kasbana favicon (svg)"
+      "norm_label": "stampn favicon (svg)"
     },
     {
       "label": "Rounded Navy Background Tile",
@@ -1399,7 +1399,7 @@
       "norm_label": "navy and gold color palette"
     },
     {
-      "label": "Kasbana Brand Identity",
+      "label": "Stampn Brand Identity",
       "file_type": "concept",
       "source_file": "frontend/public/favicon.svg",
       "source_location": null,
@@ -1409,98 +1409,98 @@
       "contributor": null,
       "id": "public_favicon_brand_identity",
       "community": 4,
-      "norm_label": "kasbana brand identity"
+      "norm_label": "stampn brand identity"
     }
   ],
   "links": [
     {
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
-      "source_file": "backend/kasbana/asgi.py",
+      "source_file": "backend/stampn/asgi.py",
       "source_location": "L1",
       "weight": 1.0,
-      "source": "kasbana_asgi_rationale_1",
-      "target": "kasbana_asgi",
+      "source": "stampn_asgi_rationale_1",
+      "target": "stampn_asgi",
       "confidence_score": 1.0
     },
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "backend/kasbana/settings.py",
+      "source_file": "backend/stampn/settings.py",
       "source_location": "L20",
       "weight": 1.0,
-      "source": "kasbana_settings",
-      "target": "kasbana_settings_env",
+      "source": "stampn_settings",
+      "target": "stampn_settings_env",
       "confidence_score": 1.0
     },
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "backend/kasbana/settings.py",
+      "source_file": "backend/stampn/settings.py",
       "source_location": "L24",
       "weight": 1.0,
-      "source": "kasbana_settings",
-      "target": "kasbana_settings_env_bool",
+      "source": "stampn_settings",
+      "target": "stampn_settings_env_bool",
       "confidence_score": 1.0
     },
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "backend/kasbana/settings.py",
+      "source_file": "backend/stampn/settings.py",
       "source_location": "L28",
       "weight": 1.0,
-      "source": "kasbana_settings",
-      "target": "kasbana_settings_env_list",
+      "source": "stampn_settings",
+      "target": "stampn_settings_env_list",
       "confidence_score": 1.0
     },
     {
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
-      "source_file": "backend/kasbana/settings.py",
+      "source_file": "backend/stampn/settings.py",
       "source_location": "L1",
       "weight": 1.0,
-      "source": "kasbana_settings_rationale_1",
-      "target": "kasbana_settings",
+      "source": "stampn_settings_rationale_1",
+      "target": "stampn_settings",
       "confidence_score": 1.0
     },
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "backend/kasbana/urls.py",
+      "source_file": "backend/stampn/urls.py",
       "source_location": "L8",
       "weight": 1.0,
-      "source": "kasbana_urls",
-      "target": "kasbana_urls_health",
+      "source": "stampn_urls",
+      "target": "stampn_urls_health",
       "confidence_score": 1.0
     },
     {
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
-      "source_file": "backend/kasbana/urls.py",
+      "source_file": "backend/stampn/urls.py",
       "source_location": "L1",
       "weight": 1.0,
-      "source": "kasbana_urls_rationale_1",
-      "target": "kasbana_urls",
+      "source": "stampn_urls_rationale_1",
+      "target": "stampn_urls",
       "confidence_score": 1.0
     },
     {
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
-      "source_file": "backend/kasbana/urls.py",
+      "source_file": "backend/stampn/urls.py",
       "source_location": "L9",
       "weight": 1.0,
-      "source": "kasbana_urls_rationale_9",
-      "target": "kasbana_urls_health",
+      "source": "stampn_urls_rationale_9",
+      "target": "stampn_urls_health",
       "confidence_score": 1.0
     },
     {
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
-      "source_file": "backend/kasbana/wsgi.py",
+      "source_file": "backend/stampn/wsgi.py",
       "source_location": "L1",
       "weight": 1.0,
-      "source": "kasbana_wsgi_rationale_1",
-      "target": "kasbana_wsgi",
+      "source": "stampn_wsgi_rationale_1",
+      "target": "stampn_wsgi",
       "confidence_score": 1.0
     },
     {
@@ -2430,7 +2430,7 @@
       "source_file": "README.md",
       "source_location": null,
       "weight": 1.0,
-      "source": "readme_kasbana_platform",
+      "source": "readme_stampn_platform",
       "target": "workflows_distribute_workflow"
     },
     {
@@ -2497,11 +2497,11 @@
       "relation": "references",
       "confidence": "INFERRED",
       "confidence_score": 0.65,
-      "source_file": "main/docs/Kasbana_Full_Project_Plan.pdf",
+      "source_file": "main/docs/Stampn_Full_Project_Plan.pdf",
       "source_location": null,
       "weight": 1.0,
-      "source": "docs_kasbana_full_project_plan_pdf",
-      "target": "readme_kasbana_platform"
+      "source": "docs_stampn_full_project_plan_pdf",
+      "target": "readme_stampn_platform"
     },
     {
       "relation": "references",
@@ -2510,7 +2510,7 @@
       "source_file": "README.md",
       "source_location": null,
       "weight": 1.0,
-      "source": "readme_kasbana_platform",
+      "source": "readme_stampn_platform",
       "target": "frontend_readme_web3forms"
     },
     {
@@ -2520,7 +2520,7 @@
       "source_file": "README.md",
       "source_location": null,
       "weight": 1.0,
-      "source": "readme_kasbana_platform",
+      "source": "readme_stampn_platform",
       "target": "readme_wallet_loyalty"
     },
     {
@@ -2717,20 +2717,20 @@
       "relation": "cites",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "main/docs/Kasbana_Backend_Brief_Joe.md",
+      "source_file": "main/docs/Stampn_Backend_Brief_Joe.md",
       "source_location": null,
       "weight": 1.0,
-      "source": "docs_kasbana_backend_brief_joe_brief",
+      "source": "docs_stampn_backend_brief_joe_brief",
       "target": "docs_walaa_backend_plan_and_contract_doc"
     },
     {
       "relation": "cites",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "main/docs/Kasbana_Backend_Brief_Momen.md",
+      "source_file": "main/docs/Stampn_Backend_Brief_Momen.md",
       "source_location": null,
       "weight": 1.0,
-      "source": "docs_kasbana_backend_brief_momen_brief",
+      "source": "docs_stampn_backend_brief_momen_brief",
       "target": "docs_walaa_backend_plan_and_contract_doc"
     },
     {
@@ -2807,10 +2807,10 @@
       "relation": "implements",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "main/docs/Kasbana_Backend_Brief_Momen.md",
+      "source_file": "main/docs/Stampn_Backend_Brief_Momen.md",
       "source_location": null,
       "weight": 1.0,
-      "source": "docs_kasbana_backend_brief_momen_foundation",
+      "source": "docs_stampn_backend_brief_momen_foundation",
       "target": "docs_walaa_backend_plan_and_contract_variable_contract"
     },
     {
@@ -2827,10 +2827,10 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "main/docs/Kasbana_Backend_Brief_Joe.md",
+      "source_file": "main/docs/Stampn_Backend_Brief_Joe.md",
       "source_location": null,
       "weight": 1.0,
-      "source": "docs_kasbana_backend_brief_joe_loyalty_engine",
+      "source": "docs_stampn_backend_brief_joe_loyalty_engine",
       "target": "docs_walaa_backend_plan_and_contract_core_ledger"
     },
     {
@@ -2857,30 +2857,30 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "main/docs/Kasbana_Backend_Brief_Joe.md",
+      "source_file": "main/docs/Stampn_Backend_Brief_Joe.md",
       "source_location": null,
       "weight": 1.0,
-      "source": "docs_kasbana_backend_brief_joe_loyalty_engine",
+      "source": "docs_stampn_backend_brief_joe_loyalty_engine",
       "target": "docs_walaa_backend_plan_and_contract_wallets_facade"
     },
     {
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "main/docs/Kasbana_Backend_Brief_Joe.md",
+      "source_file": "main/docs/Stampn_Backend_Brief_Joe.md",
       "source_location": null,
       "weight": 1.0,
-      "source": "docs_kasbana_backend_brief_joe_stub_strategy",
+      "source": "docs_stampn_backend_brief_joe_stub_strategy",
       "target": "docs_walaa_backend_plan_and_contract_wallets_facade"
     },
     {
       "relation": "implements",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "main/docs/Kasbana_Backend_Brief_Momen.md",
+      "source_file": "main/docs/Stampn_Backend_Brief_Momen.md",
       "source_location": null,
       "weight": 1.0,
-      "source": "docs_kasbana_backend_brief_momen_enrollment_wallets",
+      "source": "docs_stampn_backend_brief_momen_enrollment_wallets",
       "target": "docs_walaa_backend_plan_and_contract_wallets_facade"
     },
     {
@@ -2897,101 +2897,101 @@
       "relation": "implements",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "main/docs/Kasbana_Backend_Brief_Momen.md",
+      "source_file": "main/docs/Stampn_Backend_Brief_Momen.md",
       "source_location": null,
       "weight": 1.0,
-      "source": "docs_kasbana_backend_brief_momen_enrollment_wallets",
+      "source": "docs_stampn_backend_brief_momen_enrollment_wallets",
       "target": "docs_walaa_backend_plan_and_contract_apple_webservice"
     },
     {
       "relation": "conceptually_related_to",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "main/docs/Kasbana_Backend_Brief_Joe.md",
+      "source_file": "main/docs/Stampn_Backend_Brief_Joe.md",
       "source_location": null,
       "weight": 1.0,
-      "source": "docs_kasbana_backend_brief_joe_brief",
-      "target": "docs_kasbana_backend_brief_momen_brief"
+      "source": "docs_stampn_backend_brief_joe_brief",
+      "target": "docs_stampn_backend_brief_momen_brief"
     },
     {
       "relation": "references",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "main/docs/Kasbana_Backend_Brief_Momen.md",
+      "source_file": "main/docs/Stampn_Backend_Brief_Momen.md",
       "source_location": null,
       "weight": 1.0,
-      "source": "docs_kasbana_backend_brief_momen_brief",
-      "target": "docs_kasbana_backend_brief_momen_billing_messaging"
+      "source": "docs_stampn_backend_brief_momen_brief",
+      "target": "docs_stampn_backend_brief_momen_billing_messaging"
     },
     {
       "relation": "references",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "main/docs/Kasbana_Backend_Brief_Momen.md",
+      "source_file": "main/docs/Stampn_Backend_Brief_Momen.md",
       "source_location": null,
       "weight": 1.0,
-      "source": "docs_kasbana_backend_brief_momen_brief",
-      "target": "docs_kasbana_backend_brief_momen_enrollment_wallets"
+      "source": "docs_stampn_backend_brief_momen_brief",
+      "target": "docs_stampn_backend_brief_momen_enrollment_wallets"
     },
     {
       "relation": "references",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "main/docs/Kasbana_Backend_Brief_Momen.md",
+      "source_file": "main/docs/Stampn_Backend_Brief_Momen.md",
       "source_location": null,
       "weight": 1.0,
-      "source": "docs_kasbana_backend_brief_momen_brief",
-      "target": "docs_kasbana_backend_brief_momen_foundation"
+      "source": "docs_stampn_backend_brief_momen_brief",
+      "target": "docs_stampn_backend_brief_momen_foundation"
     },
     {
       "relation": "implements",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "main/docs/Kasbana_Backend_Brief_Momen.md",
+      "source_file": "main/docs/Stampn_Backend_Brief_Momen.md",
       "source_location": null,
       "weight": 1.0,
-      "source": "docs_kasbana_backend_brief_momen_billing_messaging",
-      "target": "docs_kasbana_backend_brief_momen_entitlements"
+      "source": "docs_stampn_backend_brief_momen_billing_messaging",
+      "target": "docs_stampn_backend_brief_momen_entitlements"
     },
     {
       "relation": "references",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "main/docs/Kasbana_Backend_Brief_Joe.md",
+      "source_file": "main/docs/Stampn_Backend_Brief_Joe.md",
       "source_location": null,
       "weight": 1.0,
-      "source": "docs_kasbana_backend_brief_joe_dashboard_api",
-      "target": "docs_kasbana_backend_brief_momen_entitlements"
+      "source": "docs_stampn_backend_brief_joe_dashboard_api",
+      "target": "docs_stampn_backend_brief_momen_entitlements"
     },
     {
       "relation": "references",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "main/docs/Kasbana_Backend_Brief_Joe.md",
+      "source_file": "main/docs/Stampn_Backend_Brief_Joe.md",
       "source_location": null,
       "weight": 1.0,
-      "source": "docs_kasbana_backend_brief_joe_brief",
-      "target": "docs_kasbana_backend_brief_joe_dashboard_api"
+      "source": "docs_stampn_backend_brief_joe_brief",
+      "target": "docs_stampn_backend_brief_joe_dashboard_api"
     },
     {
       "relation": "references",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "main/docs/Kasbana_Backend_Brief_Joe.md",
+      "source_file": "main/docs/Stampn_Backend_Brief_Joe.md",
       "source_location": null,
       "weight": 1.0,
-      "source": "docs_kasbana_backend_brief_joe_brief",
-      "target": "docs_kasbana_backend_brief_joe_loyalty_engine"
+      "source": "docs_stampn_backend_brief_joe_brief",
+      "target": "docs_stampn_backend_brief_joe_loyalty_engine"
     },
     {
       "relation": "implements",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "main/docs/Kasbana_Backend_Brief_Joe.md",
+      "source_file": "main/docs/Stampn_Backend_Brief_Joe.md",
       "source_location": null,
       "weight": 1.0,
-      "source": "docs_kasbana_backend_brief_joe_loyalty_engine",
-      "target": "docs_kasbana_backend_brief_joe_antifraud"
+      "source": "docs_stampn_backend_brief_joe_loyalty_engine",
+      "target": "docs_stampn_backend_brief_joe_antifraud"
     },
     {
       "relation": "conceptually_related_to",
@@ -3111,8 +3111,8 @@
       "nodes": [
         "docs_walaa_backend_plan_and_contract_variable_contract",
         "docs_walaa_backend_plan_and_contract_core_ledger",
-        "docs_kasbana_backend_brief_momen_brief",
-        "docs_kasbana_backend_brief_joe_brief",
+        "docs_stampn_backend_brief_momen_brief",
+        "docs_stampn_backend_brief_joe_brief",
         "docs_walaa_backend_plan_and_contract_parallel_merge"
       ],
       "relation": "participate_in",
@@ -3138,8 +3138,8 @@
       "id": "wallet_loyalty_flow",
       "label": "Enrollment-Stamp-Wallet Loyalty Flow",
       "nodes": [
-        "docs_kasbana_backend_brief_momen_enrollment_wallets",
-        "docs_kasbana_backend_brief_joe_loyalty_engine",
+        "docs_stampn_backend_brief_momen_enrollment_wallets",
+        "docs_stampn_backend_brief_joe_loyalty_engine",
         "docs_walaa_backend_plan_and_contract_wallets_facade",
         "readme_wallet_loyalty"
       ],

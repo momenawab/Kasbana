@@ -1,4 +1,4 @@
-"""WSGI entrypoint for the Kasbana backend."""
+"""WSGI entrypoint for the Stampn backend."""
 
 import os
 

@@ -1,6 +1,6 @@
 # infra/ — DevOps & deployment
 
-Infrastructure-as-code for Kasbana. Lives in the `dev` monorepo and is published
+Infrastructure-as-code for Stampn. Lives in the `dev` monorepo and is published
 to the **`infra`** branch by `distribute.yml`. **Edit here on `dev`, never on the
 generated `infra` branch.**
 
@@ -13,7 +13,7 @@ caddy/Caddyfile        reverse proxy + automatic HTTPS
 .env.prod.example      template for the server's infra/.env (secrets — not committed)
 scripts/provision.sh   one-time host setup (Docker + 4GB swap + dirs)
 scripts/deploy.sh      pull image → migrate → roll services (run on the server)
-scripts/backup.sh      nightly pg_dump → /opt/kasbana/backups (+ optional S3)
+scripts/backup.sh      nightly pg_dump → /opt/stampn/backups (+ optional S3)
 ```
 
 ## How deployment works
@@ -28,7 +28,7 @@ scripts/backup.sh      nightly pg_dump → /opt/kasbana/backups (+ optional S3)
 
 2. Pushing `prod` triggers `.github/workflows/deploy-prod.yml`:
    - builds `infra/docker/Dockerfile` (context `backend/`) and pushes the image
-     to `ghcr.io/momenawab/kasbana-backend:<sha>` + `:latest`;
+     to `ghcr.io/momenawab/stampn-backend:<sha>` + `:latest`;
    - copies `infra/` to the EC2 box and runs `scripts/deploy.sh`, which pulls the
      image, applies migrations, and rolls `web`/`worker`/`beat`.
 
@@ -37,19 +37,19 @@ The t3.small **never builds** — it only pulls. That keeps the 2 GB box stable.
 ## First-time setup (once per server)
 
 ```bash
-# 1. Provision the host (Docker + swap + /opt/kasbana)
+# 1. Provision the host (Docker + swap + /opt/stampn)
 ssh -i key.pem ubuntu@13.49.70.197 'bash -s' < scripts/provision.sh
 
 # 2. Put secrets on the server
-scp -i key.pem .env.prod.example ubuntu@13.49.70.197:/opt/kasbana/infra/.env
-ssh -i key.pem ubuntu@13.49.70.197 'nano /opt/kasbana/infra/.env'   # fill real values
+scp -i key.pem .env.prod.example ubuntu@13.49.70.197:/opt/stampn/infra/.env
+ssh -i key.pem ubuntu@13.49.70.197 'nano /opt/stampn/infra/.env'   # fill real values
 
 # 3. Add GitHub Actions secrets (used by deploy-prod.yml):
 #    EC2_HOST=13.49.70.197   EC2_USER=ubuntu   EC2_SSH_KEY=<contents of key.pem>
 
 # 4. Schedule nightly backups
 ssh -i key.pem ubuntu@13.49.70.197 \
-  '(crontab -l 2>/dev/null; echo "30 2 * * * /opt/kasbana/infra/scripts/backup.sh >> /opt/kasbana/backups/backup.log 2>&1") | crontab -'
+  '(crontab -l 2>/dev/null; echo "30 2 * * * /opt/stampn/infra/scripts/backup.sh >> /opt/stampn/backups/backup.log 2>&1") | crontab -'
 ```
 
 Then promote to `prod` to ship.
@@ -66,17 +66,17 @@ Then promote to `prod` to ship.
 
 ## Wallet credentials (Phase 1.1)
 
-Certs/keys live in `/opt/kasbana/secrets` (mounted read-only into the
+Certs/keys live in `/opt/stampn/secrets` (mounted read-only into the
 containers at `/secrets`). The app runs as uid **10001**, so the files must be
 readable by it:
 
 ```bash
 # Google service-account key
-scp -i key.pem google-sa.json ubuntu@13.49.70.197:/opt/kasbana/secrets/
+scp -i key.pem google-sa.json ubuntu@13.49.70.197:/opt/stampn/secrets/
 ssh -i key.pem ubuntu@13.49.70.197 \
-  'sudo chmod 755 /opt/kasbana/secrets && \
-   sudo chown 10001:10001 /opt/kasbana/secrets/google-sa.json && \
-   sudo chmod 600 /opt/kasbana/secrets/google-sa.json'
+  'sudo chmod 755 /opt/stampn/secrets && \
+   sudo chown 10001:10001 /opt/stampn/secrets/google-sa.json && \
+   sudo chmod 600 /opt/stampn/secrets/google-sa.json'
 ```
 
 Then set in `infra/.env`: `GOOGLE_WALLET_ISSUER_ID`, `GOOGLE_SA_KEY_PATH=/secrets/google-sa.json`
@@ -86,14 +86,14 @@ Verify with: `docker compose -f compose.prod.yml exec web python manage.py googl
 ## HTTPS / Apple Wallet
 
 Apple Wallet requires valid HTTPS on a real hostname. Point an A record
-(e.g. `api.kasbana.net`) at the box, set `DOMAIN=api.kasbana.net` in
+(e.g. `api.stampn.net`) at the box, set `DOMAIN=api.stampn.net` in
 `infra/.env`, and Caddy provisions a Let's Encrypt cert automatically. Until DNS
 is ready, `DOMAIN=:80` serves plain HTTP for bring-up.
 
 ## Manual ops on the server
 
 ```bash
-cd /opt/kasbana/infra
+cd /opt/stampn/infra
 docker compose -f compose.prod.yml ps
 docker compose -f compose.prod.yml logs -f web
 docker compose -f compose.prod.yml exec web python manage.py createsuperuser

@@ -1,14 +1,14 @@
-# Kasbana production stack for the EC2 box (t3.small).
+# Stampn production stack for the EC2 box (t3.small).
 # Run from this directory so the sibling .env is loaded for ${...} interpolation:
 #   IMAGE_TAG=<sha> docker compose -f compose.prod.yml up -d
 #
 # The web/worker/beat images are pulled from GHCR (built in CI). Postgres, Redis
 # and Caddy run alongside. Memory is kept modest to fit 2 GB + swap.
 
-name: kasbana
+name: stampn
 
 x-app: &app
-  image: ghcr.io/momenawab/kasbana-backend:${IMAGE_TAG:-latest}
+  image: ghcr.io/momenawab/stampn-backend:${IMAGE_TAG:-latest}
   restart: unless-stopped
   env_file: [.env]
   environment:
@@ -16,10 +16,10 @@ x-app: &app
     # Tie Sentry issues to the exact deploy (same tag pulled for the image).
     SENTRY_RELEASE: ${IMAGE_TAG:-latest}
   # Wallet certs/keys (Phase 1.1) live outside the image. Drop them in
-  # /opt/kasbana/secrets on the host; the env paths (APPLE_PASS_CERT_PATH,
+  # /opt/stampn/secrets on the host; the env paths (APPLE_PASS_CERT_PATH,
   # GOOGLE_SA_KEY_PATH, …) point at /secrets/<file>. Read-only.
   volumes:
-    - /opt/kasbana/secrets:/secrets:ro
+    - /opt/stampn/secrets:/secrets:ro
     # User uploads (logos) — persisted across redeploys; Caddy serves it at /media.
     - media:/app/media
   depends_on:

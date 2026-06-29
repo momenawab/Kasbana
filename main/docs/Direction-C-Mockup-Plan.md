@@ -1,8 +1,8 @@
-no# Kasbana Dashboard — Direction C Mockup Plan ("Bold Modern")
+no# Stampn Dashboard — Direction C Mockup Plan ("Bold Modern")
 
 ## Context
 
-Kasbana's marketing site (`frontend/`) and backend scaffold (1.0 / 1.1) are done. The next deliverable is the merchant-facing **Client Dashboard** — a brand-new React app at `frontend/apps/dashboard`, fully specced in `main/docs/Frontend-dashboard-plan.md` (tokens §3, data shapes §4, API contracts §6, screens §14, build order §17). API source of truth: `contracts/openapi.yaml`.
+Stampn's marketing site (`frontend/`) and backend scaffold (1.0 / 1.1) are done. The next deliverable is the merchant-facing **Client Dashboard** — a brand-new React app at `frontend/apps/dashboard`, fully specced in `main/docs/Frontend-dashboard-plan.md` (tokens §3, data shapes §4, API contracts §6, screens §14, build order §17). API source of truth: `contracts/openapi.yaml`.
 
 Before any React is written, we want to **see the look & feel** as a static HTML mockup of the **main dashboard (Overview) screen**, in **both Arabic (RTL) and English (LTR)**. From the three candidate directions, the chosen one is **Direction C — "Bold Modern"**: dark ink sidebar, colored KPI tiles, oversized numbers, high contrast, confident. This plan builds that one mockup to a high-fidelity, browser-openable standard for sign-off on the visual identity. The signed-off tokens then anchor the real React build (separate effort, per spec §17).
 

@@ -77,7 +77,7 @@ class ForgotView(APIView):
         if user is not None:
             reset = PasswordResetToken.objects.create(user=user)
             send_mail(
-                subject="Reset your Kasbana password",
+                subject="Reset your Stampn password",
                 message=f"Use this token to reset your password: {reset.token}",
                 from_email=None,
                 recipient_list=[user.email],

@@ -1,6 +1,6 @@
 // Token store: access in memory, refresh in localStorage. No axios here (keeps
 // this import-cycle-free; api.js depends on it, not the reverse).
-const REFRESH_KEY = 'kasbana_refresh'
+const REFRESH_KEY = 'stampn_refresh'
 
 let accessToken = null
 

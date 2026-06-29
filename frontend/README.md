@@ -1,6 +1,6 @@
-# Kasbana — Frontend (Coming Soon)
+# Stampn — Frontend (Coming Soon)
 
-Public website for **Kasbana** (Arabic wordmark: **كسبانة**), a digital
+Public website for **Stampn** (Arabic wordmark: **Stampn**), a digital
 customer-loyalty platform. Bilingual: a full **English** site at `/` and a full
 **Arabic (RTL)** site at `/ar`, with a language switcher in the header.
 
@@ -70,8 +70,8 @@ npm run preview  # preview the production build
 ### 2. Contact email & canonical domain — `src/config.js`
 
 ```js
-export const CONTACT_EMAIL = 'contact@kasbana.net'  // shown on the site
-export const SITE_URL = 'https://kasbana.net'        // OG / canonical / hreflang
+export const CONTACT_EMAIL = 'contact@stampn.net'  // shown on the site
+export const SITE_URL = 'https://stampn.net'        // OG / canonical / hreflang
 ```
 
 ---

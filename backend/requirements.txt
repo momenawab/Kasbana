@@ -1,4 +1,4 @@
-# Kasbana backend — production requirements.
+# Stampn backend — production requirements.
 # Phase 1.0 foundation stack (see docs/Walaa_Backend_Plan_and_Contract.md §1).
 
 # --- Core framework ---

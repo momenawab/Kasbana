@@ -1,4 +1,4 @@
-# Kasbana onboarding (Windows PowerShell) — mirror of scripts/onboard.sh.
+# Stampn onboarding (Windows PowerShell) — mirror of scripts/onboard.sh.
 #
 # Usage (from a folder where you want the repo):
 #   powershell -ExecutionPolicy Bypass -File .\scripts\onboard.ps1
@@ -7,7 +7,7 @@
 # the repo (ask Momen to add you as a collaborator) to push to `dev`.
 
 $ErrorActionPreference = "Stop"
-$RepoUrl = "https://github.com/momenawab/Kasbana.git"
+$RepoUrl = "https://github.com/momenawab/Stampn.git"
 $Branch  = "dev"
 
 function Say($m)  { Write-Host "`n> $m" -ForegroundColor Cyan }
@@ -18,7 +18,7 @@ function Warn($m) { Write-Host "! $m" -ForegroundColor Yellow }
 $inRepo = $false
 try {
   if ((git rev-parse --is-inside-work-tree 2>$null) -eq "true") {
-    if ((git remote get-url origin 2>$null) -match "Kasbana") { $inRepo = $true }
+    if ((git remote get-url origin 2>$null) -match "Stampn") { $inRepo = $true }
   }
 } catch {}
 
@@ -28,7 +28,7 @@ if ($inRepo) {
 } else {
   Say "Cloning $RepoUrl"
   git clone $RepoUrl
-  $Root = Join-Path (Get-Location) "Kasbana"
+  $Root = Join-Path (Get-Location) "Stampn"
 }
 Set-Location $Root
 
@@ -62,7 +62,7 @@ if (Get-Command npm -ErrorAction SilentlyContinue) {
 Write-Host @"
 
 ----------------------------------------------------------------------------
- KASBANA — HOW THE REPO WORKS
+ STAMPN — HOW THE REPO WORKS
 ----------------------------------------------------------------------------
  * Edit ONLY the 'dev' branch (monorepo: main/ frontend/ backend/ infra/ contracts/).
  * Pushing 'dev' auto-distributes each folder to its own branch (distribute.yml)
@@ -70,7 +70,7 @@ Write-Host @"
  * Ship:  git add -A; git commit -m "msg"; git push origin dev   (no deploy)
  * Production (Momen owns it): promote dev -> prod to deploy onto EC2:
      git checkout prod; git merge --ff-only dev; git push origin prod; git checkout dev
-     Live: https://api.kasbana.net  ·  admin https://admin.kasbana.net/admin/
+     Live: https://api.stampn.net  ·  admin https://admin.stampn.net/admin/
  * Ownership: Momen -> core/common/config/enrollment/wallets/billing/infra;
    Joe -> loyalty/dashboard. Shared core/, common/, contracts/ change by PR only.
 ----------------------------------------------------------------------------

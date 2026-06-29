@@ -1,4 +1,4 @@
-"""ASGI entrypoint for the Kasbana backend."""
+"""ASGI entrypoint for the Stampn backend."""
 
 import os
 

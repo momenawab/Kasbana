@@ -145,7 +145,7 @@ export default function Gallery() {
       </Section>
 
       <Section title="QR + states">
-        <QrBlock value="https://app.kasbana.net/enroll/demo" />
+        <QrBlock value="https://app.stampn.net/enroll/demo" />
         <div className="w-48"><Skeleton h={60} rounded="card" /></div>
         <div className="w-full"><Banner tone="amber" action={<Button size="sm">Act</Button>}>Banner notice</Banner></div>
         <div className="w-full">

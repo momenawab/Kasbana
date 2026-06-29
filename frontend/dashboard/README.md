@@ -1,4 +1,4 @@
-# Kasbana — Client Dashboard
+# Stampn — Client Dashboard
 
 Merchant-facing dashboard (Direction C) at `frontend/dashboard/`. **Standalone app** — nested under
 `frontend/` because it's client-facing, but independent of the marketing site at `frontend/` root (own

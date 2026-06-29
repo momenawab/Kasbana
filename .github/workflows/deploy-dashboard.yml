@@ -1,8 +1,8 @@
-name: Deploy Client Dashboard (app.kasbana.net)
+name: Deploy Client Dashboard (app.stampn.net)
 
 # Builds the standalone Client Dashboard (frontend/dashboard) on pushes to dev
 # that touch the dashboard, and publishes the static build to the
-# `deployment-dashboard` branch, which Hostinger serves on app.kasbana.net
+# `deployment-dashboard` branch, which Hostinger serves on app.stampn.net
 # (point the subdomain's Git deploy at that branch in the Hostinger panel — that
 # side is configured once, manually).
 #
@@ -11,8 +11,8 @@ name: Deploy Client Dashboard (app.kasbana.net)
 #
 # Build-time env bakes into the bundle:
 #   VITE_USE_MOCKS=0                       -> hit the real backend, not MSW
-#   VITE_API_URL=https://api.kasbana.net   -> API base = + "/api/v1"
-# The backend must allow CORS from https://app.kasbana.net.
+#   VITE_API_URL=https://api.stampn.net   -> API base = + "/api/v1"
+# The backend must allow CORS from https://app.stampn.net.
 #
 # Uses GITHUB_TOKEN, so the publish push does not re-trigger this workflow.
 
@@ -47,7 +47,7 @@ jobs:
         working-directory: frontend/dashboard
         env:
           VITE_USE_MOCKS: '0'
-          VITE_API_URL: https://api.kasbana.net
+          VITE_API_URL: https://api.stampn.net
         run: |
           npm ci
           npm run build

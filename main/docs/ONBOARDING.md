@@ -8,16 +8,16 @@ This sets up an environment identical to the rest of the team's, with the same
 **macOS / Linux / WSL / Git Bash**
 
 ```bash
-git clone https://github.com/momenawab/Kasbana.git
-cd Kasbana
+git clone https://github.com/momenawab/Stampn.git
+cd Stampn
 ./scripts/onboard.sh
 ```
 
 **Windows (PowerShell)**
 
 ```powershell
-git clone https://github.com/momenawab/Kasbana.git
-cd Kasbana
+git clone https://github.com/momenawab/Stampn.git
+cd Stampn
 powershell -ExecutionPolicy Bypass -File .\scripts\onboard.ps1
 ```
 

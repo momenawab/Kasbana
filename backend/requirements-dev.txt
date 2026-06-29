@@ -1,4 +1,4 @@
-# Kasbana backend — development & CI tooling.
+# Stampn backend — development & CI tooling.
 -r requirements.txt
 
 # --- Quality (DoD: ruff + black + mypy clean) ---

@@ -1,6 +1,6 @@
 """Apple Wallet web service — the 5 endpoints + initial download (contract §3.6).
 
-Apple's external spec: camelCase fields, Apple's own status codes, no Kasbana
+Apple's external spec: camelCase fields, Apple's own status codes, no Stampn
 error envelope. Implemented as plain Django views to control the raw responses.
 Mounted under /api/v1/wallet/apple/.
 """
@@ -156,5 +156,5 @@ def download_pass(request, customer_card_id):
     except AppleSigningError:
         return HttpResponse(status=503)
     resp = HttpResponse(pkpass, content_type="application/vnd.apple.pkpass")
-    resp["Content-Disposition"] = f'attachment; filename="kasbana-{cc.id}.pkpass"'
+    resp["Content-Disposition"] = f'attachment; filename="stampn-{cc.id}.pkpass"'
     return resp

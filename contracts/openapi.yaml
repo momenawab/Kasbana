@@ -1,9 +1,9 @@
 openapi: 3.0.3
 info:
-  title: Kasbana API
+  title: Stampn API
   version: "1.1.0"
   description: >
-    Kasbana — digital loyalty & wallet-pass platform. The **authoritative v1
+    Stampn — digital loyalty & wallet-pass platform. The **authoritative v1
     contract**. Backend phases and the Client Dashboard frontend build against
     these exact paths and snake_case JSON keys. Any change is a joint PR to the
     contract first.
@@ -22,7 +22,7 @@ info:
     `{ error: { code, message, fields } }` · list money never negative.
 
 servers:
-  - url: https://api.kasbana.net
+  - url: https://api.stampn.net
     description: Production
   - url: http://localhost:8000
     description: Local

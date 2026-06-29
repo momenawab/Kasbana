@@ -1,4 +1,4 @@
-# Kasbana Backend — Work Brief: **You (Momen)**
+# Stampn Backend — Work Brief: **You (Momen)**
 
 **Track:** Platform · Wallets · Billing · Infrastructure
 **Your phases:** `1.0` Foundation & Contract (you build it) · `1.1` Enrollment + Wallets · `1.4` Billing + Messaging · plus all infrastructure

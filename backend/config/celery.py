@@ -1,4 +1,4 @@
-"""Celery application for the Kasbana backend.
+"""Celery application for the Stampn backend.
 
 Queues (contract §3.9): ``default``, ``wallet``, ``messaging``.
 Task names are canonical and defined in each app's ``tasks.py``; never duplicate.
@@ -10,7 +10,7 @@ from celery import Celery
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.dev")
 
-app = Celery("kasbana")
+app = Celery("stampn")
 
 # Read config from Django settings, the CELERY_ namespace.
 app.config_from_object("django.conf:settings", namespace="CELERY")

@@ -1,4 +1,4 @@
-# Kasbana Client Dashboard — Implementation Plan (Direction C)
+# Stampn Client Dashboard — Implementation Plan (Direction C)
 
 > Executable build plan for the merchant-facing **Client Dashboard** React app, using the approved
 > **Direction C — "Bold Modern"** visual template. Read alongside the per-screen spec
@@ -85,11 +85,11 @@ boxShadow: { bold:'0 12px 32px -10px rgba(14,27,42,.30)' },
   `node_modules`, Vite + Tailwind config, and build. Nested under `frontend/` (it's client-facing) but shares
   **nothing** with the marketing app at `frontend/` root — no shared deps, config, components, or i18n. The
   marketing app is untouched.
-- **CI/CD + serving (decided):** **subdomain**, not subpath. Marketing stays at `kasbana.net`; the dashboard
-  is served at the **root of `app.kasbana.net`**, so routes are bare (`app.kasbana.net/login`, `/cards`) — no
+- **CI/CD + serving (decided):** **subdomain**, not subpath. Marketing stays at `stampn.net`; the dashboard
+  is served at the **root of `app.stampn.net`**, so routes are bare (`app.stampn.net/login`, `/cards`) — no
   `/dashboard` URL prefix and no Vite `base`/router `basename`. The marketing "Login"/"Get started" CTAs link
-  out to `app.kasbana.net`. The dashboard gets its **own** build + deploy target (separate from `frontend/`'s
-  `distribute.yml`). Flag the `app.kasbana.net` DNS + deploy to infra; not blocking local dev (§8.2).
+  out to `app.stampn.net`. The dashboard gets its **own** build + deploy target (separate from `frontend/`'s
+  `distribute.yml`). Flag the `app.stampn.net` DNS + deploy to infra; not blocking local dev (§8.2).
 - **Mock layer:** **MSW** implements the §6 contract; toggled by env (`VITE_USE_MOCKS`). Handlers mirror the
   contract exactly so swap-to-real is no-code. Real API base = `VITE_API_URL + "/api/v1"`.
 - **i18n:** `ar` default, `en` mirror; `ar.json` is source of truth; every visible string is a key. On
@@ -166,9 +166,9 @@ wired — no feature screens yet, just the skeleton every later phase plugs into
   - `src/lib/api.js` — axios instance (`baseURL=VITE_API_URL+"/api/v1"`), request interceptor (Bearer),
     response interceptor (401→`/auth/refresh` once→retry→else `logout`), error mapping (`fields`→form,
     `message`→toast, `PLAN_LIMIT`→open UpgradeDrawer).
-  - `src/lib/queryClient.js`, `src/lib/auth.js` (access in memory, refresh in `localStorage:kasbana_refresh`;
+  - `src/lib/queryClient.js`, `src/lib/auth.js` (access in memory, refresh in `localStorage:stampn_refresh`;
     `login()`→`/auth/token`→`/me` cache; `logout()` clears + redirects), `src/lib/i18n.js` (i18next init,
-    `lng` from `localStorage:kasbana_lang` default `ar`, set `lang`+`dir` on change), `src/lib/format.js`
+    `lng` from `localStorage:stampn_lang` default `ar`, set `lang`+`dir` on change), `src/lib/format.js`
     (`arDigits`, EGP money, relative time via dayjs).
   - `src/locales/ar.json` + `en.json` — seeded with shell/nav/common keys (ar = source of truth).
   - `src/hooks/useAuth.js`, `src/hooks/useToast.js`, `src/hooks/usePlan.js` (stub returning `/me` entitlements).
@@ -307,7 +307,7 @@ wired — no feature screens yet, just the skeleton every later phase plugs into
     `checkout_url`; usage bars vs limits; payment method; invoices Table (date, amount, status, pdf_url);
     Cancel (confirm + reason → `/billing/cancel`); downgrade-exceeding-limits warns first.
   - **Settings** `/settings` (Tabs): Business (`PATCH /settings/business`); Branding (defaults); Notifications
-    (owner email/WhatsApp → `PATCH /settings/account`); Language (AR/EN, writes `kasbana_lang`); Data&privacy
+    (owner email/WhatsApp → `PATCH /settings/account`); Language (AR/EN, writes `stampn_lang`); Data&privacy
     (export, retention, request deletion); Account (change password `/settings/account/password`, sessions,
     delete account).
 - **API:** `/locations` list/create, `/staff` list, `/settings/*` — **live**; `PATCH /locations/:id`,
@@ -341,7 +341,7 @@ wired — no feature screens yet, just the skeleton every later phase plugs into
 ## 8. Open decisions
 1. **App is standalone** — decided: the dashboard is its own independent app sharing nothing with the
    marketing app; the marketing app is not touched or restructured.
-2. **Deploy target** — decided: **subdomain** `app.kasbana.net` (dashboard at its root, bare routes;
+2. **Deploy target** — decided: **subdomain** `app.stampn.net` (dashboard at its root, bare routes;
    marketing's "Login" links out to it). Own build, independent of marketing's `distribute.yml`. Flag the
    DNS + deploy to infra.
 3. **Plan-gating numbers** (§15) — confirm real Starter/Growth/Chain limits with pricing; the backend's

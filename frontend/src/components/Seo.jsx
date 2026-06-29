@@ -26,7 +26,7 @@ export default function Seo({ page }) {
       <link rel="alternate" hrefLang="x-default" href={`${SITE_URL}${PAGE_PATHS[page].en}`} />
 
       <meta property="og:type" content="website" />
-      <meta property="og:site_name" content="Kasbana" />
+      <meta property="og:site_name" content="Stampn" />
       <meta property="og:locale" content={lang === 'ar' ? 'ar_EG' : 'en_US'} />
       <meta property="og:title" content={meta.title} />
       <meta property="og:description" content={meta.description} />

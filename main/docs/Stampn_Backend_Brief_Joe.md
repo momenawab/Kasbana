@@ -1,4 +1,4 @@
-# Kasbana Backend — Work Brief: **Joe**
+# Stampn Backend — Work Brief: **Joe**
 
 **Track:** Loyalty Engine · Anti-Fraud · Dashboard API
 **Your phases:** `1.2` Loyalty engine + anti-fraud · `1.3` Dashboard API

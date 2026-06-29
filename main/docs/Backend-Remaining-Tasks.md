@@ -1,4 +1,4 @@
-# Kasbana Backend — Remaining Phases & Tasks
+# Stampn Backend — Remaining Phases & Tasks
 
 > Status as of **2026-06-29** (branch `dev`; prod running image `f3de98bae4af`).
 > The frozen `contracts/openapi.yaml` (v1.1.0) defines ~45 endpoints. Phases
@@ -179,8 +179,8 @@ enqueued + metered (quota→402); campaigns/automations CRUD; lint/type/tests cl
 - [ ] Card edit → Google `LoyaltyClass` re-provisions (`sync_google_class`).
 - [ ] Trial→paid→cancel through a **real gateway webhook**.
 - [ ] WhatsApp message actually sends + meters.
-- [ ] Dashboard (app.kasbana.net) talks to the API — confirm prod `.env`
-      `CORS_ALLOWED_ORIGINS` includes `https://app.kasbana.net`.
+- [ ] Dashboard (app.stampn.net) talks to the API — confirm prod `.env`
+      `CORS_ALLOWED_ORIGINS` includes `https://app.stampn.net`.
 
 ---
 

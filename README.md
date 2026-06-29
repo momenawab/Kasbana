@@ -1,12 +1,12 @@
-# Kasbana كسبانة
+# Stampn Stampn
 
-**Kasbana** is a digital loyalty and rewards platform for cafés, restaurants,
+**Stampn** is a digital loyalty and rewards platform for cafés, restaurants,
 salons, gyms, and shops. Businesses create stamp and points cards that customers
 add to **Apple Wallet** and **Google Wallet**, collect rewards, and get notified
 automatically — **no app to download**. Built for Egypt, Arabic-first.
 
-- **Website:** https://kasbana.net
-- **Contact:** contact@kasbana.net
+- **Website:** https://stampn.net
+- **Contact:** contact@stampn.net
 
 ---
 

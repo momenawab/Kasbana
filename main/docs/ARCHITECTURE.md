@@ -51,7 +51,7 @@ All pushes use `GITHUB_TOKEN`, so steps don't re-trigger each other (no loops).
 
 ## Domains & contact
 
-- Canonical domain: `https://kasbana.net`
-- Contact email: `contact@kasbana.net`
+- Canonical domain: `https://stampn.net`
+- Contact email: `contact@stampn.net`
 
 Set in `frontend/src/config.js`.

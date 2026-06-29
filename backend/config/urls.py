@@ -22,7 +22,7 @@ from core.auth import EmailTokenObtainPairView
 
 def health(_request):
     """Simple health check so deploys can be verified."""
-    return JsonResponse({"status": "ok", "service": "kasbana-backend"})
+    return JsonResponse({"status": "ok", "service": "stampn-backend"})
 
 
 api_v1: list = [
@@ -39,8 +39,10 @@ api_v1: list = [
     path("loyalty/", include("loyalty.urls")),
     # Dashboard (Phase 3)
     path("", include("dashboard.urls")),
-    # Billing (Phase 1.4 — You)
-    # path("billing/", include("billing.urls")),
+    # Billing (Phase 1.7 — You)
+    path("", include("billing.urls")),
+    # Messaging / Engage (Phase 1.7 — You)
+    path("", include("messaging.urls")),
 ]
 
 urlpatterns = [

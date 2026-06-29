@@ -4,7 +4,7 @@ import { Download } from 'lucide-react'
 import Button from './Button'
 
 // QrBlock (spec §10) — renders a QR for `value` and downloads it as PNG.
-export default function QrBlock({ value, size = 220, downloadName = 'kasbana-qr' }) {
+export default function QrBlock({ value, size = 220, downloadName = 'stampn-qr' }) {
   const ref = useRef(null)
 
   function downloadPng() {

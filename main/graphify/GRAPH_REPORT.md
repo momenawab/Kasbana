@@ -24,20 +24,20 @@
 1. `useLang()` - 15 edges
 2. `Walaa Backend Plan & Variable Contract` - 9 edges
 3. `PAGE_PATHS` - 6 edges
-4. `Kasbana Django Backend API` - 6 edges
-5. `Kasbana Vite+React Frontend` - 6 edges
-6. `Kasbana Favicon (SVG)` - 6 edges
+4. `Stampn Django Backend API` - 6 edges
+5. `Stampn Vite+React Frontend` - 6 edges
+6. `Stampn Favicon (SVG)` - 6 edges
 7. `distribute.yml CI Workflow` - 5 edges
-8. `Kasbana Architecture Doc` - 5 edges
+8. `Stampn Architecture Doc` - 5 edges
 9. `Backend Work Brief — Momen` - 5 edges
 10. `scripts` - 4 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `Dev Branch Fan-out Distribution` --semantically_similar_to--> `App Ownership = Conflict Avoidance`  [INFERRED] [semantically similar]
   .github/workflows/distribute.yml → main/docs/Walaa_Backend_Plan_and_Contract.md
-- `Kasbana Full Project Plan (PDF)` --references--> `Kasbana Loyalty Platform`  [INFERRED]
-  main/docs/Kasbana_Full_Project_Plan.pdf → README.md
-- `Shared Data Model (Merchant…WalletRegistration)` --conceptually_related_to--> `Kasbana Django Backend API`  [INFERRED]
+- `Stampn Full Project Plan (PDF)` --references--> `Stampn Loyalty Platform`  [INFERRED]
+  main/docs/Stampn_Full_Project_Plan.pdf → README.md
+- `Shared Data Model (Merchant…WalletRegistration)` --conceptually_related_to--> `Stampn Django Backend API`  [INFERRED]
   main/docs/Walaa_Backend_Plan_and_Contract.md → backend/README.md
 - `Walaa Backend Plan & Contract (PDF)` --references--> `Walaa Backend Plan & Variable Contract`  [INFERRED]
   main/docs/Walaa_Backend_Plan_and_Contract.pdf → main/docs/Walaa_Backend_Plan_and_Contract.md
@@ -48,9 +48,9 @@
 - None detected.
 
 ## Hyperedges (group relationships)
-- **Frozen-Contract Parallel Backend Development** — docs_walaa_backend_plan_and_contract_variable_contract, docs_walaa_backend_plan_and_contract_core_ledger, docs_kasbana_backend_brief_momen_brief, docs_kasbana_backend_brief_joe_brief, docs_walaa_backend_plan_and_contract_parallel_merge [INFERRED 0.85]
+- **Frozen-Contract Parallel Backend Development** — docs_walaa_backend_plan_and_contract_variable_contract, docs_walaa_backend_plan_and_contract_core_ledger, docs_stampn_backend_brief_momen_brief, docs_stampn_backend_brief_joe_brief, docs_walaa_backend_plan_and_contract_parallel_merge [INFERRED 0.85]
 - **dev Branch Distribution to Deployment** — readme_dev_branch_sot, workflows_distribute_workflow, readme_branch_map, readme_hostinger_deploy [INFERRED 0.85]
-- **Enrollment-Stamp-Wallet Loyalty Flow** — docs_kasbana_backend_brief_momen_enrollment_wallets, docs_kasbana_backend_brief_joe_loyalty_engine, docs_walaa_backend_plan_and_contract_wallets_facade, readme_wallet_loyalty [INFERRED 0.75]
+- **Enrollment-Stamp-Wallet Loyalty Flow** — docs_stampn_backend_brief_momen_enrollment_wallets, docs_stampn_backend_brief_joe_loyalty_engine, docs_walaa_backend_plan_and_contract_wallets_facade, readme_wallet_loyalty [INFERRED 0.75]
 
 ## Communities (13 total, 4 thin omitted)
 
@@ -60,7 +60,7 @@ Nodes (14): Footer(), Header(), Seo(), LangContext, LANGS, localizePath(), PAGE_
 
 ### Community 1 - "Architecture & Deploy Pipeline"
 Cohesion: 0.09
-Nodes (26): Kasbana Django Backend API, Environment-driven Django Settings, /api/health Endpoint, Backend Python Dependencies, CI/CD Distribution Pipeline, frontend/src/config.js (domain/contact), Kasbana Architecture Doc, Kasbana Full Project Plan (PDF) (+18 more)
+Nodes (26): Stampn Django Backend API, Environment-driven Django Settings, /api/health Endpoint, Backend Python Dependencies, CI/CD Distribution Pipeline, frontend/src/config.js (domain/contact), Stampn Architecture Doc, Stampn Full Project Plan (PDF) (+18 more)
 
 ### Community 2 - "Backend Loyalty & Wallet Plan"
 Cohesion: 0.14
@@ -72,11 +72,11 @@ Nodes (17): dependencies, react, react-dom, react-helmet-async, react-router-dom
 
 ### Community 4 - "Brand Identity & Favicon"
 Cohesion: 0.39
-Nodes (8): Kasbana Brand Identity, Gold Outer Ring, Faint Gold Inner Ring, Rounded Navy Background Tile, Navy and Gold Color Palette, Brand Seal / Medallion Motif, Gold Five-Pointed Star, Kasbana Favicon (SVG)
+Nodes (8): Stampn Brand Identity, Gold Outer Ring, Faint Gold Inner Ring, Rounded Navy Background Tile, Navy and Gold Color Palette, Brand Seal / Medallion Motif, Gold Five-Pointed Star, Stampn Favicon (SVG)
 
 ### Community 6 - "Django URL Routing"
 Cohesion: 0.50
-Nodes (3): health(), URL configuration for the Kasbana backend., Simple health check so deploys can be verified.
+Nodes (3): health(), URL configuration for the Stampn backend., Simple health check so deploys can be verified.
 
 ## Knowledge Gaps
 - **28 isolated node(s):** `name`, `private`, `version`, `type`, `description` (+23 more)
@@ -86,15 +86,15 @@ Nodes (3): health(), URL configuration for the Kasbana backend., Simple health c
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `Kasbana Django Backend API` connect `Architecture & Deploy Pipeline` to `Backend Loyalty & Wallet Plan`?**
+- **Why does `Stampn Django Backend API` connect `Architecture & Deploy Pipeline` to `Backend Loyalty & Wallet Plan`?**
   _High betweenness centrality (0.065) - this node is a cross-community bridge._
 - **Why does `Shared Data Model (Merchant…WalletRegistration)` connect `Backend Loyalty & Wallet Plan` to `Architecture & Deploy Pipeline`?**
   _High betweenness centrality (0.057) - this node is a cross-community bridge._
-- **Are the 3 inferred relationships involving `Kasbana Django Backend API` (e.g. with `Kasbana Vite+React Frontend` and `Kasbana Architecture Doc`) actually correct?**
-  _`Kasbana Django Backend API` has 3 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 3 inferred relationships involving `Kasbana Vite+React Frontend` (e.g. with `Kasbana Django Backend API` and `Kasbana Architecture Doc`) actually correct?**
-  _`Kasbana Vite+React Frontend` has 3 INFERRED edges - model-reasoned connections that need verification._
-- **What connects `ASGI config for the Kasbana backend.`, `Django settings for the Kasbana backend.  Configuration is driven by environment`, `URL configuration for the Kasbana backend.` to the rest of the system?**
+- **Are the 3 inferred relationships involving `Stampn Django Backend API` (e.g. with `Stampn Vite+React Frontend` and `Stampn Architecture Doc`) actually correct?**
+  _`Stampn Django Backend API` has 3 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 3 inferred relationships involving `Stampn Vite+React Frontend` (e.g. with `Stampn Django Backend API` and `Stampn Architecture Doc`) actually correct?**
+  _`Stampn Vite+React Frontend` has 3 INFERRED edges - model-reasoned connections that need verification._
+- **What connects `ASGI config for the Stampn backend.`, `Django settings for the Stampn backend.  Configuration is driven by environment`, `URL configuration for the Stampn backend.` to the rest of the system?**
   _38 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Architecture & Deploy Pipeline` be split into smaller, more focused modules?**
   _Cohesion score 0.09230769230769231 - nodes in this community are weakly interconnected._

@@ -87,7 +87,7 @@ export default function Support() {
           subject: form.subject,
           message: form.message,
           botcheck: form.botcheck,
-          from_name: 'Kasbana Support Form',
+          from_name: 'Stampn Support Form',
         }),
       })
 

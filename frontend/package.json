@@ -1,9 +1,9 @@
 {
-  "name": "kasbana-coming-soon",
+  "name": "stampn-coming-soon",
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Coming Soon website for Kasbana — digital customer-loyalty platform.",
+  "description": "Coming Soon website for Stampn — digital customer-loyalty platform.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

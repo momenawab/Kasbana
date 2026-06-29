@@ -1,4 +1,4 @@
-"""Kasbana data model — every persistent model lives here (contract §3.4).
+"""Stampn data model — every persistent model lives here (contract §3.4).
 
 FROZEN in Phase 1.0. FK attribute names are fixed; the DB column is
 ``<attr>_id``. All models have a UUIDv4 primary key. After the ``core-v1`` tag,

@@ -1,4 +1,4 @@
-# Kasbana — Knowledge Graph
+# Stampn — Knowledge Graph
 
 Generated with [graphify](https://github.com/safishamsi/graphify) over the whole
 project (frontend, backend, docs, brand assets). It maps how the codebase, the

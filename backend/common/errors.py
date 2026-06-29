@@ -37,7 +37,7 @@ class ErrorCode:
 
 # ── Domain exceptions ─────────────────────────────────────────────────────────
 class DomainError(APIException):
-    """Base for Kasbana domain exceptions carrying a contract ErrorCode."""
+    """Base for Stampn domain exceptions carrying a contract ErrorCode."""
 
     status_code: int = status.HTTP_400_BAD_REQUEST
     error_code: str = ErrorCode.VALIDATION_ERROR

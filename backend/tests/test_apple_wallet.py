@@ -25,7 +25,7 @@ pytestmark = pytest.mark.django_db
 
 def _self_signed_p12(password: str = "") -> bytes:
     key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "Kasbana Test Pass")])
+    name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "Stampn Test Pass")])
     now = datetime.datetime.now(datetime.UTC)
     cert = (
         x509.CertificateBuilder()
@@ -42,18 +42,18 @@ def _self_signed_p12(password: str = "") -> bytes:
         if password
         else serialization.NoEncryption()
     )
-    return pkcs12.serialize_key_and_certificates(b"kasbana", key, cert, None, enc)
+    return pkcs12.serialize_key_and_certificates(b"stampn", key, cert, None, enc)
 
 
 @pytest.fixture
 def apple_configured(tmp_path, settings):
     p12 = tmp_path / "pass.p12"
     p12.write_bytes(_self_signed_p12(password="secret"))
-    settings.BASE_URL = "https://api.kasbana.net"
+    settings.BASE_URL = "https://api.stampn.net"
     settings.WALLET = {
         **settings.WALLET,
         "APPLE": {
-            "PASS_TYPE_ID": "pass.app.kasbana.loyalty",
+            "PASS_TYPE_ID": "pass.net.stampn.loyalty",
             "TEAM_ID": "TEAM123456",
             "PASS_CERT_PATH": str(p12),
             "PASS_CERT_PASSWORD": "secret",
@@ -74,10 +74,10 @@ def customer_card(apple_configured):
 def test_pass_json_has_required_fields(customer_card):
     p = passdata.build_pass_json(customer_card)
     assert p["serialNumber"] == str(customer_card.id)
-    assert p["passTypeIdentifier"] == "pass.app.kasbana.loyalty"
+    assert p["passTypeIdentifier"] == "pass.net.stampn.loyalty"
     assert p["teamIdentifier"] == "TEAM123456"
     assert p["authenticationToken"] == customer_card.auth_token
-    assert p["webServiceURL"] == "https://api.kasbana.net/api/v1/wallet/apple"
+    assert p["webServiceURL"] == "https://api.stampn.net/api/v1/wallet/apple"
     assert p["storeCard"]["primaryFields"][0]["value"] == 2
 
 
@@ -101,7 +101,7 @@ def _auth(cc):
 
 
 def _base(cc):
-    pt = "pass.app.kasbana.loyalty"
+    pt = "pass.net.stampn.loyalty"
     return f"/api/v1/wallet/apple/v1/devices/DEV123/registrations/{pt}/{cc.id}"
 
 
@@ -143,7 +143,7 @@ def test_list_updated_serials(client, customer_card):
         content_type="application/json",
         **_auth(customer_card),
     )
-    pt = "pass.app.kasbana.loyalty"
+    pt = "pass.net.stampn.loyalty"
     list_url = f"/api/v1/wallet/apple/v1/devices/DEV123/registrations/{pt}"
     resp = client.get(list_url)
     assert resp.status_code == 200
@@ -157,7 +157,7 @@ def test_list_updated_serials(client, customer_card):
 
 
 def test_get_pass_requires_auth_and_returns_pkpass(client, customer_card):
-    pt = "pass.app.kasbana.loyalty"
+    pt = "pass.net.stampn.loyalty"
     url = f"/api/v1/wallet/apple/v1/passes/{pt}/{customer_card.id}"
     assert client.get(url).status_code == 401
 

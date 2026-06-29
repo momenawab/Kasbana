@@ -4,7 +4,7 @@ import { initReactI18next } from 'react-i18next'
 import ar from '../locales/ar.json'
 import en from '../locales/en.json'
 
-export const LANG_KEY = 'kasbana_lang'
+export const LANG_KEY = 'stampn_lang'
 
 const saved = localStorage.getItem(LANG_KEY)
 const initialLang = saved === 'en' || saved === 'ar' ? saved : 'ar'

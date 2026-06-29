@@ -1,7 +1,7 @@
-# Kasbana backend image. Built in CI (GitHub Actions) and pulled by the EC2 box
+# Stampn backend image. Built in CI (GitHub Actions) and pulled by the EC2 box
 # — the t3.small never builds. Build context is ./backend (see deploy-prod.yml).
 #
-#   docker build -f infra/docker/Dockerfile -t kasbana-backend ./backend
+#   docker build -f infra/docker/Dockerfile -t stampn-backend ./backend
 
 FROM python:3.12-slim AS base
 

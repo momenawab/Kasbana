@@ -69,7 +69,7 @@ class Command(BaseCommand):
 
         with transaction.atomic():
             merchant, _ = Merchant.objects.get_or_create(
-                slug="kasbana-demo", defaults={"name": "Kasbana Demo"}
+                slug="stampn-demo", defaults={"name": "Stampn Demo"}
             )
             card, _ = Card.objects.get_or_create(
                 merchant=merchant,
