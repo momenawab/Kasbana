@@ -13,6 +13,7 @@ keys (§3.10), response envelope & pagination (§3.7).
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 
 import dj_database_url
@@ -250,11 +251,14 @@ CELERY_TIMEZONE = TIME_ZONE
 # from infra/.env; SENTRY_RELEASE is the deployed image tag (compose passes
 # IMAGE_TAG) so every issue is tied to the exact deploy it came from.
 SENTRY_DSN = env("SENTRY_DSN", "")
-if SENTRY_DSN:
+if SENTRY_DSN and "pytest" not in sys.modules:  # never report from the test suite
     import sentry_sdk
     from sentry_sdk.integrations.celery import CeleryIntegration
     from sentry_sdk.integrations.django import DjangoIntegration
 
+    # Profiling defaults to OFF (0.0) to protect the free-tier quota; bump
+    # SENTRY_PROFILE_SESSION_SAMPLE_RATE when you want CPU profiles.
+    _profile_rate = float(env("SENTRY_PROFILE_SESSION_SAMPLE_RATE", "0.0") or 0.0)
     sentry_sdk.init(
         dsn=SENTRY_DSN,
         environment=env("SENTRY_ENVIRONMENT", "production"),
@@ -262,4 +266,8 @@ if SENTRY_DSN:
         integrations=[DjangoIntegration(), CeleryIntegration()],
         traces_sample_rate=float(env("SENTRY_TRACES_SAMPLE_RATE", "0.1") or 0.1),
         send_default_pii=env_bool("SENTRY_SEND_PII", False),
+        # Forward Python logging (logger.error/warning/…) to Sentry.
+        enable_logs=env_bool("SENTRY_ENABLE_LOGS", True),
+        profile_session_sample_rate=_profile_rate,
+        profile_lifecycle="trace",
     )
