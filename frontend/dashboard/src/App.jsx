@@ -8,10 +8,14 @@ import Forgot from './features/auth/Forgot'
 import Reset from './features/auth/Reset'
 import Invite from './features/auth/Invite'
 import Onboarding from './features/onboarding/Onboarding'
+import Overview from './features/overview/Overview'
 import CardsList from './features/cards/CardsList'
 import CardDesigner from './features/cards/CardDesigner'
 import CardDetail from './features/cards/CardDetail'
 import EnrollQr from './features/cards/EnrollQr'
+import CustomersList from './features/customers/CustomersList'
+import CustomerProfile from './features/customers/CustomerProfile'
+import Analytics from './features/analytics/Analytics'
 import Placeholder from './routes/Placeholder'
 import Gallery from './routes/Gallery'
 
@@ -41,15 +45,15 @@ export default function App() {
           </RequireAuth>
         }
       >
-        <Route path="/" element={<Page tkey="nav.overview" />} />
+        <Route path="/" element={<Overview />} />
         <Route path="/cards" element={<CardsList />} />
         <Route path="/cards/new" element={<CardDesigner />} />
         <Route path="/cards/:id" element={<CardDetail />} />
         <Route path="/cards/:id/edit" element={<CardDesigner />} />
         <Route path="/cards/:id/qr" element={<EnrollQr />} />
-        <Route path="/customers" element={<Page tkey="nav.customers" />} />
-        <Route path="/customers/:id" element={<Page tkey="nav.customers" />} />
-        <Route path="/analytics" element={<Page tkey="nav.analytics" />} />
+        <Route path="/customers" element={<CustomersList />} />
+        <Route path="/customers/:id" element={<CustomerProfile />} />
+        <Route path="/analytics" element={<Analytics />} />
         <Route path="/campaigns" element={<Page tkey="nav.messaging" />} />
         <Route path="/campaigns/new" element={<Page tkey="nav.messaging" />} />
         <Route path="/automations" element={<Page tkey="nav.messaging" />} />
