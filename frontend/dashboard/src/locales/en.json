@@ -317,6 +317,25 @@
     "changePassword": "Change password",
     "passwordChanged": "Password changed."
   },
+  "enroll": {
+    "title": "Join {{merchant}}",
+    "subtitle": "Collect stamps and get {{reward}}.",
+    "name": "Name",
+    "phone": "Phone number",
+    "phoneInvalid": "Enter a valid phone number.",
+    "email": "Email",
+    "birthday": "Birthday",
+    "consent": "I agree to receive my loyalty card and offers (PDPL).",
+    "consentRequired": "You must agree to continue.",
+    "submit": "Get my card",
+    "already": "This phone is already enrolled in this program.",
+    "expired": "This link has expired. Please ask for a new one.",
+    "invalid": "This enrollment link is not valid.",
+    "successTitle": "You're in! 🎉",
+    "successBody": "Add your card to your wallet to start collecting stamps.",
+    "addGoogle": "Add to Google Wallet",
+    "noWallet": "Your card is ready. Wallet setup is being finalized."
+  },
   "validation": {
     "required": "This field is required.",
     "email": "Enter a valid email address.",

@@ -29,6 +29,8 @@ class EnrollRequestSerializer(serializers.Serializer):
     customer_name = serializers.CharField(
         max_length=120, required=False, allow_blank=True, default=""
     )
+    customer_email = serializers.EmailField(required=False, allow_blank=True, default="")
+    birthday = serializers.DateField(required=False, allow_null=True, default=None)
     consent = serializers.BooleanField()
 
     def validate_customer_phone(self, value: str) -> str:

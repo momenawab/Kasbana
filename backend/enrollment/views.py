@@ -69,6 +69,8 @@ class EnrollView(APIView):
         body.is_valid(raise_exception=True)
         phone = body.validated_data["customer_phone"]
         name = body.validated_data["customer_name"]
+        email = body.validated_data["customer_email"]
+        birthday = body.validated_data["birthday"]
 
         # One card per phone per program (contract §3.4 uniqueness).
         if CustomerCard.objects.filter(card=card, customer_phone=phone).exists():
@@ -81,6 +83,8 @@ class EnrollView(APIView):
                     merchant=card.merchant,
                     customer_phone=phone,
                     customer_name=name,
+                    customer_email=email,
+                    birthday=birthday,
                     consent_at=timezone.now(),
                     enrolled_at=timezone.now(),
                 )

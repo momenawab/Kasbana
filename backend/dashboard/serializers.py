@@ -213,6 +213,7 @@ class CustomerSerializer(serializers.ModelSerializer):
             "card_name",
             "customer_phone",
             "customer_name",
+            "customer_email",
             "stamp_count",
             "stamps_required",
             "wallet_platform",

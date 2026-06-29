@@ -176,7 +176,9 @@ class CardQRView(APIView):
         card = get_scoped(Card, request, pk=card_id)
         # Reuse the card's active token so the join URL is stable across views.
         token = get_or_issue_enrollment_token(card)
-        join_url = f"{settings.BASE_URL}/api/v1/enroll/{token.token}"
+        # Points at the public customer enrollment PAGE (dashboard app), which
+        # then calls the API — not the raw API endpoint.
+        join_url = f"{settings.ENROLL_BASE_URL}/enroll/{token.token}"
 
         try:
             import qrcode

@@ -58,6 +58,10 @@ CSRF_TRUSTED_ORIGINS = env_list(
 # Public HTTPS origin — used to build Apple webServiceURL and Google save URLs.
 BASE_URL = env("BASE_URL", "http://localhost:8000")
 
+# Where the public customer enrollment page lives (the dashboard app). The QR
+# join_url points here so scanning opens the branded join form, not the API.
+ENROLL_BASE_URL = env("ENROLL_BASE_URL", "https://app.kasbana.net")
+
 # ── Applications ──────────────────────────────────────────────────────────────
 DJANGO_APPS = [
     "django.contrib.admin",
