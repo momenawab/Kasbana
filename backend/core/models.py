@@ -103,6 +103,7 @@ class Card(UUIDModel, TimeStampedModel):
     color_bg = models.CharField(max_length=7, blank=True)
     color_fg = models.CharField(max_length=7, blank=True)
     logo_url = models.URLField(blank=True)
+    hero_image_url = models.URLField(blank=True)  # wide banner on the wallet pass
     google_class_id = models.CharField(max_length=120, blank=True)
     status = models.CharField(
         max_length=16, choices=enums.CardStatus.choices, default=enums.CardStatus.DRAFT

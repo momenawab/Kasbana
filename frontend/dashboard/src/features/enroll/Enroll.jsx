@@ -24,9 +24,8 @@ const schema = z.object({
   consent: z.literal(true),
 })
 
-// Google "Add to Wallet" official badge (hosted by Google).
-const GOOGLE_BADGE =
-  'https://developers.google.com/static/wallet/images/branding/wallet-button.png'
+// Official "Add to Google Wallet" button (self-hosted in public/).
+const GOOGLE_BADGE = '/add-to-google-wallet.png'
 
 export default function Enroll() {
   const { token } = useParams()

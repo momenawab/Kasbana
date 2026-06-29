@@ -24,6 +24,7 @@ const EMPTY = {
   color_bg: '#0E1B2A',
   color_fg: '#FFFFFF',
   logo_url: '',
+  hero_image_url: '',
   collect_birthday: false,
 }
 
@@ -95,6 +96,7 @@ export default function CardDesigner() {
         color_bg: form.color_bg,
         color_fg: form.color_fg,
         logo_url: form.logo_url || '',
+        hero_image_url: form.hero_image_url || '',
         status,
       }
       const card = await save.mutateAsync(payload)
@@ -180,6 +182,7 @@ export default function CardDesigner() {
             rows={2}
           />
           <FileUpload label={t('onboarding.logo')} onUploaded={set('logo_url')} />
+          <FileUpload label={t('designer.heroImage')} onUploaded={set('hero_image_url')} />
           <div className="grid grid-cols-2 gap-3">
             <ColorPicker label={t('onboarding.colorBg')} value={form.color_bg} onChange={set('color_bg')} />
             <ColorPicker label={t('onboarding.colorFg')} value={form.color_fg} onChange={set('color_fg')} />

@@ -46,6 +46,14 @@ def build_loyalty_class(card: Card) -> dict:
     }
     if card.reward_title:
         payload["rewardsTier"] = card.reward_title
+    # Optional wide banner image shown across the top of the pass.
+    if card.hero_image_url:
+        payload["heroImage"] = {
+            "sourceUri": {"uri": card.hero_image_url},
+            "contentDescription": {
+                "defaultValue": {"language": "en", "value": f"{card.name} banner"}
+            },
+        }
     return payload
 
 

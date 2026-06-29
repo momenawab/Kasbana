@@ -1,5 +1,7 @@
 {
-  "app": { "name": "Kasbana" },
+  "app": {
+    "name": "Kasbana"
+  },
   "nav": {
     "overview": "Overview",
     "cards": "Cards",
@@ -111,11 +113,19 @@
     "redemptions": "Rewards redeemed",
     "repeatRate": "Repeat rate",
     "trend": "Trend (last 30 days)",
-    "metric": { "joins": "Joins", "stamps": "Stamps", "redemptions": "Redemptions" },
+    "metric": {
+      "joins": "Joins",
+      "stamps": "Stamps",
+      "redemptions": "Redemptions"
+    },
     "noChart": "No data yet for this period.",
     "activity": "Recent activity",
     "noActivity": "No activity yet.",
-    "event": { "join": "New customer joined", "stamp": "Stamp added", "redeem": "Reward redeemed" },
+    "event": {
+      "join": "New customer joined",
+      "stamp": "Stamp added",
+      "redeem": "Reward redeemed"
+    },
     "freshTitle": "Share your join QR",
     "freshBody": "No customers yet — share your card's QR code to start enrolling.",
     "shareQr": "View cards",
@@ -130,7 +140,11 @@
     "stamps": "Stamps",
     "emptyTitle": "Create your first card",
     "emptyBody": "Design a stamp card and share it — customers add it to their wallet.",
-    "status": { "ACTIVE": "Active", "DRAFT": "Draft", "ARCHIVED": "Archived" },
+    "status": {
+      "ACTIVE": "Active",
+      "DRAFT": "Draft",
+      "ARCHIVED": "Archived"
+    },
     "planLimit": "Your plan's card limit has been reached."
   },
   "customers": {
@@ -144,7 +158,11 @@
     "lastVisit": "Last visit",
     "export": "Export CSV",
     "searchPlaceholder": "Search name or phone…",
-    "segment": { "all": "All", "lapsed": "Lapsed", "reward_ready": "Reward-ready" },
+    "segment": {
+      "all": "All",
+      "lapsed": "Lapsed",
+      "reward_ready": "Reward-ready"
+    },
     "emptyTitle": "No customers yet",
     "emptyBody": "Share your card's join QR to start enrolling customers."
   },
@@ -160,7 +178,12 @@
     "messageSent": "Message sent.",
     "timeline": "Timeline",
     "noTimeline": "No events yet.",
-    "event": { "enroll": "Enrolled", "stamp": "Stamp added", "redeem": "Reward redeemed", "message": "Message sent" },
+    "event": {
+      "enroll": "Enrolled",
+      "stamp": "Stamp added",
+      "redeem": "Reward redeemed",
+      "message": "Message sent"
+    },
     "send": "Send",
     "channel": "Channel",
     "channelPush": "Push",
@@ -233,7 +256,8 @@
     "savedDraft": "Draft saved.",
     "published": "Card published.",
     "unsaved": "You have unsaved changes. Leave anyway?",
-    "reprovisionWarning": "Editing a published card re-provisions existing holders' passes."
+    "reprovisionWarning": "Editing a published card re-provisions existing holders' passes.",
+    "heroImage": "Banner image (Google Wallet)"
   },
   "detail": {
     "edit": "Edit",
@@ -299,7 +323,12 @@
     "amount": "Amount",
     "statusCol": "Status",
     "noInvoices": "No invoices yet.",
-    "plan": { "trial": "Trial", "starter": "Starter", "growth": "Growth", "chain": "Chain" }
+    "plan": {
+      "trial": "Trial",
+      "starter": "Starter",
+      "growth": "Growth",
+      "chain": "Chain"
+    }
   },
   "settings": {
     "title": "Settings",
