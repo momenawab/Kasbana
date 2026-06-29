@@ -175,6 +175,52 @@
     "walletSplit": "Apple vs Google",
     "locked": "Upgrade to unlock"
   },
+  "campaigns": {
+    "title": "Campaigns",
+    "new": "New campaign",
+    "channel": "Channel",
+    "audience": "Audience",
+    "statusCol": "Status",
+    "sent": "Sent",
+    "scheduled": "Scheduled",
+    "delivered": "Delivered",
+    "emptyTitle": "No campaigns yet",
+    "emptyBody": "Send a push or WhatsApp message to your customers."
+  },
+  "compose": {
+    "title": "New campaign",
+    "channel": "Channel",
+    "audience": "Audience",
+    "audienceAll": "All customers",
+    "message": "Message",
+    "schedule": "Schedule (optional)",
+    "sendBtn": "Send now",
+    "scheduleBtn": "Schedule",
+    "sent": "Campaign sent.",
+    "scheduled": "Campaign scheduled.",
+    "textRequired": "Message text is required.",
+    "allowance": "{{n}} WhatsApp messages remaining this month.",
+    "quotaExhausted": "Your WhatsApp allowance is exhausted."
+  },
+  "automations": {
+    "title": "Automations",
+    "subtitle": "Automatic messages triggered by customer events.",
+    "limit": "Your plan's automation limit has been reached.",
+    "key": {
+      "reward_ready": "Reward ready",
+      "expiry": "Expiry reminder",
+      "birthday": "Birthday",
+      "winback": "Win-back",
+      "welcome": "Welcome"
+    },
+    "desc": {
+      "reward_ready": "Notify when a customer earns a reward.",
+      "expiry": "Remind before stamps/points expire.",
+      "birthday": "Send a birthday treat.",
+      "winback": "Re-engage lapsed customers.",
+      "welcome": "Greet new customers on enrollment."
+    }
+  },
   "designer": {
     "newTitle": "New card",
     "editTitle": "Edit card",

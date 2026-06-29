@@ -16,6 +16,9 @@ import EnrollQr from './features/cards/EnrollQr'
 import CustomersList from './features/customers/CustomersList'
 import CustomerProfile from './features/customers/CustomerProfile'
 import Analytics from './features/analytics/Analytics'
+import CampaignsList from './features/campaigns/CampaignsList'
+import CampaignCompose from './features/campaigns/CampaignCompose'
+import Automations from './features/campaigns/Automations'
 import Placeholder from './routes/Placeholder'
 import Gallery from './routes/Gallery'
 
@@ -54,9 +57,9 @@ export default function App() {
         <Route path="/customers" element={<CustomersList />} />
         <Route path="/customers/:id" element={<CustomerProfile />} />
         <Route path="/analytics" element={<Analytics />} />
-        <Route path="/campaigns" element={<Page tkey="nav.messaging" />} />
-        <Route path="/campaigns/new" element={<Page tkey="nav.messaging" />} />
-        <Route path="/automations" element={<Page tkey="nav.messaging" />} />
+        <Route path="/campaigns" element={<CampaignsList />} />
+        <Route path="/campaigns/new" element={<CampaignCompose />} />
+        <Route path="/automations" element={<Automations />} />
         <Route path="/locations" element={<Page tkey="nav.locations" />} />
         <Route path="/locations/:id" element={<Page tkey="nav.locations" />} />
         <Route path="/team" element={<Page tkey="nav.team" />} />
