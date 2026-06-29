@@ -1,0 +1,58 @@
+name: Deploy Client Dashboard (app.kasbana.net)
+
+# Builds the standalone Client Dashboard (frontend/dashboard) on every push to
+# FE-Dash and publishes the static build to the `deployment-dashboard` branch,
+# which Hostinger serves on app.kasbana.net (point the subdomain's Git deploy at
+# that branch in the Hostinger panel — that side is configured once, manually).
+#
+# Build-time env bakes into the bundle:
+#   VITE_USE_MOCKS=0                       -> hit the real backend, not MSW
+#   VITE_API_URL=https://api.kasbana.net   -> API base = + "/api/v1"
+# The backend must allow CORS from https://app.kasbana.net.
+#
+# Uses GITHUB_TOKEN, so the publish push does not re-trigger this workflow.
+
+on:
+  push:
+    branches: [FE-Dash]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: deploy-dashboard
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/dashboard/package-lock.json
+
+      - name: Build dashboard
+        working-directory: frontend/dashboard
+        env:
+          VITE_USE_MOCKS: '0'
+          VITE_API_URL: https://api.kasbana.net
+        run: |
+          npm ci
+          npm run build
+
+      - name: Publish build to deployment-dashboard
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: deployment-dashboard
+          publish_dir: ./frontend/dashboard/dist
+          force_orphan: true
+          enable_jekyll: true
+          commit_message: "deploy: dashboard build from FE-Dash"

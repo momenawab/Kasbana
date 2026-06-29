@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: theme('fontFamily.body');
+  }
+  html[lang='ar'] {
+    font-family: theme('fontFamily.ar');
+  }
+  body {
+    @apply bg-paper text-tx;
+  }
+  /* Arabic headings reset letter-spacing (Direction-C rule). */
+  html[lang='ar'] :is(h1, h2, h3, h4) {
+    letter-spacing: 0;
+  }
+  .font-num {
+    @apply font-mono tabular-nums;
+  }
+}

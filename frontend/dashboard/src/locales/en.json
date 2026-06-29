@@ -1,0 +1,37 @@
+{
+  "app": { "name": "Kasbana" },
+  "nav": {
+    "overview": "Overview",
+    "cards": "Cards",
+    "customers": "Customers",
+    "analytics": "Analytics",
+    "messaging": "Messaging",
+    "locations": "Locations",
+    "team": "Team",
+    "billing": "Billing",
+    "settings": "Settings"
+  },
+  "common": {
+    "language": "العربية",
+    "logout": "Log out",
+    "account": "Account",
+    "loading": "Loading…",
+    "comingSoon": "Coming soon in this phase"
+  },
+  "trial": {
+    "banner": "You're on the free trial — {{count}} days left.",
+    "chip": "Trial · {{count}}d",
+    "cta": "Choose a plan",
+    "expired": "Your trial has ended. Choose a plan to resume actions.",
+    "expiredCta": "Choose a plan"
+  },
+  "login": {
+    "title": "Log in",
+    "email": "Email",
+    "password": "Password",
+    "submit": "Log in",
+    "error": "Wrong email or password",
+    "forgot": "Forgot password?",
+    "signup": "Create an account"
+  }
+}

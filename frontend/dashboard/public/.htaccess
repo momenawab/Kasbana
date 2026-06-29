@@ -1,0 +1,11 @@
+# SPA fallback for Hostinger (Apache/LiteSpeed): serve index.html for any route
+# that isn't a real file/dir, so client-side routes (/login, /cards, …) work on
+# refresh/deep-link. Copied to the build root by Vite (public/ → dist/).
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+  RewriteRule ^index\.html$ - [L]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule . /index.html [L]
+</IfModule>
