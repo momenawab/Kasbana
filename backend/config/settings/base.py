@@ -90,7 +90,6 @@ LOCAL_APPS = [
     "loyalty",
     "dashboard",
     "billing",
-    "messaging",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -231,31 +230,6 @@ WALLET = {
 WALLET_AUTH_TOKEN_SECRET = env("WALLET_AUTH_TOKEN_SECRET", "")
 PASS_BARCODE_SECRET = env("PASS_BARCODE_SECRET", "")
 
-# ── Billing gateways (Phase 1.7 · contract §3.10) ─────────────────────────────
-# Paymob/Fawry credentials. Unset locally/CI → the adapters run in stub mode
-# (deterministic checkout URL, no network); real creds are wired on staging.
-BILLING = {
-    "PAYMOB": {
-        "API_KEY": env("PAYMOB_API_KEY", ""),
-        "HMAC_SECRET": env("PAYMOB_HMAC_SECRET", ""),
-        "INTEGRATION_ID": env("PAYMOB_INTEGRATION_ID", ""),
-        "IFRAME_ID": env("PAYMOB_IFRAME_ID", ""),
-    },
-    "FAWRY": {
-        "MERCHANT_CODE": env("FAWRY_MERCHANT_CODE", ""),
-        "SECURITY_KEY": env("FAWRY_SECURITY_KEY", ""),
-    },
-}
-
-# ── Messaging (Phase 1.7 · contract §3.10) ────────────────────────────────────
-# WhatsApp Business (Cloud) API. Unset → ``WhatsAppClient`` runs in stub mode.
-MESSAGING = {
-    "WHATSAPP": {
-        "API_TOKEN": env("WHATSAPP_API_TOKEN", ""),
-        "PHONE_ID": env("WHATSAPP_PHONE_ID", ""),
-    },
-}
-
 # Google Wallet requires every LoyaltyClass to carry a program logo. When a
 # merchant/card has no logo_url, fall back to this self-hosted default (served
 # by WhiteNoise at <BASE_URL>/static/wallet/logo.png). Must be publicly
@@ -287,11 +261,6 @@ CELERY_BEAT_SCHEDULE = {
     "billing-expire-trials": {
         "task": "billing.tasks.expire_trials",
         "schedule": 3600.0,  # hourly
-    },
-    # Fire date-driven engage automations (birthday/expiry/winback) (Phase 1.7).
-    "messaging-scan-automations": {
-        "task": "messaging.tasks.scan_automations",
-        "schedule": 86400.0,  # daily
     },
 }
 CELERY_TASK_ACKS_LATE = True
