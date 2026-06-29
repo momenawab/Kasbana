@@ -1,5 +1,4 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
 import RequireAuth from './layout/RequireAuth'
 import Shell from './layout/Shell'
 import Login from './features/auth/Login'
@@ -19,15 +18,11 @@ import Analytics from './features/analytics/Analytics'
 import CampaignsList from './features/campaigns/CampaignsList'
 import CampaignCompose from './features/campaigns/CampaignCompose'
 import Automations from './features/campaigns/Automations'
-import Placeholder from './routes/Placeholder'
+import LocationsList from './features/locations/LocationsList'
+import Team from './features/team/Team'
+import Billing from './features/billing/Billing'
+import Settings from './features/settings/Settings'
 import Gallery from './routes/Gallery'
-
-// Phase 1: real auth shell + routing; feature screens are placeholders that
-// later phases replace (Cards = P4, Overview/Customers/Analytics = P5, etc.).
-function Page({ tkey }) {
-  const { t } = useTranslation()
-  return <Placeholder title={t(tkey)} />
-}
 
 export default function App() {
   return (
@@ -60,11 +55,11 @@ export default function App() {
         <Route path="/campaigns" element={<CampaignsList />} />
         <Route path="/campaigns/new" element={<CampaignCompose />} />
         <Route path="/automations" element={<Automations />} />
-        <Route path="/locations" element={<Page tkey="nav.locations" />} />
-        <Route path="/locations/:id" element={<Page tkey="nav.locations" />} />
-        <Route path="/team" element={<Page tkey="nav.team" />} />
-        <Route path="/billing" element={<Page tkey="nav.billing" />} />
-        <Route path="/settings" element={<Page tkey="nav.settings" />} />
+        <Route path="/locations" element={<LocationsList />} />
+        <Route path="/locations/:id" element={<LocationsList />} />
+        <Route path="/team" element={<Team />} />
+        <Route path="/billing" element={<Billing />} />
+        <Route path="/settings" element={<Settings />} />
         <Route path="/onboarding" element={<Onboarding />} />
       </Route>
 
