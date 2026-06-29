@@ -1,9 +1,13 @@
 name: Deploy Client Dashboard (app.kasbana.net)
 
-# Builds the standalone Client Dashboard (frontend/dashboard) on every push to
-# FE-Dash and publishes the static build to the `deployment-dashboard` branch,
-# which Hostinger serves on app.kasbana.net (point the subdomain's Git deploy at
-# that branch in the Hostinger panel — that side is configured once, manually).
+# Builds the standalone Client Dashboard (frontend/dashboard) on pushes to dev
+# that touch the dashboard, and publishes the static build to the
+# `deployment-dashboard` branch, which Hostinger serves on app.kasbana.net
+# (point the subdomain's Git deploy at that branch in the Hostinger panel — that
+# side is configured once, manually).
+#
+# dev is the single source of truth (like distribute.yml). The path filter means
+# backend/marketing/doc-only commits don't rebuild the dashboard.
 #
 # Build-time env bakes into the bundle:
 #   VITE_USE_MOCKS=0                       -> hit the real backend, not MSW
@@ -14,7 +18,8 @@ name: Deploy Client Dashboard (app.kasbana.net)
 
 on:
   push:
-    branches: [FE-Dash]
+    branches: [dev]
+    paths: ['frontend/dashboard/**', '.github/workflows/deploy-dashboard.yml']
   workflow_dispatch:
 
 permissions:
