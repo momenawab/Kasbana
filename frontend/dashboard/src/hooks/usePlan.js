@@ -1,6 +1,7 @@
 // Plan gating (spec §12). Reads entitlements from the /me query.
-// Returns {plan, can(feature), limit(key), usage(key), atLimit(key)}.
+// Returns {plan, can, limit, usage, atLimit, requireFeature, requireRoom}.
 import { useMe } from './useAuth'
+import { gating } from '../lib/gating'
 
 export function usePlan() {
   const { data } = useMe()
@@ -15,5 +16,26 @@ export function usePlan() {
     return usage(key.replace('max_', '')) >= max
   }
 
-  return { plan: ent?.plan ?? null, entitlements: ent, can, limit, usage, atLimit }
+  // Guards: return true if allowed; otherwise open the UpgradeDrawer and return false.
+  const requireFeature = (feature) => {
+    if (can(feature)) return true
+    gating.open(feature)
+    return false
+  }
+  const requireRoom = (key) => {
+    if (!atLimit(key)) return true
+    gating.open(key)
+    return false
+  }
+
+  return {
+    plan: ent?.plan ?? null,
+    entitlements: ent,
+    can,
+    limit,
+    usage,
+    atLimit,
+    requireFeature,
+    requireRoom,
+  }
 }

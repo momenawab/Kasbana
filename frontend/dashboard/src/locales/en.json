@@ -11,11 +11,18 @@
     "billing": "Billing",
     "settings": "Settings"
   },
+  "upgrade": {
+    "title": "Upgrade your plan",
+    "locked": "\"{{feature}}\" needs a higher plan.",
+    "body": "This feature needs a higher plan.",
+    "cta": "See plans"
+  },
   "common": {
     "language": "العربية",
     "logout": "Log out",
     "account": "Account",
     "loading": "Loading…",
+    "upload": "Upload an image",
     "comingSoon": "Coming soon in this phase"
   },
   "trial": {

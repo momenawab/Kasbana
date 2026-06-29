@@ -11,11 +11,18 @@
     "billing": "الاشتراك",
     "settings": "الإعدادات"
   },
+  "upgrade": {
+    "title": "ترقية باقتك",
+    "locked": "«{{feature}}» محتاجة باقة أعلى.",
+    "body": "الميزة دي محتاجة باقة أعلى.",
+    "cta": "شوف الباقات"
+  },
   "common": {
     "language": "English",
     "logout": "تسجيل الخروج",
     "account": "الحساب",
     "loading": "جاري التحميل…",
+    "upload": "ارفع صورة",
     "comingSoon": "قريبًا في هذه المرحلة"
   },
   "trial": {

@@ -2,6 +2,7 @@ import { Link, Outlet } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import Sidebar from './Sidebar'
 import Topbar from './Topbar'
+import UpgradeDrawer from '../components/UpgradeDrawer'
 import { useAuth } from '../hooks/useAuth'
 import { arDigits, daysUntil } from '../lib/format'
 
@@ -44,6 +45,9 @@ export default function Shell() {
           )}
         </main>
       </div>
+
+      {/* Global gating drawer — opened by usePlan guards or a server PLAN_LIMIT. */}
+      <UpgradeDrawer />
     </div>
   )
 }

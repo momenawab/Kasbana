@@ -5,6 +5,7 @@
 import axios from 'axios'
 import { clearSession, getAccess, getRefresh, setAccess, setTokens } from './auth'
 import { queryClient } from './queryClient'
+import { gating } from './gating'
 
 const BASE = (import.meta.env.VITE_API_URL || '') + '/api/v1'
 
@@ -42,6 +43,10 @@ api.interceptors.response.use(
         refreshing = null
         logout()
       }
+    }
+    // Server-side plan limit → open the UpgradeDrawer (spec §5/§12).
+    if (response?.data?.error?.code === 'PLAN_LIMIT') {
+      gating.open(response.data.error.message || null)
     }
     return Promise.reject(error)
   }

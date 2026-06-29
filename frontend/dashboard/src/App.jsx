@@ -4,6 +4,7 @@ import RequireAuth from './layout/RequireAuth'
 import Shell from './layout/Shell'
 import Login from './features/auth/Login'
 import Placeholder from './routes/Placeholder'
+import Gallery from './routes/Gallery'
 
 // Phase 1: real auth shell + routing; feature screens are placeholders that
 // later phases replace (Cards = P4, Overview/Customers/Analytics = P5, etc.).
@@ -16,6 +17,7 @@ export default function App() {
   return (
     <Routes>
       {/* Public */}
+      <Route path="/__gallery" element={<Gallery />} />
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Page tkey="login.signup" />} />
       <Route path="/forgot" element={<Page tkey="login.forgot" />} />
