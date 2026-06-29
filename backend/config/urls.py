@@ -5,6 +5,8 @@ the router is never touched in parallel (contract §5). Phase 1.0 wires auth and
 the schema; later phases uncomment their includes.
 """
 
+from django.conf import settings
+from django.conf.urls.static import static
 from django.contrib import admin
 from django.http import JsonResponse
 from django.urls import include, path
@@ -54,3 +56,6 @@ urlpatterns = [
     ),
     path("api/redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

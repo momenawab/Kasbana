@@ -25,6 +25,11 @@ COPY . .
 RUN SECRET_KEY=build-only DJANGO_SETTINGS_MODULE=config.settings.prod \
     python manage.py collectstatic --noinput
 
+# Create the media dir so the mounted named volume inherits `app` ownership
+# (a fresh volume copies the mount point's ownership from the image) — uploads
+# (/media) are written here at uid 10001.
+RUN mkdir -p /app/media
+
 # Run as a non-root user.
 RUN useradd --create-home --uid 10001 app && chown -R app /app
 USER app

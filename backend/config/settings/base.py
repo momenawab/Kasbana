@@ -149,11 +149,24 @@ TIME_ZONE = env("DJANGO_TIME_ZONE", "Africa/Cairo")
 USE_I18N = True
 USE_TZ = True
 
-# ── Static files ──────────────────────────────────────────────────────────────
+# ── Static / media files ──────────────────────────────────────────────────────
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
+MEDIA_URL = "media/"
+MEDIA_ROOT = BASE_DIR / "media"
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# ── Uploads (Phase 1.6) ───────────────────────────────────────────────────────
+UPLOAD_MAX_SIZE_BYTES = int(
+    (env("UPLOAD_MAX_SIZE_BYTES", "5_000_000") or "5_000_000").replace("_", "")
+)
+# SVG is intentionally excluded — it can embed <script> (stored-XSS risk when
+# served inline). Add it back only behind attachment/CSP serving.
+UPLOAD_ALLOWED_TYPES = frozenset(
+    env_list("UPLOAD_ALLOWED_TYPES", "image/jpeg,image/png,image/webp")
+)
 
 # ── CORS ──────────────────────────────────────────────────────────────────────
 CORS_ALLOWED_ORIGINS = env_list(
@@ -189,6 +202,9 @@ SPECTACULAR_SETTINGS = {
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
     "SCHEMA_PATH_PREFIX": r"/api/v1",
+    "ENUM_NAME_OVERRIDES": {
+        "RoleEnum": "core.enums.Role",
+    },
 }
 
 # ── Custom wallet settings (contract §3.10) ───────────────────────────────────

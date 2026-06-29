@@ -20,6 +20,8 @@ x-app: &app
   # GOOGLE_SA_KEY_PATH, …) point at /secrets/<file>. Read-only.
   volumes:
     - /opt/kasbana/secrets:/secrets:ro
+    # User uploads (logos) — persisted across redeploys; Caddy serves it at /media.
+    - media:/app/media
   depends_on:
     db:
       condition: service_healthy
@@ -83,9 +85,12 @@ services:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
+      # Serve user uploads directly from the shared media volume (read-only).
+      - media:/srv/media:ro
 
 volumes:
   pgdata:
   redisdata:
   caddy_data:
   caddy_config:
+  media:

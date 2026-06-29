@@ -123,6 +123,7 @@ class CustomerCard(UUIDModel, TimeStampedModel):
     )  # denormalized for scoping
     customer_phone = models.CharField(max_length=20)  # E.164
     customer_name = models.CharField(max_length=120, blank=True)
+    birthday = models.DateField(null=True, blank=True)
     stamp_count = models.IntegerField(default=0)  # cached balance, derived from ledger
     auth_token = models.CharField(max_length=48, default=_generate_auth_token)
     status = models.CharField(

@@ -164,7 +164,7 @@ def test_list_customers_filter_by_status(auth_client, merchant):
     resp = auth_client.get("/api/v1/customers?status=BLOCKED")
     assert resp.status_code == 200
     results = resp.json()["results"]
-    assert [c["customer_card_id"] for c in results] == [str(blocked.id)]
+    assert [c["id"] for c in results] == [str(blocked.id)]
 
 
 def test_list_customers_scoped_to_merchant(auth_client, merchant):
@@ -267,7 +267,7 @@ def test_customers_filter_by_phone_and_card(auth_client, merchant):
     factories.CustomerCardFactory(card=card_b, merchant=merchant, customer_phone="+209999999999")
 
     by_phone = auth_client.get("/api/v1/customers?phone=1111111111")
-    assert [c["customer_card_id"] for c in by_phone.json()["results"]] == [str(target.id)]
+    assert [c["id"] for c in by_phone.json()["results"]] == [str(target.id)]
 
     by_card = auth_client.get(f"/api/v1/customers?card={card_a.id}")
-    assert [c["customer_card_id"] for c in by_card.json()["results"]] == [str(target.id)]
+    assert [c["id"] for c in by_card.json()["results"]] == [str(target.id)]

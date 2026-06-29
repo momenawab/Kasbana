@@ -30,6 +30,9 @@ PyJWT>=2.9
 cryptography>=43.0
 httpx[http2]>=0.27
 
+# --- Dashboard assets (Phase 1.6) ---
+qrcode>=7.4
+
 # --- Billing / Messaging (Phase 1.4) ---
 # (Paymob / Fawry / WhatsApp accessed via httpx)
 

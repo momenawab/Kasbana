@@ -95,6 +95,18 @@ class WalletProvisionFailed(DomainError):
     default_detail = "Wallet provisioning failed."
 
 
+class PayloadTooLarge(DomainError):
+    status_code = status.HTTP_413_REQUEST_ENTITY_TOO_LARGE
+    error_code = ErrorCode.VALIDATION_ERROR
+    default_detail = "File too large."
+
+
+class UnprocessableEntity(DomainError):
+    status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+    error_code = ErrorCode.VALIDATION_ERROR
+    default_detail = "Request could not be processed."
+
+
 # Map DRF's built-in status codes to contract error codes.
 _STATUS_TO_CODE = {
     status.HTTP_400_BAD_REQUEST: ErrorCode.VALIDATION_ERROR,

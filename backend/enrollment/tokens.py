@@ -37,6 +37,23 @@ def issue_enrollment_token(card: Card) -> EnrollmentToken:
     )
 
 
+def get_or_issue_enrollment_token(card: Card) -> EnrollmentToken:
+    """Return the card's current active token, issuing one only if none exists.
+
+    Read paths (e.g. the dashboard QR endpoint) must use this — calling
+    ``issue_enrollment_token`` on every GET would change the join URL each view
+    (breaking already-printed posters) and leak a token row per request.
+    """
+    existing = (
+        EnrollmentToken.objects.filter(card=card, is_active=True).order_by("-created_at").first()
+    )
+    if existing is not None and (
+        existing.expires_at is None or existing.expires_at > timezone.now()
+    ):
+        return existing
+    return issue_enrollment_token(card)
+
+
 def resolve_active_token(token: str) -> EnrollmentToken | None:
     """Return the active token row, or ``None`` if missing/inactive.
 
