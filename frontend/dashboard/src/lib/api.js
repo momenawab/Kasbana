@@ -68,6 +68,20 @@ export async function login(email, password) {
   return data
 }
 
+// Register a merchant + owner and start the trial; returns a token pair.
+export async function signup(payload) {
+  const { data } = await api.post('/auth/signup', payload)
+  setTokens({ access: data.access, refresh: data.refresh })
+  return data
+}
+
+// Accept a staff invite (set password) and start a session.
+export async function acceptInvite(token, password) {
+  const { data } = await api.post(`/auth/invite/${token}`, { password })
+  setTokens({ access: data.access, refresh: data.refresh })
+  return data
+}
+
 export function logout() {
   clearSession()
   queryClient.clear()

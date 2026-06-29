@@ -39,6 +39,74 @@
     "submit": "Log in",
     "error": "Wrong email or password",
     "forgot": "Forgot password?",
-    "signup": "Create an account"
+    "signup": "Create an account",
+    "remember": "Remember me",
+    "noAccount": "Don't have an account?"
+  },
+  "signup": {
+    "title": "Create your account",
+    "subtitle": "Start your 14-day free trial.",
+    "businessName": "Business name",
+    "ownerName": "Your name",
+    "phone": "Phone",
+    "consent": "I agree to the Privacy Policy and Terms (PDPL).",
+    "consentRequired": "You must accept to continue.",
+    "emailTaken": "An account with this email already exists.",
+    "haveAccount": "Already have an account?",
+    "submit": "Create account"
+  },
+  "forgot": {
+    "title": "Reset your password",
+    "subtitle": "We'll email you a reset link.",
+    "submit": "Send reset link",
+    "sentTitle": "Check your email",
+    "sentBody": "If an account exists for that email, you'll receive a reset link shortly."
+  },
+  "reset": {
+    "title": "Set a new password",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm password",
+    "mismatch": "Passwords don't match.",
+    "submit": "Update password",
+    "success": "Password updated — please log in.",
+    "expired": "This reset link is invalid or has expired."
+  },
+  "invite": {
+    "title": "Join your team",
+    "subtitle": "You've been invited to {{merchant}} as {{role}}.",
+    "setPassword": "Set a password",
+    "submit": "Accept & join",
+    "expired": "This invite is invalid or has expired.",
+    "invalid": "This invite link is not valid."
+  },
+  "onboarding": {
+    "title": "Set up your loyalty card",
+    "skip": "Skip for now",
+    "step1": "Branding",
+    "step2": "First card",
+    "step3": "Done",
+    "brandingTitle": "Your branding",
+    "logo": "Logo",
+    "colorBg": "Background color",
+    "colorFg": "Text color",
+    "cardTitle": "Create your first card",
+    "cardName": "Card name",
+    "cardNamePlaceholder": "Loyalty card",
+    "stampsRequired": "Stamps to reward",
+    "rewardTitle": "Reward",
+    "rewardPlaceholder": "Free reward",
+    "cardRequired": "Card name and reward are required.",
+    "planLimit": "Your plan's card limit has been reached.",
+    "doneTitle": "You're all set!",
+    "doneBody": "Share this QR so customers can add your card to their wallet.",
+    "goDashboard": "Go to dashboard",
+    "next": "Next",
+    "back": "Back",
+    "publish": "Publish card"
+  },
+  "validation": {
+    "required": "This field is required.",
+    "email": "Enter a valid email address.",
+    "min8": "Must be at least 8 characters."
   }
 }
