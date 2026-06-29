@@ -24,7 +24,7 @@ export function ToastProvider({ children }) {
   return (
     <ToastContext.Provider value={api}>
       {children}
-      <div className="fixed bottom-4 inline-end-4 z-50 flex flex-col gap-2" style={{ insetInlineEnd: '1rem' }}>
+      <div className="fixed bottom-4 end-4 z-50 flex flex-col gap-2">
         {toasts.map((t) => (
           <div
             key={t.id}
