@@ -93,6 +93,12 @@ class EnrollView(APIView):
             # Lost the race against a concurrent enroll of the same phone.
             raise AlreadyEnrolled()
 
+        # Engage automation (Phase 1.7): fire the welcome trigger on a fresh
+        # enrollment. Best-effort — no-ops unless the merchant enabled it.
+        from messaging.tasks import fire_for_customer
+
+        fire_for_customer(card.merchant, customer_card, "welcome")
+
         # Provision passes (Apple + Google). Returns null URLs if creds absent.
         result = wallet.provision(customer_card)
 

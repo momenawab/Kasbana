@@ -65,6 +65,14 @@ class StampView(APIView):
         # The ledger mutates a row-locked re-fetch, so refresh our instance.
         card.refresh_from_db(fields=["stamp_count", "last_event_at"])
 
+        # Engage automation (Phase 1.7): fire the reward-ready trigger inline
+        # the moment a stamp tips the card to its threshold. Best-effort — a
+        # disabled automation / missing capability / quota simply no-ops.
+        if ledger.is_reward_ready(card):
+            from messaging.tasks import fire_for_customer
+
+            fire_for_customer(card.merchant, card, "reward_ready")
+
         # Enqueues wallets.tasks.push_pass_update. Tests verify this is *called*;
         # that the pass visibly updates on a real device needs Redis + a Celery
         # worker + live Apple/Google creds, i.e. Momen's integration smoke test

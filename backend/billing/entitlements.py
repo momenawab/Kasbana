@@ -70,13 +70,17 @@ def enforce(merchant: Merchant, capability: str) -> None:
 
 def usage(merchant: Merchant) -> dict[str, int | None]:
     """Live tenant-scoped usage counts (drives /me and /billing)."""
+    # Imported lazily: ``messaging`` depends on ``billing`` (metering reads the
+    # plan quota), so a module-level import would be circular.
+    from messaging import metering
+
     return {
         "cards": _USAGE_COUNTERS["max_cards"](merchant),
         "locations": _USAGE_COUNTERS["max_locations"](merchant),
         "staff": _USAGE_COUNTERS["max_staff"](merchant),
         "customers": _USAGE_COUNTERS["max_customers"](merchant),
-        "whatsapp_used": 0,  # metered in Phase 1.7
-        "whatsapp_quota": None,
+        "whatsapp_used": metering.used_this_period(merchant),
+        "whatsapp_quota": metering.quota_for(merchant),
     }
 
 

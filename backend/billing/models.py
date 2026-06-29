@@ -16,6 +16,7 @@ from django.utils import timezone
 from billing.plans import TRIAL_DAYS, TRIAL_PLAN, BillingStatus
 from core.enums import PlanTier
 from core.models import Merchant, TimeStampedModel, UUIDModel
+from core.tenancy import TenantManager
 
 
 def default_trial_end() -> datetime:
@@ -37,6 +38,9 @@ class Subscription(UUIDModel, TimeStampedModel):
     # Gateway linkage (Paymob / Fawry) — filled by the webhook handlers.
     provider = models.CharField(max_length=16, blank=True)
     gateway_ref = models.CharField(max_length=128, blank=True)
+    # The plan a pending checkout will convert to, recorded at ``subscribe`` time
+    # so the webhook (which only carries a gateway ref) knows what to activate.
+    pending_plan = models.CharField(max_length=16, choices=PlanTier.choices, blank=True)
 
     def __str__(self) -> str:
         return f"{self.merchant_id} · {self.status} · {self.plan}"
@@ -63,3 +67,38 @@ class Subscription(UUIDModel, TimeStampedModel):
         if self.status == BillingStatus.ACTIVE:
             return self.plan
         return None
+
+
+class InvoiceStatus(models.TextChoices):
+    """Contract ``Invoice.status`` values (lowercase wire format)."""
+
+    PAID = "paid", "Paid"
+    PENDING = "pending", "Pending"
+    FAILED = "failed", "Failed"
+
+
+class Invoice(UUIDModel, TimeStampedModel):
+    """A billing invoice, created by the gateway webhook on a successful charge.
+
+    Tenant-scoped via ``merchant``; ``gateway_ref`` links it back to the
+    Paymob/Fawry transaction so webhook replays are idempotent.
+    """
+
+    merchant = models.ForeignKey(Merchant, on_delete=models.CASCADE, related_name="invoices")
+    amount_egp = models.DecimalField(max_digits=10, decimal_places=2)
+    status = models.CharField(
+        max_length=16, choices=InvoiceStatus.choices, default=InvoiceStatus.PENDING
+    )
+    issued_at = models.DateTimeField(default=timezone.now)
+    pdf_url = models.URLField(blank=True)
+    provider = models.CharField(max_length=16, blank=True)
+    gateway_ref = models.CharField(max_length=128, blank=True)
+
+    objects = TenantManager()
+
+    class Meta:
+        ordering = ["-issued_at"]
+        indexes = [models.Index(fields=["merchant", "-issued_at"])]
+
+    def __str__(self) -> str:
+        return f"{self.merchant_id} · {self.amount_egp} EGP · {self.status}"

@@ -11,6 +11,8 @@ merchant's stored plan, then locks on expiry without conversion.
 
 from __future__ import annotations
 
+from decimal import Decimal
+
 from django.db import models
 
 from core.enums import PlanTier
@@ -39,6 +41,8 @@ FEATURE_CAPABILITIES = frozenset({"whatsapp", "export", "api"})
 # ``automations`` (int) and ``analytics`` (basic|full) are display-only features
 # surfaced via /me's Entitlements — not gate capabilities, so they are NOT in
 # FEATURE_CAPABILITIES and never passed to ``entitlements.check()``.
+# ``whatsapp_quota`` is the monthly WhatsApp send allowance (``None`` = unlimited);
+# the ``whatsapp`` flag gates access, the quota caps volume (Phase 1.7 metering).
 PLAN_LIMITS: dict[str, dict[str, int | bool | str | None]] = {
     PlanTier.FREE: {
         "max_cards": 1,
@@ -50,6 +54,7 @@ PLAN_LIMITS: dict[str, dict[str, int | bool | str | None]] = {
         "api": False,
         "automations": 0,
         "analytics": "basic",
+        "whatsapp_quota": 0,
     },
     PlanTier.STARTER: {
         "max_cards": 3,
@@ -61,6 +66,7 @@ PLAN_LIMITS: dict[str, dict[str, int | bool | str | None]] = {
         "api": False,
         "automations": 2,
         "analytics": "basic",
+        "whatsapp_quota": 500,
     },
     PlanTier.GROWTH: {
         "max_cards": 10,
@@ -72,6 +78,7 @@ PLAN_LIMITS: dict[str, dict[str, int | bool | str | None]] = {
         "api": True,
         "automations": 5,
         "analytics": "full",
+        "whatsapp_quota": 2_000,
     },
     PlanTier.CHAIN: {
         "max_cards": None,
@@ -83,5 +90,16 @@ PLAN_LIMITS: dict[str, dict[str, int | bool | str | None]] = {
         "api": True,
         "automations": 99,
         "analytics": "full",
+        "whatsapp_quota": None,
     },
+}
+
+# Monthly list price per tier, EGP major units (billing-owned config — confirm
+# with product before launch, per the brief's notes). ``trial`` shows the plan
+# the trial converts to (GROWTH); CHAIN is custom-quoted (0 = "contact us").
+PLAN_PRICES_EGP: dict[str, Decimal] = {
+    PlanTier.FREE: Decimal("0"),
+    PlanTier.STARTER: Decimal("299"),
+    PlanTier.GROWTH: Decimal("799"),
+    PlanTier.CHAIN: Decimal("0"),
 }

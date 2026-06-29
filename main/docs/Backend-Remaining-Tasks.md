@@ -100,7 +100,7 @@ last-Owner protection enforced; lint/type/tests/spectacular clean.
 
 ---
 
-## ⬜ Phase 1.7 — Billing & Messaging  *(payments + WhatsApp — external integrations behind faked adapters; real creds on staging)*
+## ✅ Phase 1.7 — Billing & Messaging  *(payments + WhatsApp — external integrations behind faked adapters; real creds on staging)*
 
 **Goal:** real subscriptions (trial→paid→cancel via gateway webhooks), WhatsApp
 sending + metering, and the Engage surface (campaigns / segments / automations).
@@ -146,12 +146,12 @@ sending + metering, and the Engage surface (campaigns / segments / automations).
 Tests: `tests/test_billing_http.py`, `tests/test_messaging.py`.
 
 ### Tasks
-- [ ] Billing HTTP: GET /billing, subscribe (checkout), invoices, cancel
-- [ ] Paymob + Fawry webhook handlers (HMAC-verified) → activate_plan/lock
-- [ ] `Invoice` model + listing
-- [ ] `messaging/` app: WhatsApp client + `send_whatsapp` + `WhatsAppUsage` metering
-- [ ] `POST /customers/{id}/message` (gated)
-- [ ] Engage: campaigns (CRUD + send/schedule), segments, automations (+triggers)
+- [x] Billing HTTP: GET /billing, subscribe (checkout), invoices, cancel
+- [x] Paymob + Fawry webhook handlers (HMAC-verified) → activate_plan/lock
+- [x] `Invoice` model + listing
+- [x] `messaging/` app: WhatsApp client + `send_whatsapp` + `WhatsAppUsage` metering
+- [x] `POST /customers/{id}/message` (gated)
+- [x] Engage: campaigns (CRUD + send/schedule), segments, automations (+triggers)
 
 **Gating:** `whatsapp` capability + monthly quota; `automations` count.
 **Migration note:** `billing/` + `messaging/` only.
