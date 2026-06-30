@@ -2,7 +2,7 @@
 // scan resolves a wallet QR payload -> CardState; stamp/redeem are the live
 // loyalty engine (1.2). No react-query cache: each scan is a fresh till action.
 import { useMutation } from '@tanstack/react-query'
-import api from '../../lib/api'
+import api, { idempotent } from '../../lib/api'
 
 export function useScanActions() {
   const resolve = useMutation({
@@ -10,12 +10,18 @@ export function useScanActions() {
   })
   const stamp = useMutation({
     mutationFn: async ({ customerCardId, delta = 1 }) =>
-      (await api.post('/loyalty/stamp', { customer_card_id: customerCardId, delta })).data,
+      (await api.post('/loyalty/stamp', { customer_card_id: customerCardId, delta }, idempotent()))
+        .data,
   })
   const redeem = useMutation({
     mutationFn: async ({ customerCardId, rewardId }) =>
-      (await api.post('/loyalty/redeem', { customer_card_id: customerCardId, reward_id: rewardId }))
-        .data,
+      (
+        await api.post(
+          '/loyalty/redeem',
+          { customer_card_id: customerCardId, reward_id: rewardId },
+          idempotent()
+        )
+      ).data,
   })
   return { resolve, stamp, redeem }
 }

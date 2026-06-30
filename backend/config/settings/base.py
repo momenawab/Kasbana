@@ -180,6 +180,12 @@ CORS_ALLOWED_ORIGINS = env_list(
     "http://localhost:5173,http://localhost:5174,https://stampn.net,https://app.stampn.net",
 )
 
+# Allow the dashboard (different origin) to send the loyalty Idempotency-Key on
+# cross-origin stamp/redeem requests — preflight would otherwise reject it.
+from corsheaders.defaults import default_headers as _cors_default_headers  # noqa: E402
+
+CORS_ALLOW_HEADERS = (*_cors_default_headers, "idempotency-key")
+
 # ── Django REST Framework (contract §3.7, §3.10) ──────────────────────────────
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
