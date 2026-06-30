@@ -25,7 +25,18 @@ differentiates the paid plans.
 
 ---
 
-## 🧱 Phase 1 — Plan restructure (foundation, do first)
+## 🧱 Phase 1 — Plan restructure (foundation) — ✅ DONE
+
+Shipped: WhatsApp disabled on every plan (dormant adapter kept), wallet push is
+the only messaging channel; `specialized_roles` + `custom_branding` capabilities
+added and gated Growth+; Marketing/Designer role assignment enforces
+`specialized_roles` (402 below Growth); dashboard drops the WhatsApp channel
+pickers and filters the Team role dropdown by plan. FREE stays only as the
+locked-account display shape (never sellable). 196 backend tests green.
+
+<details><summary>Original plan (for reference)</summary>
+
+### Plan restructure
 
 **Goal:** one clean plan/feature matrix as the single source of truth, with the
 FREE plan and WhatsApp removed, and the new capabilities gated.
@@ -67,6 +78,8 @@ FREE plan and WhatsApp removed, and the new capabilities gated.
       hides Marketing/Designer below Growth.
 - [ ] Tests + migration note (PlanTier.FREE stays in the enum for old rows; just
       not offered).
+
+</details>
 
 ---
 

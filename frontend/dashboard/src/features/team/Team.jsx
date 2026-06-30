@@ -12,7 +12,7 @@ import Badge from '../../components/Badge'
 import Button from '../../components/Button'
 import { Modal } from '../../components/Modal'
 import { Input, Select } from '../../components/Field'
-import { ROLES } from '../../lib/roles'
+import { ROLES, SPECIALIZED_ROLES } from '../../lib/roles'
 
 function useStaff() {
   return useQuery({
@@ -23,7 +23,11 @@ function useStaff() {
 
 export default function Team() {
   const { t } = useTranslation()
-  const { atLimit, requireRoom } = usePlan()
+  const { atLimit, requireRoom, can } = usePlan()
+  // Marketing/Designer roles need the specialized_roles plan capability (Growth+).
+  const availableRoles = can('specialized_roles')
+    ? ROLES
+    : ROLES.filter((r) => !SPECIALIZED_ROLES.includes(r))
   const toast = useToast()
   const qc = useQueryClient()
   const { data: staff = [], isLoading } = useStaff()
@@ -75,7 +79,7 @@ export default function Team() {
             name={`role-${r.id}`}
             value={r.role}
             onChange={(e) => patchStaff.mutate({ id: r.id, role: e.target.value })}
-            options={ROLES.map((x) => ({ value: x, label: t(`roles.${x}`) }))}
+            options={availableRoles.map((x) => ({ value: x, label: t(`roles.${x}`) }))}
             disabled={isLastOwner}
           />
         )
@@ -121,7 +125,7 @@ export default function Team() {
             label={t('team.role')}
             value={role}
             onChange={(e) => setRole(e.target.value)}
-            options={ROLES.map((x) => ({ value: x, label: t(`roles.${x}`) }))}
+            options={availableRoles.map((x) => ({ value: x, label: t(`roles.${x}`) }))}
           />
         </div>
       </Modal>

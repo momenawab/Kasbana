@@ -13,6 +13,9 @@ export const AREAS_BY_ROLE = {
 
 export const ROLES = ['OWNER', 'ADMIN', 'MARKETING', 'DESIGNER', 'SCANNER']
 
+// Roles gated behind the `specialized_roles` plan capability (Growth+).
+export const SPECIALIZED_ROLES = ['MARKETING', 'DESIGNER']
+
 export function canAccess(role, area) {
   if (!area) return true // arealess screens (account settings) are open to all
   return (AREAS_BY_ROLE[role] || []).includes(area)

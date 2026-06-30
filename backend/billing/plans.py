@@ -35,14 +35,23 @@ TRIAL_PLAN = PlanTier.GROWTH
 # Capability groups. ``max_*`` are counted against live usage; the rest are
 # boolean feature flags. Keep in sync with ``entitlements.CAPABILITIES``.
 LIMIT_CAPABILITIES = frozenset({"max_cards", "max_locations", "max_staff", "max_customers"})
-FEATURE_CAPABILITIES = frozenset({"whatsapp", "export", "api"})
+# ``whatsapp`` is retained but OFF on every plan — wallet push (free) is the
+# messaging channel now; the WhatsApp adapter stays dormant (Fawry pattern), so
+# the capability and metering keep working should it ever be re-enabled.
+# ``specialized_roles`` gates the Marketing/Designer staff roles; ``custom_branding``
+# gates custom join-page branding / removing "Powered by Stampn". Both Growth+.
+FEATURE_CAPABILITIES = frozenset(
+    {"whatsapp", "export", "api", "specialized_roles", "custom_branding"}
+)
 
 # plan -> {capability: limit|flag}. ``None`` limit = unlimited.
 # ``automations`` (int) and ``analytics`` (basic|full) are display-only features
 # surfaced via /me's Entitlements — not gate capabilities, so they are NOT in
 # FEATURE_CAPABILITIES and never passed to ``entitlements.check()``.
-# ``whatsapp_quota`` is the monthly WhatsApp send allowance (``None`` = unlimited);
-# the ``whatsapp`` flag gates access, the quota caps volume (Phase 1.7 metering).
+#
+# FREE is not a sellable tier (subscribe offers Starter/Growth/Chain only) — it
+# only supplies the display "shape" for a locked/un-converted account, so it
+# stays here to avoid a KeyError but grants nothing.
 PLAN_LIMITS: dict[str, dict[str, int | bool | str | None]] = {
     PlanTier.FREE: {
         "max_cards": 1,
@@ -52,6 +61,8 @@ PLAN_LIMITS: dict[str, dict[str, int | bool | str | None]] = {
         "whatsapp": False,
         "export": False,
         "api": False,
+        "specialized_roles": False,
+        "custom_branding": False,
         "automations": 0,
         "analytics": "basic",
         "whatsapp_quota": 0,
@@ -61,33 +72,39 @@ PLAN_LIMITS: dict[str, dict[str, int | bool | str | None]] = {
         "max_locations": 2,
         "max_staff": 5,
         "max_customers": 2_000,
-        "whatsapp": True,
+        "whatsapp": False,
         "export": True,
         "api": False,
+        "specialized_roles": False,
+        "custom_branding": False,
         "automations": 2,
         "analytics": "basic",
-        "whatsapp_quota": 500,
+        "whatsapp_quota": 0,
     },
     PlanTier.GROWTH: {
         "max_cards": 10,
         "max_locations": 10,
         "max_staff": 25,
         "max_customers": 20_000,
-        "whatsapp": True,
+        "whatsapp": False,
         "export": True,
         "api": True,
+        "specialized_roles": True,
+        "custom_branding": True,
         "automations": 5,
         "analytics": "full",
-        "whatsapp_quota": 2_000,
+        "whatsapp_quota": 0,
     },
     PlanTier.CHAIN: {
         "max_cards": None,
         "max_locations": None,
         "max_staff": None,
         "max_customers": None,
-        "whatsapp": True,
+        "whatsapp": False,
         "export": True,
         "api": True,
+        "specialized_roles": True,
+        "custom_branding": True,
         "automations": 99,
         "analytics": "full",
         "whatsapp_quota": None,

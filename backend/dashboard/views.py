@@ -79,6 +79,16 @@ def _enqueue_google_sync(card: Card) -> None:
     sync_google_class.delay(str(card.id))
 
 
+_SPECIALIZED_ROLES = {Role.MARKETING, Role.DESIGNER}
+
+
+def _enforce_role_allowed(merchant: Any, role: str | None) -> None:
+    """The Marketing/Designer roles require the ``specialized_roles`` capability
+    (Growth+). Raises ``PlanLimit`` (402) otherwise."""
+    if role in _SPECIALIZED_ROLES:
+        entitlements.enforce(merchant, "specialized_roles")
+
+
 def _card_queryset(merchant: Any) -> QuerySet[Card]:
     """Tenant-scoped Card queryset with Phase 1.6 aggregates annotated."""
     return (
@@ -332,6 +342,7 @@ class StaffInviteView(generics.CreateAPIView):
     def perform_create(self, serializer: BaseSerializer) -> None:
         merchant = get_request_merchant(self.request)
         entitlements.enforce(merchant, "max_staff")
+        _enforce_role_allowed(merchant, serializer.validated_data.get("role"))
         serializer.save(merchant=merchant)
 
 
@@ -354,6 +365,10 @@ class StaffDetailView(generics.RetrieveUpdateAPIView):
 
         new_role = serializer.validated_data.get("role", instance.role)
         new_active = serializer.validated_data.get("is_active", instance.is_active)
+
+        # Promoting someone INTO a specialized role requires the plan capability.
+        if new_role != instance.role:
+            _enforce_role_allowed(merchant, new_role)
 
         if instance.role == Role.OWNER and (new_role != Role.OWNER or new_active is False):
             owners = StaffUser.objects.for_merchant(merchant).filter(role=Role.OWNER).count()

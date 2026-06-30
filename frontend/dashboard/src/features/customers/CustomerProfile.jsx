@@ -12,7 +12,7 @@ import Badge from '../../components/Badge'
 import Button from '../../components/Button'
 import Skeleton from '../../components/Skeleton'
 import { Modal } from '../../components/Modal'
-import { Textarea, Select } from '../../components/Field'
+import { Textarea } from '../../components/Field'
 import { arDigits, fromNow } from '../../lib/format'
 
 export default function CustomerProfile() {
@@ -28,7 +28,6 @@ export default function CustomerProfile() {
   const { stamp, message, remove } = useStampActions(id)
 
   const [msgOpen, setMsgOpen] = useState(false)
-  const [channel, setChannel] = useState('PUSH')
   const [text, setText] = useState('')
 
   async function doStamp(delta) {
@@ -42,7 +41,7 @@ export default function CustomerProfile() {
 
   async function sendMessage() {
     try {
-      await message.mutateAsync({ channel, text })
+      await message.mutateAsync({ channel: 'PUSH', text })
       toast.success(t('profile.messageSent'))
       setMsgOpen(false)
       setText('')
@@ -139,16 +138,7 @@ export default function CustomerProfile() {
         }
       >
         <div className="flex flex-col gap-3">
-          <Select
-            name="channel"
-            label={t('profile.channel')}
-            value={channel}
-            onChange={(e) => setChannel(e.target.value)}
-            options={[
-              { value: 'PUSH', label: t('profile.channelPush') },
-              { value: 'WHATSAPP', label: t('profile.channelWhatsapp') },
-            ]}
-          />
+          <p className="text-sm text-tx-3">{t('profile.channelPush')}</p>
           <Textarea name="text" label={t('profile.text')} value={text} onChange={(e) => setText(e.target.value)} />
         </div>
       </Modal>

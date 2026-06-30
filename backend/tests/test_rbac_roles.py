@@ -87,3 +87,26 @@ def test_lateral_roles_can_scan(merchant):
             "/api/v1/loyalty/stamp", {"customer_card_id": str(cc.id)}, format="json"
         )
         assert resp.status_code == 200, role
+
+
+# ── Specialized roles gated by plan (specialized_roles capability, Growth+) ────
+def test_starter_plan_cannot_invite_specialized_role(merchant):
+    from billing.services import activate_plan
+    from core.enums import PlanTier
+
+    activate_plan(merchant, PlanTier.STARTER)  # no specialized_roles
+    resp = _client(merchant, Role.OWNER).post(
+        "/api/v1/staff/invite", {"email": "m@x.co", "role": "MARKETING"}, format="json"
+    )
+    assert resp.status_code == 402
+
+
+def test_growth_plan_can_invite_specialized_role(merchant):
+    from billing.services import activate_plan
+    from core.enums import PlanTier
+
+    activate_plan(merchant, PlanTier.GROWTH)  # specialized_roles on
+    resp = _client(merchant, Role.OWNER).post(
+        "/api/v1/staff/invite", {"email": "d@x.co", "role": "DESIGNER"}, format="json"
+    )
+    assert resp.status_code == 201

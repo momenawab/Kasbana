@@ -42,7 +42,7 @@ def test_billing_state_during_trial(merchant):
     # Trial = Growth-level access, so the trial price reflects Growth.
     assert Decimal(str(body["price_egp"])) == Decimal("799")
     assert body["usage"]["whatsapp_used"] == 0
-    assert body["usage"]["whatsapp_quota"] == 2000
+    assert body["usage"]["whatsapp_quota"] == 0  # WhatsApp disabled (wallet push only)
 
 
 def test_billing_state_requires_admin(merchant):
