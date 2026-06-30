@@ -166,6 +166,47 @@ def test_create_campaign_scheduled(paid_merchant):
     assert metering.used_this_period(paid_merchant) == 0
 
 
+def test_send_due_campaigns_dispatches_only_past_due(paid_merchant):
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from messaging.enums import CampaignStatus
+    from messaging.tasks import send_due_campaigns
+    from wallets.models import WalletMessage
+
+    customer = factories.CustomerCardFactory(merchant=paid_merchant)
+    now = timezone.now()
+    due = Campaign.objects.create(
+        merchant=paid_merchant,
+        channel=MessageChannel.PUSH,
+        audience="all",
+        message="now",
+        status=CampaignStatus.SCHEDULED,
+        schedule_at=now - timedelta(minutes=1),
+    )
+    future = Campaign.objects.create(
+        merchant=paid_merchant,
+        channel=MessageChannel.PUSH,
+        audience="all",
+        message="later",
+        status=CampaignStatus.SCHEDULED,
+        schedule_at=now + timedelta(days=1),
+    )
+
+    claimed = send_due_campaigns()
+    assert claimed == 1  # only the past-due one
+
+    due.refresh_from_db()
+    future.refresh_from_db()
+    assert due.status == CampaignStatus.SENT
+    assert future.status == CampaignStatus.SCHEDULED  # untouched
+    assert WalletMessage.objects.filter(customer_card=customer, body="now").exists()
+
+    # A second tick is a no-op (already SENT, not re-dispatched).
+    assert send_due_campaigns() == 0
+
+
 def test_campaign_list_tenant_scoped(paid_merchant):
     other = factories.MerchantFactory()
     Campaign.objects.create(

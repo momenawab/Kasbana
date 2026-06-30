@@ -64,6 +64,33 @@ def send_campaign(campaign_id: str) -> int:
 
 
 @shared_task(queue="messaging")
+def send_due_campaigns() -> int:
+    """Beat: dispatch scheduled campaigns whose ``schedule_at`` has arrived.
+
+    Each campaign is claimed with a conditional update (SCHEDULED → SENDING) so a
+    concurrent beat tick or retry can't send it twice. Returns the count claimed.
+    """
+    from messaging.enums import CampaignStatus
+    from messaging.models import Campaign
+
+    now = timezone.now()
+    due = Campaign.objects.filter(
+        status=CampaignStatus.SCHEDULED, schedule_at__lte=now
+    ).values_list("id", flat=True)
+
+    claimed = 0
+    for campaign_id in list(due):
+        # Atomic claim: only proceed if this row is still SCHEDULED.
+        updated = Campaign.objects.filter(pk=campaign_id, status=CampaignStatus.SCHEDULED).update(
+            status=CampaignStatus.SENDING, updated_at=now
+        )
+        if updated:
+            send_campaign.delay(str(campaign_id))
+            claimed += 1
+    return claimed
+
+
+@shared_task(queue="messaging")
 def scan_automations() -> int:
     """Daily beat: fire date-driven automations (birthday / expiry / winback).
 

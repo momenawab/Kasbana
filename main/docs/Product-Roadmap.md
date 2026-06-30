@@ -85,8 +85,10 @@ FREE plan and WhatsApp removed, and the new capabilities gated.
 
 ## ⚡ Phase 2 — Quick wins (reuse what half-exists)
 
-- [ ] **Scheduled wallet campaigns** — `Campaign.schedule_at` already exists; add
-      a beat task that sends due campaigns. (Small.)
+- [x] **Scheduled wallet campaigns** — `messaging.tasks.send_due_campaigns` beat
+      task (every 60s) claims SCHEDULED campaigns whose `schedule_at` has passed
+      (atomic SCHEDULED→SENDING update so no double-send) and dispatches them.
+      The compose screen's existing date-time field now works end to end.
 - [ ] **Advanced segments** — extend the existing `lapsed`/`reward_ready` segment
       catalogue with more filters (by card, location, stamp count, join date). (Small.)
 - [ ] **Poster / QR generator** — the deferred `poster_pdf_url`: a printable
