@@ -8,6 +8,7 @@ As with Paymob, an unset ``FAWRY_MERCHANT_CODE`` puts the adapter in stub mode.
 from __future__ import annotations
 
 import hashlib
+import hmac
 import json
 from decimal import Decimal
 from typing import Any
@@ -120,7 +121,8 @@ class FawryGateway:
             f"{payload.get('paymentRefrenceNumber', '')}{status}{order_amount}{security_key}"
         )
         expected = hashlib.sha256(raw.encode()).hexdigest()
-        if expected != received:
+        # Constant-time compare on the security boundary (matches Paymob's adapter).
+        if not hmac.compare_digest(expected, received):
             raise WebhookVerificationError("Fawry signature mismatch.")
 
     @staticmethod

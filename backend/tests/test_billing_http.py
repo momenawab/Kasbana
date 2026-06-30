@@ -132,6 +132,55 @@ def test_paymob_webhook_failed_payment_records_failed_invoice(settings, merchant
     assert Invoice.objects.get(merchant=merchant).status == "failed"
 
 
+def test_paymob_webhook_replay_is_idempotent(settings, merchant):
+    """A gateway retry of the same success event must not double-bill or
+    re-activate — one paid invoice, plan active, both calls acknowledged."""
+    settings.DEBUG = True
+    client, _ = _client_for(Role.OWNER, merchant)
+    client.post("/api/v1/billing/subscribe", {"plan": "growth"}, format="json")
+    sub = Subscription.objects.get(merchant=merchant)
+    body = _paymob_body(sub.gateway_ref, success=True)
+
+    first = client.post(
+        "/api/v1/billing/webhook/paymob", data=body, content_type="application/json"
+    )
+    second = client.post(
+        "/api/v1/billing/webhook/paymob", data=body, content_type="application/json"
+    )
+    assert first.status_code == 200
+    assert second.status_code == 200
+
+    # Exactly one paid invoice despite the replay.
+    assert Invoice.objects.filter(merchant=merchant, status="paid").count() == 1
+    sub.refresh_from_db()
+    assert sub.status == BillingStatus.ACTIVE
+    assert sub.plan == PlanTier.GROWTH
+
+
+def _fawry_body(*, ref: str, status: str = "PAID", amount: str = "799.00", sig: str = "bad"):
+    return json.dumps(
+        {
+            "merchantRefNumber": ref,
+            "orderStatus": status,
+            "paymentAmount": amount,
+            "paymentRefrenceNumber": "fawry-txn-1",
+            "messageSignature": sig,
+        }
+    ).encode()
+
+
+def test_fawry_webhook_bad_signature_rejected(settings, merchant):
+    settings.DEBUG = False
+    settings.BILLING = {**settings.BILLING, "FAWRY": {"SECURITY_KEY": "shh", "MERCHANT_CODE": "mc"}}
+    client, _ = _client_for(Role.OWNER, merchant)
+    resp = client.post(
+        "/api/v1/billing/webhook/fawry",
+        data=_fawry_body(ref="ref123", sig="not-the-real-signature"),
+        content_type="application/json",
+    )
+    assert resp.status_code == 400
+
+
 def test_paymob_webhook_bad_hmac_rejected(settings, merchant):
     settings.DEBUG = False
     settings.BILLING = {**settings.BILLING, "PAYMOB": {"HMAC_SECRET": "shh"}}
