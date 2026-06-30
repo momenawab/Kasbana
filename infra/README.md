@@ -13,7 +13,9 @@ caddy/Caddyfile        reverse proxy + automatic HTTPS
 .env.prod.example      template for the server's infra/.env (secrets — not committed)
 scripts/provision.sh   one-time host setup (Docker + 4GB swap + dirs)
 scripts/deploy.sh      pull image → migrate → roll services (run on the server)
-scripts/backup.sh      nightly pg_dump → /opt/stampn/backups (+ optional S3)
+scripts/backup.sh      nightly pg_dump → /opt/stampn/backups → off-box (S3)
+scripts/verify_backup.sh  weekly: restore the latest dump into a throwaway DB
+scripts/restore.sh     disaster recovery: restore a dump into the live DB
 ```
 
 ## How deployment works
@@ -47,12 +49,42 @@ ssh -i key.pem ubuntu@13.49.70.197 'nano /opt/stampn/infra/.env'   # fill real v
 # 3. Add GitHub Actions secrets (used by deploy-prod.yml):
 #    EC2_HOST=13.49.70.197   EC2_USER=ubuntu   EC2_SSH_KEY=<contents of key.pem>
 
-# 4. Schedule nightly backups
+# 4. Schedule backups (nightly dump + weekly verified restore)
 ssh -i key.pem ubuntu@13.49.70.197 \
-  '(crontab -l 2>/dev/null; echo "30 2 * * * /opt/stampn/infra/scripts/backup.sh >> /opt/stampn/backups/backup.log 2>&1") | crontab -'
+  '(crontab -l 2>/dev/null;
+    echo "30 2 * * * /opt/stampn/infra/scripts/backup.sh >> /opt/stampn/backups/backup.log 2>&1";
+    echo "0 4 * * 0 /opt/stampn/infra/scripts/verify_backup.sh >> /opt/stampn/backups/verify.log 2>&1"
+   ) | crontab -'
 ```
 
 Then promote to `prod` to ship.
+
+## Backups & disaster recovery
+
+The DB is the only irreplaceable state. Three scripts cover it:
+
+- **`backup.sh`** (nightly, 02:30) — `pg_dump | gzip` to `/opt/stampn/backups`,
+  integrity-checks the dump, ships it **off-box**, and prunes local copies >7 days.
+- **`verify_backup.sh`** (weekly, Sun 04:00) — restores the *latest* dump into a
+  throwaway Postgres container and asserts it loads (migrations + `core_merchant`).
+  A backup you've never restored is a guess; this makes it a guarantee. Never
+  touches prod.
+- **`restore.sh <dump.sql.gz>`** — disaster recovery. Resets the schema and
+  restores a dump into the **live** DB (destructive; asks you to type the DB name).
+
+**Off-box storage (do this — a backup only on the same server is not a backup):**
+set in `infra/.env`:
+
+```bash
+BACKUP_S3=s3://your-bucket/stampn
+```
+
+and give the box an IAM role / `aws configure` with `s3:PutObject` on that bucket.
+`backup.sh` then uploads each dump and **fails loudly** if it can't (cron logs it).
+Without `BACKUP_S3` the script still runs but warns that the dump is on-box only.
+
+**To recover** (e.g. server lost): provision a fresh box, pull a dump from S3
+(`aws s3 cp s3://your-bucket/stampn/<file> .`), then `scripts/restore.sh <file>`.
 
 ## GitHub Actions secrets
 

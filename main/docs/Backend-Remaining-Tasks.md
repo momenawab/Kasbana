@@ -208,7 +208,11 @@ camera permission UX on iOS Safari + a live scan→stamp→pass-update round-tri
 
 - [x] **Sentry** — errors + Celery + log forwarding, release-tagged. *(done, live)*
 - [ ] **Structured logging** — JSON logs, request IDs.
-- [ ] **Backups** — nightly off-box `pg_dump` (cron + offsite store) + verified restore.
+- [x] **Backups** — `backup.sh` (nightly `pg_dump` → off-box S3 via `BACKUP_S3`,
+      integrity-checked, 7-day local prune), `verify_backup.sh` (weekly restore into
+      a throwaway Postgres — proves dumps load), `restore.sh` (disaster recovery into
+      the live DB). Docs + cron lines in `infra/README.md`. *(Server-side: set
+      `BACKUP_S3` + AWS creds and install the two crons — scripts ship via `infra/` sync.)*
 - [ ] **Secret rotation** — wallet/gateway/WhatsApp keys; document the runbook.
 - [x] **Edge rate-limits** — DRF `ScopedRateThrottle` on the brute-force surface:
       `auth` scope (login + signup/forgot/reset/invite, `THROTTLE_AUTH`=20/min) and
