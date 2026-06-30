@@ -77,6 +77,31 @@ def test_redeem_below_threshold_raises(customer_card, reward):
         ledger.redeem_reward(customer_card, reward)
 
 
+def test_single_use_card_completes_on_redeem(customer_card, reward, no_cooldown):
+    from core.enums import CustomerCardStatus
+
+    customer_card.card.single_use = True
+    customer_card.card.save(update_fields=["single_use"])
+    for _ in range(5):
+        ledger.add_stamp(customer_card)
+
+    ledger.redeem_reward(customer_card, reward)
+    customer_card.refresh_from_db()
+    assert customer_card.status == CustomerCardStatus.COMPLETED
+
+
+def test_reusable_card_stays_active_on_redeem(customer_card, reward, no_cooldown):
+    from core.enums import CustomerCardStatus
+
+    assert customer_card.card.single_use is False  # default
+    for _ in range(5):
+        ledger.add_stamp(customer_card)
+
+    ledger.redeem_reward(customer_card, reward)
+    customer_card.refresh_from_db()
+    assert customer_card.status == CustomerCardStatus.ACTIVE
+
+
 def test_ledger_is_append_only_trail(customer_card, reward, no_cooldown):
     ledger.record_enrollment(customer_card)
     for _ in range(5):

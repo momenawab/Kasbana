@@ -139,10 +139,11 @@ class GoogleWalletBackend:
             return
         oid = builders.object_id_for(customer_card)
         patch = {
+            "state": builders.object_state_for(customer_card),
             "loyaltyPoints": {
                 "label": "Stamps",
                 "balance": {"int": customer_card.stamp_count},
-            }
+            },
         }
         with client:
             resp = client.patch(f"/loyaltyObject/{oid}", json=patch)

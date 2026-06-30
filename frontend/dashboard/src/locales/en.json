@@ -288,6 +288,8 @@
     "stampsRange": "Must be between 1 and 30.",
     "rewardDescription": "Reward description",
     "collectBirthday": "Collect customer birthday",
+    "singleUse": "Single-use card",
+    "singleUseHint": "The card expires from the customer's wallet once the reward is redeemed (instead of resetting to keep collecting).",
     "saveDraft": "Save draft",
     "publish": "Publish",
     "savedDraft": "Draft saved.",

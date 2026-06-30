@@ -25,6 +25,7 @@ const EMPTY = {
   color_fg: '#FFFFFF',
   logo_url: '',
   hero_image_url: '',
+  single_use: false,
   collect_birthday: false,
 }
 
@@ -97,6 +98,7 @@ export default function CardDesigner() {
         color_fg: form.color_fg,
         logo_url: form.logo_url || '',
         hero_image_url: form.hero_image_url || '',
+        single_use: form.single_use,
         status,
       }
       const card = await save.mutateAsync(payload)
@@ -192,6 +194,14 @@ export default function CardDesigner() {
             onChange={set('collect_birthday')}
             label={t('designer.collectBirthday')}
           />
+          <div>
+            <Toggle
+              checked={form.single_use}
+              onChange={set('single_use')}
+              label={t('designer.singleUse')}
+            />
+            <p className="mt-1 text-xs text-tx-3">{t('designer.singleUseHint')}</p>
+          </div>
           <div className="flex gap-2 pt-2">
             <Button variant="ghost" onClick={() => persist('DRAFT')} loading={save.isPending} className="flex-1">
               {t('designer.saveDraft')}

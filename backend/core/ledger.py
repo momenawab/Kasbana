@@ -18,7 +18,7 @@ from django.utils import timezone
 
 from common.errors import CooldownActive, RateLimited, RewardNotReady
 from core import constants
-from core.enums import LedgerEvent, RedemptionStatus
+from core.enums import CustomerCardStatus, LedgerEvent, RedemptionStatus
 from core.models import CustomerCard, Redemption, Reward, StaffUser, StampLedger
 
 
@@ -110,6 +110,12 @@ def redeem_reward(
             note=f"Redeemed: {reward.title}",
         )
         _apply_balance(card, new_balance)
+
+        # Single-use programs complete on redeem — the pass is expired/voided by
+        # the wallet builders once the card is no longer ACTIVE.
+        if card.card.single_use and card.status != CustomerCardStatus.COMPLETED:
+            card.status = CustomerCardStatus.COMPLETED
+            card.save(update_fields=["status", "updated_at"])
 
         return Redemption.objects.create(
             customer_card=card,

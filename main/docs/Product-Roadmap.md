@@ -102,9 +102,11 @@ FREE plan and WhatsApp removed, and the new capabilities gated.
 
 ## 🏗️ Phase 3 — Bigger features (more design each)
 
-- [ ] **Single-use / expiring cards** — per-card "expire after redeem" toggle;
-      on redeem, mark the pass expired (Google `state=EXPIRED`, Apple `voided`).
-      *(Paused mid-design — see notes below.)*
+- [x] **Single-use / expiring cards** — `Card.single_use` toggle (core migration
+      0006). On redeem, a single-use card's CustomerCard flips to `COMPLETED`; the
+      wallet builders then render the pass as Google `state=EXPIRED` + Apple
+      `voided` (push_update patches the Google state too). Designer toggle + hint
+      (en/ar). Reusable cards (default) keep resetting as before.
 - [ ] **Branded enrollment page** — custom colors/copy on the public join page
       (gated by `custom_branding`).
 - [ ] **Referral program** — customer refers a friend; both earn a stamp. New

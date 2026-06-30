@@ -86,6 +86,18 @@ def test_pass_json_has_no_message_field_without_a_message(customer_card):
     assert p["storeCard"]["backFields"] == []
 
 
+def test_active_pass_is_not_voided(customer_card):
+    assert "voided" not in passdata.build_pass_json(customer_card)
+
+
+def test_completed_pass_is_voided(customer_card):
+    from core.enums import CustomerCardStatus
+
+    customer_card.status = CustomerCardStatus.COMPLETED
+    customer_card.save(update_fields=["status"])
+    assert passdata.build_pass_json(customer_card)["voided"] is True
+
+
 def test_pass_json_surfaces_latest_message_with_change_message(customer_card):
     from wallets.models import WalletMessage
 

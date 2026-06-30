@@ -54,12 +54,14 @@ def _message_back_fields(customer_card: CustomerCard) -> list[dict]:
 
 
 def build_pass_json(customer_card: CustomerCard) -> dict:
+    from core.enums import CustomerCardStatus
+
     card = customer_card.card
     merchant = card.merchant
     bg = _rgb(card.color_bg or merchant.color_bg, "#0b7a5b")
     fg = _rgb(card.color_fg or merchant.color_fg, "#ffffff")
 
-    return {
+    payload = {
         "formatVersion": 1,
         "passTypeIdentifier": pass_type_id(),
         "serialNumber": str(customer_card.id),
@@ -92,3 +94,8 @@ def build_pass_json(customer_card: CustomerCard) -> dict:
             }
         ],
     }
+    # Void a no-longer-active pass (single-use completion / blocked) — iOS greys
+    # it out and marks it expired.
+    if customer_card.status != CustomerCardStatus.ACTIVE:
+        payload["voided"] = True
+    return payload
