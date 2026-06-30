@@ -89,8 +89,10 @@ FREE plan and WhatsApp removed, and the new capabilities gated.
       task (every 60s) claims SCHEDULED campaigns whose `schedule_at` has passed
       (atomic SCHEDULED→SENDING update so no double-send) and dispatches them.
       The compose screen's existing date-time field now works end to end.
-- [ ] **Advanced segments** — extend the existing `lapsed`/`reward_ready` segment
-      catalogue with more filters (by card, location, stamp count, join date). (Small.)
+- [x] **Advanced segments** — added `new` (joined <7d), `active` (<30d),
+      `birthday_month`, and per-card `card:<id>` segments to the catalogue
+      (`location:<id>` already resolvable). The compose audience dropdown renders
+      them automatically; no FE change.
 - [ ] **Poster / QR generator** — the deferred `poster_pdf_url`: a printable
       table-tent PDF with the join QR + branding. (Medium.)
 

@@ -249,6 +249,31 @@ def test_segments_listing(paid_merchant, no_cooldown):
     by_key = {s["key"]: s for s in resp.json()["results"]}
     assert by_key["all"]["count"] == 2
     assert by_key["reward_ready"]["count"] == 1
+    # New advanced segments are present; both customers joined just now.
+    assert by_key["new"]["count"] == 2
+    assert by_key["active"]["count"] == 1  # only `ready` has ledger activity
+    assert "birthday_month" in by_key
+    # One per-card segment is surfaced for the program above.
+    assert by_key[f"card:{card.id}"]["count"] == 1
+
+
+def test_segment_birthday_month_resolves(paid_merchant):
+    from datetime import date
+
+    from django.utils import timezone
+
+    from messaging.segments import resolve
+
+    this_month = timezone.now().month
+    match = factories.CustomerCardFactory(
+        merchant=paid_merchant, birthday=date(1990, this_month, 15)
+    )
+    other_month = 1 if this_month != 1 else 2
+    factories.CustomerCardFactory(merchant=paid_merchant, birthday=date(1990, other_month, 15))
+
+    ids = set(resolve(paid_merchant, "birthday_month").values_list("id", flat=True))
+    assert match.id in ids
+    assert len(ids) == 1
 
 
 # ── automations ───────────────────────────────────────────────────────────────
