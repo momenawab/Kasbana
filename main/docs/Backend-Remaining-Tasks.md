@@ -210,7 +210,12 @@ camera permission UX on iOS Safari + a live scan→stamp→pass-update round-tri
 - [ ] **Structured logging** — JSON logs, request IDs.
 - [ ] **Backups** — nightly off-box `pg_dump` (cron + offsite store) + verified restore.
 - [ ] **Secret rotation** — wallet/gateway/WhatsApp keys; document the runbook.
-- [ ] **Edge rate-limits** — per-IP / per-token throttling (DRF throttles + Caddy).
+- [x] **Edge rate-limits** — DRF `ScopedRateThrottle` on the brute-force surface:
+      `auth` scope (login + signup/forgot/reset/invite, `THROTTLE_AUTH`=20/min) and
+      `webhook` scope (Paymob/Fawry callbacks, `THROTTLE_WEBHOOK`=120/min). Counters
+      in Redis (`CACHES` → `REDIS_URL`) so they're shared across web workers; LocMem
+      locally. Other endpoints opt-out by not setting `throttle_scope`. *(Caddy-level
+      per-IP limits still optional.)*
 - [ ] **DB indexing review** + Celery worker scaling under load.
 - [ ] **Frontend Sentry** (when dashboard ships) — browser SDK in `frontend/dashboard`,
       tied to the FE-Dash deploy.

@@ -142,6 +142,7 @@ class _WebhookView(APIView):
 
     permission_classes = [AllowAny]
     authentication_classes: list = []
+    throttle_scope = "webhook"  # per-IP cap on the unauthenticated webhooks (Phase 1.8)
     provider: str = ""
 
     @extend_schema(request=None, responses=None)

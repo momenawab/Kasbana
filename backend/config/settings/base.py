@@ -198,6 +198,28 @@ REST_FRAMEWORK = {
     "PAGE_SIZE": constants.DEFAULT_PAGE_SIZE,
     "EXCEPTION_HANDLER": "common.errors.exception_handler",
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    # Edge rate-limiting (Phase 1.8). ScopedRateThrottle no-ops on any view that
+    # doesn't set ``throttle_scope``, so this only bites the sensitive endpoints
+    # that opt in (auth brute-force surface + the unauthenticated webhooks).
+    "DEFAULT_THROTTLE_CLASSES": ["rest_framework.throttling.ScopedRateThrottle"],
+    "DEFAULT_THROTTLE_RATES": {
+        "auth": env("THROTTLE_AUTH", "20/min"),
+        "webhook": env("THROTTLE_WEBHOOK", "120/min"),
+    },
+}
+
+# Throttle counters live in the cache; use Redis in prod so they're shared across
+# web workers (LocMem is per-process — fine for local/tests).
+_redis_url = env("REDIS_URL", "")
+CACHES = {
+    "default": (
+        {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": _redis_url,
+        }
+        if _redis_url
+        else {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}
+    )
 }
 
 SIMPLE_JWT = {

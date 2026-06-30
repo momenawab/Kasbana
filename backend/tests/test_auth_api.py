@@ -20,6 +20,22 @@ def test_schema_endpoint_serves_openapi(api_client):
     assert resp.status_code == 200
 
 
+def test_login_is_rate_limited(api_client):
+    """The login endpoint is throttled (auth scope, 20/min) to blunt brute
+    force. The throttle runs before auth, so even bad-credential attempts count."""
+    statuses = [
+        api_client.post(
+            "/api/v1/auth/token",
+            {"email": "x@y.z", "password": "wrong"},
+            format="json",
+        ).status_code
+        for _ in range(22)
+    ]
+    # The first 20 are processed (401 bad creds); the rest are throttled.
+    assert statuses[:20] == [401] * 20
+    assert statuses[-1] == 429
+
+
 def test_token_obtain_with_email(api_client):
     factories.UserFactory(email="owner@example.com", password="pw12345!")
     resp = api_client.post(
