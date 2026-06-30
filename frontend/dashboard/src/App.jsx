@@ -9,6 +9,7 @@ import Invite from './features/auth/Invite'
 import Enroll from './features/enroll/Enroll'
 import Onboarding from './features/onboarding/Onboarding'
 import Overview from './features/overview/Overview'
+import Scan from './features/scan/Scan'
 import CardsList from './features/cards/CardsList'
 import CardDesigner from './features/cards/CardDesigner'
 import CardDetail from './features/cards/CardDetail'
@@ -47,6 +48,7 @@ export default function App() {
         }
       >
         <Route path="/" element={<Overview />} />
+        <Route path="/scan" element={<Scan />} />
         <Route path="/cards" element={<CardsList />} />
         <Route path="/cards/new" element={<CardDesigner />} />
         <Route path="/cards/:id" element={<CardDetail />} />

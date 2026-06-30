@@ -2,6 +2,7 @@ import { NavLink } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   LayoutDashboard,
+  ScanLine,
   CreditCard,
   Users,
   BarChart3,
@@ -15,6 +16,7 @@ import {
 // Order matters: first 5 also form the mobile bottom nav.
 const NAV = [
   { to: '/', key: 'overview', Icon: LayoutDashboard, end: true },
+  { to: '/scan', key: 'scan', Icon: ScanLine },
   { to: '/cards', key: 'cards', Icon: CreditCard },
   { to: '/customers', key: 'customers', Icon: Users },
   { to: '/analytics', key: 'analytics', Icon: BarChart3 },

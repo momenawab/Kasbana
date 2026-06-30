@@ -34,10 +34,32 @@ from loyalty.serializers import (
     CardStateSerializer,
     RedeemRequestSerializer,
     RedeemResponseSerializer,
+    ScanRequestSerializer,
     StampRequestSerializer,
     StampResponseSerializer,
 )
 from wallets import service as wallet
+
+
+def _card_state(card: CustomerCard) -> dict:
+    """Shared ``CardState`` payload for the scan + card-state endpoints.
+
+    Surfaces the program's active reward (lowest threshold first) so the cashier
+    UI can redeem in one tap; ``None``/blank when no active reward is configured.
+    """
+    reward = card.card.rewards.filter(is_active=True).order_by("threshold").first()
+    return CardStateSerializer(
+        {
+            "customer_card_id": card.id,
+            "customer_name": card.customer_name,
+            "stamp_count": card.stamp_count,
+            "stamps_required": card.card.stamps_required,
+            "reward_ready": ledger.is_reward_ready(card),
+            "status": card.status,
+            "reward_id": reward.id if reward else None,
+            "reward_title": reward.title if reward else "",
+        }
+    ).data
 
 
 class StampView(APIView):
@@ -128,6 +150,26 @@ class RedeemView(APIView):
         return Response(payload)
 
 
+class ScanView(APIView):
+    """POST /loyalty/scan — resolve a scanned wallet QR to its card state.
+
+    The cashier UI scans the customer's pass barcode and POSTs the raw ``code``;
+    we strip the ``PASS_BARCODE_PREFIX``, resolve the card *within the caller's
+    merchant* (cross-tenant codes are 404), and return the same ``CardState`` as
+    ``GET /loyalty/cards/{id}`` — so the till can show "Ahmed — 7/10, reward
+    ready" before the staffer taps stamp or redeem. Read-only; no ledger write.
+    """
+
+    permission_classes = [IsScannerOrAbove]
+
+    @extend_schema(request=ScanRequestSerializer, responses=CardStateSerializer)
+    def post(self, request: Request) -> Response:
+        body = ScanRequestSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+        card = get_scoped(CustomerCard, request, id=body.validated_data["code"])
+        return Response(_card_state(card))
+
+
 class CardStateView(APIView):
     """GET /loyalty/cards/{customer_card_id} — current balance & reward state."""
 
@@ -136,14 +178,4 @@ class CardStateView(APIView):
     @extend_schema(responses=CardStateSerializer)
     def get(self, request: Request, customer_card_id: str) -> Response:
         card = get_scoped(CustomerCard, request, id=customer_card_id)
-        payload = CardStateSerializer(
-            {
-                "customer_card_id": card.id,
-                "customer_name": card.customer_name,
-                "stamp_count": card.stamp_count,
-                "stamps_required": card.card.stamps_required,
-                "reward_ready": ledger.is_reward_ready(card),
-                "status": card.status,
-            }
-        ).data
-        return Response(payload)
+        return Response(_card_state(card))

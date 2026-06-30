@@ -161,6 +161,49 @@ enqueued + metered (quota→402); campaigns/automations CRUD; lint/type/tests cl
 
 ---
 
+## 🟡 Cashier Scan (POS) — staff QR scanning  *(not in the frozen v1.1.0 contract)*
+
+**Goal:** a barista at the till opens the dashboard on any camera device
+(phone/tablet/laptop), scans the customer's wallet QR, sees who they are + their
+balance, then taps **Add stamp** or **Redeem free coffee**. The loyalty engine
+(`stamp`/`redeem`) already exists; the gap was a clean scan-resolve step + the UI.
+
+### Backend — ✅ done (`dev`)
+- `POST /loyalty/scan {code}` → `CardState` (`loyalty/views.py:ScanView`).
+  Strips `PASS_BARCODE_PREFIX` (`WLA`) + parses the card UUID from the pass
+  barcode (`WLA<id.hex>`, same value both Apple & Google builders emit),
+  resolves it **tenant-scoped** (cross-merchant codes → 404), returns the same
+  shape as `GET /loyalty/cards/{id}`. Read-only — no ledger write, no pass push.
+  Role: Scanner+. Malformed code → `VALIDATION_ERROR` (422/400).
+- Tests: `tests/test_loyalty_api.py` (resolve, read-only, malformed, cross-tenant,
+  auth) — 5 new, suite green; ruff/black/mypy/spectacular clean.
+- **Contract note:** `/loyalty/scan` is a **new endpoint beyond frozen v1.1.0** —
+  fold into `contracts/openapi.yaml` on the next contract bump (drf-spectacular
+  already exposes it at `/api/schema`).
+
+### Frontend — ✅ built (`dev`, dashboard)
+- New **Scan / Till** feature: `frontend/dashboard/src/features/scan/`
+  (`Scan.jsx`, `useQrScanner.js` camera hook, `api.js`). Route `/scan`; nav entry
+  added as the 2nd item so it shows in the **mobile bottom nav** (cashiers are on
+  phones). Icon `ScanLine`. i18n in en + ar (`nav.scan`, `scan.*`).
+- Camera reader: native `BarcodeDetector` (Chrome/Android) with a **jsQR**
+  per-frame fallback (iOS/Safari, where most tills run); `jsqr` added to deps.
+  Camera is released the moment a result shows or the screen unmounts.
+- On decode → `POST /loyalty/scan` → result card (customer name +
+  `stamp_count/required` + reward-ready badge) → **Add stamp** (`/loyalty/stamp`)
+  and **Redeem {reward}** (`/loyalty/redeem`, enabled only when reward-ready).
+  404 → "not your customer"; 429 cooldown + `REWARD_NOT_READY` surfaced as toasts.
+- **HID barcode-gun / manual entry**: an always-present input (gun keystrokes or
+  paste → Enter) calls the same `/loyalty/scan`, so camera-less tills work too.
+- Backend now also returns `reward_id`/`reward_title` on the `CardState` (scan +
+  `GET /loyalty/cards/{id}`) so redeem is one tap (additive; tests updated).
+- Verified: `npm run lint` clean, `npm run build` passes.
+
+**Remaining (staging):** exercise on a real phone camera against the API — confirm
+camera permission UX on iOS Safari + a live scan→stamp→pass-update round-trip.
+
+---
+
 ## ⬜ Phase 1.8 — Hardening, Observability & Scale  *(cross-cutting infra)*
 
 - [x] **Sentry** — errors + Celery + log forwarding, release-tagged. *(done, live)*

@@ -174,6 +174,61 @@ def test_get_card_state_other_merchant_is_404(auth_client):
     assert resp.status_code == 404
 
 
+# ── scan (cashier QR resolve) ─────────────────────────────────────────────────
+SCAN_URL = "/api/v1/loyalty/scan"
+
+
+def _barcode(customer_card) -> str:
+    """The payload encoded in the wallet pass QR (Apple + Google builders)."""
+    from core import constants
+
+    return f"{constants.PASS_BARCODE_PREFIX}{customer_card.id.hex}"
+
+
+def test_scan_resolves_card_state(auth_client, customer_card, reward):
+    customer_card.stamp_count = 4
+    customer_card.save(update_fields=["stamp_count"])
+
+    resp = auth_client.post(SCAN_URL, {"code": _barcode(customer_card)}, format="json")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["customer_card_id"] == str(customer_card.id)
+    assert body["stamp_count"] == 4
+    assert body["stamps_required"] == customer_card.card.stamps_required
+    assert body["reward_ready"] is False
+    assert body["status"] == "ACTIVE"
+    # The program's active reward is surfaced for one-tap redeem.
+    assert body["reward_id"] == str(reward.id)
+    assert body["reward_title"] == reward.title
+
+
+def test_scan_is_read_only(auth_client, customer_card, push_calls):
+    before = customer_card.stamp_count
+    auth_client.post(SCAN_URL, {"code": _barcode(customer_card)}, format="json")
+    customer_card.refresh_from_db()
+    assert customer_card.stamp_count == before  # scan never mutates the ledger
+    assert push_calls == []  # nor pushes a pass update
+
+
+def test_scan_malformed_code_is_422(auth_client):
+    resp = auth_client.post(SCAN_URL, {"code": "not-a-wallet-code"}, format="json")
+    assert resp.status_code == 400
+    assert resp.json()["error"]["code"] == "VALIDATION_ERROR"
+    assert "code" in resp.json()["error"]["fields"]
+
+
+def test_scan_other_merchant_card_is_404(auth_client):
+    other = factories.CustomerCardFactory()  # different merchant
+    resp = auth_client.post(SCAN_URL, {"code": _barcode(other)}, format="json")
+    assert resp.status_code == 404
+    assert resp.json()["error"]["code"] == "NOT_FOUND"
+
+
+def test_scan_requires_auth(api_client, customer_card):
+    resp = api_client.post(SCAN_URL, {"code": _barcode(customer_card)}, format="json")
+    assert resp.status_code == 401
+
+
 # ── anti-fraud & RBAC at the API boundary ─────────────────────────────────────
 def _bearer(api_client, user):
     from rest_framework_simplejwt.tokens import RefreshToken

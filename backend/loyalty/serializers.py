@@ -7,7 +7,33 @@ validate the wire format and never touch the ledger.
 
 from __future__ import annotations
 
+import uuid
+
 from rest_framework import serializers
+
+from core import constants
+
+
+class ScanRequestSerializer(serializers.Serializer):
+    """POST /loyalty/scan request body.
+
+    ``code`` is the raw payload read from the customer's wallet QR/barcode:
+    ``{PASS_BARCODE_PREFIX}{customer_card.id.hex}`` (see ``wallets`` builders).
+    We validate the prefix + hex here and expose the parsed ``customer_card_id``
+    so the view only does tenant scoping — the wire format stays server-owned
+    (the cashier UI never has to know the prefix).
+    """
+
+    code = serializers.CharField(max_length=64, trim_whitespace=True)
+
+    def validate_code(self, value: str) -> uuid.UUID:
+        prefix = constants.PASS_BARCODE_PREFIX
+        if not value.startswith(prefix):
+            raise serializers.ValidationError("Unrecognized wallet code.")
+        try:
+            return uuid.UUID(hex=value[len(prefix) :])
+        except ValueError as exc:
+            raise serializers.ValidationError("Unrecognized wallet code.") from exc
 
 
 class StampRequestSerializer(serializers.Serializer):
@@ -43,7 +69,12 @@ class RedeemResponseSerializer(serializers.Serializer):
 
 
 class CardStateSerializer(serializers.Serializer):
-    """GET /loyalty/cards/{customer_card_id} response."""
+    """GET /loyalty/cards/{customer_card_id} + POST /loyalty/scan response.
+
+    ``reward_id``/``reward_title`` describe the program's active reward so the
+    cashier (scan) UI can redeem in one tap; both are null/blank when the program
+    has no active reward configured.
+    """
 
     customer_card_id = serializers.UUIDField()
     customer_name = serializers.CharField(allow_blank=True)
@@ -51,3 +82,5 @@ class CardStateSerializer(serializers.Serializer):
     stamps_required = serializers.IntegerField()
     reward_ready = serializers.BooleanField()
     status = serializers.CharField()
+    reward_id = serializers.UUIDField(allow_null=True, required=False)
+    reward_title = serializers.CharField(allow_blank=True, required=False)
