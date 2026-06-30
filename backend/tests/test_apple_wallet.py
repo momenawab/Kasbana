@@ -81,6 +81,26 @@ def test_pass_json_has_required_fields(customer_card):
     assert p["storeCard"]["primaryFields"][0]["value"] == 2
 
 
+def test_pass_json_has_no_message_field_without_a_message(customer_card):
+    p = passdata.build_pass_json(customer_card)
+    assert p["storeCard"]["backFields"] == []
+
+
+def test_pass_json_surfaces_latest_message_with_change_message(customer_card):
+    from wallets.models import WalletMessage
+
+    WalletMessage.objects.create(customer_card=customer_card, body="Old offer")
+    WalletMessage.objects.create(customer_card=customer_card, title="Promo", body="Free coffee!")
+
+    back = passdata.build_pass_json(customer_card)["storeCard"]["backFields"]
+    assert len(back) == 1
+    field = back[0]
+    assert field["value"] == "Free coffee!"  # newest wins
+    assert field["label"] == "Promo"
+    # changeMessage is what makes iOS show a lock-screen notification on change.
+    assert field["changeMessage"] == "%@"
+
+
 def test_build_pkpass_is_valid_zip_with_matching_manifest(customer_card):
     raw = build_pkpass(customer_card)
     zf = zipfile.ZipFile(io.BytesIO(raw))

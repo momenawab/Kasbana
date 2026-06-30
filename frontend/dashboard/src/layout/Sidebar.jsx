@@ -12,19 +12,22 @@ import {
   Receipt,
   Settings,
 } from 'lucide-react'
+import { useAuth } from '../hooks/useAuth'
+import { canAccess } from '../lib/roles'
 
-// Order matters: first 5 also form the mobile bottom nav.
+// `area` gates each item by role (null = open to all). The first 5 *visible*
+// items also form the mobile bottom nav.
 const NAV = [
-  { to: '/', key: 'overview', Icon: LayoutDashboard, end: true },
-  { to: '/scan', key: 'scan', Icon: ScanLine },
-  { to: '/cards', key: 'cards', Icon: CreditCard },
-  { to: '/customers', key: 'customers', Icon: Users },
-  { to: '/analytics', key: 'analytics', Icon: BarChart3 },
-  { to: '/campaigns', key: 'messaging', Icon: MessageSquare },
-  { to: '/locations', key: 'locations', Icon: MapPin },
-  { to: '/team', key: 'team', Icon: UserCog },
-  { to: '/billing', key: 'billing', Icon: Receipt },
-  { to: '/settings', key: 'settings', Icon: Settings },
+  { to: '/', key: 'overview', Icon: LayoutDashboard, end: true, area: 'insights' },
+  { to: '/scan', key: 'scan', Icon: ScanLine, area: 'scan' },
+  { to: '/cards', key: 'cards', Icon: CreditCard, area: 'cards' },
+  { to: '/customers', key: 'customers', Icon: Users, area: 'engage' },
+  { to: '/analytics', key: 'analytics', Icon: BarChart3, area: 'insights' },
+  { to: '/campaigns', key: 'messaging', Icon: MessageSquare, area: 'engage' },
+  { to: '/locations', key: 'locations', Icon: MapPin, area: 'locations' },
+  { to: '/team', key: 'team', Icon: UserCog, area: 'team' },
+  { to: '/billing', key: 'billing', Icon: Receipt, area: 'billing' },
+  { to: '/settings', key: 'settings', Icon: Settings, area: null },
 ]
 
 function itemClass({ isActive }) {
@@ -36,13 +39,16 @@ function itemClass({ isActive }) {
 
 export default function Sidebar() {
   const { t } = useTranslation()
+  const { role } = useAuth()
+  const items = NAV.filter((item) => canAccess(role, item.area))
+
   return (
     <>
       {/* Desktop sidebar */}
       <aside className="hidden md:flex md:w-60 md:flex-col bg-ink text-white p-4 gap-1">
         <div className="px-3 py-4 font-head text-xl font-bold text-white">{t('app.name')}</div>
         <nav className="flex flex-col gap-1">
-          {NAV.map(({ to, key, Icon, end }) => (
+          {items.map(({ to, key, Icon, end }) => (
             <NavLink key={to} to={to} end={end} className={itemClass}>
               <Icon size={18} />
               <span>{t(`nav.${key}`)}</span>
@@ -51,9 +57,9 @@ export default function Sidebar() {
         </nav>
       </aside>
 
-      {/* Mobile bottom nav (first 5) */}
+      {/* Mobile bottom nav (first 5 visible) */}
       <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-ink text-white flex justify-around py-2">
-        {NAV.slice(0, 5).map(({ to, key, Icon, end }) => (
+        {items.slice(0, 5).map(({ to, key, Icon, end }) => (
           <NavLink
             key={to}
             to={to}

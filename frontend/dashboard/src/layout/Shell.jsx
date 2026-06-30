@@ -1,15 +1,24 @@
-import { Link, Outlet } from 'react-router-dom'
+import { Link, Outlet, Navigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import Sidebar from './Sidebar'
 import Topbar from './Topbar'
 import UpgradeDrawer from '../components/UpgradeDrawer'
 import { useAuth } from '../hooks/useAuth'
+import { areaForPath, canAccess, landingFor } from '../lib/roles'
 import { arDigits, daysUntil } from '../lib/format'
 
 export default function Shell() {
   const { t, i18n } = useTranslation()
-  const { merchant } = useAuth()
+  const { merchant, role } = useAuth()
+  const location = useLocation()
   const lang = i18n.language
+
+  // Role guard: once the role is known, bounce a user away from an area they
+  // can't access (e.g. a Scanner typing /billing → their landing screen).
+  const area = areaForPath(location.pathname)
+  if (role && !canAccess(role, area)) {
+    return <Navigate to={landingFor(role)} replace />
+  }
 
   const status = merchant?.status
   const trialing = status === 'trial'

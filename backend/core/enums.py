@@ -6,6 +6,10 @@ from django.db import models
 class Role(models.TextChoices):
     OWNER = "OWNER", "Owner"
     ADMIN = "ADMIN", "Admin"
+    # Lateral specialised roles (added post-1.0; additive — existing values
+    # unchanged). DESIGNER owns cards/branding, MARKETING owns engagement.
+    MARKETING = "MARKETING", "Marketing"
+    DESIGNER = "DESIGNER", "Designer"
     SCANNER = "SCANNER", "Scanner"
 
 

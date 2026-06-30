@@ -20,7 +20,7 @@ from billing import entitlements
 from billing.plans import PLAN_LIMITS
 from billing.services import subscription_for
 from common.errors import PlanLimit, UnprocessableEntity
-from common.permissions import IsAdminOrAbove
+from common.permissions import CanEngage
 from core.models import CustomerCard
 from core.tenancy import get_request_merchant, get_scoped
 from messaging import metering, segments
@@ -45,7 +45,7 @@ def _wants_whatsapp(channel: str) -> bool:
 class CampaignListCreateView(generics.ListCreateAPIView):
     """GET /campaigns (paginated) · POST /campaigns (create + send/schedule)."""
 
-    permission_classes = [IsAdminOrAbove]
+    permission_classes = [CanEngage]
 
     def get_serializer_class(self) -> type[BaseSerializer]:
         return CampaignWriteSerializer if self.request.method == "POST" else CampaignSerializer
@@ -88,7 +88,7 @@ class CampaignListCreateView(generics.ListCreateAPIView):
 class SegmentListView(APIView):
     """GET /segments — computed audiences with live counts."""
 
-    permission_classes = [IsAdminOrAbove]
+    permission_classes = [CanEngage]
     serializer_class = SegmentSerializer
 
     @extend_schema(responses=SegmentSerializer(many=True))
@@ -102,7 +102,7 @@ class SegmentListView(APIView):
 class AutomationListView(APIView):
     """GET /automations — every automation key, defaulting to disabled."""
 
-    permission_classes = [IsAdminOrAbove]
+    permission_classes = [CanEngage]
     serializer_class = AutomationSerializer
 
     @extend_schema(responses=AutomationSerializer(many=True))
@@ -130,7 +130,7 @@ class AutomationListView(APIView):
 class AutomationDetailView(APIView):
     """PATCH /automations/{key} — toggle / configure one automation."""
 
-    permission_classes = [IsAdminOrAbove]
+    permission_classes = [CanEngage]
     serializer_class = AutomationSerializer
 
     @extend_schema(request=AutomationWriteSerializer, responses=AutomationSerializer)
@@ -174,7 +174,7 @@ class AutomationDetailView(APIView):
 class CustomerMessageView(APIView):
     """POST /customers/{id}/message — send a one-off PUSH/WhatsApp message."""
 
-    permission_classes = [IsAdminOrAbove]
+    permission_classes = [CanEngage]
     serializer_class = CustomerMessageSerializer
 
     @extend_schema(request=CustomerMessageSerializer)
@@ -187,15 +187,16 @@ class CustomerMessageView(APIView):
         merchant = get_request_merchant(request)
         customer = get_scoped(CustomerCard, request, pk=customer_id)
 
-        if channel == MessageChannel.WHATSAPP:
+        if channel in (MessageChannel.WHATSAPP, MessageChannel.BOTH):
             entitlements.enforce(merchant, "whatsapp")
             metering.ensure_quota(merchant, count=1)
             from messaging.tasks import send_whatsapp
 
             send_whatsapp.delay(str(customer.id), text)
-        else:  # PUSH — ride the wallet pass-update pipeline (best-effort).
+        if channel in (MessageChannel.PUSH, MessageChannel.BOTH):
+            # Free wallet notification (Apple changeMessage + Google addMessage).
             from wallets import service as wallet
 
-            wallet.push_update(customer)
+            wallet.push_message(customer, text)
 
         return Response({"ok": True})

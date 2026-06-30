@@ -40,7 +40,7 @@ from accounts.services import merchant_payload, settings_for
 from billing import entitlements
 from common.errors import Conflict, TokenExpired
 from common.middleware import resolve_staff
-from common.permissions import IsAdminOrAbove, IsScannerOrAbove
+from common.permissions import CanManageCards, IsScannerOrAbove
 from core.models import StaffUser
 from core.tenancy import get_request_merchant
 
@@ -164,7 +164,8 @@ class MeView(APIView):
 
 
 class SettingsBusinessView(APIView):
-    permission_classes = [IsAdminOrAbove]
+    # Branding lives here, so the Designer can edit it (alongside Owner/Admin).
+    permission_classes = [CanManageCards]
 
     @extend_schema(responses=MerchantOutSerializer)
     def get(self, request: Request) -> Response:

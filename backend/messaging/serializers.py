@@ -67,7 +67,8 @@ class AutomationWriteSerializer(serializers.Serializer):
 
 
 class CustomerMessageSerializer(serializers.Serializer):
-    channel = serializers.ChoiceField(choices=[MessageChannel.PUSH, MessageChannel.WHATSAPP])
+    # PUSH = free wallet notification · WHATSAPP = paid/metered · BOTH = each.
+    channel = serializers.ChoiceField(choices=MessageChannel.choices)
     text = serializers.CharField()
 
 

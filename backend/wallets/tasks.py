@@ -46,6 +46,25 @@ def push_pass_update(customer_card_id: str) -> None:
     AppleWalletBackend().push_update(cc)
 
 
+@shared_task(name="wallets.tasks.push_wallet_message")
+def push_wallet_message(customer_card_id: str, title: str, body: str) -> None:
+    """Deliver a free wallet notification: Google addMessage + Apple APNs ping.
+
+    The ``WalletMessage`` row is already persisted by ``service.push_message``, so
+    the Apple pass renders it on the device's next pull (triggered by the ping).
+    """
+    from core.models import CustomerCard
+    from wallets.apple.client import AppleWalletBackend
+    from wallets.google.client import GoogleWalletBackend
+
+    cc = CustomerCard.objects.select_related("card", "merchant").filter(id=customer_card_id).first()
+    if cc is None:
+        logger.warning("push_wallet_message: CustomerCard %s not found", customer_card_id)
+        return
+    GoogleWalletBackend().add_message(cc, header=title, body=body)
+    AppleWalletBackend().push_message(cc)
+
+
 @shared_task(name="wallets.tasks.sync_google_class")
 def sync_google_class(card_id: str) -> None:
     """Create/update the Google LoyaltyClass for a Card (e.g. after edits)."""

@@ -31,7 +31,13 @@ from rest_framework.views import APIView
 
 from billing import entitlements
 from common.errors import Conflict, PayloadTooLarge, UnprocessableEntity
-from common.permissions import IsAdminOrAbove, IsOwner
+from common.permissions import (
+    CanEngage,
+    CanManageCards,
+    CanViewInsights,
+    IsAdminOrAbove,
+    IsOwner,
+)
 from core.enums import CustomerCardStatus, LedgerEvent, Role, WalletPlatform
 from core.models import (
     Card,
@@ -95,7 +101,7 @@ class CardListCreateView(generics.ListCreateAPIView):
     """GET /cards (list) · POST /cards (create)."""
 
     serializer_class = CardSerializer
-    permission_classes = [IsAdminOrAbove]
+    permission_classes = [CanManageCards]
 
     def get_queryset(self) -> QuerySet[Card]:
         return _card_queryset(get_request_merchant(self.request))
@@ -111,7 +117,7 @@ class CardDetailView(generics.RetrieveUpdateAPIView):
     """GET /cards/{id} · PATCH /cards/{id}."""
 
     serializer_class = CardSerializer
-    permission_classes = [IsAdminOrAbove]
+    permission_classes = [CanManageCards]
     http_method_names = ["get", "patch"]
     lookup_url_kwarg = "card_id"
 
@@ -126,7 +132,7 @@ class CardDetailView(generics.RetrieveUpdateAPIView):
 class CardStatsView(APIView):
     """GET /cards/{id}/stats — per-card performance stats."""
 
-    permission_classes = [IsAdminOrAbove]
+    permission_classes = [CanManageCards]
 
     @extend_schema(responses=CardStatsSerializer)
     def get(self, request: Request, card_id: str) -> Response:
@@ -166,7 +172,7 @@ class CardStatsView(APIView):
 class CardQRView(APIView):
     """GET /cards/{id}/qr — enrollment QR assets for a card."""
 
-    permission_classes = [IsAdminOrAbove]
+    permission_classes = [CanManageCards]
     serializer_class = CardQRSerializer
 
     @extend_schema(responses=CardQRSerializer)
@@ -207,7 +213,7 @@ _UPLOAD_ALLOWED_EXTENSIONS = frozenset().union(*_UPLOAD_TYPE_MAP.values())
 class UploadView(APIView):
     """POST /uploads — store a logo/image and return its URL."""
 
-    permission_classes = [IsAdminOrAbove]
+    permission_classes = [CanManageCards]
     parser_classes = [MultiPartParser, FormParser]
     serializer_class = UploadSerializer
 
@@ -362,7 +368,7 @@ class CustomerListView(generics.ListAPIView):
     """GET /customers — CustomerCard list, filterable."""
 
     serializer_class = CustomerSerializer
-    permission_classes = [IsAdminOrAbove]
+    permission_classes = [CanEngage]
 
     def get_queryset(self) -> QuerySet[CustomerCard]:
         merchant = get_request_merchant(self.request)
@@ -410,7 +416,7 @@ class CustomerDetailView(generics.RetrieveDestroyAPIView):
     """GET /customers/{id} · DELETE /customers/{id} — PDPL delete."""
 
     serializer_class = CustomerSerializer
-    permission_classes = [IsAdminOrAbove]
+    permission_classes = [CanEngage]
     lookup_url_kwarg = "customer_id"
 
     def get_queryset(self) -> QuerySet[CustomerCard]:
@@ -425,7 +431,7 @@ class CustomerDetailView(generics.RetrieveDestroyAPIView):
 class CustomerTimelineView(APIView):
     """GET /customers/{id}/timeline."""
 
-    permission_classes = [IsAdminOrAbove]
+    permission_classes = [CanEngage]
 
     @extend_schema(responses=TimelineEventSerializer(many=True))
     def get(self, request: Request, customer_id: str) -> Response:
@@ -471,7 +477,7 @@ class CustomerTimelineView(APIView):
 class AnalyticsSummaryView(APIView):
     """GET /analytics/summary — headline metrics for the merchant."""
 
-    permission_classes = [IsAdminOrAbove]
+    permission_classes = [CanViewInsights]
 
     @extend_schema(responses=AnalyticsSummarySerializer)
     def get(self, request: Request) -> Response:
@@ -525,7 +531,7 @@ def _parse_date_param(value: str | None) -> date | None:
 class AnalyticsTimeseriesView(APIView):
     """GET /analytics/timeseries?from&to&metric=&location=."""
 
-    permission_classes = [IsAdminOrAbove]
+    permission_classes = [CanViewInsights]
     serializer_class = TimeseriesResponseSerializer
 
     @extend_schema(responses=TimeseriesResponseSerializer)
@@ -546,7 +552,7 @@ class AnalyticsTimeseriesView(APIView):
 class AnalyticsRetentionView(APIView):
     """GET /analytics/retention?from&to."""
 
-    permission_classes = [IsAdminOrAbove]
+    permission_classes = [CanViewInsights]
     serializer_class = RetentionResponseSerializer
 
     @extend_schema(responses=RetentionResponseSerializer)
@@ -560,7 +566,7 @@ class AnalyticsRetentionView(APIView):
 class AnalyticsByLocationView(APIView):
     """GET /analytics/by_location?from&to."""
 
-    permission_classes = [IsAdminOrAbove]
+    permission_classes = [CanViewInsights]
     serializer_class = ByLocationResponseSerializer
 
     @extend_schema(responses=ByLocationResponseSerializer)
@@ -574,7 +580,7 @@ class AnalyticsByLocationView(APIView):
 class ActivityFeedView(APIView):
     """GET /activity?limit=."""
 
-    permission_classes = [IsAdminOrAbove]
+    permission_classes = [CanViewInsights]
     serializer_class = ActivityResponseSerializer
 
     @extend_schema(responses=ActivityResponseSerializer)

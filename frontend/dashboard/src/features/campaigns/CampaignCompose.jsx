@@ -68,7 +68,7 @@ export default function CampaignCompose() {
           label={t('compose.channel')}
           value={channel}
           onChange={(e) => setChannel(e.target.value)}
-          options={CHANNELS.map((c) => ({ value: c, label: c }))}
+          options={CHANNELS.map((c) => ({ value: c, label: t(`compose.channel_${c}`) }))}
         />
 
         {usesWhatsapp && waRemaining != null && (

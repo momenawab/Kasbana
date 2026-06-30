@@ -28,6 +28,31 @@ def web_service_url() -> str:
     return f"{base}/api/v1/wallet/apple"
 
 
+def _message_back_fields(customer_card: CustomerCard) -> list[dict]:
+    """A back field carrying the latest wallet message, if any.
+
+    ``changeMessage`` "%@" is what makes iOS show a lock-screen notification with
+    the new value when the pass is re-pulled after an APNs ping. Note Apple only
+    notifies when the field value actually *differs* from the previous pull, so
+    sending the identical text twice won't re-notify (distinct text always does).
+    """
+    from wallets.models import WalletMessage
+
+    msg = WalletMessage.objects.filter(
+        customer_card=customer_card
+    ).first()  # newest (Meta.ordering)
+    if msg is None:
+        return []
+    return [
+        {
+            "key": "message",
+            "label": msg.title or "Message",
+            "value": msg.body,
+            "changeMessage": "%@",
+        }
+    ]
+
+
 def build_pass_json(customer_card: CustomerCard) -> dict:
     card = customer_card.card
     merchant = card.merchant
@@ -56,6 +81,7 @@ def build_pass_json(customer_card: CustomerCard) -> dict:
                 if card.reward_title
                 else []
             ),
+            "backFields": _message_back_fields(customer_card),
         },
         "barcodes": [
             {

@@ -14,6 +14,13 @@
     "billing": "Billing",
     "settings": "Settings"
   },
+  "roles": {
+    "OWNER": "Owner",
+    "ADMIN": "Admin",
+    "MARKETING": "Marketing",
+    "DESIGNER": "Designer",
+    "SCANNER": "Cashier"
+  },
   "scan": {
     "title": "Scan customer",
     "subtitle": "Point the camera at the customer's wallet QR, or scan it with a barcode reader.",
@@ -213,8 +220,8 @@
     },
     "send": "Send",
     "channel": "Channel",
-    "channelPush": "Push",
-    "channelWhatsapp": "WhatsApp",
+    "channelPush": "Wallet notification (free)",
+    "channelWhatsapp": "WhatsApp (paid)",
     "text": "Message"
   },
   "analytics": {
@@ -240,6 +247,9 @@
   "compose": {
     "title": "New campaign",
     "channel": "Channel",
+    "channel_PUSH": "Wallet notification (free)",
+    "channel_WHATSAPP": "WhatsApp (paid)",
+    "channel_BOTH": "Wallet + WhatsApp",
     "audience": "Audience",
     "audienceAll": "All customers",
     "message": "Message",
