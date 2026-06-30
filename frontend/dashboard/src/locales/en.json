@@ -14,6 +14,13 @@
     "billing": "Billing",
     "settings": "Settings"
   },
+  "roles": {
+    "OWNER": "Owner",
+    "ADMIN": "Admin",
+    "MARKETING": "Marketing",
+    "DESIGNER": "Designer",
+    "SCANNER": "Cashier"
+  },
   "scan": {
     "title": "Scan customer",
     "subtitle": "Point the camera at the customer's wallet QR, or scan it with a barcode reader.",

@@ -12,8 +12,7 @@ import Badge from '../../components/Badge'
 import Button from '../../components/Button'
 import { Modal } from '../../components/Modal'
 import { Input, Select } from '../../components/Field'
-
-const ROLES = ['OWNER', 'ADMIN', 'SCANNER']
+import { ROLES } from '../../lib/roles'
 
 function useStaff() {
   return useQuery({
@@ -76,7 +75,7 @@ export default function Team() {
             name={`role-${r.id}`}
             value={r.role}
             onChange={(e) => patchStaff.mutate({ id: r.id, role: e.target.value })}
-            options={ROLES.map((x) => ({ value: x, label: x }))}
+            options={ROLES.map((x) => ({ value: x, label: t(`roles.${x}`) }))}
             disabled={isLastOwner}
           />
         )
@@ -122,7 +121,7 @@ export default function Team() {
             label={t('team.role')}
             value={role}
             onChange={(e) => setRole(e.target.value)}
-            options={ROLES.map((x) => ({ value: x, label: x }))}
+            options={ROLES.map((x) => ({ value: x, label: t(`roles.${x}`) }))}
           />
         </div>
       </Modal>
