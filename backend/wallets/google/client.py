@@ -154,3 +154,32 @@ class GoogleWalletBackend:
                 ).raise_for_status()
             else:
                 resp.raise_for_status()
+
+    def add_message(self, customer_card: CustomerCard, *, header: str, body: str) -> None:
+        """Push a free notification onto the customer's Google pass.
+
+        Google's ``addMessage`` delivers a device notification and appends the
+        message to the pass's message list. ``message_id`` makes the call
+        idempotent (a retried task won't double-notify). No-op when unconfigured
+        or when the object doesn't exist yet (nothing to message).
+        """
+        if not is_configured():
+            return
+        client = _api()
+        if client is None:
+            return
+        oid = builders.object_id_for(customer_card)
+        payload = {
+            "message": {
+                "header": header or customer_card.card.merchant.name,
+                "body": body,
+                "id": f"msg-{customer_card.id.hex}-{int(time.time())}",
+                "messageType": "TEXT",
+            }
+        }
+        with client:
+            resp = client.post(f"/loyaltyObject/{oid}/addMessage", json=payload)
+            if resp.status_code == 404:
+                logger.info("Google addMessage: object %s not provisioned yet; skipping", oid)
+                return
+            resp.raise_for_status()

@@ -43,12 +43,17 @@ def send_campaign(campaign_id: str) -> int:
     campaign.save(update_fields=["status", "updated_at"])
 
     recipients = list(resolve(campaign.merchant, campaign.audience))
+    wants_push = campaign.channel in (MessageChannel.PUSH, MessageChannel.BOTH)
+    wants_whatsapp = campaign.channel in (MessageChannel.WHATSAPP, MessageChannel.BOTH)
     sent = 0
     for customer in recipients:
-        if campaign.channel in (MessageChannel.WHATSAPP, MessageChannel.BOTH):
+        if wants_whatsapp:
             send_whatsapp.delay(str(customer.id), campaign.message)
-        # PUSH delivery rides the wallet pass-update pipeline (Phase 1.1) and is
-        # surfaced separately; campaigns count addressable recipients here.
+        if wants_push:
+            # Free wallet notification (Apple changeMessage + Google addMessage).
+            from wallets import service as wallet
+
+            wallet.push_message(customer, campaign.message)
         sent += 1
 
     campaign.status = CampaignStatus.SENT

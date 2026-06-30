@@ -38,3 +38,18 @@ def push_update(customer_card: CustomerCard) -> None:
     from wallets.tasks import push_pass_update
 
     push_pass_update.delay(str(customer_card.id))
+
+
+def push_message(customer_card: CustomerCard, body: str, *, title: str = "") -> None:
+    """Send a free text notification to a card's wallet passes (both platforms).
+
+    Persists the message synchronously (so the Apple pass renders it the moment a
+    device re-pulls) and enqueues ``wallets.tasks.push_wallet_message`` for the
+    network calls (Google ``addMessage`` + Apple APNs ping). Unlike WhatsApp this
+    costs nothing — it rides APNs / the Google Wallet API.
+    """
+    from wallets.models import WalletMessage
+    from wallets.tasks import push_wallet_message
+
+    WalletMessage.objects.create(customer_card=customer_card, title=title, body=body)
+    push_wallet_message.delay(str(customer_card.id), title, body)

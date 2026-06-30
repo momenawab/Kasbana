@@ -27,7 +27,21 @@ class AppleWalletBackend:
 
     def push_update(self, customer_card: CustomerCard) -> None:
         """Send an empty APNs push to every active Apple registration."""
-        tokens = list(
+        apns.push_empty(self._active_tokens(customer_card))
+
+    def push_message(self, customer_card: CustomerCard) -> None:
+        """Notify Apple devices of a new wallet message.
+
+        The message itself is already persisted (``WalletMessage``) and rendered
+        by ``build_pass_json`` as a back field with a ``changeMessage``; the APNs
+        ping just tells the device to re-pull, at which point iOS shows the new
+        value as a notification. Mechanically identical to ``push_update``.
+        """
+        apns.push_empty(self._active_tokens(customer_card))
+
+    @staticmethod
+    def _active_tokens(customer_card: CustomerCard) -> list[str]:
+        return list(
             WalletRegistration.objects.filter(
                 customer_card=customer_card,
                 platform=WalletPlatform.APPLE,
@@ -36,4 +50,3 @@ class AppleWalletBackend:
             .exclude(push_token="")
             .values_list("push_token", flat=True)
         )
-        apns.push_empty(tokens)

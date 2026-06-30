@@ -106,6 +106,8 @@ def test_customer_message_quota_exhausted_returns_402(paid_merchant):
 
 
 def test_customer_message_push_ok(paid_merchant):
+    from wallets.models import WalletMessage
+
     client, _ = _client_for(Role.ADMIN, paid_merchant)
     customer = factories.CustomerCardFactory(merchant=paid_merchant)
     resp = client.post(
@@ -114,8 +116,26 @@ def test_customer_message_push_ok(paid_merchant):
         format="json",
     )
     assert resp.status_code == 200
-    # PUSH does not touch the WhatsApp counter.
+    # PUSH does not touch the WhatsApp counter (free channel).
     assert metering.used_this_period(paid_merchant) == 0
+    # The message is persisted so the Apple pass can render it.
+    msg = WalletMessage.objects.get(customer_card=customer)
+    assert msg.body == "hi"
+
+
+def test_customer_message_both_sends_whatsapp_and_push(paid_merchant):
+    from wallets.models import WalletMessage
+
+    client, _ = _client_for(Role.ADMIN, paid_merchant)
+    customer = factories.CustomerCardFactory(merchant=paid_merchant)
+    resp = client.post(
+        f"/api/v1/customers/{customer.id}/message",
+        {"channel": "BOTH", "text": "combo"},
+        format="json",
+    )
+    assert resp.status_code == 200
+    assert metering.used_this_period(paid_merchant) == 1  # WhatsApp metered
+    assert WalletMessage.objects.filter(customer_card=customer, body="combo").exists()  # + push
 
 
 # ── campaigns ─────────────────────────────────────────────────────────────────
@@ -254,6 +274,35 @@ def test_reward_ready_automation_fires_on_stamp(paid_merchant, no_cooldown):
     assert resp.status_code == 200
     # The reward-ready trigger enqueued (eager) a WhatsApp send → metered.
     assert metering.used_this_period(paid_merchant) == 1
+
+
+def test_push_automation_fires_free_on_stamp(merchant, no_cooldown):
+    """A PUSH-channel automation reaches the customer via the free wallet channel
+    — no WhatsApp capability or quota required (works on a non-paid merchant)."""
+    from wallets.models import WalletMessage
+
+    Automation.objects.create(
+        merchant=merchant,
+        key=AutomationKey.REWARD_READY,
+        enabled=True,
+        channel=MessageChannel.PUSH,
+        template="Your reward is ready!",
+    )
+    card = factories.CardFactory(merchant=merchant, stamps_required=1)
+    customer = factories.CustomerCardFactory(card=card, merchant=merchant)
+
+    client, _ = _client_for(Role.SCANNER, merchant)
+    resp = client.post(
+        "/api/v1/loyalty/stamp",
+        {"customer_card_id": str(customer.id), "delta": 1},
+        format="json",
+    )
+    assert resp.status_code == 200
+    # Delivered as a wallet message, nothing metered against WhatsApp.
+    assert WalletMessage.objects.filter(
+        customer_card=customer, body="Your reward is ready!"
+    ).exists()
+    assert metering.used_this_period(merchant) == 0
 
 
 def test_daily_scan_fires_birthday(paid_merchant):

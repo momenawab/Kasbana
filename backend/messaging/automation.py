@@ -39,10 +39,11 @@ def _automation(merchant: Merchant, key: str) -> Automation | None:
 
 
 def dispatch(merchant: Merchant, customer: CustomerCard, key: str) -> bool:
-    """Fire automation ``key`` for ``customer`` if enabled + within quota.
+    """Fire automation ``key`` for ``customer`` if enabled.
 
-    Returns ``True`` when a message was enqueued, ``False`` when skipped
-    (disabled, no WhatsApp capability/quota, or PUSH-only channel).
+    PUSH rides the free wallet channel (no capability/quota gate); WhatsApp is
+    gated by capability + monthly quota. ``BOTH`` does each independently.
+    Returns ``True`` when at least one channel was dispatched.
     """
     automation = _automation(merchant, key)
     if automation is None:
@@ -52,22 +53,29 @@ def dispatch(merchant: Merchant, customer: CustomerCard, key: str) -> bool:
     if not text:
         return False
 
+    wants_push = automation.channel in (MessageChannel.PUSH, MessageChannel.BOTH)
     wants_whatsapp = automation.channel in (MessageChannel.WHATSAPP, MessageChannel.BOTH)
-    if not wants_whatsapp:
-        return False
-    if not entitlements.check(merchant, "whatsapp"):
-        return False
+    fired = False
 
-    from messaging import metering
+    if wants_push:
+        # Free wallet notification (Apple changeMessage + Google addMessage).
+        from wallets import service as wallet
 
-    if not _within_quota(merchant, metering):
-        logger.info("Automation %s skipped for %s: quota exhausted", key, merchant.id)
-        return False
+        wallet.push_message(customer, text)
+        fired = True
 
-    from messaging.tasks import send_whatsapp
+    if wants_whatsapp and entitlements.check(merchant, "whatsapp"):
+        from messaging import metering
 
-    send_whatsapp.delay(str(customer.id), text)
-    return True
+        if _within_quota(merchant, metering):
+            from messaging.tasks import send_whatsapp
+
+            send_whatsapp.delay(str(customer.id), text)
+            fired = True
+        else:
+            logger.info("Automation %s WhatsApp skipped for %s: quota exhausted", key, merchant.id)
+
+    return fired
 
 
 def _within_quota(merchant: Merchant, metering) -> bool:  # type: ignore[no-untyped-def]

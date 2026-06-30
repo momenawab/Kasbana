@@ -187,15 +187,16 @@ class CustomerMessageView(APIView):
         merchant = get_request_merchant(request)
         customer = get_scoped(CustomerCard, request, pk=customer_id)
 
-        if channel == MessageChannel.WHATSAPP:
+        if channel in (MessageChannel.WHATSAPP, MessageChannel.BOTH):
             entitlements.enforce(merchant, "whatsapp")
             metering.ensure_quota(merchant, count=1)
             from messaging.tasks import send_whatsapp
 
             send_whatsapp.delay(str(customer.id), text)
-        else:  # PUSH — ride the wallet pass-update pipeline (best-effort).
+        if channel in (MessageChannel.PUSH, MessageChannel.BOTH):
+            # Free wallet notification (Apple changeMessage + Google addMessage).
             from wallets import service as wallet
 
-            wallet.push_update(customer)
+            wallet.push_message(customer, text)
 
         return Response({"ok": True})
