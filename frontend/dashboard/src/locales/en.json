@@ -4,6 +4,7 @@
   },
   "nav": {
     "overview": "Overview",
+    "scan": "Scan",
     "cards": "Cards",
     "customers": "Customers",
     "analytics": "Analytics",
@@ -12,6 +13,32 @@
     "team": "Team",
     "billing": "Billing",
     "settings": "Settings"
+  },
+  "scan": {
+    "title": "Scan customer",
+    "subtitle": "Point the camera at the customer's wallet QR, or scan it with a barcode reader.",
+    "looking": "Looking up…",
+    "unknown": "Unknown code — this isn't one of your customers.",
+    "manualLabel": "Or enter the code",
+    "manualPlaceholder": "Wallet code",
+    "lookup": "Look up",
+    "noName": "Customer",
+    "stamps": "stamps",
+    "rewardReady": "Reward ready",
+    "addStamp": "Add stamp",
+    "redeem": "Redeem reward",
+    "redeemNamed": "Redeem: {{reward}}",
+    "next": "Scan next",
+    "stamped": "Stamp added.",
+    "redeemed": "Reward redeemed.",
+    "cooldown": "Too soon — wait a moment before stamping again.",
+    "notReady": "Not enough stamps to redeem yet.",
+    "status": {
+      "starting": "Starting camera…",
+      "denied": "Camera blocked. Allow camera access, or enter the code below.",
+      "unsupported": "Camera not available on this device. Enter the code below.",
+      "error": "Couldn't start the camera. Enter the code below."
+    }
   },
   "upgrade": {
     "title": "Upgrade your plan",

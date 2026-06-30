@@ -100,7 +100,7 @@ last-Owner protection enforced; lint/type/tests/spectacular clean.
 
 ---
 
-## ⬜ Phase 1.7 — Billing & Messaging  *(payments + WhatsApp — external integrations behind faked adapters; real creds on staging)*
+## ✅ Phase 1.7 — Billing & Messaging  *(payments + WhatsApp — external integrations behind faked adapters; real creds on staging)*
 
 **Goal:** real subscriptions (trial→paid→cancel via gateway webhooks), WhatsApp
 sending + metering, and the Engage surface (campaigns / segments / automations).
@@ -146,18 +146,61 @@ sending + metering, and the Engage surface (campaigns / segments / automations).
 Tests: `tests/test_billing_http.py`, `tests/test_messaging.py`.
 
 ### Tasks
-- [ ] Billing HTTP: GET /billing, subscribe (checkout), invoices, cancel
-- [ ] Paymob + Fawry webhook handlers (HMAC-verified) → activate_plan/lock
-- [ ] `Invoice` model + listing
-- [ ] `messaging/` app: WhatsApp client + `send_whatsapp` + `WhatsAppUsage` metering
-- [ ] `POST /customers/{id}/message` (gated)
-- [ ] Engage: campaigns (CRUD + send/schedule), segments, automations (+triggers)
+- [x] Billing HTTP: GET /billing, subscribe (checkout), invoices, cancel
+- [x] Paymob + Fawry webhook handlers (HMAC-verified) → activate_plan/lock
+- [x] `Invoice` model + listing
+- [x] `messaging/` app: WhatsApp client + `send_whatsapp` + `WhatsAppUsage` metering
+- [x] `POST /customers/{id}/message` (gated)
+- [x] Engage: campaigns (CRUD + send/schedule), segments, automations (+triggers)
 
 **Gating:** `whatsapp` capability + monthly quota; `automations` count.
 **Migration note:** `billing/` + `messaging/` only.
 **DoD:** trial→paid→cancel round-trips via faked gateway payloads; WhatsApp send
 enqueued + metered (quota→402); campaigns/automations CRUD; lint/type/tests clean.
 **Staging-only:** real Paymob/Fawry checkout + webhook round-trip; real WhatsApp delivery.
+
+---
+
+## 🟡 Cashier Scan (POS) — staff QR scanning  *(not in the frozen v1.1.0 contract)*
+
+**Goal:** a barista at the till opens the dashboard on any camera device
+(phone/tablet/laptop), scans the customer's wallet QR, sees who they are + their
+balance, then taps **Add stamp** or **Redeem free coffee**. The loyalty engine
+(`stamp`/`redeem`) already exists; the gap was a clean scan-resolve step + the UI.
+
+### Backend — ✅ done (`dev`)
+- `POST /loyalty/scan {code}` → `CardState` (`loyalty/views.py:ScanView`).
+  Strips `PASS_BARCODE_PREFIX` (`WLA`) + parses the card UUID from the pass
+  barcode (`WLA<id.hex>`, same value both Apple & Google builders emit),
+  resolves it **tenant-scoped** (cross-merchant codes → 404), returns the same
+  shape as `GET /loyalty/cards/{id}`. Read-only — no ledger write, no pass push.
+  Role: Scanner+. Malformed code → `VALIDATION_ERROR` (422/400).
+- Tests: `tests/test_loyalty_api.py` (resolve, read-only, malformed, cross-tenant,
+  auth) — 5 new, suite green; ruff/black/mypy/spectacular clean.
+- **Contract note:** `/loyalty/scan` is a **new endpoint beyond frozen v1.1.0** —
+  fold into `contracts/openapi.yaml` on the next contract bump (drf-spectacular
+  already exposes it at `/api/schema`).
+
+### Frontend — ✅ built (`dev`, dashboard)
+- New **Scan / Till** feature: `frontend/dashboard/src/features/scan/`
+  (`Scan.jsx`, `useQrScanner.js` camera hook, `api.js`). Route `/scan`; nav entry
+  added as the 2nd item so it shows in the **mobile bottom nav** (cashiers are on
+  phones). Icon `ScanLine`. i18n in en + ar (`nav.scan`, `scan.*`).
+- Camera reader: native `BarcodeDetector` (Chrome/Android) with a **jsQR**
+  per-frame fallback (iOS/Safari, where most tills run); `jsqr` added to deps.
+  Camera is released the moment a result shows or the screen unmounts.
+- On decode → `POST /loyalty/scan` → result card (customer name +
+  `stamp_count/required` + reward-ready badge) → **Add stamp** (`/loyalty/stamp`)
+  and **Redeem {reward}** (`/loyalty/redeem`, enabled only when reward-ready).
+  404 → "not your customer"; 429 cooldown + `REWARD_NOT_READY` surfaced as toasts.
+- **HID barcode-gun / manual entry**: an always-present input (gun keystrokes or
+  paste → Enter) calls the same `/loyalty/scan`, so camera-less tills work too.
+- Backend now also returns `reward_id`/`reward_title` on the `CardState` (scan +
+  `GET /loyalty/cards/{id}`) so redeem is one tap (additive; tests updated).
+- Verified: `npm run lint` clean, `npm run build` passes.
+
+**Remaining (staging):** exercise on a real phone camera against the API — confirm
+camera permission UX on iOS Safari + a live scan→stamp→pass-update round-trip.
 
 ---
 
