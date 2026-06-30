@@ -15,7 +15,7 @@ from billing.services import activate_plan
 from core.enums import PlanTier, Role
 from messaging import metering
 from messaging.enums import AutomationKey, MessageChannel
-from messaging.models import Automation, Campaign, WhatsAppUsage, current_period
+from messaging.models import Automation, Campaign
 from tests import factories
 
 pytestmark = pytest.mark.django_db
@@ -33,15 +33,17 @@ def _client_for(role, merchant):
 
 @pytest.fixture
 def paid_merchant():
-    """A merchant on the Growth plan (WhatsApp enabled, quota 2000)."""
+    """A merchant active on the Growth plan."""
     m = factories.MerchantFactory()
     activate_plan(m, PlanTier.GROWTH)
     return m
 
 
-# ── metering ──────────────────────────────────────────────────────────────────
+# ── metering (dormant — WhatsApp disabled, kept for re-enable) ─────────────────
 def test_quota_and_usage(paid_merchant):
-    assert metering.quota_for(paid_merchant) == 2000
+    # WhatsApp is off on every plan now, so the quota reads 0; the send counter
+    # mechanics still work (the metering module is dormant, not removed).
+    assert metering.quota_for(paid_merchant) == 0
     assert metering.used_this_period(paid_merchant) == 0
     metering.record_send(paid_merchant, count=3)
     assert metering.used_this_period(paid_merchant) == 3
@@ -64,7 +66,9 @@ def test_send_whatsapp_task_meters(paid_merchant):
 
 
 # ── one-off customer message ──────────────────────────────────────────────────
-def test_customer_message_whatsapp_sends_and_meters(paid_merchant):
+def test_customer_message_whatsapp_disabled_returns_402(paid_merchant):
+    # WhatsApp is disabled on every plan (wallet push is the channel), so an
+    # explicit WHATSAPP request is refused even on a paid merchant.
     client, _ = _client_for(Role.ADMIN, paid_merchant)
     customer = factories.CustomerCardFactory(merchant=paid_merchant)
     resp = client.post(
@@ -72,9 +76,7 @@ def test_customer_message_whatsapp_sends_and_meters(paid_merchant):
         {"channel": "WHATSAPP", "text": "your reward is ready"},
         format="json",
     )
-    assert resp.status_code == 200
-    assert resp.json()["ok"] is True
-    assert WhatsAppUsage.objects.get(merchant=paid_merchant, period=current_period()).sent == 1
+    assert resp.status_code == 402
 
 
 def test_customer_message_whatsapp_blocked_when_capability_off(merchant):
@@ -123,36 +125,27 @@ def test_customer_message_push_ok(paid_merchant):
     assert msg.body == "hi"
 
 
-def test_customer_message_both_sends_whatsapp_and_push(paid_merchant):
+# (BOTH channel removed from active use — WhatsApp is dormant, wallet push only.)
+
+
+# ── campaigns ─────────────────────────────────────────────────────────────────
+def test_create_campaign_sends_immediately(paid_merchant):
     from wallets.models import WalletMessage
 
     client, _ = _client_for(Role.ADMIN, paid_merchant)
     customer = factories.CustomerCardFactory(merchant=paid_merchant)
     resp = client.post(
-        f"/api/v1/customers/{customer.id}/message",
-        {"channel": "BOTH", "text": "combo"},
-        format="json",
-    )
-    assert resp.status_code == 200
-    assert metering.used_this_period(paid_merchant) == 1  # WhatsApp metered
-    assert WalletMessage.objects.filter(customer_card=customer, body="combo").exists()  # + push
-
-
-# ── campaigns ─────────────────────────────────────────────────────────────────
-def test_create_campaign_sends_immediately(paid_merchant):
-    client, _ = _client_for(Role.ADMIN, paid_merchant)
-    factories.CustomerCardFactory(merchant=paid_merchant)
-    resp = client.post(
         "/api/v1/campaigns",
-        {"channel": "WHATSAPP", "audience": "all", "message": "promo"},
+        {"channel": "PUSH", "audience": "all", "message": "promo"},
         format="json",
     )
     assert resp.status_code == 201
     body = resp.json()
     assert body["status"] == "sent"
     assert body["stats"]["delivered"] == 1
-    # One WhatsApp recipient → one metered send.
-    assert metering.used_this_period(paid_merchant) == 1
+    # Free wallet channel: a message is pushed to the recipient, nothing metered.
+    assert WalletMessage.objects.filter(customer_card=customer, body="promo").exists()
+    assert metering.used_this_period(paid_merchant) == 0
 
 
 def test_create_campaign_scheduled(paid_merchant):
@@ -254,7 +247,9 @@ def test_automation_unknown_key_422(paid_merchant):
 
 
 # ── automation triggers ───────────────────────────────────────────────────────
-def test_reward_ready_automation_fires_on_stamp(paid_merchant, no_cooldown):
+def test_whatsapp_automation_does_not_fire_while_disabled(paid_merchant, no_cooldown):
+    """A WhatsApp-channel automation is a no-op now that WhatsApp is disabled —
+    nothing metered. (The free wallet path is covered by the PUSH test below.)"""
     Automation.objects.create(
         merchant=paid_merchant,
         key=AutomationKey.REWARD_READY,
@@ -272,8 +267,7 @@ def test_reward_ready_automation_fires_on_stamp(paid_merchant, no_cooldown):
         format="json",
     )
     assert resp.status_code == 200
-    # The reward-ready trigger enqueued (eager) a WhatsApp send → metered.
-    assert metering.used_this_period(paid_merchant) == 1
+    assert metering.used_this_period(paid_merchant) == 0
 
 
 def test_push_automation_fires_free_on_stamp(merchant, no_cooldown):
@@ -314,7 +308,7 @@ def test_daily_scan_fires_birthday(paid_merchant):
         merchant=paid_merchant,
         key=AutomationKey.BIRTHDAY,
         enabled=True,
-        channel=MessageChannel.WHATSAPP,
+        channel=MessageChannel.PUSH,  # free wallet channel
         template="hbd",
     )
     today = date(2026, 6, 29)

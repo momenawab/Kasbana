@@ -103,6 +103,8 @@ def describe(merchant: Merchant) -> dict[str, object]:
             "whatsapp": bool(limits["whatsapp"]),
             "export": bool(limits["export"]),
             "api": bool(limits["api"]),
+            "specialized_roles": bool(limits["specialized_roles"]),
+            "custom_branding": bool(limits["custom_branding"]),
             "automations": limits["automations"],
             "analytics": limits["analytics"],
         },

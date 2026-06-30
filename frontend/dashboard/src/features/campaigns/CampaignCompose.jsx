@@ -1,47 +1,34 @@
-// Campaign compose (spec §14) — channel → audience → message → send/schedule.
-// WhatsApp gated by can('whatsapp') + remaining allowance; PLAN_LIMIT → drawer.
+// Campaign compose (spec §14) — audience → message → send/schedule.
+// Delivered free over the wallet push channel (no WhatsApp / no per-message cost).
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft } from 'lucide-react'
 import { useSegments, useCreateCampaign } from './api'
-import { usePlan } from '../../hooks/usePlan'
 import { useToast } from '../../hooks/useToast'
 import { normalizeError } from '../../lib/api'
 import { Select, Textarea, Input } from '../../components/Field'
 import Button from '../../components/Button'
-import Banner from '../../components/Banner'
-import { arDigits } from '../../lib/format'
-
-const CHANNELS = ['PUSH', 'WHATSAPP', 'BOTH']
 
 export default function CampaignCompose() {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const navigate = useNavigate()
-  const { usage, requireFeature } = usePlan()
   const toast = useToast()
   const create = useCreateCampaign()
   const { data: segments = [] } = useSegments()
 
-  const [channel, setChannel] = useState('PUSH')
   const [audience, setAudience] = useState('')
   const [text, setText] = useState('')
   const [scheduleAt, setScheduleAt] = useState('')
 
-  const usesWhatsapp = channel === 'WHATSAPP' || channel === 'BOTH'
-  const waUsed = usage('whatsapp_used')
-  const waQuota = usage('whatsapp_quota')
-  const waRemaining = waQuota == null ? null : Math.max(0, waQuota - waUsed)
-
   async function submit() {
-    if (usesWhatsapp && !requireFeature('whatsapp')) return // opens UpgradeDrawer
     if (!text.trim()) {
       toast.error(t('compose.textRequired'))
       return
     }
     try {
       await create.mutateAsync({
-        channel,
+        channel: 'PUSH',
         audience: audience || 'all',
         message: text,
         schedule_at: scheduleAt || null,
@@ -62,20 +49,6 @@ export default function CampaignCompose() {
 
       <div className="flex flex-col gap-4 rounded-card border border-line bg-white p-5">
         <h1 className="font-head text-2xl font-bold text-ink">{t('compose.title')}</h1>
-
-        <Select
-          name="channel"
-          label={t('compose.channel')}
-          value={channel}
-          onChange={(e) => setChannel(e.target.value)}
-          options={CHANNELS.map((c) => ({ value: c, label: t(`compose.channel_${c}`) }))}
-        />
-
-        {usesWhatsapp && waRemaining != null && (
-          <Banner tone={waRemaining > 0 ? 'teal' : 'danger'}>
-            {t('compose.allowance', { n: arDigits(waRemaining, i18n.language) })}
-          </Banner>
-        )}
 
         <Select
           name="audience"
