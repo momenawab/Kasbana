@@ -85,12 +85,18 @@ FREE plan and WhatsApp removed, and the new capabilities gated.
 
 ## ⚡ Phase 2 — Quick wins (reuse what half-exists)
 
-- [ ] **Scheduled wallet campaigns** — `Campaign.schedule_at` already exists; add
-      a beat task that sends due campaigns. (Small.)
-- [ ] **Advanced segments** — extend the existing `lapsed`/`reward_ready` segment
-      catalogue with more filters (by card, location, stamp count, join date). (Small.)
-- [ ] **Poster / QR generator** — the deferred `poster_pdf_url`: a printable
-      table-tent PDF with the join QR + branding. (Medium.)
+- [x] **Scheduled wallet campaigns** — `messaging.tasks.send_due_campaigns` beat
+      task (every 60s) claims SCHEDULED campaigns whose `schedule_at` has passed
+      (atomic SCHEDULED→SENDING update so no double-send) and dispatches them.
+      The compose screen's existing date-time field now works end to end.
+- [x] **Advanced segments** — added `new` (joined <7d), `active` (<30d),
+      `birthday_month`, and per-card `card:<id>` segments to the catalogue
+      (`location:<id>` already resolvable). The compose audience dropdown renders
+      them automatically; no FE change.
+- [x] **Poster / QR generator** — a printable branded table-tent at
+      `/cards/:id/poster` (logo + name + join QR + reward). Uses the browser print
+      dialog (Print → "Save as PDF"), so no server-side PDF dependency; `@media
+      print` rules isolate the poster sheet. Linked from the Enrollment QR screen.
 
 ---
 

@@ -20,3 +20,22 @@
     @apply font-mono tabular-nums;
   }
 }
+
+/* Print: only the enrollment poster sheet prints (Poster.jsx → Save as PDF). */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .poster-sheet,
+  .poster-sheet * {
+    visibility: visible;
+  }
+  .poster-sheet {
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    box-shadow: none;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

@@ -321,6 +321,11 @@ CELERY_BEAT_SCHEDULE = {
         "task": "messaging.tasks.scan_automations",
         "schedule": 86400.0,  # daily
     },
+    # Dispatch scheduled campaigns whose send time has arrived (roadmap Phase 2).
+    "messaging-send-due-campaigns": {
+        "task": "messaging.tasks.send_due_campaigns",
+        "schedule": 60.0,  # every minute (near-real-time scheduled sends)
+    },
 }
 CELERY_TASK_ACKS_LATE = True
 CELERY_TIMEZONE = TIME_ZONE

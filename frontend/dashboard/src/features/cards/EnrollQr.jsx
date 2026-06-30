@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Copy, Download, MessageCircle, ArrowLeft } from 'lucide-react'
+import { Copy, Printer, MessageCircle, ArrowLeft } from 'lucide-react'
 import api from '../../lib/api'
 import QrBlock from '../../components/QrBlock'
 import Button from '../../components/Button'
@@ -63,13 +63,14 @@ export default function EnrollQr() {
             </div>
 
             <div className="flex w-full flex-col gap-2 sm:flex-row">
-              {data?.poster_pdf_url && (
-                <a href={data.poster_pdf_url} target="_blank" rel="noreferrer" className="flex-1">
-                  <Button variant="ghost" iconStart={Download} className="w-full">
-                    {t('qr.poster')}
-                  </Button>
-                </a>
-              )}
+              <Button
+                variant="ghost"
+                iconStart={Printer}
+                className="flex-1"
+                onClick={() => navigate(`/cards/${id}/poster`)}
+              >
+                {t('qr.poster')}
+              </Button>
               <a href={waUrl} target="_blank" rel="noreferrer" className="flex-1">
                 <Button iconStart={MessageCircle} className="w-full">
                   {t('qr.whatsapp')}

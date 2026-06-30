@@ -166,6 +166,47 @@ def test_create_campaign_scheduled(paid_merchant):
     assert metering.used_this_period(paid_merchant) == 0
 
 
+def test_send_due_campaigns_dispatches_only_past_due(paid_merchant):
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from messaging.enums import CampaignStatus
+    from messaging.tasks import send_due_campaigns
+    from wallets.models import WalletMessage
+
+    customer = factories.CustomerCardFactory(merchant=paid_merchant)
+    now = timezone.now()
+    due = Campaign.objects.create(
+        merchant=paid_merchant,
+        channel=MessageChannel.PUSH,
+        audience="all",
+        message="now",
+        status=CampaignStatus.SCHEDULED,
+        schedule_at=now - timedelta(minutes=1),
+    )
+    future = Campaign.objects.create(
+        merchant=paid_merchant,
+        channel=MessageChannel.PUSH,
+        audience="all",
+        message="later",
+        status=CampaignStatus.SCHEDULED,
+        schedule_at=now + timedelta(days=1),
+    )
+
+    claimed = send_due_campaigns()
+    assert claimed == 1  # only the past-due one
+
+    due.refresh_from_db()
+    future.refresh_from_db()
+    assert due.status == CampaignStatus.SENT
+    assert future.status == CampaignStatus.SCHEDULED  # untouched
+    assert WalletMessage.objects.filter(customer_card=customer, body="now").exists()
+
+    # A second tick is a no-op (already SENT, not re-dispatched).
+    assert send_due_campaigns() == 0
+
+
 def test_campaign_list_tenant_scoped(paid_merchant):
     other = factories.MerchantFactory()
     Campaign.objects.create(
@@ -208,6 +249,31 @@ def test_segments_listing(paid_merchant, no_cooldown):
     by_key = {s["key"]: s for s in resp.json()["results"]}
     assert by_key["all"]["count"] == 2
     assert by_key["reward_ready"]["count"] == 1
+    # New advanced segments are present; both customers joined just now.
+    assert by_key["new"]["count"] == 2
+    assert by_key["active"]["count"] == 1  # only `ready` has ledger activity
+    assert "birthday_month" in by_key
+    # One per-card segment is surfaced for the program above.
+    assert by_key[f"card:{card.id}"]["count"] == 1
+
+
+def test_segment_birthday_month_resolves(paid_merchant):
+    from datetime import date
+
+    from django.utils import timezone
+
+    from messaging.segments import resolve
+
+    this_month = timezone.now().month
+    match = factories.CustomerCardFactory(
+        merchant=paid_merchant, birthday=date(1990, this_month, 15)
+    )
+    other_month = 1 if this_month != 1 else 2
+    factories.CustomerCardFactory(merchant=paid_merchant, birthday=date(1990, other_month, 15))
+
+    ids = set(resolve(paid_merchant, "birthday_month").values_list("id", flat=True))
+    assert match.id in ids
+    assert len(ids) == 1
 
 
 # ── automations ───────────────────────────────────────────────────────────────
