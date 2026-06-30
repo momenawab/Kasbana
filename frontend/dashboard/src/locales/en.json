@@ -310,9 +310,16 @@
     "copy": "Copy",
     "copied": "Copied",
     "copyFailed": "Couldn't copy the link.",
-    "poster": "Download poster",
+    "poster": "Printable poster",
     "whatsapp": "Share on WhatsApp",
     "shareMsg": "Join our loyalty card:"
+  },
+  "poster": {
+    "print": "Print / Save as PDF",
+    "headline": "Join our loyalty program",
+    "scan": "Scan to join — it's free",
+    "reward": "Your reward",
+    "powered": "Powered by Stampn"
   },
   "locations": {
     "title": "Locations",

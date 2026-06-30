@@ -93,8 +93,10 @@ FREE plan and WhatsApp removed, and the new capabilities gated.
       `birthday_month`, and per-card `card:<id>` segments to the catalogue
       (`location:<id>` already resolvable). The compose audience dropdown renders
       them automatically; no FE change.
-- [ ] **Poster / QR generator** — the deferred `poster_pdf_url`: a printable
-      table-tent PDF with the join QR + branding. (Medium.)
+- [x] **Poster / QR generator** — a printable branded table-tent at
+      `/cards/:id/poster` (logo + name + join QR + reward). Uses the browser print
+      dialog (Print → "Save as PDF"), so no server-side PDF dependency; `@media
+      print` rules isolate the poster sheet. Linked from the Enrollment QR screen.
 
 ---
 

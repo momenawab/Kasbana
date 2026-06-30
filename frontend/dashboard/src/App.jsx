@@ -13,6 +13,7 @@ import Scan from './features/scan/Scan'
 import CardsList from './features/cards/CardsList'
 import CardDesigner from './features/cards/CardDesigner'
 import CardDetail from './features/cards/CardDetail'
+import Poster from './features/cards/Poster'
 import EnrollQr from './features/cards/EnrollQr'
 import CustomersList from './features/customers/CustomersList'
 import CustomerProfile from './features/customers/CustomerProfile'
@@ -54,6 +55,7 @@ export default function App() {
         <Route path="/cards/:id" element={<CardDetail />} />
         <Route path="/cards/:id/edit" element={<CardDesigner />} />
         <Route path="/cards/:id/qr" element={<EnrollQr />} />
+        <Route path="/cards/:id/poster" element={<Poster />} />
         <Route path="/customers" element={<CustomersList />} />
         <Route path="/customers/:id" element={<CustomerProfile />} />
         <Route path="/analytics" element={<Analytics />} />
