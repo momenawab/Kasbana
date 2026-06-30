@@ -73,15 +73,24 @@ readable by it:
 ```bash
 # Google service-account key
 scp -i key.pem google-sa.json ubuntu@13.49.70.197:/opt/stampn/secrets/
+# Make EVERY secret readable by uid 10001 (not just the Google key — the Apple
+# cert/key live here too). Re-run this after any host migration / re-copy.
 ssh -i key.pem ubuntu@13.49.70.197 \
-  'sudo chmod 755 /opt/stampn/secrets && \
-   sudo chown 10001:10001 /opt/stampn/secrets/google-sa.json && \
-   sudo chmod 600 /opt/stampn/secrets/google-sa.json'
+  'sudo chown -R 10001:10001 /opt/stampn/secrets && \
+   sudo chmod 750 /opt/stampn/secrets && \
+   sudo chmod 640 /opt/stampn/secrets/*'
 ```
 
 Then set in `infra/.env`: `GOOGLE_WALLET_ISSUER_ID`, `GOOGLE_SA_KEY_PATH=/secrets/google-sa.json`
 (Apple: `APPLE_PASS_CERT_PATH=/secrets/pass.p12`, `APPLE_WWDR_CERT_PATH=/secrets/wwdr.pem`).
 Verify with: `docker compose -f compose.prod.yml exec web python manage.py google_wallet_check`.
+
+> **Troubleshooting — passes don't update after a stamp.** If `google_wallet_check`
+> passes but the worker logs `PermissionError: [Errno 13] ... '/secrets/google-sa.json'`,
+> the secrets aren't owned by uid 10001 (common right after a host migration that
+> re-copied them as root). Re-run the `chown -R 10001:10001` block above; no
+> redeploy needed — the next stamp re-runs `wallets.tasks.push_pass_update` and
+> reads the key live.
 
 ## HTTPS / Apple Wallet
 

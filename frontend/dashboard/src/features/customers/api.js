@@ -1,7 +1,7 @@
 // Customer data hooks (spec §6 /customers). List is live (1.3 + 1.6 filters);
 // detail/timeline/message/delete are 1.6/1.7 (graceful until backend promotion).
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import api from '../../lib/api'
+import api, { idempotent } from '../../lib/api'
 
 export function useCustomers(params = {}) {
   const qs = new URLSearchParams(
@@ -43,12 +43,13 @@ export function useStampActions(id) {
   }
   const stamp = useMutation({
     mutationFn: async (delta) =>
-      (await api.post('/loyalty/stamp', { customer_card_id: id, delta })).data,
+      (await api.post('/loyalty/stamp', { customer_card_id: id, delta }, idempotent())).data,
     onSuccess: invalidate,
   })
   const redeem = useMutation({
     mutationFn: async (rewardId) =>
-      (await api.post('/loyalty/redeem', { customer_card_id: id, reward_id: rewardId })).data,
+      (await api.post('/loyalty/redeem', { customer_card_id: id, reward_id: rewardId }, idempotent()))
+        .data,
     onSuccess: invalidate,
   })
   const message = useMutation({

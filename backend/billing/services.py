@@ -11,7 +11,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from billing.models import Invoice, InvoiceStatus, Subscription
@@ -109,20 +109,25 @@ def record_invoice(
     duplicate the invoice.
     """
     if gateway_ref:
-        existing = Invoice.objects.filter(
-            merchant=merchant, provider=provider, gateway_ref=gateway_ref
-        ).first()
+        existing = Invoice.objects.filter(provider=provider, gateway_ref=gateway_ref).first()
         if existing is not None:
             return existing
-    return Invoice.objects.create(
-        merchant=merchant,
-        amount_egp=amount_egp,
-        status=status,
-        provider=provider,
-        gateway_ref=gateway_ref,
-        pdf_url=pdf_url,
-        issued_at=timezone.now(),
-    )
+    try:
+        # Savepoint so a unique-constraint clash (a concurrent duplicate webhook
+        # that committed between our check and here) doesn't poison the outer
+        # transaction — we recover by returning the row the other request made.
+        with transaction.atomic():
+            return Invoice.objects.create(
+                merchant=merchant,
+                amount_egp=amount_egp,
+                status=status,
+                provider=provider,
+                gateway_ref=gateway_ref,
+                pdf_url=pdf_url,
+                issued_at=timezone.now(),
+            )
+    except IntegrityError:
+        return Invoice.objects.get(provider=provider, gateway_ref=gateway_ref)
 
 
 @transaction.atomic
@@ -146,6 +151,18 @@ def apply_webhook_event(event: WebhookEvent) -> Subscription | None:
     plan = event.plan or sub.pending_plan or sub.plan
 
     if event.kind == "success":
+        # Replay guard: if we've already booked a paid invoice for this exact
+        # gateway transaction, the plan is already active — acknowledge and stop
+        # (no second activation write).
+        if (
+            event.gateway_ref
+            and Invoice.objects.filter(
+                provider=event.provider,
+                gateway_ref=event.gateway_ref,
+                status=InvoiceStatus.PAID,
+            ).exists()
+        ):
+            return sub
         amount = event.amount_egp if event.amount_egp is not None else Decimal("0")
         record_invoice(
             merchant,

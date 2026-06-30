@@ -30,6 +30,7 @@ from common.permissions import IsScannerOrAbove
 from core import ledger
 from core.models import CustomerCard, Reward, StaffUser
 from core.tenancy import get_scoped
+from loyalty.idempotency import run_idempotent
 from loyalty.serializers import (
     CardStateSerializer,
     RedeemRequestSerializer,
@@ -76,39 +77,44 @@ class StampView(APIView):
         # Resolved + cached by IsScannerOrAbove; non-null here (bound to merchant).
         staff = cast("StaffUser | None", resolve_staff(request))
 
-        # Anti-fraud + balance update happen inside the ledger; it may raise
-        # CooldownActive (429) / RateLimited (429), rendered via the envelope.
-        ledger.add_stamp(
-            card,
-            staff=staff,
-            location=getattr(staff, "location", None),
-            delta=body.validated_data["delta"],
-        )
-        # The ledger mutates a row-locked re-fetch, so refresh our instance.
-        card.refresh_from_db(fields=["stamp_count", "last_event_at"])
+        def mutate() -> dict:
+            # Anti-fraud + balance update happen inside the ledger; it may raise
+            # CooldownActive (429) / RateLimited (429), rendered via the envelope.
+            ledger.add_stamp(
+                card,
+                staff=staff,
+                location=getattr(staff, "location", None),
+                delta=body.validated_data["delta"],
+            )
+            # The ledger mutates a row-locked re-fetch, so refresh our instance.
+            card.refresh_from_db(fields=["stamp_count", "last_event_at"])
 
-        # Engage automation (Phase 1.7): fire the reward-ready trigger inline
-        # the moment a stamp tips the card to its threshold. Best-effort — a
-        # disabled automation / missing capability / quota simply no-ops.
-        if ledger.is_reward_ready(card):
-            from messaging.tasks import fire_for_customer
+            # Engage automation (Phase 1.7): fire the reward-ready trigger inline
+            # the moment a stamp tips the card to its threshold. Best-effort — a
+            # disabled automation / missing capability / quota simply no-ops.
+            if ledger.is_reward_ready(card):
+                from messaging.tasks import fire_for_customer
 
-            fire_for_customer(card.merchant, card, "reward_ready")
+                fire_for_customer(card.merchant, card, "reward_ready")
 
-        # Enqueues wallets.tasks.push_pass_update. Tests verify this is *called*;
-        # that the pass visibly updates on a real device needs Redis + a Celery
-        # worker + live Apple/Google creds, i.e. Momen's integration smoke test
-        # (not closable from inside this phase). Returns 500 if the broker is down.
-        wallet.push_update(card)
+            # Enqueues wallets.tasks.push_pass_update. Tests verify this is
+            # *called*; a visible pass update on a real device needs Redis + a
+            # Celery worker + live Apple/Google creds (integration smoke test).
+            wallet.push_update(card)
 
-        payload = StampResponseSerializer(
-            {
-                "customer_card_id": card.id,
-                "stamp_count": card.stamp_count,
-                "stamps_required": card.card.stamps_required,
-                "reward_ready": ledger.is_reward_ready(card),
-            }
-        ).data
+            return StampResponseSerializer(
+                {
+                    "customer_card_id": card.id,
+                    "stamp_count": card.stamp_count,
+                    "stamps_required": card.card.stamps_required,
+                    "reward_ready": ledger.is_reward_ready(card),
+                }
+            ).data
+
+        # Idempotent on the optional Idempotency-Key header: a retried stamp
+        # (dropped response, double-submit) returns the first result, not a
+        # second stamp. Without the header, behaves exactly as before.
+        payload = run_idempotent(request, merchant=card.merchant, endpoint="stamp", mutate=mutate)
         return Response(payload)
 
 
@@ -131,22 +137,27 @@ class RedeemView(APIView):
             Reward, id=body.validated_data["reward_id"], card=card.card, is_active=True
         )
 
-        # Raises RewardNotReady (422) when the balance is below the threshold.
-        redemption = ledger.redeem_reward(
-            card, reward, staff=staff, location=getattr(staff, "location", None)
-        )
-        card.refresh_from_db(fields=["stamp_count", "last_event_at"])
+        def mutate() -> dict:
+            # Raises RewardNotReady (422) when the balance is below the threshold.
+            redemption = ledger.redeem_reward(
+                card, reward, staff=staff, location=getattr(staff, "location", None)
+            )
+            card.refresh_from_db(fields=["stamp_count", "last_event_at"])
 
-        # Verified as *enqueued*, not executed against real wallets — see StampView.
-        wallet.push_update(card)
+            # Verified as *enqueued*, not executed against real wallets — see StampView.
+            wallet.push_update(card)
 
-        payload = RedeemResponseSerializer(
-            {
-                "redemption_id": redemption.id,
-                "status": redemption.status,
-                "stamp_count": card.stamp_count,
-            }
-        ).data
+            return RedeemResponseSerializer(
+                {
+                    "redemption_id": redemption.id,
+                    "status": redemption.status,
+                    "stamp_count": card.stamp_count,
+                }
+            ).data
+
+        # Idempotent on the optional Idempotency-Key header (prevents a double
+        # redeem on retry); no header → unchanged behaviour.
+        payload = run_idempotent(request, merchant=card.merchant, endpoint="redeem", mutate=mutate)
         return Response(payload)
 
 

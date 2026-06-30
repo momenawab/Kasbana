@@ -174,6 +174,69 @@ def test_get_card_state_other_merchant_is_404(auth_client):
     assert resp.status_code == 404
 
 
+# ── idempotency ───────────────────────────────────────────────────────────────
+def test_stamp_with_idempotency_key_replays_first_result(auth_client, customer_card, push_calls):
+    """A retried stamp (same Idempotency-Key) returns the first result and does
+    NOT add a second stamp — even though a keyless retry would (or would 429)."""
+    headers = {"HTTP_IDEMPOTENCY_KEY": "tap-1"}
+    first = auth_client.post(
+        STAMP_URL, {"customer_card_id": str(customer_card.id)}, format="json", **headers
+    )
+    second = auth_client.post(
+        STAMP_URL, {"customer_card_id": str(customer_card.id)}, format="json", **headers
+    )
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert first.json() == second.json()
+    assert second.json()["stamp_count"] == 1  # not 2
+
+    customer_card.refresh_from_db()
+    assert customer_card.stamp_count == 1
+    assert StampLedger.objects.filter(customer_card=customer_card, event_type="STAMP").count() == 1
+    assert len(push_calls) == 1  # the mutation (and its pass push) ran once
+
+
+def test_stamp_distinct_keys_are_independent(auth_client, customer_card, no_cooldown):
+    """Different keys are different actions — the second still stamps."""
+    r1 = auth_client.post(
+        STAMP_URL,
+        {"customer_card_id": str(customer_card.id)},
+        format="json",
+        HTTP_IDEMPOTENCY_KEY="tap-1",
+    )
+    r2 = auth_client.post(
+        STAMP_URL,
+        {"customer_card_id": str(customer_card.id)},
+        format="json",
+        HTTP_IDEMPOTENCY_KEY="tap-2",
+    )
+    assert r1.json()["stamp_count"] == 1
+    assert r2.json()["stamp_count"] == 2
+
+
+def test_stamp_failed_mutation_releases_key(auth_client, customer_card):
+    """If the mutation fails (cooldown), the key is released so a real retry can
+    still succeed once the condition clears — it isn't locked to the error."""
+    auth_client.post(
+        STAMP_URL,
+        {"customer_card_id": str(customer_card.id)},
+        format="json",
+        HTTP_IDEMPOTENCY_KEY="k1",
+    )
+    # Second stamp, different key, trips the cooldown (429) — its key must not
+    # persist a stored response.
+    blocked = auth_client.post(
+        STAMP_URL,
+        {"customer_card_id": str(customer_card.id)},
+        format="json",
+        HTTP_IDEMPOTENCY_KEY="k2",
+    )
+    assert blocked.status_code == 429
+    from loyalty.models import IdempotencyRecord
+
+    assert not IdempotencyRecord.objects.filter(key="k2").exists()
+
+
 # ── scan (cashier QR resolve) ─────────────────────────────────────────────────
 SCAN_URL = "/api/v1/loyalty/scan"
 

@@ -16,11 +16,14 @@ from billing.gateways.base import PaymentGateway, WebhookEvent
 from billing.gateways.fawry import FawryGateway
 from billing.gateways.paymob import PaymobGateway
 
-# Provider key -> adapter. ``subscribe`` picks the default provider; the webhook
-# routes carry the provider in the path.
+# Active provider adapters. ``subscribe`` picks the default; the webhook routes
+# carry the provider in the path.
+#
+# Fawry is implemented but DISABLED — we bill via Paymob only. The adapter, its
+# webhook route, and its config all remain in place; to re-enable, add
+# ``"fawry": FawryGateway`` back to this map.
 _GATEWAYS: dict[str, type[PaymentGateway]] = {
     "paymob": PaymobGateway,
-    "fawry": FawryGateway,
 }
 
 DEFAULT_PROVIDER = "paymob"

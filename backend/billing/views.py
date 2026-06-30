@@ -16,6 +16,7 @@ from decimal import Decimal
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
 from rest_framework import generics, status
+from rest_framework.exceptions import ValidationError as DRFValidationError
 from rest_framework.permissions import AllowAny
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -89,7 +90,11 @@ class SubscribeView(APIView):
             raise Conflict("Already subscribed to this plan.")
 
         provider = request.query_params.get("provider", DEFAULT_PROVIDER)
-        gateway = get_gateway(provider)
+        try:
+            gateway = get_gateway(provider)
+        except ValueError as exc:
+            # Unknown or disabled provider (e.g. Fawry) — never route money there.
+            raise DRFValidationError({"provider": "Unsupported payment provider."}) from exc
         session = gateway.create_checkout(
             merchant_id=str(merchant.id),
             plan=plan,
@@ -137,11 +142,18 @@ class _WebhookView(APIView):
 
     permission_classes = [AllowAny]
     authentication_classes: list = []
+    throttle_scope = "webhook"  # per-IP cap on the unauthenticated webhooks (Phase 1.8)
     provider: str = ""
 
     @extend_schema(request=None, responses=None)
     def post(self, request: Request) -> Response:
-        gateway = get_gateway(self.provider)
+        try:
+            gateway = get_gateway(self.provider)
+        except ValueError:
+            # Provider implemented but disabled (e.g. Fawry). The route is kept
+            # for the frozen contract, but we don't process its callbacks.
+            logger.info("%s webhook hit but provider is disabled", self.provider)
+            return Response({"detail": "provider not enabled"}, status=status.HTTP_404_NOT_FOUND)
         try:
             event = gateway.verify_and_parse(headers=dict(request.headers), body=request.body)
         except WebhookVerificationError as exc:

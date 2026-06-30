@@ -55,6 +55,7 @@ def _token_pair(user: Any) -> dict[str, str]:
 # ── Auth lifecycle (public) ──────────────────────────────────────────────────
 class SignupView(APIView):
     permission_classes = [AllowAny]
+    throttle_scope = "auth"
 
     @extend_schema(request=SignupSerializer, responses=TokenPairSerializer)
     def post(self, request: Request) -> Response:
@@ -68,6 +69,7 @@ class SignupView(APIView):
 
 class ForgotView(APIView):
     permission_classes = [AllowAny]
+    throttle_scope = "auth"
 
     @extend_schema(request=ForgotSerializer, responses=OkSerializer)
     def post(self, request: Request) -> Response:
@@ -89,6 +91,7 @@ class ForgotView(APIView):
 
 class ResetView(APIView):
     permission_classes = [AllowAny]
+    throttle_scope = "auth"
 
     @extend_schema(request=ResetSerializer, responses=OkSerializer)
     def post(self, request: Request) -> Response:
@@ -107,6 +110,7 @@ class ResetView(APIView):
 
 class InviteView(APIView):
     permission_classes = [AllowAny]
+    throttle_scope = "auth"
 
     def _resolve(self, token: str) -> StaffInvite:
         invite = (

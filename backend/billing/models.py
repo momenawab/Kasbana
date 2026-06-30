@@ -99,6 +99,16 @@ class Invoice(UUIDModel, TimeStampedModel):
     class Meta:
         ordering = ["-issued_at"]
         indexes = [models.Index(fields=["merchant", "-issued_at"])]
+        constraints = [
+            # DB-level guarantee that a replayed (or concurrent duplicate) webhook
+            # can't create a second invoice for the same gateway transaction.
+            # Manual invoices (blank gateway_ref) are exempt.
+            models.UniqueConstraint(
+                fields=["provider", "gateway_ref"],
+                condition=~models.Q(gateway_ref=""),
+                name="uniq_invoice_provider_gateway_ref",
+            )
+        ]
 
     def __str__(self) -> str:
         return f"{self.merchant_id} · {self.amount_egp} EGP · {self.status}"

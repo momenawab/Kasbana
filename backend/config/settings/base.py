@@ -180,6 +180,12 @@ CORS_ALLOWED_ORIGINS = env_list(
     "http://localhost:5173,http://localhost:5174,https://stampn.net,https://app.stampn.net",
 )
 
+# Allow the dashboard (different origin) to send the loyalty Idempotency-Key on
+# cross-origin stamp/redeem requests — preflight would otherwise reject it.
+from corsheaders.defaults import default_headers as _cors_default_headers  # noqa: E402
+
+CORS_ALLOW_HEADERS = (*_cors_default_headers, "idempotency-key")
+
 # ── Django REST Framework (contract §3.7, §3.10) ──────────────────────────────
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
@@ -192,6 +198,28 @@ REST_FRAMEWORK = {
     "PAGE_SIZE": constants.DEFAULT_PAGE_SIZE,
     "EXCEPTION_HANDLER": "common.errors.exception_handler",
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    # Edge rate-limiting (Phase 1.8). ScopedRateThrottle no-ops on any view that
+    # doesn't set ``throttle_scope``, so this only bites the sensitive endpoints
+    # that opt in (auth brute-force surface + the unauthenticated webhooks).
+    "DEFAULT_THROTTLE_CLASSES": ["rest_framework.throttling.ScopedRateThrottle"],
+    "DEFAULT_THROTTLE_RATES": {
+        "auth": env("THROTTLE_AUTH", "20/min"),
+        "webhook": env("THROTTLE_WEBHOOK", "120/min"),
+    },
+}
+
+# Throttle counters live in the cache; use Redis in prod so they're shared across
+# web workers (LocMem is per-process — fine for local/tests).
+_redis_url = env("REDIS_URL", "")
+CACHES = {
+    "default": (
+        {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": _redis_url,
+        }
+        if _redis_url
+        else {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}
+    )
 }
 
 SIMPLE_JWT = {

@@ -8,6 +8,16 @@ from rest_framework.test import APIClient
 from tests import factories
 
 
+@pytest.fixture(autouse=True)
+def _clear_throttle_cache():
+    """Reset rate-limit counters between tests so throttles (which key on the
+    shared test-client IP) don't bleed across the suite."""
+    from django.core.cache import cache
+
+    cache.clear()
+    yield
+
+
 @pytest.fixture
 def api_client() -> APIClient:
     return APIClient()

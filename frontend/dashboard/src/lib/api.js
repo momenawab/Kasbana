@@ -52,6 +52,18 @@ api.interceptors.response.use(
   }
 )
 
+/**
+ * Axios config carrying a fresh Idempotency-Key header. Use on mutating loyalty
+ * calls (stamp/redeem) so a replayed request (proxy retry, lost response) is
+ * de-duplicated server-side instead of double-stamping. The key rides on the
+ * request, so an identical replay reuses it; a new user action gets a new key.
+ */
+export function idempotent() {
+  const uuid =
+    globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`
+  return { headers: { 'Idempotency-Key': uuid } }
+}
+
 function toFieldText(value) {
   if (Array.isArray(value)) return value.map(toFieldText).filter(Boolean).join('; ')
   return value == null ? '' : String(value)
