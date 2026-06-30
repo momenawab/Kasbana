@@ -104,6 +104,9 @@ class Card(UUIDModel, TimeStampedModel):
     color_fg = models.CharField(max_length=7, blank=True)
     logo_url = models.URLField(blank=True)
     hero_image_url = models.URLField(blank=True)  # wide banner on the wallet pass
+    # Single-use: when set, redeeming the reward completes the card (status
+    # COMPLETED) and its wallet pass is expired/voided instead of resetting.
+    single_use = models.BooleanField(default=False)
     google_class_id = models.CharField(max_length=120, blank=True)
     status = models.CharField(
         max_length=16, choices=enums.CardStatus.choices, default=enums.CardStatus.DRAFT

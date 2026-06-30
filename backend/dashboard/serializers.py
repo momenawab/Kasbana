@@ -41,6 +41,7 @@ class CardSerializer(serializers.ModelSerializer):
             "color_fg",
             "logo_url",
             "hero_image_url",
+            "single_use",
             "google_class_id",
             "status",
             "holders",

@@ -52,6 +52,17 @@ def test_loyalty_object_carries_balance_and_barcode(settings, google_creds):
     assert obj["secondaryLoyaltyPoints"]["balance"]["int"] == 8
     assert obj["barcode"]["value"].startswith("WLA")
     assert obj["classId"] == builders.class_id_for(card)
+    assert obj["state"] == "ACTIVE"
+
+
+def test_completed_card_object_is_expired(settings, google_creds):
+    from core.enums import CustomerCardStatus
+
+    card = factories.CardFactory(stamps_required=5, single_use=True)
+    cc = factories.CustomerCardFactory(
+        card=card, merchant=card.merchant, status=CustomerCardStatus.COMPLETED
+    )
+    assert builders.build_loyalty_object(cc)["state"] == "EXPIRED"
 
 
 def test_save_url_is_signed_jwt(settings, google_creds):

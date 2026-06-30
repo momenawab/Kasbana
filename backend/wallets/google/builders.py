@@ -57,13 +57,21 @@ def build_loyalty_class(card: Card) -> dict:
     return payload
 
 
+def object_state_for(customer_card: CustomerCard) -> str:
+    """Google LoyaltyObject ``state`` from the card status — EXPIRED moves the
+    pass out of the wallet's active list (single-use completion / blocked)."""
+    from core.enums import CustomerCardStatus
+
+    return "ACTIVE" if customer_card.status == CustomerCardStatus.ACTIVE else "EXPIRED"
+
+
 def build_loyalty_object(customer_card: CustomerCard) -> dict:
     card = customer_card.card
     barcode_value = f"{constants.PASS_BARCODE_PREFIX}{customer_card.id.hex}"
     return {
         "id": object_id_for(customer_card),
         "classId": class_id_for(card),
-        "state": "ACTIVE",
+        "state": object_state_for(customer_card),
         "accountId": str(customer_card.id),
         "accountName": customer_card.customer_name or customer_card.customer_phone,
         "loyaltyPoints": {
