@@ -169,16 +169,38 @@ def _fawry_body(*, ref: str, status: str = "PAID", amount: str = "799.00", sig: 
     ).encode()
 
 
-def test_fawry_webhook_bad_signature_rejected(settings, merchant):
-    settings.DEBUG = False
-    settings.BILLING = {**settings.BILLING, "FAWRY": {"SECURITY_KEY": "shh", "MERCHANT_CODE": "mc"}}
+def test_subscribe_rejects_disabled_provider(merchant):
+    """Fawry is disabled — a ?provider=fawry checkout must be refused, not 500."""
+    client, _ = _client_for(Role.OWNER, merchant)
+    resp = client.post(
+        "/api/v1/billing/subscribe?provider=fawry", {"plan": "growth"}, format="json"
+    )
+    assert resp.status_code == 400
+
+
+def test_fawry_webhook_disabled_returns_404(settings, merchant):
+    """The Fawry webhook route is kept (frozen contract) but inert while the
+    provider is disabled — a callback is acknowledged with 404, not processed."""
+    settings.DEBUG = True
     client, _ = _client_for(Role.OWNER, merchant)
     resp = client.post(
         "/api/v1/billing/webhook/fawry",
-        data=_fawry_body(ref="ref123", sig="not-the-real-signature"),
+        data=_fawry_body(ref="ref123"),
         content_type="application/json",
     )
-    assert resp.status_code == 400
+    assert resp.status_code == 404
+
+
+def test_fawry_adapter_still_rejects_bad_signature(settings):
+    """The retained Fawry adapter verifies callbacks (constant-time) so it stays
+    safe to re-enable even though no route reaches it today."""
+    from billing.gateways.base import WebhookVerificationError
+    from billing.gateways.fawry import FawryGateway
+
+    settings.DEBUG = False
+    settings.BILLING = {**settings.BILLING, "FAWRY": {"SECURITY_KEY": "shh", "MERCHANT_CODE": "mc"}}
+    with pytest.raises(WebhookVerificationError):
+        FawryGateway().verify_and_parse(headers={}, body=_fawry_body(ref="r1", sig="wrong"))
 
 
 def test_paymob_webhook_bad_hmac_rejected(settings, merchant):
