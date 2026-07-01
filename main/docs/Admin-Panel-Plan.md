@@ -205,8 +205,25 @@ cross-tenant data; PII reads audited.
 
 ---
 
-## Phase 3 — Plan Catalogue Management (DB-backed plans)
+## Phase 3 — Plan Catalogue Management (DB-backed plans) — ✅ DONE
 **Goal:** admins create/edit plans, limits, features, and prices without a deploy.
+
+**Shipped:** `billing.Plan` model (key/name/price_egp/is_public/archived + the
+full limit/feature set) + a seed migration loading the four tiers from
+`PLAN_LIMITS`/`PLAN_PRICES_EGP`. `billing.plans.plan_limits_map()` reads the DB
+(cached 60s, invalidated on every admin write) with the hardcoded map as
+fallback if a plan's row is missing/archived — `entitlements.check`/`describe`
+now resolve through it. `GET/POST /api/admin/v1/plans` + `GET/PATCH
+/plans/{key}` (archive is `PATCH {"archived": true}`, not delete); mutations
+gated to Super-admin/Finance via a new `IsFinanceAdmin` permission, reads open
+to any admin; every create/update/archive audited with before/after. Frontend
+**Plans** screen (table + inline create/edit form), role-gated Actions column.
+15 new backend tests (boundary + role gate + CRUD + audit + live-entitlements
+integration + archived-plan fallback); 232 backend tests green;
+ruff/black/mypy/spectacular clean. Verified live in-browser (list, edit,
+role-gated read-only view). **Deferred:** "draft vs published" staged edits —
+not needed for the DoD and adds real workflow complexity; edits apply
+immediately today, same as every other admin mutation in this panel.
 
 **Backend**
 - New `Plan` model: `key`, `name`, `price_egp`, `is_public`, and the limit/feature

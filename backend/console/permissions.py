@@ -16,6 +16,7 @@ from rest_framework.request import Request
 from rest_framework.views import APIView
 
 from console.auth import AdminJWTAuthentication
+from console.enums import AdminRole
 from console.models import AdminUser
 
 
@@ -29,6 +30,20 @@ class IsAdminUser(BasePermission):
 class IsSuperAdmin(BasePermission):
     def has_permission(self, request: Request, view: APIView) -> bool:
         return isinstance(request.user, AdminUser) and request.user.is_super_admin
+
+
+class IsFinanceAdmin(BasePermission):
+    """Grant to Super-admin or Finance — gates billing-impacting mutations
+    (e.g. plan catalogue edits, Phase 3) without waiting for the full
+    per-role permission matrix (Phase 12)."""
+
+    def has_permission(self, request: Request, view: APIView) -> bool:
+        admin = request.user
+        return (
+            isinstance(admin, AdminUser)
+            and admin.is_active
+            and (admin.is_super_admin or admin.role == AdminRole.FINANCE)
+        )
 
 
 class HasAdminRole(BasePermission):

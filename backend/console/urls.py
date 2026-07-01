@@ -6,6 +6,7 @@ from django.urls import path
 
 from console.views import AdminLoginView, AdminMeView, AdminRefreshView
 from console.views_merchants import MerchantDetailView, MerchantListView
+from console.views_plans import PlanDetailView, PlanListView
 
 urlpatterns = [
     path("auth/login", AdminLoginView.as_view(), name="admin-login"),
@@ -16,4 +17,7 @@ urlpatterns = [
     path(
         "merchants/<uuid:merchant_id>", MerchantDetailView.as_view(), name="admin-merchant-detail"
     ),
+    # Plan catalogue (Phase 3)
+    path("plans", PlanListView.as_view(), name="admin-plans"),
+    path("plans/<str:key>", PlanDetailView.as_view(), name="admin-plan-detail"),
 ]

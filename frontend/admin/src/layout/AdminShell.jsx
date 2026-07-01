@@ -21,7 +21,7 @@ import { useAuth } from '../hooks/useAuth'
 const NAV = [
   { to: '/', key: 'Overview', Icon: LayoutDashboard, end: true, ready: true },
   { to: '/merchants', key: 'Merchants', Icon: Building2, ready: true },
-  { to: '/plans', key: 'Plans', Icon: CreditCard, phase: 3 },
+  { to: '/plans', key: 'Plans', Icon: CreditCard, ready: true },
   { to: '/billing', key: 'Billing', Icon: Receipt, phase: 5 },
   { to: '/support', key: 'Support', Icon: LifeBuoy, phase: 6 },
   { to: '/revenue', key: 'Revenue', Icon: BarChart3, phase: 7 },
