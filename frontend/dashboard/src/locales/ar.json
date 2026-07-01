@@ -385,6 +385,11 @@
     "logo": "الشعار",
     "save": "حفظ",
     "saved": "تم الحفظ.",
+    "brandedEnroll": "صفحة تسجيل بعلامتك",
+    "brandedEnrollHint": "نصوص مخصّصة على صفحة الانضمام، ويتم إخفاء تذييل \"مدعوم من Stampn\".",
+    "enrollHeadline": "عنوان صفحة الانضمام",
+    "enrollTagline": "الوصف الفرعي لصفحة الانضمام",
+    "upgradeToUnlock": "ترقية لفتح الميزة",
     "notifEmail": "إشعارات البريد",
     "notifWhatsapp": "إشعارات واتساب",
     "currentPassword": "كلمة المرور الحالية",
@@ -409,7 +414,8 @@
     "successTitle": "تم تسجيلك! 🎉",
     "successBody": "أضف كارتك إلى محفظتك علشان تبدأ تجمع الأختام.",
     "addGoogle": "أضف إلى Google Wallet",
-    "noWallet": "كارتك جاهز. جاري إنهاء إعداد المحفظة."
+    "noWallet": "كارتك جاهز. جاري إنهاء إعداد المحفظة.",
+    "poweredBy": "مدعوم من Stampn"
   },
   "validation": {
     "required": "هذا الحقل مطلوب.",

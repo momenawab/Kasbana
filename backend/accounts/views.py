@@ -189,6 +189,15 @@ class SettingsBusinessView(APIView):
             s.contact_email = data["contact"].get("email", s.contact_email)
         if "address" in data:
             s.address = data["address"]
+
+        # Branded enrollment copy is a paid feature — enforce the capability only
+        # when the merchant actually sends it (leaves other settings ungated).
+        if "enroll_headline" in data or "enroll_tagline" in data:
+            entitlements.enforce(merchant, "custom_branding")
+            if "enroll_headline" in data:
+                s.enroll_headline = data["enroll_headline"]
+            if "enroll_tagline" in data:
+                s.enroll_tagline = data["enroll_tagline"]
         s.save()
         return Response(merchant_payload(merchant))
 

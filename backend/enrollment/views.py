@@ -44,9 +44,19 @@ class EnrollView(APIView):
 
     @extend_schema(responses=EnrollLandingSerializer)
     def get(self, request: Request, token: str) -> Response:
+        from billing import entitlements
+
         row = self._get_token_or_404(token)
         card = row.card
         merchant = row.merchant
+
+        # Branded enrollment: on custom_branding plans the merchant's own copy
+        # shows and the "Powered by Stampn" footer is hidden (white-label).
+        branded = entitlements.check(merchant, "custom_branding")
+        settings = getattr(merchant, "settings", None)
+        headline = (getattr(settings, "enroll_headline", "") or "") if branded else ""
+        tagline = (getattr(settings, "enroll_tagline", "") or "") if branded else ""
+
         data = EnrollLandingSerializer(
             {
                 "merchant_name": merchant.name,
@@ -56,6 +66,9 @@ class EnrollView(APIView):
                 "color_bg": card.color_bg or merchant.color_bg,
                 "color_fg": card.color_fg or merchant.color_fg,
                 "logo_url": card.logo_url or merchant.logo_url,
+                "headline": headline,
+                "tagline": tagline,
+                "show_powered_by": not branded,
             }
         ).data
         return Response(data)

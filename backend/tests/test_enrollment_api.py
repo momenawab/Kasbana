@@ -26,6 +26,35 @@ def test_get_landing_returns_program_details(api_client, card, token):
     assert body["merchant_name"] == card.merchant.name
 
 
+def test_landing_shows_powered_by_without_custom_branding(api_client, card, token):
+    # A trial merchant = Growth-level = has custom_branding, so it's white-label.
+    # Force a non-branded plan: activate Starter (custom_branding off).
+    from billing.services import activate_plan
+    from core.enums import PlanTier
+
+    activate_plan(card.merchant, PlanTier.STARTER)
+    body = api_client.get(f"/api/v1/enroll/{token.token}").json()
+    assert body["show_powered_by"] is True
+    assert body["headline"] == ""
+
+
+def test_landing_uses_custom_copy_and_hides_powered_by_when_branded(api_client, card, token):
+    from accounts.services import settings_for
+    from billing.services import activate_plan
+    from core.enums import PlanTier
+
+    activate_plan(card.merchant, PlanTier.GROWTH)  # custom_branding on
+    s = settings_for(card.merchant)
+    s.enroll_headline = "Welcome to Cairo Coffee ☕"
+    s.enroll_tagline = "Collect stamps, earn free drinks."
+    s.save()
+
+    body = api_client.get(f"/api/v1/enroll/{token.token}").json()
+    assert body["show_powered_by"] is False
+    assert body["headline"] == "Welcome to Cairo Coffee ☕"
+    assert body["tagline"] == "Collect stamps, earn free drinks."
+
+
 def test_get_landing_unknown_token_404(api_client):
     resp = api_client.get("/api/v1/enroll/does-not-exist")
     assert resp.status_code == 404

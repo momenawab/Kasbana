@@ -385,6 +385,11 @@
     "logo": "Logo",
     "save": "Save",
     "saved": "Saved.",
+    "brandedEnroll": "Branded enrollment page",
+    "brandedEnrollHint": "Custom copy on the public join page; the \"Powered by Stampn\" footer is hidden.",
+    "enrollHeadline": "Join-page headline",
+    "enrollTagline": "Join-page tagline",
+    "upgradeToUnlock": "Upgrade to unlock",
     "notifEmail": "Email notifications",
     "notifWhatsapp": "WhatsApp notifications",
     "currentPassword": "Current password",
@@ -409,7 +414,8 @@
     "successTitle": "You're in! 🎉",
     "successBody": "Add your card to your wallet to start collecting stamps.",
     "addGoogle": "Add to Google Wallet",
-    "noWallet": "Your card is ready. Wallet setup is being finalized."
+    "noWallet": "Your card is ready. Wallet setup is being finalized.",
+    "poweredBy": "Powered by Stampn"
   },
   "validation": {
     "required": "This field is required.",

@@ -31,6 +31,7 @@ def unique_slug(name: str) -> str:
 def merchant_payload(merchant: Merchant) -> dict[str, Any]:
     """Contract ``Merchant`` object with wire-mapped ``plan`` / ``status``."""
     sub = subscription_for(merchant)
+    s = settings_for(merchant)
     return {
         "id": str(merchant.id),
         "name": merchant.name,
@@ -41,4 +42,6 @@ def merchant_payload(merchant: Merchant) -> dict[str, Any]:
         "logo_url": merchant.logo_url or None,
         "color_bg": merchant.color_bg,
         "color_fg": merchant.color_fg,
+        "enroll_headline": s.enroll_headline,
+        "enroll_tagline": s.enroll_tagline,
     }
