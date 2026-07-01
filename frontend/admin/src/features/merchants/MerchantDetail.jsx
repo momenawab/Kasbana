@@ -5,11 +5,12 @@ import { useMerchant } from './api'
 import Badge from '../../components/Badge'
 import { num, shortDate, statusTone } from '../../lib/format'
 import SubscriptionTab from './SubscriptionTab'
+import MerchantBillingTab from './MerchantBillingTab'
 
 const TABS = [
   { key: 'overview', label: 'Overview', ready: true },
   { key: 'subscription', label: 'Subscription', ready: true },
-  { key: 'billing', label: 'Billing', phase: 5 },
+  { key: 'billing', label: 'Billing', ready: true },
   { key: 'support', label: 'Support', phase: 6 },
   { key: 'activity', label: 'Activity', phase: 6 },
 ]
@@ -138,6 +139,7 @@ export default function MerchantDetail() {
       )}
 
       {tab === 'subscription' && <SubscriptionTab merchantId={id} />}
+      {tab === 'billing' && <MerchantBillingTab merchantId={id} />}
     </div>
   )
 }

@@ -22,7 +22,7 @@ const NAV = [
   { to: '/', key: 'Overview', Icon: LayoutDashboard, end: true, ready: true },
   { to: '/merchants', key: 'Merchants', Icon: Building2, ready: true },
   { to: '/plans', key: 'Plans', Icon: CreditCard, ready: true },
-  { to: '/billing', key: 'Billing', Icon: Receipt, phase: 5 },
+  { to: '/billing', key: 'Billing', Icon: Receipt, ready: true },
   { to: '/support', key: 'Support', Icon: LifeBuoy, phase: 6 },
   { to: '/revenue', key: 'Revenue', Icon: BarChart3, phase: 7 },
   { to: '/announcements', key: 'Announcements', Icon: Megaphone, phase: 10 },

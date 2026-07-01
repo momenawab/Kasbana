@@ -6,6 +6,7 @@ import Home from './features/home/Home'
 import MerchantsList from './features/merchants/MerchantsList'
 import MerchantDetail from './features/merchants/MerchantDetail'
 import PlansList from './features/plans/PlansList'
+import BillingHome from './features/billing/BillingHome'
 
 export default function App() {
   return (
@@ -22,6 +23,7 @@ export default function App() {
         <Route path="/merchants" element={<MerchantsList />} />
         <Route path="/merchants/:id" element={<MerchantDetail />} />
         <Route path="/plans" element={<PlansList />} />
+        <Route path="/billing" element={<BillingHome />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
