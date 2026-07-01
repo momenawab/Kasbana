@@ -15,6 +15,7 @@ from django.utils import timezone
 
 from billing import entitlements, services
 from billing.models import Subscription
+from billing.plans import BillingStatus
 from console.auth import issue_admin_tokens
 from console.enums import AdminRole
 from console.models import AdminAuditLog, AdminUser
@@ -137,6 +138,27 @@ def test_downgrade_forced_through_despite_shortfall(api_client, super_admin, mer
     )
     assert resp.status_code == 200
     assert resp.json()["plan"] == "STARTER"
+
+
+def test_editing_notes_with_unchanged_plan_preserves_renewal_date(
+    api_client, super_admin, merchant
+):
+    """A save that re-sends the current plan (e.g. a notes-only edit) must NOT run
+    through activate_plan — doing so would wipe current_period_end and reset the
+    paying merchant's renewal date."""
+    period_end = timezone.now() + timedelta(days=30)
+    services.activate_plan(merchant, PlanTier.STARTER, period_end=period_end)
+
+    resp = _bearer(api_client, super_admin).patch(
+        _sub_url(merchant),
+        {"plan": "STARTER", "notes": "called in about invoice", "reason": "note"},
+        format="json",
+    )
+    assert resp.status_code == 200
+    sub = Subscription.objects.get(merchant=merchant)
+    assert sub.notes == "called in about invoice"
+    assert sub.current_period_end is not None  # renewal date preserved, not wiped
+    assert sub.status == BillingStatus.ACTIVE
 
 
 def test_patch_sets_explicit_status_over_activate_plan_default(api_client, super_admin, merchant):

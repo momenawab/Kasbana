@@ -72,9 +72,13 @@ class MerchantSubscriptionView(AdminAPIView):
         sub = subscription_for(mer)
         before = SubscriptionSerializer(sub).data
 
-        new_plan = data.get("plan")
-        if new_plan and new_plan != sub.plan and not data.get("force"):
-            shortfall = _downgrade_shortfall(mer, new_plan)
+        # Only a genuine plan CHANGE goes through activate_plan — the client re-sends
+        # the current plan on every save (e.g. an override/notes-only edit), and
+        # activate_plan resets current_period_end, so calling it for an unchanged
+        # plan would silently wipe a paying merchant's renewal date.
+        plan_changed = "plan" in data and data["plan"] != sub.plan
+        if plan_changed and not data.get("force"):
+            shortfall = _downgrade_shortfall(mer, data["plan"])
             if shortfall:
                 return Response(
                     {
@@ -87,8 +91,8 @@ class MerchantSubscriptionView(AdminAPIView):
                     status=409,
                 )
 
-        if new_plan:
-            services.activate_plan(mer, new_plan)
+        if plan_changed:
+            services.activate_plan(mer, data["plan"])
             sub.refresh_from_db()
         # Applied after activate_plan so an explicit status in the same request
         # (e.g. re-activating into LOCKED) wins over activate_plan's default ACTIVE.
