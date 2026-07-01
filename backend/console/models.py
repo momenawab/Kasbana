@@ -18,7 +18,7 @@ from django.contrib.auth.hashers import check_password, make_password
 from django.db import models
 
 from console.enums import AdminRole
-from core.models import TimeStampedModel, UUIDModel
+from core.models import Merchant, TimeStampedModel, UUIDModel
 
 
 class AdminUser(UUIDModel, TimeStampedModel):
@@ -61,6 +61,27 @@ class AdminUser(UUIDModel, TimeStampedModel):
     @property
     def is_anonymous(self) -> bool:
         return False
+
+
+class MerchantAdminMeta(UUIDModel, TimeStampedModel):
+    """Admin-only metadata about a merchant — kept OUT of the frozen ``core``
+    contract. One row per merchant, created lazily by the console when first
+    edited. Holds internal notes, ops flags, and the assigned account manager.
+    """
+
+    merchant = models.OneToOneField(Merchant, on_delete=models.CASCADE, related_name="admin_meta")
+    internal_notes = models.TextField(blank=True)
+    flags = models.JSONField(default=dict, blank=True)  # e.g. {"vip": true, "watch": true}
+    account_manager = models.ForeignKey(
+        AdminUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="managed_merchants",
+    )
+
+    def __str__(self) -> str:
+        return f"admin_meta({self.merchant_id})"
 
 
 class AdminAuditLog(models.Model):
