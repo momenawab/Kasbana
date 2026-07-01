@@ -26,6 +26,14 @@ fi
 echo "▶ Pulling images"
 $COMPOSE pull
 
+# Keep the local ``:latest`` tag pointing at the image we're deploying. Without
+# this, a *manual* ``docker compose up -d`` (which resolves ${IMAGE_TAG:-latest}
+# to :latest, and can't re-pull a private GHCR image without a fresh login)
+# would silently recreate the stack on a STALE local :latest — reverting prod to
+# old code. Retagging makes :latest == this release, so bare up -d stays current.
+IMAGE="ghcr.io/momenawab/stampn-backend"
+docker tag "${IMAGE}:${IMAGE_TAG}" "${IMAGE}:latest" || true
+
 echo "▶ Applying migrations"
 $COMPOSE run --rm web python manage.py migrate --noinput
 
