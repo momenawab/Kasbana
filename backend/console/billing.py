@@ -1,7 +1,11 @@
 """Dunning + reconciliation queries for the admin console (Phase 5).
 
-Dunning: merchants whose subscription is ``PAST_DUE`` — a paying merchant's
-renewal charge failed (see ``billing.services.apply_webhook_event``).
+Dunning: merchants whose subscription is ``PAST_DUE``. This system has no
+recurring auto-renewal (checkouts are one-time), so PAST_DUE is set by an admin
+(Phase 4 subscription controls) rather than inferred from a failed charge — a
+failed charge on an ACTIVE merchant is a voluntary upgrade attempt, not a missed
+renewal, and never revokes access. The list + notify surface those merchants so
+support can follow up; the signal source can widen if real renewals ship later.
 
 Reconciliation: internal consistency checks against data we actually control.
 Live gateway-transaction-log matching against Paymob needs Paymob's reporting

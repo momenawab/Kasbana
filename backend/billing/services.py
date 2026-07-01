@@ -245,12 +245,11 @@ def apply_webhook_event(event: WebhookEvent) -> Subscription | None:
             provider=event.provider,
             gateway_ref=event.gateway_ref,
         )
-        # A renewal charge failing on an already-paying merchant is exactly
-        # "past due" (Phase 5 dunning signal) — a first-subscribe failure while
-        # still TRIALING leaves the trial untouched, they can just retry checkout.
-        if sub.status == BillingStatus.ACTIVE:
-            sub.status = BillingStatus.PAST_DUE
-            sub.save(update_fields=["status", "updated_at"])
+        # Access is deliberately left unchanged. This system has no recurring
+        # auto-renewal (checkouts are one-time), so a failed charge on an ACTIVE
+        # merchant is always a *voluntary* upgrade / re-subscribe attempt — it
+        # must NOT revoke the plan they already paid for. PAST_DUE (the dunning
+        # signal) is reached by an admin, or by a future real renewal system.
         return sub
 
     if event.kind == "canceled":
