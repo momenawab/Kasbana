@@ -4,10 +4,11 @@ import { ArrowLeft, Loader2, Apple, Smartphone } from 'lucide-react'
 import { useMerchant } from './api'
 import Badge from '../../components/Badge'
 import { num, shortDate, statusTone } from '../../lib/format'
+import SubscriptionTab from './SubscriptionTab'
 
 const TABS = [
   { key: 'overview', label: 'Overview', ready: true },
-  { key: 'subscription', label: 'Subscription', phase: 4 },
+  { key: 'subscription', label: 'Subscription', ready: true },
   { key: 'billing', label: 'Billing', phase: 5 },
   { key: 'support', label: 'Support', phase: 6 },
   { key: 'activity', label: 'Activity', phase: 6 },
@@ -135,6 +136,8 @@ export default function MerchantDetail() {
           </div>
         </div>
       )}
+
+      {tab === 'subscription' && <SubscriptionTab merchantId={id} />}
     </div>
   )
 }
