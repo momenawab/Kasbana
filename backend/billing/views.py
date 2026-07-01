@@ -11,7 +11,6 @@ mode locally; real Paymob/Fawry round-trips are a staging concern.
 from __future__ import annotations
 
 import logging
-from decimal import Decimal
 
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
@@ -26,7 +25,7 @@ from billing import services
 from billing.gateways import DEFAULT_PROVIDER, get_gateway
 from billing.gateways.base import WebhookVerificationError
 from billing.models import Invoice
-from billing.plans import PLAN_PRICES_EGP, BillingStatus
+from billing.plans import BillingStatus, plan_price
 from billing.serializers import (
     BillingStateSerializer,
     CancelRequestSerializer,
@@ -64,7 +63,7 @@ class BillingStateView(APIView):
         payload = {
             "plan": plan_to_wire(sub),
             "trial_ends_at": sub.trial_ends_at if sub.trial_active() else None,
-            "price_egp": PLAN_PRICES_EGP.get(plan, Decimal("0")),
+            "price_egp": plan_price(plan),
             "usage": entitlements.usage(merchant),
             "next_renewal": sub.current_period_end,
             "payment_method": payment_method,
@@ -98,7 +97,7 @@ class SubscribeView(APIView):
         session = gateway.create_checkout(
             merchant_id=str(merchant.id),
             plan=plan,
-            amount_egp=PLAN_PRICES_EGP.get(plan, Decimal("0")),
+            amount_egp=plan_price(plan),
             customer_email=getattr(getattr(request, "user", None), "email", ""),
         )
         services.begin_checkout(

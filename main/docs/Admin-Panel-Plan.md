@@ -205,8 +205,30 @@ cross-tenant data; PII reads audited.
 
 ---
 
-## Phase 3 — Plan Catalogue Management (DB-backed plans)
+## Phase 3 — Plan Catalogue Management (DB-backed plans) — ✅ DONE
 **Goal:** admins create/edit plans, limits, features, and prices without a deploy.
+
+**Shipped:** `billing.Plan` model (key/name/price_egp/is_public/archived + the
+full limit/feature set) + a seed migration loading the four tiers from
+`PLAN_LIMITS`/`PLAN_PRICES_EGP`. A single cached catalogue (`_catalogue()`, 60s,
+invalidated on every admin write) backs three DB-backed accessors — with the
+hardcoded maps as fallback: `plan_limits_map()` (entitlements + messaging quota/
+automations) and `plan_price()` (what **subscribe/checkout actually charges** +
+the merchant billing page), so a price/limit edit takes effect live. Every
+reader was migrated off the hardcoded constants: `entitlements.check`/`describe`,
+`messaging.metering.quota_for`, `messaging.views` automation gate, and
+`billing.views` subscribe/state. Archived plans stay in resolution (archiving
+only hides them from the catalogue *listing*). `GET/POST /api/admin/v1/plans` +
+`GET/PATCH /plans/{key}` (archive is `PATCH {"archived": true}`, not delete);
+mutations gated to Super-admin/Finance via a new `IsFinanceAdmin` permission,
+reads open to any admin; every create/update/archive audited with before/after.
+Frontend **Plans** screen (table + inline create/edit form), role-gated Actions
+column. 16 new backend tests (boundary + role gate + CRUD + audit + live
+entitlements + live checkout price + archived-plan resolution); 233 backend
+tests green; ruff/black/mypy/spectacular clean. Verified live in-browser (list,
+edit, role-gated read-only view). **Deferred:** "draft vs published" staged
+edits — not needed for the DoD and adds real workflow complexity; edits apply
+immediately today, same as every other admin mutation in this panel.
 
 **Backend**
 - New `Plan` model: `key`, `name`, `price_egp`, `is_public`, and the limit/feature
