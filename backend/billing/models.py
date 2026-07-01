@@ -182,6 +182,9 @@ class Invoice(UUIDModel, TimeStampedModel):
     pdf_url = models.URLField(blank=True)
     provider = models.CharField(max_length=16, blank=True)
     gateway_ref = models.CharField(max_length=128, blank=True)
+    # Admin-only memo for manual/one-off invoices (Phase 5) — NOT in the frozen
+    # merchant contract's Invoice shape, so InvoiceSerializer never exposes it.
+    note = models.TextField(blank=True)
 
     objects = TenantManager()
 

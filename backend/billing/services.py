@@ -19,7 +19,7 @@ from billing.plans import BillingStatus
 from core.models import Merchant
 
 if TYPE_CHECKING:
-    from billing.gateways.base import WebhookEvent
+    from billing.gateways.base import CheckoutSession, WebhookEvent
 
 
 def subscription_for(merchant: Merchant) -> Subscription:
@@ -130,11 +130,14 @@ def record_invoice(
     provider: str = "",
     gateway_ref: str = "",
     pdf_url: str = "",
+    note: str = "",
 ) -> Invoice:
     """Create (or return existing) an invoice for a gateway transaction.
 
     Idempotent on ``(provider, gateway_ref)`` so a replayed webhook does not
-    duplicate the invoice.
+    duplicate the invoice. A manual/one-off admin entry (Phase 5) passes a blank
+    ``gateway_ref`` — exempt from the idempotency lookup and the DB constraint —
+    plus a ``note``.
     """
     if gateway_ref:
         existing = Invoice.objects.filter(provider=provider, gateway_ref=gateway_ref).first()
@@ -152,10 +155,40 @@ def record_invoice(
                 provider=provider,
                 gateway_ref=gateway_ref,
                 pdf_url=pdf_url,
+                note=note,
                 issued_at=timezone.now(),
             )
     except IntegrityError:
         return Invoice.objects.get(provider=provider, gateway_ref=gateway_ref)
+
+
+@transaction.atomic
+def retry_invoice(invoice: Invoice, *, customer_email: str = "") -> CheckoutSession:
+    """Admin-triggered retry of a FAILED invoice (Phase 5) — a new checkout at the
+    *current* price (not the old invoice's amount, in case an admin edited the
+    plan's price since — Phase 3) for the plan the merchant is actually trying
+    to be on: ``pending_plan`` if a checkout is still outstanding (e.g. a first-
+    subscribe failure while still TRIALING — ``plan`` would default to FREE/0
+    there, which is wrong), else the stored ``plan``. ``current_period_end``/
+    status only change once the gateway confirms via the normal webhook ->
+    ``apply_webhook_event`` path.
+    """
+    from billing.gateways import get_gateway
+    from billing.plans import plan_price
+
+    merchant = invoice.merchant
+    sub = subscription_for(merchant)
+    plan = sub.pending_plan or sub.plan
+    provider = invoice.provider or "paymob"
+    gateway = get_gateway(provider)
+    session = gateway.create_checkout(
+        merchant_id=str(merchant.id),
+        plan=plan,
+        amount_egp=plan_price(plan),
+        customer_email=customer_email,
+    )
+    begin_checkout(merchant, plan=plan, provider=provider, gateway_ref=session.gateway_ref)
+    return session
 
 
 @transaction.atomic
@@ -212,6 +245,11 @@ def apply_webhook_event(event: WebhookEvent) -> Subscription | None:
             provider=event.provider,
             gateway_ref=event.gateway_ref,
         )
+        # Access is deliberately left unchanged. This system has no recurring
+        # auto-renewal (checkouts are one-time), so a failed charge on an ACTIVE
+        # merchant is always a *voluntary* upgrade / re-subscribe attempt — it
+        # must NOT revoke the plan they already paid for. PAST_DUE (the dunning
+        # signal) is reached by an admin, or by a future real renewal system.
         return sub
 
     if event.kind == "canceled":

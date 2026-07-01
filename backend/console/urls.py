@@ -5,6 +5,13 @@ from __future__ import annotations
 from django.urls import path
 
 from console.views import AdminLoginView, AdminMeView, AdminRefreshView
+from console.views_billing import DunningListView, DunningNotifyView, ReconciliationView
+from console.views_invoices import (
+    InvoiceDetailView,
+    InvoiceListView,
+    InvoiceRetryView,
+    MerchantInvoiceCreateView,
+)
 from console.views_merchants import MerchantDetailView, MerchantListView
 from console.views_plans import PlanDetailView, PlanListView
 from console.views_subscription import (
@@ -58,5 +65,25 @@ urlpatterns = [
         "merchants/<uuid:merchant_id>/subscription/audit",
         SubscriptionAuditView.as_view(),
         name="admin-merchant-subscription-audit",
+    ),
+    # Billing, invoices & dunning (Phase 5)
+    path("invoices", InvoiceListView.as_view(), name="admin-invoices"),
+    path("invoices/<uuid:invoice_id>", InvoiceDetailView.as_view(), name="admin-invoice-detail"),
+    path(
+        "invoices/<uuid:invoice_id>/retry", InvoiceRetryView.as_view(), name="admin-invoice-retry"
+    ),
+    path(
+        "merchants/<uuid:merchant_id>/invoices",
+        MerchantInvoiceCreateView.as_view(),
+        name="admin-merchant-invoice-create",
+    ),
+    path("billing/dunning", DunningListView.as_view(), name="admin-billing-dunning"),
+    path(
+        "merchants/<uuid:merchant_id>/dunning/notify",
+        DunningNotifyView.as_view(),
+        name="admin-merchant-dunning-notify",
+    ),
+    path(
+        "billing/reconciliation", ReconciliationView.as_view(), name="admin-billing-reconciliation"
     ),
 ]

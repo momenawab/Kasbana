@@ -301,29 +301,52 @@ it reflects in the merchant's live entitlements; every action audited.
 
 ---
 
-## Phase 5 — Billing, Invoices & Payments
-**Goal:** full visibility + control over money: invoices, payments, refunds, dunning.
+## Phase 5 — Billing, Invoices & Payments — ✅ DONE (no-refund scope)
+**Goal:** full visibility + control over money: invoices, payments, dunning.
 
-**Backend**
-- `GET /api/admin/v1/invoices` (cross-tenant, filter by status/merchant/date),
-  `GET /invoices/{id}`.
-- Actions: `POST /invoices/{id}/refund`, `POST …/retry` (re-attempt failed
-  Paymob charge), `POST /merchants/{id}/invoices` (manual/one-off invoice),
-  mark-paid (offline payment). New `Refund` model; Paymob refund API integration.
-- **Dunning**: list of overdue/failed merchants + one-click retry / notify.
-- Paymob **reconciliation**: match gateway transactions ↔ invoices, flag mismatches.
+**Scope note:** refunds are **not a feature of this system** (confirmed — there's
+no refund initiation capability anywhere; a Paymob-side refund only ever
+surfaces passively as a `canceled` webhook event, handled since Phase 1.4).
+Dropped the `Refund` model, the refund endpoint, and the Paymob refund API call
+from this phase entirely — everything else shipped.
 
-**Frontend**
-- **Billing** section: all invoices table, per-invoice detail (line items, gateway
-  refs, status timeline), refund/retry/mark-paid actions, **Dunning queue** view,
-  reconciliation report.
+**Shipped:** `GET /api/admin/v1/invoices` (cross-tenant, status/merchant_id/
+date-range filters, cursor-paginated) + `GET /invoices/{id}`. `POST
+/invoices/{id}/retry` — FAILED-only (409 `INVOICE_NOT_FAILED` otherwise), a
+fresh gateway checkout at the merchant's **current** plan/price (prefers
+`pending_plan` over `plan` so a first-subscribe failure while still TRIALING
+doesn't retry at FREE/0). `POST /merchants/{id}/invoices` — manual/one-off
+invoice (`status="paid"` default = mark-paid for an offline payment,
+`"pending"` = expected-not-yet-received); `Invoice.note` added (admin-only,
+outside the frozen contract's Invoice shape). `GET /billing/dunning` — merchants
+`PAST_DUE`. **Design note:** PAST_DUE is an *admin-set* state (Phase 4 controls)
+— this system has no recurring auto-renewal (checkouts are one-time), so a
+failed charge on an ACTIVE merchant is always a voluntary upgrade attempt and
+deliberately does NOT touch their access (flipping them to PAST_DUE would lock
+them out of the plan they already paid for; a review pass caught and removed
+exactly that). If real renewals ship later, the webhook becomes a second signal
+source. `POST /merchants/{id}/dunning/notify` —
+emails the owner a reminder (`send_mail`, fail-silently). `GET
+/billing/reconciliation` — internal consistency report (stale pending manual
+invoices 7+ days old; ACTIVE-via-a-real-checkout subscriptions with zero PAID
+invoices) — **not** a live Paymob transaction-log match, which needs Paymob's
+reporting API/export and real credentials (out of scope, per this phase's own
+dependency). Mutations gated to Super-admin/Finance, reads open to any admin,
+every mutation audited. Frontend: global **Billing** page (Invoices · Dunning ·
+Reconciliation tabs, hard-confirmed retry/notify) + a merchant-scoped Billing
+tab (invoice history + the manual-invoice/mark-paid form) on the merchant
+detail page. 25 new backend tests incl. the failed-upgrade-never-revokes-access
+guarantee, the admin-set PAST_DUE → dunning path, the retry
+pending-plan-vs-FREE trap, and the reconciliation exclusions; 278 backend
+tests green; ruff/black/mypy/spectacular clean. Verified live in-browser:
+cross-tenant invoice list/detail/retry, dunning list + notify (audited),
+reconciliation flags, and the merchant-scoped mark-paid flow.
 
-**Security:** refunds/manual invoices → **Finance/Super-admin**; hard confirms;
-audited with amounts.
+**Security:** manual invoices/retry/notify → **Finance/Super-admin**; audited.
 
-**Depends on:** 4, real Paymob creds. **DoD:** an admin can refund, retry, and
-reconcile; dunning surfaces overdue merchants. *(Real refund round-trip is a
-staging/live check.)*
+**Depends on:** 4. **DoD:** an admin can retry a failed charge and record an
+offline payment; dunning surfaces overdue merchants; reconciliation flags
+internal data-integrity gaps.
 
 ---
 
