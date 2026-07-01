@@ -91,6 +91,7 @@ LOCAL_APPS = [
     "dashboard",
     "billing",
     "messaging",
+    "console",  # platform admin panel (separate auth boundary)
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -176,8 +177,10 @@ UPLOAD_ALLOWED_TYPES = frozenset(
 # ── CORS ──────────────────────────────────────────────────────────────────────
 CORS_ALLOWED_ORIGINS = env_list(
     "CORS_ALLOWED_ORIGINS",
-    # localhost:5173 marketing dev · 5174 dashboard dev · prod marketing + dashboard
-    "http://localhost:5173,http://localhost:5174,https://stampn.net,https://app.stampn.net",
+    # localhost 5173 marketing · 5174 dashboard · 5175 admin console dev;
+    # prod: marketing + dashboard + admin console.
+    "http://localhost:5173,http://localhost:5174,http://localhost:5175,"
+    "https://stampn.net,https://app.stampn.net,https://admin.stampn.net",
 )
 
 # Allow the dashboard (different origin) to send the loyalty Idempotency-Key on
@@ -205,6 +208,7 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "auth": env("THROTTLE_AUTH", "20/min"),
         "webhook": env("THROTTLE_WEBHOOK", "120/min"),
+        "admin_auth": env("THROTTLE_ADMIN_AUTH", "10/min"),
     },
 }
 

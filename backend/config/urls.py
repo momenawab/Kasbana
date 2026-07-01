@@ -49,6 +49,8 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/health/", health, name="health"),
     path("api/v1/", include((api_v1, "v1"))),
+    # Platform admin console — separate auth boundary (console app).
+    path("api/admin/v1/", include(("console.urls", "console"), namespace="console")),
     # OpenAPI schema + docs (drf-spectacular)
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path(
