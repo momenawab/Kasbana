@@ -290,6 +290,8 @@
     "collectBirthday": "Collect customer birthday",
     "singleUse": "Single-use card",
     "singleUseHint": "The card expires from the customer's wallet once the reward is redeemed (instead of resetting to keep collecting).",
+    "referral": "Referral program",
+    "referralHint": "Customers get a share link after joining; when a friend joins through it, both earn a bonus stamp.",
     "saveDraft": "Save draft",
     "publish": "Publish",
     "savedDraft": "Draft saved.",
@@ -415,7 +417,10 @@
     "successBody": "Add your card to your wallet to start collecting stamps.",
     "addGoogle": "Add to Google Wallet",
     "noWallet": "Your card is ready. Wallet setup is being finalized.",
-    "poweredBy": "Powered by Stampn"
+    "poweredBy": "Powered by Stampn",
+    "referTitle": "Refer a friend 🎁",
+    "referBody": "Share your link — you both get a bonus stamp when they join.",
+    "referShare": "Share my link"
   },
   "validation": {
     "required": "This field is required.",

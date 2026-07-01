@@ -26,6 +26,7 @@ const EMPTY = {
   logo_url: '',
   hero_image_url: '',
   single_use: false,
+  referral_enabled: false,
   collect_birthday: false,
 }
 
@@ -99,6 +100,7 @@ export default function CardDesigner() {
         logo_url: form.logo_url || '',
         hero_image_url: form.hero_image_url || '',
         single_use: form.single_use,
+        referral_enabled: form.referral_enabled,
         status,
       }
       const card = await save.mutateAsync(payload)
@@ -201,6 +203,14 @@ export default function CardDesigner() {
               label={t('designer.singleUse')}
             />
             <p className="mt-1 text-xs text-tx-3">{t('designer.singleUseHint')}</p>
+          </div>
+          <div>
+            <Toggle
+              checked={form.referral_enabled}
+              onChange={set('referral_enabled')}
+              label={t('designer.referral')}
+            />
+            <p className="mt-1 text-xs text-tx-3">{t('designer.referralHint')}</p>
           </div>
           <div className="flex gap-2 pt-2">
             <Button variant="ghost" onClick={() => persist('DRAFT')} loading={save.isPending} className="flex-1">

@@ -16,6 +16,9 @@ ENROLL_TOKEN_TTL_DAYS = None  # None = never expires
 # Wallet
 PASS_BARCODE_PREFIX = "WLA"  # barcode payload prefix
 
+# Referrals — bonus stamps granted to referrer + referee when a referral converts.
+REFERRAL_BONUS_STAMPS = 1
+
 # Pagination
 DEFAULT_PAGE_SIZE = 25
 MAX_PAGE_SIZE = 100

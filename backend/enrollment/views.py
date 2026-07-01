@@ -7,6 +7,7 @@ POST /enroll/{token}  — create a CustomerCard (PDPL consent), record the openi
 
 from __future__ import annotations
 
+from django.conf import settings
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
@@ -106,6 +107,16 @@ class EnrollView(APIView):
             # Lost the race against a concurrent enroll of the same phone.
             raise AlreadyEnrolled()
 
+        # Referral conversion: if joined via ?ref=<referrer>, grant bonus stamps
+        # to both. Best-effort, heavily guarded (see enrollment.referrals).
+        from enrollment.referrals import apply_referral
+
+        referral = apply_referral(card, customer_card, body.validated_data.get("ref"))
+        if referral is not None:
+            customer_card.refresh_from_db(fields=["stamp_count"])
+            wallet.push_update(referral.referrer)
+            wallet.push_update(customer_card)
+
         # Engage automation (Phase 1.7): fire the welcome trigger on a fresh
         # enrollment. Best-effort — no-ops unless the merchant enabled it.
         from messaging.tasks import fire_for_customer
@@ -115,6 +126,12 @@ class EnrollView(APIView):
         # Provision passes (Apple + Google). Returns null URLs if creds absent.
         result = wallet.provision(customer_card)
 
+        # The new customer's own share link, so the success page can invite them
+        # to refer friends (only when referrals are enabled for this program).
+        referral_url = ""
+        if card.referral_enabled:
+            referral_url = f"{settings.ENROLL_BASE_URL}/enroll/{token}?ref={customer_card.id}"
+
         payload = EnrollResponseSerializer(
             {
                 "customer_card_id": customer_card.id,
@@ -122,6 +139,7 @@ class EnrollView(APIView):
                 "stamps_required": card.stamps_required,
                 "apple_pass_url": result.apple_pass_url,
                 "google_save_url": result.google_save_url,
+                "referral_url": referral_url,
             }
         ).data
         return Response(payload, status=status.HTTP_201_CREATED)

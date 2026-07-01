@@ -127,6 +127,19 @@ def redeem_reward(
         )
 
 
+def grant_stamps(customer_card: CustomerCard, *, delta: int = 1, note: str = "") -> StampLedger:
+    """Grant bonus stamps *without* the anti-fraud guards — for system rewards
+    like referrals, never for staff scans (use ``add_stamp`` for those)."""
+    with transaction.atomic():
+        card = _lock(customer_card)
+        new_balance = card.stamp_count + delta
+        entry = _append(
+            card, event_type=LedgerEvent.STAMP, delta=delta, balance_after=new_balance, note=note
+        )
+        _apply_balance(card, new_balance)
+        return entry
+
+
 # ── internals ─────────────────────────────────────────────────────────────────
 def _sum(field: str):
     from django.db.models import Sum

@@ -3,7 +3,7 @@
 // "Add to Google Wallet". Apple shown later once an Apple account exists; for
 // now every platform gets the Google button (apple_pass_url is null).
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useSearchParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -29,6 +29,8 @@ const GOOGLE_BADGE = '/add-to-google-wallet.png'
 
 export default function Enroll() {
   const { token } = useParams()
+  const [searchParams] = useSearchParams()
+  const ref = searchParams.get('ref') // referrer's customer_card id, if shared
   const { t, i18n } = useTranslation()
   const [info, setInfo] = useState(null)
   const [loadError, setLoadError] = useState(null)
@@ -68,6 +70,7 @@ export default function Enroll() {
         customer_email: values.customer_email || '',
         birthday: values.birthday || null,
         consent: true,
+        ref: ref || null,
       })
       setResult(data)
     } catch (err) {
@@ -128,6 +131,7 @@ export default function Enroll() {
             <p className="text-sm text-tx-3">{t('enroll.noWallet')}</p>
           )}
           {/* Apple button intentionally omitted until an Apple account exists. */}
+          {result.referral_url && <ReferShare url={result.referral_url} />}
         </div>
       </Centered>
     )
@@ -188,6 +192,33 @@ function Centered({ children }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-paper p-4">
       <div className="w-full max-w-sm rounded-card bg-white p-6 shadow-bold">{children}</div>
+    </div>
+  )
+}
+
+// "Refer a friend" — share your link; both earn a bonus stamp when they join.
+function ReferShare({ url }) {
+  const { t } = useTranslation()
+  const [copied, setCopied] = useState(false)
+  const share = async () => {
+    try {
+      if (navigator.share) await navigator.share({ url })
+      else {
+        await navigator.clipboard.writeText(url)
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2000)
+      }
+    } catch {
+      /* user cancelled the share sheet — ignore */
+    }
+  }
+  return (
+    <div className="mt-2 w-full rounded-ctl border border-line bg-paper p-3 text-center">
+      <p className="mb-2 text-sm font-semibold text-ink">{t('enroll.referTitle')}</p>
+      <p className="mb-3 text-xs text-tx-2">{t('enroll.referBody')}</p>
+      <Button size="sm" onClick={share} className="w-full">
+        {copied ? t('qr.copied') : t('enroll.referShare')}
+      </Button>
     </div>
   )
 }
