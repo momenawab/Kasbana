@@ -5,6 +5,7 @@ import Login from './features/auth/Login'
 import Home from './features/home/Home'
 import MerchantsList from './features/merchants/MerchantsList'
 import MerchantDetail from './features/merchants/MerchantDetail'
+import PlansList from './features/plans/PlansList'
 
 export default function App() {
   return (
@@ -20,6 +21,7 @@ export default function App() {
         <Route path="/" element={<Home />} />
         <Route path="/merchants" element={<MerchantsList />} />
         <Route path="/merchants/:id" element={<MerchantDetail />} />
+        <Route path="/plans" element={<PlansList />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

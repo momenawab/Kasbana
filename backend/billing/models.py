@@ -9,6 +9,7 @@ billing webhooks; ``Subscription`` is the source of truth for *access*.
 from __future__ import annotations
 
 from datetime import datetime, timedelta
+from decimal import Decimal
 
 from django.db import models
 from django.utils import timezone
@@ -21,6 +22,70 @@ from core.tenancy import TenantManager
 
 def default_trial_end() -> datetime:
     return timezone.now() + timedelta(days=TRIAL_DAYS)
+
+
+class AnalyticsTier(models.TextChoices):
+    BASIC = "basic", "Basic"
+    FULL = "full", "Full"
+
+
+class Plan(UUIDModel, TimeStampedModel):
+    """DB-backed plan catalogue (Phase 3) — admins edit limits/features/price
+    without a deploy. ``billing.plans.PLAN_LIMITS``/``PLAN_PRICES_EGP`` remain the
+    seed data (loaded by a data migration) and the in-code fallback used when
+    this table is empty; see ``billing.plans.plan_limits_map``.
+
+    ``key`` matches a ``core.enums.PlanTier`` value for the shipped tiers, but is
+    a plain string so custom/negotiated plans can be added without a code change.
+    Archived (not deleted) so historical subscriptions keep a valid reference.
+    """
+
+    key = models.CharField(max_length=32, unique=True)
+    name = models.CharField(max_length=64)
+    price_egp = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0"))
+    is_public = models.BooleanField(default=True)  # offered on the self-serve subscribe screen
+    archived = models.BooleanField(default=False)
+
+    # ``max_*`` — null means unlimited (mirrors billing.plans.LIMIT_CAPABILITIES).
+    max_cards = models.PositiveIntegerField(null=True, blank=True)
+    max_locations = models.PositiveIntegerField(null=True, blank=True)
+    max_staff = models.PositiveIntegerField(null=True, blank=True)
+    max_customers = models.PositiveIntegerField(null=True, blank=True)
+
+    whatsapp = models.BooleanField(default=False)
+    export = models.BooleanField(default=False)
+    api = models.BooleanField(default=False)
+    specialized_roles = models.BooleanField(default=False)
+    custom_branding = models.BooleanField(default=False)
+
+    automations = models.PositiveIntegerField(default=0)
+    analytics = models.CharField(
+        max_length=8, choices=AnalyticsTier.choices, default=AnalyticsTier.BASIC
+    )
+    whatsapp_quota = models.PositiveIntegerField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["price_egp", "key"]
+
+    def __str__(self) -> str:
+        return f"{self.key} ({self.name})"
+
+    def as_limits(self) -> dict[str, int | bool | str | None]:
+        """Shape matching ``billing.plans.PLAN_LIMITS[plan]`` for the entitlements engine."""
+        return {
+            "max_cards": self.max_cards,
+            "max_locations": self.max_locations,
+            "max_staff": self.max_staff,
+            "max_customers": self.max_customers,
+            "whatsapp": self.whatsapp,
+            "export": self.export,
+            "api": self.api,
+            "specialized_roles": self.specialized_roles,
+            "custom_branding": self.custom_branding,
+            "automations": self.automations,
+            "analytics": self.analytics,
+            "whatsapp_quota": self.whatsapp_quota,
+        }
 
 
 class Subscription(UUIDModel, TimeStampedModel):

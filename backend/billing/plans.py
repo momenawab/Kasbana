@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
+from django.core.cache import cache
 from django.db import models
 
 from core.enums import PlanTier
@@ -120,3 +121,30 @@ PLAN_PRICES_EGP: dict[str, Decimal] = {
     PlanTier.GROWTH: Decimal("799"),
     PlanTier.CHAIN: Decimal("0"),
 }
+
+# Phase 3 — plan limits move to the DB (``billing.models.Plan``) so admins can
+# edit them without a deploy. ``PLAN_LIMITS`` above stays as the seed data (a
+# migration loads it) and the fallback below when the table is empty/missing a
+# key — e.g. a fresh install before the seed migration runs, or in isolated
+# unit tests that touch ``billing.plans`` without the DB.
+_PLAN_LIMITS_CACHE_KEY = "billing:plan_limits_map:v1"
+_PLAN_LIMITS_CACHE_TTL = 60  # seconds; admin edits also invalidate explicitly
+
+
+def plan_limits_map() -> dict[str, dict[str, int | bool | str | None]]:
+    """The live plan -> limits map, DB-backed with the hardcoded seed as fallback."""
+    cached = cache.get(_PLAN_LIMITS_CACHE_KEY)
+    if cached is not None:
+        return cached
+
+    from billing.models import Plan  # local import: Plan lives in this app's models
+
+    rows = {p.key: p.as_limits() for p in Plan.objects.filter(archived=False)}
+    result = rows or PLAN_LIMITS
+    cache.set(_PLAN_LIMITS_CACHE_KEY, result, _PLAN_LIMITS_CACHE_TTL)
+    return result
+
+
+def invalidate_plan_cache() -> None:
+    """Call after any ``Plan`` create/update/archive so edits apply immediately."""
+    cache.delete(_PLAN_LIMITS_CACHE_KEY)

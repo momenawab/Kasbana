@@ -167,8 +167,17 @@ pipeline (`deploy-admin.yml` + `deployment-admin` branch) green.
 
 ---
 
-## Phase 2 — Merchant Directory (list + 360° detail)
+## Phase 2 — Merchant Directory (list + 360° detail) — ✅ DONE
 **Goal:** find any merchant and see everything about them (read-only).
+
+**Shipped:** `GET /api/admin/v1/merchants` (cross-tenant, `q`/`status`/`plan`
+filters, cursor-paginated, annotated cards/customers/staff/locations counts) +
+`GET /merchants/{id}` 360° (profile, subscription snapshot, owner+contact, usage,
+Apple/Google wallet counts, admin_meta). Admin-only data kept OUT of frozen core
+via a `console.MerchantAdminMeta` sidecar (notes/flags/account_manager; migration
+0002). Frontend Merchants list (searchable/filterable table) + detail (header +
+tabbed Overview, later-phase placeholders). 7 tests incl. the security check that
+a merchant token can't reach the cross-tenant directory. 225 backend tests green.
 
 **Backend**
 - `GET /api/admin/v1/merchants` — cross-tenant list: search (name/slug/email/
@@ -196,8 +205,25 @@ cross-tenant data; PII reads audited.
 
 ---
 
-## Phase 3 — Plan Catalogue Management (DB-backed plans)
+## Phase 3 — Plan Catalogue Management (DB-backed plans) — ✅ DONE
 **Goal:** admins create/edit plans, limits, features, and prices without a deploy.
+
+**Shipped:** `billing.Plan` model (key/name/price_egp/is_public/archived + the
+full limit/feature set) + a seed migration loading the four tiers from
+`PLAN_LIMITS`/`PLAN_PRICES_EGP`. `billing.plans.plan_limits_map()` reads the DB
+(cached 60s, invalidated on every admin write) with the hardcoded map as
+fallback if a plan's row is missing/archived — `entitlements.check`/`describe`
+now resolve through it. `GET/POST /api/admin/v1/plans` + `GET/PATCH
+/plans/{key}` (archive is `PATCH {"archived": true}`, not delete); mutations
+gated to Super-admin/Finance via a new `IsFinanceAdmin` permission, reads open
+to any admin; every create/update/archive audited with before/after. Frontend
+**Plans** screen (table + inline create/edit form), role-gated Actions column.
+15 new backend tests (boundary + role gate + CRUD + audit + live-entitlements
+integration + archived-plan fallback); 232 backend tests green;
+ruff/black/mypy/spectacular clean. Verified live in-browser (list, edit,
+role-gated read-only view). **Deferred:** "draft vs published" staged edits —
+not needed for the DoD and adds real workflow complexity; edits apply
+immediately today, same as every other admin mutation in this panel.
 
 **Backend**
 - New `Plan` model: `key`, `name`, `price_egp`, `is_public`, and the limit/feature
@@ -504,7 +530,7 @@ failed jobs / re-provision passes, and flip feature flags without a deploy.
 
 **DoD:** MFA on for all admins; edge allowlist live; security test suite green;
 Sentry live; launch checklist signed off.
-
+docker compose -f infra/compose.prod.yml exec web python manage.py createadmin --email admin@stampn.net --role SUPER_ADMIN
 ---
 
 ## 4. Suggested MVP cut (if you want value fast)

@@ -23,6 +23,7 @@ from billing.plans import (
     FEATURE_CAPABILITIES,
     LIMIT_CAPABILITIES,
     PLAN_LIMITS,
+    plan_limits_map,
 )
 from billing.services import subscription_for
 from common.errors import PlanLimit
@@ -51,7 +52,9 @@ def check(merchant: Merchant, capability: str) -> bool:
     if plan is None:  # locked — trial expired or subscription inactive
         return False
 
-    limits = PLAN_LIMITS[plan]
+    # Falls back to the hardcoded seed if an active subscription's plan was
+    # archived out of the DB catalogue — it must keep working, not 500.
+    limits = plan_limits_map().get(plan) or PLAN_LIMITS[plan]
     if capability in FEATURE_CAPABILITIES:
         return bool(limits[capability])
 
@@ -95,7 +98,7 @@ def describe(merchant: Merchant) -> dict[str, object]:
 
     sub = subscription_for(merchant)
     plan = sub.effective_plan() or sub.plan  # locked -> show stored plan's shape
-    limits = PLAN_LIMITS[plan]
+    limits = plan_limits_map().get(plan) or PLAN_LIMITS[plan]
     return {
         "plan": plan_to_wire(sub),
         "limits": {k: limits[k] for k in LIMIT_CAPABILITIES},
