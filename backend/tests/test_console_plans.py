@@ -7,15 +7,18 @@ through to the entitlements engine (``plan_limits_map``/``check``).
 
 from __future__ import annotations
 
+from decimal import Decimal
+
 import pytest
 
 from billing import entitlements, services
 from billing.models import Plan
-from billing.plans import invalidate_plan_cache
+from billing.plans import invalidate_plan_cache, plan_price
 from console.auth import issue_admin_tokens
 from console.enums import AdminRole
 from console.models import AdminAuditLog, AdminUser
 from core.enums import PlanTier
+from tests import factories
 
 pytestmark = pytest.mark.django_db
 
@@ -173,9 +176,23 @@ def test_editing_plan_limit_changes_live_entitlements(api_client, super_admin, m
     assert entitlements.check(merchant, "api") is True
 
 
-def test_archived_plan_still_active_falls_back_gracefully(merchant):
-    """An active subscription on a plan an admin later archives must not 500."""
+def test_editing_plan_price_updates_the_checkout_price(api_client, super_admin):
+    """Editing a price in the admin panel must change what checkout actually
+    charges — the subscribe/billing flow reads ``plan_price`` (DB-backed)."""
+    resp = _bearer(api_client, super_admin).patch(
+        f"{PLANS}/STARTER", {"price_egp": "349"}, format="json"
+    )
+    assert resp.status_code == 200
+    assert plan_price("STARTER") == Decimal("349.00")
+
+
+def test_archived_plan_still_resolves_its_own_db_limits(merchant):
+    """Archiving hides a plan from the catalogue listing but must NOT change how an
+    existing subscriber's limits resolve — the archived row's own DB value wins,
+    not the hardcoded seed (CHAIN's seed is unlimited cards)."""
     services.activate_plan(merchant, PlanTier.CHAIN)
-    Plan.objects.filter(key="CHAIN").update(archived=True)
+    Plan.objects.filter(key="CHAIN").update(archived=True, max_cards=1)
     invalidate_plan_cache()
-    assert entitlements.check(merchant, "max_cards") is True  # CHAIN = unlimited, still honored
+    assert entitlements.check(merchant, "max_cards") is True  # 0 < 1
+    factories.CardFactory(merchant=merchant)
+    assert entitlements.check(merchant, "max_cards") is False  # 1 == 1 -> DB limit honored

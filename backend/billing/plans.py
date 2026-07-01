@@ -12,6 +12,7 @@ merchant's stored plan, then locks on expiry without conversion.
 from __future__ import annotations
 
 from decimal import Decimal
+from typing import TypedDict
 
 from django.core.cache import cache
 from django.db import models
@@ -122,29 +123,55 @@ PLAN_PRICES_EGP: dict[str, Decimal] = {
     PlanTier.CHAIN: Decimal("0"),
 }
 
-# Phase 3 — plan limits move to the DB (``billing.models.Plan``) so admins can
-# edit them without a deploy. ``PLAN_LIMITS`` above stays as the seed data (a
-# migration loads it) and the fallback below when the table is empty/missing a
-# key — e.g. a fresh install before the seed migration runs, or in isolated
-# unit tests that touch ``billing.plans`` without the DB.
-_PLAN_LIMITS_CACHE_KEY = "billing:plan_limits_map:v1"
-_PLAN_LIMITS_CACHE_TTL = 60  # seconds; admin edits also invalidate explicitly
+# Phase 3 — plan limits AND prices move to the DB (``billing.models.Plan``) so
+# admins can edit them without a deploy. ``PLAN_LIMITS`` / ``PLAN_PRICES_EGP``
+# above stay as the seed data (a migration loads them) and the fallback below
+# when the table is empty/missing a key — e.g. a fresh install before the seed
+# migration runs, or isolated unit tests that touch ``billing.plans`` w/o the DB.
+_PLAN_CATALOGUE_CACHE_KEY = "billing:plan_catalogue:v2"
+_PLAN_CATALOGUE_CACHE_TTL = 60  # seconds; admin edits also invalidate explicitly
 
 
-def plan_limits_map() -> dict[str, dict[str, int | bool | str | None]]:
-    """The live plan -> limits map, DB-backed with the hardcoded seed as fallback."""
-    cached = cache.get(_PLAN_LIMITS_CACHE_KEY)
+class _PlanEntry(TypedDict):
+    limits: dict[str, int | bool | str | None]
+    price: Decimal
+
+
+def _catalogue() -> dict[str, _PlanEntry]:
+    """DB-backed ``{key: {limits, price}}`` for **all** plans, cached.
+
+    Archived plans are included on purpose: archiving only hides a plan from the
+    catalogue *listing* (admin/subscribe UI) — it must not change how an existing
+    subscriber's limits or price resolve. Empty (fresh install) -> ``{}`` so the
+    accessors below fall back to the hardcoded seed.
+    """
+    cached = cache.get(_PLAN_CATALOGUE_CACHE_KEY)
     if cached is not None:
         return cached
 
     from billing.models import Plan  # local import: Plan lives in this app's models
 
-    rows = {p.key: p.as_limits() for p in Plan.objects.filter(archived=False)}
-    result = rows or PLAN_LIMITS
-    cache.set(_PLAN_LIMITS_CACHE_KEY, result, _PLAN_LIMITS_CACHE_TTL)
-    return result
+    rows: dict[str, _PlanEntry] = {
+        p.key: {"limits": p.as_limits(), "price": p.price_egp} for p in Plan.objects.all()
+    }
+    cache.set(_PLAN_CATALOGUE_CACHE_KEY, rows, _PLAN_CATALOGUE_CACHE_TTL)
+    return rows
+
+
+def plan_limits_map() -> dict[str, dict[str, int | bool | str | None]]:
+    """The live plan -> limits map, DB-backed with the hardcoded seed as fallback."""
+    rows = {key: entry["limits"] for key, entry in _catalogue().items()}
+    return rows or PLAN_LIMITS
+
+
+def plan_price(plan: str) -> Decimal:
+    """The live monthly price for ``plan`` (what checkout charges), DB-backed."""
+    entry = _catalogue().get(plan)
+    if entry is not None:
+        return entry["price"]
+    return PLAN_PRICES_EGP.get(plan, Decimal("0"))
 
 
 def invalidate_plan_cache() -> None:
     """Call after any ``Plan`` create/update/archive so edits apply immediately."""
-    cache.delete(_PLAN_LIMITS_CACHE_KEY)
+    cache.delete(_PLAN_CATALOGUE_CACHE_KEY)

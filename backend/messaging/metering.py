@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from django.db.models import F
 
-from billing.plans import PLAN_LIMITS
+from billing.plans import PLAN_LIMITS, plan_limits_map
 from billing.services import subscription_for
 from common.errors import PlanLimit
 from core.models import Merchant
@@ -21,7 +21,8 @@ def quota_for(merchant: Merchant) -> int | None:
     """The merchant's monthly WhatsApp allowance (``None`` = unlimited)."""
     sub = subscription_for(merchant)
     plan = sub.effective_plan() or sub.plan
-    quota = PLAN_LIMITS[plan].get("whatsapp_quota", 0)
+    limits = plan_limits_map().get(plan) or PLAN_LIMITS[plan]
+    quota = limits.get("whatsapp_quota", 0)
     assert quota is None or isinstance(quota, int)
     return quota
 
