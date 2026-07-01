@@ -42,6 +42,7 @@ class CardSerializer(serializers.ModelSerializer):
             "logo_url",
             "hero_image_url",
             "single_use",
+            "referral_enabled",
             "google_class_id",
             "status",
             "holders",

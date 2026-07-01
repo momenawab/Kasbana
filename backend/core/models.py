@@ -107,6 +107,9 @@ class Card(UUIDModel, TimeStampedModel):
     # Single-use: when set, redeeming the reward completes the card (status
     # COMPLETED) and its wallet pass is expired/voided instead of resetting.
     single_use = models.BooleanField(default=False)
+    # Referrals: when set, a customer who refers a friend (via ?ref=<their id> on
+    # the join link) earns bonus stamps for both once the friend enrolls.
+    referral_enabled = models.BooleanField(default=False)
     google_class_id = models.CharField(max_length=120, blank=True)
     status = models.CharField(
         max_length=16, choices=enums.CardStatus.choices, default=enums.CardStatus.DRAFT

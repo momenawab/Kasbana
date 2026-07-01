@@ -113,8 +113,13 @@ FREE plan and WhatsApp removed, and the new capabilities gated.
       (white-label). Enroll endpoint returns `headline`/`tagline`/`show_powered_by`;
       Settings → Business exposes the fields gated by the capability. Colors/logo
       were already customizable per card.
-- [ ] **Referral program** — customer refers a friend; both earn a stamp. New
-      model + tracking + reward logic. (Large.)
+- [x] **Referral program** — per-card `referral_enabled` toggle (core migration
+      0007). New customers get a share link (`/enroll/<token>?ref=<their id>`);
+      when a friend joins through it, both earn `REFERRAL_BONUS_STAMPS` (1) via
+      `ledger.grant_stamps` (bypasses cooldown). Tracked in `enrollment.Referral`
+      (referee OneToOne = convert-once). Enroll success page shows a "Refer a
+      friend" share button; Designer has the toggle. Guards: self/unknown/disabled
+      referrals no-op.
 - [ ] **More card types** — points-based + tiered (silver/gold), beyond stamps.
       Touches the core card model + both wallet builders. (Largest — save for last.)
 

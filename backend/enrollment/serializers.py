@@ -36,6 +36,8 @@ class EnrollRequestSerializer(serializers.Serializer):
     customer_email = serializers.EmailField(required=False, allow_blank=True, default="")
     birthday = serializers.DateField(required=False, allow_null=True, default=None)
     consent = serializers.BooleanField()
+    # Optional referrer CustomerCard id from a ?ref= share link.
+    ref = serializers.UUIDField(required=False, allow_null=True, default=None)
 
     def validate_customer_phone(self, value: str) -> str:
         normalized = value.strip().replace(" ", "")
@@ -58,3 +60,5 @@ class EnrollResponseSerializer(serializers.Serializer):
     stamps_required = serializers.IntegerField()
     apple_pass_url = serializers.CharField(allow_null=True)
     google_save_url = serializers.CharField(allow_null=True)
+    # The new customer's own share link (blank unless the card has referrals on).
+    referral_url = serializers.CharField(allow_blank=True)

@@ -55,6 +55,58 @@ def test_landing_uses_custom_copy_and_hides_powered_by_when_branded(api_client, 
     assert body["tagline"] == "Collect stamps, earn free drinks."
 
 
+# ── referrals ─────────────────────────────────────────────────────────────────
+def _enroll(api_client, token, phone, ref=None):
+    body = {"customer_phone": phone, "consent": True}
+    if ref:
+        body["ref"] = str(ref)
+    return api_client.post(f"/api/v1/enroll/{token.token}", body, format="json")
+
+
+def test_referral_grants_bonus_to_both(api_client, card, token):
+    from enrollment.models import Referral
+
+    card.referral_enabled = True
+    card.save(update_fields=["referral_enabled"])
+    referrer = CustomerCard.objects.create(
+        card=card, merchant=card.merchant, customer_phone="+201000000001"
+    )
+
+    resp = _enroll(api_client, token, "+201000000002", ref=referrer.id)
+    assert resp.status_code == 201
+    assert resp.json()["stamp_count"] == 1  # referee got the welcome bonus
+    assert resp.json()["referral_url"].endswith(f"?ref={resp.json()['customer_card_id']}")
+
+    referrer.refresh_from_db()
+    assert referrer.stamp_count == 1  # referrer got the bonus too
+    assert Referral.objects.filter(referrer=referrer).count() == 1
+
+
+def test_referral_ignored_when_card_disabled(api_client, card, token):
+    from enrollment.models import Referral
+
+    referrer = CustomerCard.objects.create(
+        card=card, merchant=card.merchant, customer_phone="+201000000001"
+    )
+    resp = _enroll(api_client, token, "+201000000002", ref=referrer.id)
+    assert resp.status_code == 201
+    assert resp.json()["stamp_count"] == 0  # no bonus (referrals off)
+    assert resp.json()["referral_url"] == ""
+    referrer.refresh_from_db()
+    assert referrer.stamp_count == 0
+    assert not Referral.objects.exists()
+
+
+def test_referral_bad_ref_is_noop(api_client, card, token):
+    import uuid
+
+    card.referral_enabled = True
+    card.save(update_fields=["referral_enabled"])
+    resp = _enroll(api_client, token, "+201000000002", ref=uuid.uuid4())
+    assert resp.status_code == 201
+    assert resp.json()["stamp_count"] == 0  # unknown referrer → no bonus
+
+
 def test_get_landing_unknown_token_404(api_client):
     resp = api_client.get("/api/v1/enroll/does-not-exist")
     assert resp.status_code == 404
