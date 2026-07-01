@@ -7,7 +7,7 @@ helpers express the state transitions independent of any provider.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
@@ -85,6 +85,34 @@ def lock(merchant: Merchant, *, status: str = BillingStatus.LOCKED) -> Subscript
     sub = subscription_for(merchant)
     sub.status = status
     sub.save(update_fields=["status", "updated_at"])
+    return sub
+
+
+@transaction.atomic
+def unlock(merchant: Merchant) -> Subscription:
+    """Resume paid access on the stored plan (admin — opposite of ``lock``)."""
+    sub = subscription_for(merchant)
+    sub.status = BillingStatus.ACTIVE
+    sub.save(update_fields=["status", "updated_at"])
+    return sub
+
+
+@transaction.atomic
+def extend_trial(merchant: Merchant, days: int) -> Subscription:
+    """Admin trial extension — (re)starts a ``days``-long trial from now."""
+    sub = subscription_for(merchant)
+    sub.status = BillingStatus.TRIALING
+    sub.trial_ends_at = timezone.now() + timedelta(days=days)
+    sub.save(update_fields=["status", "trial_ends_at", "updated_at"])
+    return sub
+
+
+@transaction.atomic
+def set_comp(merchant: Merchant, on: bool) -> Subscription:
+    """Toggle admin-granted free access (bypasses billing ``status``)."""
+    sub = subscription_for(merchant)
+    sub.comp = on
+    sub.save(update_fields=["comp", "updated_at"])
     return sub
 
 
