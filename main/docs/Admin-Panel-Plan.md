@@ -253,9 +253,31 @@ gating live; existing subscriptions unaffected; all billing/entitlement tests gr
 
 ---
 
-## Phase 4 — Subscription Management
+## Phase 4 — Subscription Management — ✅ DONE
 **Goal:** operate any merchant's subscription: change plan, extend trial, comp,
 lock/unlock, override.
+
+**Shipped:** `Subscription` gains `comp`/`override_plan`/`override_expires_at`/
+`notes`; `effective_plan()` resolves override (if active) → comp → normal
+trial/paid/locked logic, so override always wins (even over a lock, for
+emergency unblocks) and comp bypasses billing status entirely. `billing.services`
+gains `unlock`/`extend_trial`/`set_comp`. `GET/PATCH /merchants/{id}/subscription`
+(PATCH sets plan/status/override/notes, requires `reason`, blocks a downgrade
+with a `409 PLAN_DOWNGRADE_BLOCKED` + per-capability shortfall unless
+`force: true`) + `POST .../extend-trial`, `.../comp`, `.../lock`, `.../unlock`
++ `GET .../audit` (last 20 subscription changes). Mutations gated to
+Super-admin/Finance (reads open to any admin); every action audited with
+before/after. Frontend Subscription tab: state badges (incl. live effective
+plan), the plan/status/override/notes form, three quick-action cards
+(extend-trial, comp, lock/unlock — the last relabels itself live), and the
+audit trail — all read-only for non-Finance roles. 22 new backend tests
+(role gate, PATCH incl. guardrail forced/blocked, extend-trial, comp-bypasses-lock,
+lock/unlock round-trip, override-beats-lock, expired-override-falls-back, audit
+trail); 255 backend tests green; ruff/black/mypy/spectacular clean. Verified
+live in-browser: locked a merchant, comp'd it back to access, extended its
+trial (which also un-locks, since extend-trial always sets TRIALING), watched
+the audit trail update after each action, and confirmed the Support role sees
+state + audit only, no controls.
 
 **Backend**
 - Subscription admin fields (migration): `comp` (free access), `override_plan`,

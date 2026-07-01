@@ -107,6 +107,18 @@ class Subscription(UUIDModel, TimeStampedModel):
     # so the webhook (which only carries a gateway ref) knows what to activate.
     pending_plan = models.CharField(max_length=16, choices=PlanTier.choices, blank=True)
 
+    # ── Admin manual-control fields (Phase 4) ───────────────────────────────
+    # ``comp``: free access granted by an admin — access resolves at ``plan``
+    # regardless of billing ``status`` (locked/canceled/past-due included).
+    comp = models.BooleanField(default=False)
+    # ``override_plan``: temporarily force a specific plan's limits, independent
+    # of ``plan``/``status`` — e.g. a goodwill upgrade, or an emergency downgrade
+    # while a billing issue is resolved. Takes precedence over everything else,
+    # including a lock, so support can always use it to unblock a merchant.
+    override_plan = models.CharField(max_length=16, choices=PlanTier.choices, blank=True)
+    override_expires_at = models.DateTimeField(null=True, blank=True)
+    notes = models.TextField(blank=True)
+
     def __str__(self) -> str:
         return f"{self.merchant_id} · {self.status} · {self.plan}"
 
@@ -118,15 +130,27 @@ class Subscription(UUIDModel, TimeStampedModel):
             and self.trial_ends_at > now
         )
 
+    def override_active(self, now: datetime | None = None) -> bool:
+        now = now or timezone.now()
+        return bool(self.override_plan) and (
+            self.override_expires_at is None or self.override_expires_at > now
+        )
+
     def effective_plan(self, now: datetime | None = None) -> str | None:
         """The plan whose limits apply right now, or ``None`` when locked.
 
+        - an active admin override -> ``override_plan``, regardless of status;
+        - ``comp`` -> the stored ``plan``, regardless of status;
         - TRIALING + not expired -> ``TRIAL_PLAN`` (full Growth-level access);
         - TRIALING + expired      -> locked (``None``) — trial ended unconverted;
         - ACTIVE                  -> the paid ``plan``;
         - PAST_DUE / CANCELED / LOCKED -> locked (``None``), data retained.
         """
         now = now or timezone.now()
+        if self.override_active(now):
+            return self.override_plan
+        if self.comp:
+            return self.plan
         if self.status == BillingStatus.TRIALING:
             return TRIAL_PLAN if self.trial_active(now) else None
         if self.status == BillingStatus.ACTIVE:
