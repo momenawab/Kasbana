@@ -125,9 +125,19 @@ Each: **Goal · Backend · Frontend · Security · Depends on · DoD**.
 
 ---
 
-## Phase 1 — Foundation, Admin Auth & Audit Core
+## Phase 1 — Foundation, Admin Auth & Audit Core — ✅ DONE
 **Goal:** a logged-in admin sees an empty shell at `admin.stampn.net`; the auth
 boundary, audit spine, and deploy pipeline exist.
+
+**Shipped:** `console` app with `AdminUser` (standalone, hashed pw, role) +
+`AdminAuditLog` + `audit.record()`; `AdminJWTAuthentication` (custom `realm:"admin"`
+claim — merchant tokens rejected, and vice-versa, proven by tests), `IsAdminUser`/
+`IsSuperAdmin`/`HasAdminRole` + base `AdminAPIView`; `POST /api/admin/v1/auth/login`
+(audited, throttled `admin_auth` 10/min) + `/auth/refresh` + `GET /me`;
+`createadmin` command. Frontend `frontend/admin` (Vite/Tailwind/RQ, dark theme,
+port 5175): login, auth guard, `AdminShell` with the full nav map, Overview home.
+`deploy-admin.yml` (prod→`deployment-admin`) + CORS for `admin.stampn.net`.
+9 boundary tests; 218 backend tests green; FE lint+build clean.
 
 **Backend**
 - New app `console`. `AdminUser` model (email, password, name, role FK/enum,
