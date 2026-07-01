@@ -55,6 +55,14 @@ def test_loyalty_object_carries_balance_and_barcode(settings, google_creds):
     assert obj["state"] == "ACTIVE"
 
 
+def test_points_card_labels_balance_as_points(settings, google_creds):
+    from core.enums import CardType
+
+    card = factories.CardFactory(type=CardType.POINTS, stamps_required=100)
+    cc = factories.CustomerCardFactory(card=card, merchant=card.merchant, stamp_count=40)
+    assert builders.build_loyalty_object(cc)["loyaltyPoints"]["label"] == "Points"
+
+
 def test_completed_card_object_is_expired(settings, google_creds):
     from core.enums import CustomerCardStatus
 

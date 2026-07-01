@@ -120,8 +120,13 @@ FREE plan and WhatsApp removed, and the new capabilities gated.
       (referee OneToOne = convert-once). Enroll success page shows a "Refer a
       friend" share button; Designer has the toggle. Guards: self/unknown/disabled
       referrals no-op.
-- [ ] **More card types** — points-based + tiered (silver/gold), beyond stamps.
-      Touches the core card model + both wallet builders. (Largest — save for last.)
+- [x] **Points cards** — the `Card.type` STAMP/POINTS field (already in core) now
+      drives behaviour: wallet passes label the balance "Points" vs "Stamps"
+      (Apple + Google build + push), the scan `CardState` returns `card_type`, and
+      the till shows an **amount input** for points cards (variable delta via the
+      existing stamp endpoint). Designer has a card-type selector. No migration.
+- [ ] **Tiered cards** (silver/gold) — deferred. A different model (lifetime
+      accrual → membership tiers with perks); larger new build, own future phase.
 
 ---
 

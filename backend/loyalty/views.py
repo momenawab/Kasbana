@@ -59,6 +59,7 @@ def _card_state(card: CustomerCard) -> dict:
             "status": card.status,
             "reward_id": reward.id if reward else None,
             "reward_title": reward.title if reward else "",
+            "card_type": card.card.type,
         }
     ).data
 

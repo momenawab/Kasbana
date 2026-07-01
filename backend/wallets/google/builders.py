@@ -57,6 +57,13 @@ def build_loyalty_class(card: Card) -> dict:
     return payload
 
 
+def unit_label(card: Card) -> str:
+    """ "Points" for a points card, else "Stamps" — the wallet balance label."""
+    from core.enums import CardType
+
+    return "Points" if card.type == CardType.POINTS else "Stamps"
+
+
 def object_state_for(customer_card: CustomerCard) -> str:
     """Google LoyaltyObject ``state`` from the card status — EXPIRED moves the
     pass out of the wallet's active list (single-use completion / blocked)."""
@@ -75,7 +82,7 @@ def build_loyalty_object(customer_card: CustomerCard) -> dict:
         "accountId": str(customer_card.id),
         "accountName": customer_card.customer_name or customer_card.customer_phone,
         "loyaltyPoints": {
-            "label": "Stamps",
+            "label": unit_label(card),
             "balance": {"int": customer_card.stamp_count},
         },
         "secondaryLoyaltyPoints": {

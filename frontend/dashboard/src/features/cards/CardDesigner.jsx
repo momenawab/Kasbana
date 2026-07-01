@@ -8,7 +8,7 @@ import { useCard, useSaveCard } from './api'
 import { useAuth } from '../../hooks/useAuth'
 import { useToast } from '../../hooks/useToast'
 import { normalizeError } from '../../lib/api'
-import { Input, Textarea } from '../../components/Field'
+import { Input, Textarea, Select } from '../../components/Field'
 import { Toggle } from '../../components/Toggle'
 import ColorPicker from '../../components/ColorPicker'
 import FileUpload from '../../components/FileUpload'
@@ -17,6 +17,7 @@ import Button from '../../components/Button'
 import Skeleton from '../../components/Skeleton'
 
 const EMPTY = {
+  type: 'STAMP',
   name: '',
   stamps_required: 8,
   reward_title: '',
@@ -91,6 +92,7 @@ export default function CardDesigner() {
     try {
       const payload = {
         id,
+        type: form.type,
         name: form.name,
         stamps_required: Number(form.stamps_required),
         reward_title: form.reward_title,
@@ -143,6 +145,16 @@ export default function CardDesigner() {
       <div className="grid gap-6 md:grid-cols-2">
         {/* Form */}
         <div className="flex flex-col gap-4 rounded-card border border-line bg-white p-5">
+          <Select
+            name="type"
+            label={t('designer.cardType')}
+            value={form.type}
+            onChange={setEvt('type')}
+            options={[
+              { value: 'STAMP', label: t('designer.typeStamp') },
+              { value: 'POINTS', label: t('designer.typePoints') },
+            ]}
+          />
           <Input
             label={t('onboarding.cardName')}
             value={form.name}
