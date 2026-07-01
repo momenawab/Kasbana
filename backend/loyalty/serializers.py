@@ -84,3 +84,5 @@ class CardStateSerializer(serializers.Serializer):
     status = serializers.CharField()
     reward_id = serializers.UUIDField(allow_null=True, required=False)
     reward_title = serializers.CharField(allow_blank=True, required=False)
+    # STAMP | POINTS — the till shows an amount input for points cards.
+    card_type = serializers.CharField(required=False)

@@ -10,7 +10,7 @@ from __future__ import annotations
 from django.conf import settings
 
 from core import constants
-from core.models import CustomerCard
+from core.models import Card, CustomerCard
 from wallets.apple.config import pass_type_id, team_id
 
 
@@ -53,11 +53,18 @@ def _message_back_fields(customer_card: CustomerCard) -> list[dict]:
     ]
 
 
+def _unit_label(card: Card) -> str:
+    from core.enums import CardType
+
+    return "Points" if card.type == CardType.POINTS else "Stamps"
+
+
 def build_pass_json(customer_card: CustomerCard) -> dict:
     from core.enums import CustomerCardStatus
 
     card = customer_card.card
     merchant = card.merchant
+    unit = _unit_label(card)
     bg = _rgb(card.color_bg or merchant.color_bg, "#0b7a5b")
     fg = _rgb(card.color_fg or merchant.color_fg, "#ffffff")
 
@@ -74,9 +81,7 @@ def build_pass_json(customer_card: CustomerCard) -> dict:
         "foregroundColor": fg,
         "logoText": merchant.name,
         "storeCard": {
-            "primaryFields": [
-                {"key": "stamps", "label": "Stamps", "value": customer_card.stamp_count}
-            ],
+            "primaryFields": [{"key": "stamps", "label": unit, "value": customer_card.stamp_count}],
             "secondaryFields": [{"key": "goal", "label": "Goal", "value": card.stamps_required}],
             "auxiliaryFields": (
                 [{"key": "reward", "label": "Reward", "value": card.reward_title}]

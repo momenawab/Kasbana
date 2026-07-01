@@ -22,6 +22,8 @@ export default function Scan() {
   const { resolve, stamp, redeem } = useScanActions()
   const [card, setCard] = useState(null)
   const [manual, setManual] = useState('')
+  const [amount, setAmount] = useState(1) // points to add (points cards only)
+  const isPoints = card?.card_type === 'POINTS'
 
   // Unlock audio on the first touch so the scan beep can play (iOS/Chrome rule).
   useEffect(() => primeFeedback(), [])
@@ -32,6 +34,7 @@ export default function Scan() {
       try {
         const data = await resolve.mutateAsync(code)
         cueScan()
+        setAmount(1)
         setCard(data)
       } catch (err) {
         cueError()
@@ -53,8 +56,9 @@ export default function Scan() {
   }
 
   async function doStamp() {
+    const delta = isPoints ? Math.max(1, Number(amount) || 1) : 1
     try {
-      const r = await stamp.mutateAsync({ customerCardId: card.customer_card_id })
+      const r = await stamp.mutateAsync({ customerCardId: card.customer_card_id, delta })
       setCard((c) => ({
         ...c,
         stamp_count: r.stamp_count,
@@ -157,12 +161,26 @@ export default function Scan() {
             <div className="font-num text-5xl text-ink">
               {arDigits(`${card.stamp_count}/${card.stamps_required}`, lang)}
             </div>
-            <div className="mt-1 text-sm text-tx-3">{t('scan.stamps')}</div>
+            <div className="mt-1 text-sm text-tx-3">
+              {isPoints ? t('scan.points') : t('scan.stamps')}
+            </div>
           </div>
 
           <div className="flex flex-col gap-2">
+            {isPoints && (
+              <div className="mx-auto w-32">
+                <Input
+                  name="amount"
+                  type="number"
+                  min={1}
+                  label={t('scan.amount')}
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                />
+              </div>
+            )}
             <Button size="lg" iconStart={Plus} onClick={doStamp} loading={stamp.isPending}>
-              {t('scan.addStamp')}
+              {isPoints ? t('scan.addPoints', { n: Math.max(1, Number(amount) || 1) }) : t('scan.addStamp')}
             </Button>
             <Button
               size="lg"

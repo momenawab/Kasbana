@@ -141,7 +141,7 @@ class GoogleWalletBackend:
         patch = {
             "state": builders.object_state_for(customer_card),
             "loyaltyPoints": {
-                "label": "Stamps",
+                "label": builders.unit_label(customer_card.card),
                 "balance": {"int": customer_card.stamp_count},
             },
         }
