@@ -107,8 +107,12 @@ FREE plan and WhatsApp removed, and the new capabilities gated.
       wallet builders then render the pass as Google `state=EXPIRED` + Apple
       `voided` (push_update patches the Google state too). Designer toggle + hint
       (en/ar). Reusable cards (default) keep resetting as before.
-- [ ] **Branded enrollment page** — custom colors/copy on the public join page
-      (gated by `custom_branding`).
+- [x] **Branded enrollment page** — `custom_branding` merchants set a custom
+      headline + tagline on the public join page (`MerchantSettings.enroll_*`,
+      migration accounts 0003) and the "Powered by Stampn" footer is hidden
+      (white-label). Enroll endpoint returns `headline`/`tagline`/`show_powered_by`;
+      Settings → Business exposes the fields gated by the capability. Colors/logo
+      were already customizable per card.
 - [ ] **Referral program** — customer refers a friend; both earn a stamp. New
       model + tracking + reward logic. (Large.)
 - [ ] **More card types** — points-based + tiered (silver/gold), beyond stamps.

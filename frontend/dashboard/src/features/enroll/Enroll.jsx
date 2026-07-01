@@ -142,10 +142,10 @@ export default function Enroll() {
       </div>
       <div className="mb-5 flex justify-center">{preview}</div>
       <h1 className="text-center font-head text-2xl font-bold text-ink">
-        {t('enroll.title', { merchant: info.merchant_name })}
+        {info.headline || t('enroll.title', { merchant: info.merchant_name })}
       </h1>
       <p className="mb-4 text-center text-sm text-tx-2">
-        {t('enroll.subtitle', { reward: info.reward_title })}
+        {info.tagline || t('enroll.subtitle', { reward: info.reward_title })}
       </p>
 
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-3" noValidate>
@@ -177,6 +177,9 @@ export default function Enroll() {
           {t('enroll.submit')}
         </Button>
       </form>
+      {info.show_powered_by && (
+        <p className="mt-4 text-center text-xs text-tx-3">{t('enroll.poweredBy')}</p>
+      )}
     </Centered>
   )
 }

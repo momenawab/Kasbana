@@ -79,6 +79,10 @@ class MerchantSettings(UUIDModel, TimeStampedModel):
     language = models.CharField(max_length=2, choices=[("ar", "ar"), ("en", "en")], default="ar")
     notif_email = models.BooleanField(default=True)
     notif_whatsapp = models.BooleanField(default=False)
+    # Branded enrollment page (custom_branding capability): custom welcome copy
+    # shown on the public join page. Blank falls back to a default headline.
+    enroll_headline = models.CharField(max_length=80, blank=True)
+    enroll_tagline = models.CharField(max_length=160, blank=True)
 
     def __str__(self) -> str:
         return f"settings({self.merchant_id})"

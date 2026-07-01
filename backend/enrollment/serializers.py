@@ -20,6 +20,10 @@ class EnrollLandingSerializer(serializers.Serializer):
     color_bg = serializers.CharField(allow_blank=True)
     color_fg = serializers.CharField(allow_blank=True)
     logo_url = serializers.CharField(allow_blank=True)
+    # Branded enrollment (custom_branding): custom copy + white-label toggle.
+    headline = serializers.CharField(allow_blank=True)
+    tagline = serializers.CharField(allow_blank=True)
+    show_powered_by = serializers.BooleanField()
 
 
 class EnrollRequestSerializer(serializers.Serializer):

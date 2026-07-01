@@ -83,6 +83,9 @@ class BusinessSettingsSerializer(serializers.Serializer):
     color_fg = serializers.CharField(max_length=7, required=False, allow_blank=True)
     contact = ContactSerializer(required=False)
     address = serializers.CharField(max_length=255, required=False, allow_blank=True)
+    # Branded enrollment copy (custom_branding plans only — enforced in the view).
+    enroll_headline = serializers.CharField(max_length=80, required=False, allow_blank=True)
+    enroll_tagline = serializers.CharField(max_length=160, required=False, allow_blank=True)
 
 
 class NotificationsSerializer(serializers.Serializer):
@@ -122,6 +125,8 @@ class MerchantOutSerializer(serializers.Serializer):
     logo_url = serializers.URLField(allow_null=True)
     color_bg = serializers.CharField(allow_blank=True)
     color_fg = serializers.CharField(allow_blank=True)
+    enroll_headline = serializers.CharField(allow_blank=True)
+    enroll_tagline = serializers.CharField(allow_blank=True)
 
 
 class EntitlementsOutSerializer(serializers.Serializer):

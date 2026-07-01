@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import api, { normalizeError } from '../../lib/api'
 import { setLang } from '../../lib/i18n'
 import { useToast } from '../../hooks/useToast'
+import { usePlan } from '../../hooks/usePlan'
 import Tabs from '../../components/Tabs'
 import { Input } from '../../components/Field'
 import { Toggle } from '../../components/Toggle'
@@ -17,9 +18,11 @@ function BusinessTab() {
   const { t } = useTranslation()
   const toast = useToast()
   const qc = useQueryClient()
+  const { can, requireFeature } = usePlan()
+  const branded = can('custom_branding')
   const { data } = useQuery({ queryKey: ['settings', 'business'], queryFn: async () => (await api.get('/settings/business')).data })
   const [form, setForm] = useState(null)
-  useEffect(() => { if (data) setForm({ name: data.name || '', logo_url: data.logo_url || '', color_bg: data.color_bg || '#0E1B2A', color_fg: data.color_fg || '#FFFFFF' }) }, [data])
+  useEffect(() => { if (data) setForm({ name: data.name || '', logo_url: data.logo_url || '', color_bg: data.color_bg || '#0E1B2A', color_fg: data.color_fg || '#FFFFFF', enroll_headline: data.enroll_headline || '', enroll_tagline: data.enroll_tagline || '' }) }, [data])
 
   const save = useMutation({
     mutationFn: async () => (await api.patch('/settings/business', form)).data,
@@ -36,6 +39,24 @@ function BusinessTab() {
         <ColorPicker label={t('onboarding.colorBg')} value={form.color_bg} onChange={(v) => setForm({ ...form, color_bg: v })} />
         <ColorPicker label={t('onboarding.colorFg')} value={form.color_fg} onChange={(v) => setForm({ ...form, color_fg: v })} />
       </div>
+
+      {/* Branded enrollment page — custom_branding plans (Growth+). */}
+      <div className="rounded-ctl border border-line p-3">
+        <div className="mb-2 flex items-center justify-between">
+          <span className="text-sm font-semibold text-ink">{t('settings.brandedEnroll')}</span>
+          {!branded && (
+            <button type="button" onClick={() => requireFeature('custom_branding')} className="text-xs text-amber-d underline">
+              {t('settings.upgradeToUnlock')}
+            </button>
+          )}
+        </div>
+        <div className="flex flex-col gap-3">
+          <Input name="enroll_headline" label={t('settings.enrollHeadline')} value={form.enroll_headline} disabled={!branded} onChange={(e) => setForm({ ...form, enroll_headline: e.target.value })} />
+          <Input name="enroll_tagline" label={t('settings.enrollTagline')} value={form.enroll_tagline} disabled={!branded} onChange={(e) => setForm({ ...form, enroll_tagline: e.target.value })} />
+          {branded && <p className="text-xs text-tx-3">{t('settings.brandedEnrollHint')}</p>}
+        </div>
+      </div>
+
       <Button onClick={() => save.mutate()} loading={save.isPending}>{t('settings.save')}</Button>
     </div>
   )
