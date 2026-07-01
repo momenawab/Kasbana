@@ -6,13 +6,15 @@ import Badge from '../../components/Badge'
 import { num, shortDate, statusTone } from '../../lib/format'
 import SubscriptionTab from './SubscriptionTab'
 import MerchantBillingTab from './MerchantBillingTab'
+import SupportTab from './SupportTab'
+import ActivityTab from './ActivityTab'
 
 const TABS = [
   { key: 'overview', label: 'Overview', ready: true },
   { key: 'subscription', label: 'Subscription', ready: true },
   { key: 'billing', label: 'Billing', ready: true },
-  { key: 'support', label: 'Support', phase: 6 },
-  { key: 'activity', label: 'Activity', phase: 6 },
+  { key: 'support', label: 'Support', ready: true },
+  { key: 'activity', label: 'Activity', ready: true },
 ]
 
 function Stat({ label, value }) {
@@ -140,6 +142,8 @@ export default function MerchantDetail() {
 
       {tab === 'subscription' && <SubscriptionTab merchantId={id} />}
       {tab === 'billing' && <MerchantBillingTab merchantId={id} />}
+      {tab === 'support' && <SupportTab merchantId={id} merchantName={m.name} />}
+      {tab === 'activity' && <ActivityTab merchantId={id} />}
     </div>
   )
 }

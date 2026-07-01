@@ -6,10 +6,11 @@ import UpgradeDrawer from '../components/UpgradeDrawer'
 import { useAuth } from '../hooks/useAuth'
 import { areaForPath, canAccess, landingFor } from '../lib/roles'
 import { arDigits, daysUntil } from '../lib/format'
+import { endImpersonation, isImpersonating } from '../lib/auth'
 
 export default function Shell() {
   const { t, i18n } = useTranslation()
-  const { merchant, role } = useAuth()
+  const { merchant, role, impersonation } = useAuth()
   const location = useLocation()
   const lang = i18n.language
 
@@ -31,6 +32,29 @@ export default function Shell() {
       <Sidebar />
       <div className="flex flex-1 flex-col">
         <Topbar />
+
+        {/* Persistent impersonation banner (Phase 6) — an admin is viewing as
+            this merchant; Exit discards the session token and closes the tab. */}
+        {isImpersonating() && (
+          <div className="flex items-center justify-between gap-3 bg-red-700 px-4 py-2 text-sm text-white">
+            <span>
+              {t('impersonation.banner', {
+                merchant: merchant?.name || '…',
+                admin: impersonation?.admin_email || 'support',
+              })}
+            </span>
+            <button
+              onClick={() => {
+                endImpersonation()
+                window.close()
+                window.location.assign('/login')
+              }}
+              className="rounded-ctl bg-white px-3 py-1 font-semibold text-red-700"
+            >
+              {t('impersonation.exit')}
+            </button>
+          </div>
+        )}
 
         {trialing && !softLocked && (
           <div className="flex items-center justify-between gap-3 bg-ink px-4 py-2 text-sm text-white">

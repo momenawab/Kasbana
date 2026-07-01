@@ -22,6 +22,16 @@ from console.views_subscription import (
     SubscriptionAuditView,
     UnlockView,
 )
+from console.views_support import (
+    ActivityView,
+    ClearStuckCheckoutView,
+    ImpersonateView,
+    ImpersonationEndView,
+    ImpersonationListView,
+    ResendInviteView,
+    SendPasswordResetView,
+    SupportNotesView,
+)
 
 urlpatterns = [
     path("auth/login", AdminLoginView.as_view(), name="admin-login"),
@@ -85,5 +95,42 @@ urlpatterns = [
     ),
     path(
         "billing/reconciliation", ReconciliationView.as_view(), name="admin-billing-reconciliation"
+    ),
+    # Support tools & impersonation (Phase 6)
+    path(
+        "merchants/<uuid:merchant_id>/impersonate",
+        ImpersonateView.as_view(),
+        name="admin-merchant-impersonate",
+    ),
+    path(
+        "merchants/<uuid:merchant_id>/impersonations",
+        ImpersonationListView.as_view(),
+        name="admin-merchant-impersonations",
+    ),
+    path("impersonate/end", ImpersonationEndView.as_view(), name="admin-impersonate-end"),
+    path(
+        "merchants/<uuid:merchant_id>/support/send-password-reset",
+        SendPasswordResetView.as_view(),
+        name="admin-merchant-send-password-reset",
+    ),
+    path(
+        "merchants/<uuid:merchant_id>/support/resend-invite",
+        ResendInviteView.as_view(),
+        name="admin-merchant-resend-invite",
+    ),
+    path(
+        "merchants/<uuid:merchant_id>/support/clear-stuck-checkout",
+        ClearStuckCheckoutView.as_view(),
+        name="admin-merchant-clear-stuck-checkout",
+    ),
+    path(
+        "merchants/<uuid:merchant_id>/support/notes",
+        SupportNotesView.as_view(),
+        name="admin-merchant-support-notes",
+    ),
+    path(
+        "merchants/<uuid:merchant_id>/activity",
+        ActivityView.as_view(),
+        name="admin-merchant-activity",
     ),
 ]

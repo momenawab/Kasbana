@@ -84,6 +84,58 @@ class MerchantAdminMeta(UUIDModel, TimeStampedModel):
         return f"admin_meta({self.merchant_id})"
 
 
+class Impersonation(models.Model):
+    """One admin view-as-merchant session (Phase 6) — the sharpest support tool.
+
+    The impersonation token is a short-lived *merchant* access token carrying
+    ``impersonation_id``; the merchant auth layer (``common.auth``) checks this
+    row on every request so an admin-side "end" kills the session before its
+    JWT expiry. Time-limited, fully audited, and blocked from billing actions.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    admin = models.ForeignKey(
+        AdminUser, on_delete=models.SET_NULL, null=True, related_name="impersonations"
+    )
+    admin_email = models.EmailField(blank=True)  # snapshot (survives admin delete)
+    merchant = models.ForeignKey(Merchant, on_delete=models.CASCADE, related_name="impersonations")
+    target_email = models.EmailField(blank=True)  # the staff identity impersonated
+    reason = models.CharField(max_length=255)
+    expires_at = models.DateTimeField()
+    ended_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return f"{self.admin_email} as {self.merchant_id} until {self.expires_at:%H:%M}"
+
+    def is_active(self) -> bool:
+        from django.utils import timezone
+
+        return self.ended_at is None and self.expires_at > timezone.now()
+
+
+class SupportNote(models.Model):
+    """A support-thread note on a merchant (Phase 6). Append-only in practice."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    merchant = models.ForeignKey(Merchant, on_delete=models.CASCADE, related_name="support_notes")
+    admin = models.ForeignKey(
+        AdminUser, on_delete=models.SET_NULL, null=True, related_name="support_notes"
+    )
+    admin_email = models.EmailField(blank=True)  # snapshot (survives admin delete)
+    body = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return f"note({self.merchant_id}) by {self.admin_email}"
+
+
 class AdminAuditLog(models.Model):
     """One admin action. Append-only; never edited or deleted in normal operation."""
 

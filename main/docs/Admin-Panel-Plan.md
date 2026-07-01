@@ -350,8 +350,48 @@ internal data-integrity gaps.
 
 ---
 
-## Phase 6 — Support Tools & Impersonation
+## Phase 6 — Support Tools & Impersonation — ✅ DONE
 **Goal:** resolve merchant tickets fast — see what they see, fix their account.
+
+**Shipped:** `console.Impersonation` + `console.SupportNote` models (migration
+0003). Impersonation is a **short-lived (15 min), refresh-less merchant access
+token** minted for the merchant's owner (else any active staff), carrying
+`impersonated_by` + `impersonation_id`. A new `common.auth.MerchantJWTAuthentication`
+(now the project's default merchant auth — transparent for normal tokens)
+enforces the impersonation contract on **every** request: the `Impersonation`
+row must still be active (so an admin "end" or the 15-min expiry kills the token
+server-side, refresh-proof because none is issued), **billing endpoints are
+403'd** (`/api/v1/billing…` — impersonation is never for billing), and every
+mutating request writes an `impersonation.request` admin-audit row so anything
+done *as* the merchant stays attributable to the admin. `POST
+/merchants/{id}/impersonate` (Support+; 409 `NO_ACTIVE_STAFF` if none) + `POST
+/impersonate/end` + `GET /merchants/{id}/impersonations`. Support actions
+(Support+, audited): `POST …/support/send-password-reset` (emails the owner a
+1-hour reset link), `…/support/resend-invite {email}` (refreshes the invite
+expiry + re-emails), `…/support/clear-stuck-checkout {reason}` (drops an
+abandoned `pending_plan`). `GET/POST /merchants/{id}/support/notes` — the notes
+thread (POST Support+, read open to any admin). `GET /merchants/{id}/activity`
+— a cross-sourced timeline (loyalty ledger + invoices + admin actions targeting
+the merchant), reverse-chronological. `/me` now surfaces an `impersonation`
+block on an impersonated session so the **merchant dashboard** shows a
+persistent red "Support view — viewing {merchant} as {admin} · Exit" banner
+(token handed off via the dashboard URL fragment → sessionStorage, scrubbed from
+history, never refreshed). Mutations Support/Super-admin (Finance **deliberately
+excluded** — support tools never touch billing); reads open to any admin.
+Frontend: admin **Support** tab (view-as button, the three support actions,
+recent view-as sessions, notes thread) + **Activity** tab; dashboard
+impersonation banner + session handling. 24 new backend tests (auth boundary,
+role gate incl. Finance-excluded, the full impersonation lifecycle —
+mint → works on the merchant API → mutations tagged → billing blocked → admin
+end kills the token → expiry kills the token → normal tokens unaffected — plus
+the support actions, notes, and the cross-sourced timeline); 309 backend tests
+green; ruff/black/mypy/spectacular clean; admin + dashboard lint/build clean.
+**Not built (from the illustrative action list):** "unlock account" already
+exists as the Phase 4 subscription unlock action (not duplicated here);
+"force-verify email" is N/A — this merchant app has no email-verification gate
+(signup logs in directly), so there's no stuck-verification state to clear.
+**Deferred:** live verification in-browser (the token handoff + banner were
+verified by the automated lifecycle tests; a manual click-through is pending).
 
 **Backend**
 - **Impersonation**: `POST /merchants/{id}/impersonate` → a **short-lived, scoped

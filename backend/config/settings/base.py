@@ -62,6 +62,10 @@ BASE_URL = env("BASE_URL", "http://localhost:8000")
 # join_url points here so scanning opens the branded join form, not the API.
 ENROLL_BASE_URL = env("ENROLL_BASE_URL", "https://app.stampn.net")
 
+# The merchant dashboard app — support emails (password reset / invite links,
+# Phase 6) point here.
+DASHBOARD_BASE_URL = env("DASHBOARD_BASE_URL", "https://app.stampn.net")
+
 # ── Applications ──────────────────────────────────────────────────────────────
 DJANGO_APPS = [
     "django.contrib.admin",
@@ -192,7 +196,8 @@ CORS_ALLOW_HEADERS = (*_cors_default_headers, "idempotency-key")
 # ── Django REST Framework (contract §3.7, §3.10) ──────────────────────────────
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        # SimpleJWT + the Phase 6 impersonation guard (identical for normal tokens).
+        "common.auth.MerchantJWTAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
