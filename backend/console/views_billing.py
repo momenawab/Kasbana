@@ -22,7 +22,7 @@ from core.models import Merchant
 
 
 class DunningListView(AdminAPIView):
-    """GET /billing/dunning — merchants past due on a renewal charge."""
+    """GET /billing/dunning — merchants whose subscription is PAST_DUE."""
 
     @extend_schema(responses=DunningRowSerializer(many=True))
     def get(self, request: Request) -> Response:
@@ -45,12 +45,13 @@ class DunningNotifyView(AdminAPIView):
         sent = False
         if owner["email"]:
             send_mail(
-                subject="Action needed: your Stampn subscription payment failed",
+                subject="Action needed: your Stampn subscription payment",
                 message=(
                     f"Hi {owner['name'] or ''},\n\n"
-                    f"Your last renewal charge for {merchant.name} didn't go through. "
-                    "Please update your payment details or retry checkout in your "
-                    "Stampn dashboard to keep your subscription active.\n\n"
+                    f"There's an outstanding payment issue on your {merchant.name} "
+                    "subscription. Please complete checkout from the Billing page in "
+                    "your Stampn dashboard, or contact us, to keep your subscription "
+                    "active.\n\n"
                     "— Stampn"
                 ),
                 from_email=None,

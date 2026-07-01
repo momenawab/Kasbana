@@ -54,9 +54,11 @@ def test_dunning_excludes_merchants_in_good_standing(api_client, super_admin, me
     assert resp.json() == []
 
 
-def test_failed_renewal_charge_flips_active_merchant_to_past_due(settings, merchant):
-    """The webhook-driven dunning signal: a failed charge on an ACTIVE
-    (paying) merchant must flip them to PAST_DUE so they surface in dunning."""
+def test_failed_upgrade_charge_never_revokes_a_paying_merchants_access(settings, merchant):
+    """This system has no auto-renewal — a failed charge on an ACTIVE merchant is
+    always a *voluntary* upgrade/re-subscribe attempt. It must be recorded as a
+    failed invoice but must NOT flip them to PAST_DUE (which resolves as locked)
+    — that would revoke the plan they already paid for."""
     import json
 
     from rest_framework.test import APIClient
@@ -80,15 +82,33 @@ def test_failed_renewal_charge_flips_active_merchant_to_past_due(settings, merch
             "obj": {
                 "success": False,
                 "error_occured": True,
-                "amount_cents": 29900,
-                "order": {"id": sub.gateway_ref},  # matches the ACTIVE sub's gateway_ref
+                "amount_cents": 79900,
+                "order": {"id": sub.gateway_ref},  # a declined GROWTH-upgrade attempt
             }
         }
     ).encode()
     resp = client.post("/api/v1/billing/webhook/paymob", data=body, content_type="application/json")
     assert resp.status_code == 200
     sub.refresh_from_db()
-    assert sub.status == BillingStatus.PAST_DUE
+    assert sub.status == BillingStatus.ACTIVE  # still on their paid STARTER plan
+    from billing import entitlements
+
+    assert entitlements.check(merchant, "export") is True  # access untouched
+    assert Invoice.objects.filter(merchant=merchant, status="failed").exists()
+
+
+def test_admin_set_past_due_surfaces_in_dunning(api_client, super_admin, merchant):
+    """PAST_DUE is an admin-set state (Phase 4 subscription controls) — setting
+    it via the admin PATCH must surface the merchant in the dunning queue."""
+    services.activate_plan(merchant, PlanTier.STARTER)
+    resp = _bearer(api_client, super_admin).patch(
+        f"/api/admin/v1/merchants/{merchant.id}/subscription",
+        {"status": "PAST_DUE", "reason": "unpaid offline invoice"},
+        format="json",
+    )
+    assert resp.status_code == 200
+    dunning = _bearer(api_client, super_admin).get("/api/admin/v1/billing/dunning")
+    assert [row["merchant"]["id"] for row in dunning.json()] == [str(merchant.id)]
 
 
 def test_trialing_merchant_failed_checkout_does_not_flip_to_past_due(settings, merchant):

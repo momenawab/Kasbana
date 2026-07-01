@@ -319,9 +319,13 @@ doesn't retry at FREE/0). `POST /merchants/{id}/invoices` — manual/one-off
 invoice (`status="paid"` default = mark-paid for an offline payment,
 `"pending"` = expected-not-yet-received); `Invoice.note` added (admin-only,
 outside the frozen contract's Invoice shape). `GET /billing/dunning` — merchants
-`PAST_DUE`; `apply_webhook_event`'s `failed` branch now flips an ACTIVE
-merchant to `PAST_DUE` (a first-subscribe failure while TRIALING is untouched)
-— the actual signal dunning needs. `POST /merchants/{id}/dunning/notify` —
+`PAST_DUE`. **Design note:** PAST_DUE is an *admin-set* state (Phase 4 controls)
+— this system has no recurring auto-renewal (checkouts are one-time), so a
+failed charge on an ACTIVE merchant is always a voluntary upgrade attempt and
+deliberately does NOT touch their access (flipping them to PAST_DUE would lock
+them out of the plan they already paid for; a review pass caught and removed
+exactly that). If real renewals ship later, the webhook becomes a second signal
+source. `POST /merchants/{id}/dunning/notify` —
 emails the owner a reminder (`send_mail`, fail-silently). `GET
 /billing/reconciliation` — internal consistency report (stale pending manual
 invoices 7+ days old; ACTIVE-via-a-real-checkout subscriptions with zero PAID
@@ -331,8 +335,9 @@ dependency). Mutations gated to Super-admin/Finance, reads open to any admin,
 every mutation audited. Frontend: global **Billing** page (Invoices · Dunning ·
 Reconciliation tabs, hard-confirmed retry/notify) + a merchant-scoped Billing
 tab (invoice history + the manual-invoice/mark-paid form) on the merchant
-detail page. 24 new backend tests incl. the PAST_DUE webhook signal, the retry
-pending-plan-vs-FREE trap, and the reconciliation exclusions; 277 backend
+detail page. 25 new backend tests incl. the failed-upgrade-never-revokes-access
+guarantee, the admin-set PAST_DUE → dunning path, the retry
+pending-plan-vs-FREE trap, and the reconciliation exclusions; 278 backend
 tests green; ruff/black/mypy/spectacular clean. Verified live in-browser:
 cross-tenant invoice list/detail/retry, dunning list + notify (audited),
 reconciliation flags, and the merchant-scoped mark-paid flow.
