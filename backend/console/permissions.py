@@ -46,6 +46,21 @@ class IsFinanceAdmin(BasePermission):
         )
 
 
+class IsSupportAdmin(BasePermission):
+    """Grant to Super-admin or Support — gates the support tools (impersonation,
+    support actions, notes; Phase 6). Deliberately does NOT include Finance:
+    support tools never touch billing, and billing tools never need support's
+    sharpest instrument (impersonation)."""
+
+    def has_permission(self, request: Request, view: APIView) -> bool:
+        admin = request.user
+        return (
+            isinstance(admin, AdminUser)
+            and admin.is_active
+            and (admin.is_super_admin or admin.role == AdminRole.SUPPORT)
+        )
+
+
 class HasAdminRole(BasePermission):
     """Grant when the admin's role is in ``view.allowed_roles`` (super always ok)."""
 

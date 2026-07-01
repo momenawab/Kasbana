@@ -64,6 +64,10 @@
     "upload": "Upload an image",
     "comingSoon": "Coming soon in this phase"
   },
+  "impersonation": {
+    "banner": "Support view — you are viewing {{merchant}} as {{admin}}.",
+    "exit": "Exit"
+  },
   "trial": {
     "banner": "You're on the free trial — {{count}} days left.",
     "chip": "Trial · {{count}}d",

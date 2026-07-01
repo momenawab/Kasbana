@@ -71,3 +71,67 @@ export function useLockSubscription(merchantId) {
 export function useUnlockSubscription(merchantId) {
   return useSubscriptionMutation(merchantId, '/unlock')
 }
+
+// ── Support tools & impersonation (Phase 6) ─────────────────────────────────
+export function useActivity(merchantId) {
+  return useQuery({
+    queryKey: ['activity', merchantId],
+    queryFn: async () => (await api.get(`/merchants/${merchantId}/activity`)).data,
+    enabled: Boolean(merchantId),
+  })
+}
+
+export function useSupportNotes(merchantId) {
+  return useQuery({
+    queryKey: ['support-notes', merchantId],
+    queryFn: async () => (await api.get(`/merchants/${merchantId}/support/notes`)).data,
+    enabled: Boolean(merchantId),
+  })
+}
+
+export function useAddSupportNote(merchantId) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (body) =>
+      (await api.post(`/merchants/${merchantId}/support/notes`, body)).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['support-notes', merchantId] }),
+  })
+}
+
+export function useImpersonations(merchantId) {
+  return useQuery({
+    queryKey: ['impersonations', merchantId],
+    queryFn: async () => (await api.get(`/merchants/${merchantId}/impersonations`)).data,
+    enabled: Boolean(merchantId),
+  })
+}
+
+export function useStartImpersonation(merchantId) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (body) =>
+      (await api.post(`/merchants/${merchantId}/impersonate`, body)).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['impersonations', merchantId] }),
+  })
+}
+
+function useSupportAction(merchantId, path) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (body) =>
+      (await api.post(`/merchants/${merchantId}/support/${path}`, body)).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['activity', merchantId] }),
+  })
+}
+
+export function useSendPasswordReset(merchantId) {
+  return useSupportAction(merchantId, 'send-password-reset')
+}
+
+export function useResendInvite(merchantId) {
+  return useSupportAction(merchantId, 'resend-invite')
+}
+
+export function useClearStuckCheckout(merchantId) {
+  return useSupportAction(merchantId, 'clear-stuck-checkout')
+}
