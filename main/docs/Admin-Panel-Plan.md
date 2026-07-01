@@ -167,8 +167,17 @@ pipeline (`deploy-admin.yml` + `deployment-admin` branch) green.
 
 ---
 
-## Phase 2 — Merchant Directory (list + 360° detail)
+## Phase 2 — Merchant Directory (list + 360° detail) — ✅ DONE
 **Goal:** find any merchant and see everything about them (read-only).
+
+**Shipped:** `GET /api/admin/v1/merchants` (cross-tenant, `q`/`status`/`plan`
+filters, cursor-paginated, annotated cards/customers/staff/locations counts) +
+`GET /merchants/{id}` 360° (profile, subscription snapshot, owner+contact, usage,
+Apple/Google wallet counts, admin_meta). Admin-only data kept OUT of frozen core
+via a `console.MerchantAdminMeta` sidecar (notes/flags/account_manager; migration
+0002). Frontend Merchants list (searchable/filterable table) + detail (header +
+tabbed Overview, later-phase placeholders). 7 tests incl. the security check that
+a merchant token can't reach the cross-tenant directory. 225 backend tests green.
 
 **Backend**
 - `GET /api/admin/v1/merchants` — cross-tenant list: search (name/slug/email/
@@ -504,7 +513,7 @@ failed jobs / re-provision passes, and flip feature flags without a deploy.
 
 **DoD:** MFA on for all admins; edge allowlist live; security test suite green;
 Sentry live; launch checklist signed off.
-
+docker compose -f infra/compose.prod.yml exec web python manage.py createadmin --email admin@stampn.net --role SUPER_ADMIN
 ---
 
 ## 4. Suggested MVP cut (if you want value fast)

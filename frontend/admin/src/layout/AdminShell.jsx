@@ -20,7 +20,7 @@ import { useAuth } from '../hooks/useAuth'
 // Overview; the rest are placeholders so the map of the console is visible.
 const NAV = [
   { to: '/', key: 'Overview', Icon: LayoutDashboard, end: true, ready: true },
-  { to: '/merchants', key: 'Merchants', Icon: Building2, phase: 2 },
+  { to: '/merchants', key: 'Merchants', Icon: Building2, ready: true },
   { to: '/plans', key: 'Plans', Icon: CreditCard, phase: 3 },
   { to: '/billing', key: 'Billing', Icon: Receipt, phase: 5 },
   { to: '/support', key: 'Support', Icon: LifeBuoy, phase: 6 },
