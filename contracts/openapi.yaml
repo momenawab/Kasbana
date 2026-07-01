@@ -1,0 +1,1700 @@
+openapi: 3.0.3
+info:
+  title: Stampn API
+  version: "1.1.0"
+  description: >
+    Stampn — digital loyalty & wallet-pass platform. The **authoritative v1
+    contract**. Backend phases and the Client Dashboard frontend build against
+    these exact paths and snake_case JSON keys. Any change is a joint PR to the
+    contract first.
+
+    Ownership: Auth + Enrollment + Apple Wallet web service + Billing webhooks =
+    Momen (Phases 1.0/1.1/1.4). Loyalty + Dashboard = Joe (Phases 1.2/1.3).
+
+    **Dashboard-proposed paths.** Operations tagged `x-status: dashboard-proposed`
+    are the Client Dashboard endpoints authored frontend-first (spec §6) that the
+    backend still owes during/after phases 1.2/1.3/1.4. Until they are verified on
+    staging they are implemented by MSW on the frontend. They introduce NO behavior
+    beyond `main/docs/Frontend-dashboard-plan.md` §6.
+
+    Conventions: snake_case JSON keys · EGP money (major units, `*_egp` fields) ·
+    cursor pagination `{ next, previous, results }` · shared error envelope
+    `{ error: { code, message, fields } }` · list money never negative.
+
+servers:
+  - url: https://api.stampn.net
+    description: Production
+  - url: http://localhost:8000
+    description: Local
+
+security:
+  - bearerJWT: []
+
+tags:
+  - name: Auth
+    description: Merchant authentication & session.
+  - name: Account
+    description: Current merchant / entitlements (/me).
+  - name: Enrollment
+    description: Public customer enrollment via QR token.
+  - name: Loyalty
+    description: Stamp & redeem operations.
+  - name: Cards
+    description: Stamp-card design & management.
+  - name: Customers
+    description: Customer cards, timeline, messaging.
+  - name: Analytics
+    description: Merchant analytics & activity feed.
+  - name: Engage
+    description: Campaigns, segments, automations.
+  - name: Locations
+    description: Branch locations.
+  - name: Team
+    description: Staff & roles.
+  - name: Billing
+    description: Subscriptions, invoices, webhooks.
+  - name: Settings
+    description: Business & account settings.
+  - name: Apple Wallet
+    description: Apple PassKit web service (Apple camelCase).
+
+paths:
+  # ── Auth (Phase 1.0 · Momen) ───────────────────────────────────────────────
+  /api/v1/auth/token:
+    post:
+      operationId: post_auth_token
+      tags: [Auth]
+      summary: Obtain JWT access + refresh tokens
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, format: password }
+      responses:
+        "200":
+          description: Token pair
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TokenPair" }
+        "401": { $ref: "#/components/responses/Error" }
+
+  /api/v1/auth/refresh:
+    post:
+      operationId: post_auth_refresh
+      tags: [Auth]
+      summary: Refresh an access token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh]
+              properties:
+                refresh: { type: string }
+      responses:
+        "200":
+          description: New access token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access: { type: string }
+        "401": { $ref: "#/components/responses/Error" }
+
+  /api/v1/auth/signup:
+    post:
+      operationId: post_auth_signup
+      tags: [Auth]
+      summary: Register a merchant + owner and start a 14-day trial
+      x-status: dashboard-proposed
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [business_name, owner_name, email, phone, password, consent]
+              properties:
+                business_name: { type: string }
+                owner_name: { type: string }
+                email: { type: string, format: email }
+                phone: { type: string, description: "E.164" }
+                password: { type: string, format: password, minLength: 8 }
+                consent: { type: boolean, description: "PDPL consent" }
+      responses:
+        "200":
+          description: Token pair (session started)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TokenPair" }
+        "409": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+
+  /api/v1/auth/forgot:
+    post:
+      operationId: post_auth_forgot
+      tags: [Auth]
+      summary: Request a password-reset email
+      x-status: dashboard-proposed
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+      responses:
+        "200":
+          description: Always ok (does not leak whether the email exists)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Ok" }
+
+  /api/v1/auth/reset:
+    post:
+      operationId: post_auth_reset
+      tags: [Auth]
+      summary: Reset password with a token
+      x-status: dashboard-proposed
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, password]
+              properties:
+                token: { type: string }
+                password: { type: string, format: password, minLength: 8 }
+      responses:
+        "200":
+          description: Password updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Ok" }
+        "410": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+
+  /api/v1/auth/invite/{t}:
+    parameters:
+      - $ref: "#/components/parameters/InviteToken"
+    get:
+      operationId: get_auth_invite_by_t
+      tags: [Auth]
+      summary: Inspect a staff invite (merchant + role + email)
+      x-status: dashboard-proposed
+      security: []
+      responses:
+        "200":
+          description: Invite details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  merchant_name: { type: string }
+                  role: { type: string, enum: [OWNER, ADMIN, SCANNER] }
+                  email: { type: string, format: email }
+        "410": { $ref: "#/components/responses/Error" }
+    post:
+      operationId: post_auth_invite_by_t
+      tags: [Auth]
+      summary: Accept a staff invite (set password) and start a session
+      x-status: dashboard-proposed
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                password: { type: string, format: password, minLength: 8 }
+      responses:
+        "200":
+          description: Token pair (session started)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TokenPair" }
+        "410": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+
+  # ── Account (/me) ──────────────────────────────────────────────────────────
+  /api/v1/me:
+    get:
+      operationId: get_me
+      tags: [Account]
+      summary: Current merchant + entitlements + caller role
+      x-status: dashboard-proposed
+      responses:
+        "200":
+          description: Session context
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [merchant, entitlements, staff]
+                properties:
+                  merchant: { $ref: "#/components/schemas/Merchant" }
+                  entitlements: { $ref: "#/components/schemas/Entitlements" }
+                  staff:
+                    type: object
+                    properties:
+                      role: { type: string, enum: [OWNER, ADMIN, SCANNER] }
+        "401": { $ref: "#/components/responses/Error" }
+
+  # ── Enrollment (Phase 1.1 · Momen) ─────────────────────────────────────────
+  /api/v1/enroll/{token}:
+    parameters:
+      - $ref: "#/components/parameters/EnrollToken"
+    get:
+      operationId: get_enroll_by_token
+      tags: [Enrollment]
+      summary: Public enrollment landing — describes the program behind a QR token
+      security: []
+      responses:
+        "200":
+          description: Program details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  merchant_name: { type: string }
+                  card_name: { type: string }
+                  reward_title: { type: string }
+                  stamps_required: { type: integer }
+                  color_bg: { type: string }
+                  color_fg: { type: string }
+                  logo_url: { type: string }
+        "404": { $ref: "#/components/responses/Error" }
+        "410": { $ref: "#/components/responses/Error" }
+    post:
+      operationId: post_enroll_by_token
+      tags: [Enrollment]
+      summary: Enroll a customer and provision wallet passes
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [customer_phone, consent]
+              properties:
+                customer_phone: { type: string, description: E.164 }
+                customer_name: { type: string }
+                consent: { type: boolean, description: PDPL consent }
+      responses:
+        "201":
+          description: Enrolled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  customer_card_id: { type: string, format: uuid }
+                  stamp_count: { type: integer }
+                  stamps_required: { type: integer }
+                  apple_pass_url: { type: string, nullable: true }
+                  google_save_url: { type: string, nullable: true }
+        "400": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "410": { $ref: "#/components/responses/Error" }
+
+  # ── Loyalty (Phase 1.2 · Joe) ──────────────────────────────────────────────
+  /api/v1/loyalty/stamp:
+    post:
+      operationId: post_loyalty_stamp
+      tags: [Loyalty]
+      summary: Add a stamp to a card
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [customer_card_id]
+              properties:
+                customer_card_id: { type: string, format: uuid }
+                delta: { type: integer, default: 1 }
+      responses:
+        "200":
+          description: Updated balance
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  customer_card_id: { type: string, format: uuid }
+                  stamp_count: { type: integer }
+                  stamps_required: { type: integer }
+                  reward_ready: { type: boolean }
+        "422": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+
+  /api/v1/loyalty/redeem:
+    post:
+      operationId: post_loyalty_redeem
+      tags: [Loyalty]
+      summary: Redeem a reward
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [customer_card_id, reward_id]
+              properties:
+                customer_card_id: { type: string, format: uuid }
+                reward_id: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Redemption result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  redemption_id: { type: string, format: uuid }
+                  status: { type: string }
+                  stamp_count: { type: integer }
+        "422": { $ref: "#/components/responses/Error" }
+
+  /api/v1/loyalty/cards/{customer_card_id}:
+    parameters:
+      - name: customer_card_id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      operationId: get_loyalty_cards_by_customer_card_id
+      tags: [Loyalty]
+      summary: Read a customer card's current state
+      responses:
+        "200":
+          description: Card state
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  customer_card_id: { type: string, format: uuid }
+                  customer_name: { type: string }
+                  stamp_count: { type: integer }
+                  stamps_required: { type: integer }
+                  reward_ready: { type: boolean }
+                  status: { type: string }
+        "404": { $ref: "#/components/responses/Error" }
+
+  # ── Cards (Dashboard · Phase 1.3 · Joe) ────────────────────────────────────
+  /api/v1/cards:
+    get:
+      operationId: get_cards
+      tags: [Cards]
+      summary: List stamp cards
+      x-status: dashboard-proposed
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/PageSize"
+        - name: status
+          in: query
+          required: false
+          schema: { type: string, enum: [DRAFT, ACTIVE, ARCHIVED] }
+      responses:
+        "200":
+          description: Paginated cards
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/PaginatedList"
+                  - type: object
+                    properties:
+                      results:
+                        type: array
+                        items: { $ref: "#/components/schemas/Card" }
+        "401": { $ref: "#/components/responses/Error" }
+    post:
+      operationId: post_cards
+      tags: [Cards]
+      summary: Create a stamp card (draft or active)
+      x-status: dashboard-proposed
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CardWrite" }
+      responses:
+        "201":
+          description: Created card
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Card" }
+        "402": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+
+  /api/v1/cards/{id}:
+    parameters:
+      - $ref: "#/components/parameters/ResourceId"
+    get:
+      operationId: get_cards_by_id
+      tags: [Cards]
+      summary: Read a card
+      x-status: dashboard-proposed
+      responses:
+        "200":
+          description: Card
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Card" }
+        "404": { $ref: "#/components/responses/Error" }
+    patch:
+      operationId: patch_cards_by_id
+      tags: [Cards]
+      summary: Update a card (re-provisions existing holders' passes when published)
+      x-status: dashboard-proposed
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CardWrite" }
+      responses:
+        "200":
+          description: Updated card
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Card" }
+        "404": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+
+  /api/v1/cards/{id}/stats:
+    parameters:
+      - $ref: "#/components/parameters/ResourceId"
+    get:
+      operationId: get_cards_by_id_stats
+      tags: [Cards]
+      summary: Per-card performance stats
+      x-status: dashboard-proposed
+      responses:
+        "200":
+          description: Card stats
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CardStats" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /api/v1/cards/{id}/qr:
+    parameters:
+      - $ref: "#/components/parameters/ResourceId"
+    get:
+      operationId: get_cards_by_id_qr
+      tags: [Cards]
+      summary: Enrollment QR assets for a card
+      x-status: dashboard-proposed
+      responses:
+        "200":
+          description: QR assets
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  join_url: { type: string }
+                  qr_svg: { type: string }
+                  poster_pdf_url: { type: string }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /api/v1/uploads:
+    post:
+      operationId: post_uploads
+      tags: [Cards]
+      summary: Upload an asset (logo / image) and receive a URL
+      x-status: dashboard-proposed
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "201":
+          description: Uploaded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url: { type: string }
+        "413": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+
+  # ── Customers (Dashboard) ──────────────────────────────────────────────────
+  /api/v1/customers:
+    get:
+      operationId: get_customers
+      tags: [Customers]
+      summary: List customer cards (filterable)
+      x-status: dashboard-proposed
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/PageSize"
+        - name: card
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
+        - name: status
+          in: query
+          required: false
+          schema: { type: string }
+        - name: segment
+          in: query
+          required: false
+          schema: { type: string, enum: [lapsed, reward_ready] }
+        - name: location
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
+        - name: search
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Paginated customer cards
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/PaginatedList"
+                  - type: object
+                    properties:
+                      results:
+                        type: array
+                        items: { $ref: "#/components/schemas/CustomerCard" }
+        "401": { $ref: "#/components/responses/Error" }
+
+  /api/v1/customers/{id}:
+    parameters:
+      - $ref: "#/components/parameters/ResourceId"
+    get:
+      operationId: get_customers_by_id
+      tags: [Customers]
+      summary: Read a customer card
+      x-status: dashboard-proposed
+      responses:
+        "200":
+          description: Customer card
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CustomerCard" }
+        "404": { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: delete_customers_by_id
+      tags: [Customers]
+      summary: Delete a customer and their data (PDPL)
+      x-status: dashboard-proposed
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Ok" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /api/v1/customers/{id}/timeline:
+    parameters:
+      - $ref: "#/components/parameters/ResourceId"
+    get:
+      operationId: get_customers_by_id_timeline
+      tags: [Customers]
+      summary: Customer event timeline
+      x-status: dashboard-proposed
+      responses:
+        "200":
+          description: Timeline events (chronological)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items: { $ref: "#/components/schemas/TimelineEvent" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /api/v1/customers/{id}/message:
+    parameters:
+      - $ref: "#/components/parameters/ResourceId"
+    post:
+      operationId: post_customers_by_id_message
+      tags: [Customers]
+      summary: Send a one-off message to a customer
+      x-status: dashboard-proposed
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [channel, text]
+              properties:
+                channel: { type: string, enum: [PUSH, WHATSAPP] }
+                text: { type: string }
+      responses:
+        "200":
+          description: Sent
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Ok" }
+        "402": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+
+  # ── Analytics + Activity (Dashboard) ───────────────────────────────────────
+  /api/v1/analytics/summary:
+    get:
+      operationId: get_analytics_summary
+      tags: [Analytics]
+      summary: Merchant analytics summary (KPI block)
+      responses:
+        "200":
+          description: Summary
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AnalyticsSummary" }
+
+  /api/v1/analytics/timeseries:
+    get:
+      operationId: get_analytics_timeseries
+      tags: [Analytics]
+      summary: Time-series for a metric over a date range
+      x-status: dashboard-proposed
+      parameters:
+        - $ref: "#/components/parameters/DateFrom"
+        - $ref: "#/components/parameters/DateTo"
+        - name: metric
+          in: query
+          required: true
+          schema: { type: string, enum: [joins, stamps, redemptions] }
+        - name: location
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Series points
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  points:
+                    type: array
+                    items: { $ref: "#/components/schemas/TimeseriesPoint" }
+
+  /api/v1/analytics/retention:
+    get:
+      operationId: get_analytics_retention
+      tags: [Analytics]
+      summary: Retention curve + at-risk count over a date range
+      x-status: dashboard-proposed
+      parameters:
+        - $ref: "#/components/parameters/DateFrom"
+        - $ref: "#/components/parameters/DateTo"
+      responses:
+        "200":
+          description: Retention curve
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  curve:
+                    type: array
+                    items: { $ref: "#/components/schemas/RetentionPoint" }
+                  at_risk_count: { type: integer }
+
+  /api/v1/analytics/by_location:
+    get:
+      operationId: get_analytics_by_location
+      tags: [Analytics]
+      summary: Per-location stamps & redemptions over a date range
+      x-status: dashboard-proposed
+      parameters:
+        - $ref: "#/components/parameters/DateFrom"
+        - $ref: "#/components/parameters/DateTo"
+      responses:
+        "200":
+          description: Per-location breakdown
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items: { $ref: "#/components/schemas/LocationStat" }
+
+  /api/v1/activity:
+    get:
+      operationId: get_activity
+      tags: [Analytics]
+      summary: Recent merchant activity feed
+      x-status: dashboard-proposed
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, default: 20, maximum: 100 }
+      responses:
+        "200":
+          description: Activity items
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items: { $ref: "#/components/schemas/ActivityItem" }
+
+  # ── Engage: campaigns, segments, automations (Dashboard) ───────────────────
+  /api/v1/campaigns:
+    get:
+      operationId: get_campaigns
+      tags: [Engage]
+      summary: List campaigns
+      x-status: dashboard-proposed
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: Paginated campaigns
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/PaginatedList"
+                  - type: object
+                    properties:
+                      results:
+                        type: array
+                        items: { $ref: "#/components/schemas/Campaign" }
+    post:
+      operationId: post_campaigns
+      tags: [Engage]
+      summary: Create + send/schedule a campaign
+      x-status: dashboard-proposed
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CampaignWrite" }
+      responses:
+        "201":
+          description: Created campaign
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Campaign" }
+        "402": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+
+  /api/v1/segments:
+    get:
+      operationId: get_segments
+      tags: [Engage]
+      summary: List audience segments with counts
+      x-status: dashboard-proposed
+      responses:
+        "200":
+          description: Segments
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items: { $ref: "#/components/schemas/Segment" }
+
+  /api/v1/automations:
+    get:
+      operationId: get_automations
+      tags: [Engage]
+      summary: List automations
+      x-status: dashboard-proposed
+      responses:
+        "200":
+          description: Automations
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items: { $ref: "#/components/schemas/Automation" }
+
+  /api/v1/automations/{key}:
+    parameters:
+      - $ref: "#/components/parameters/AutomationKey"
+    patch:
+      operationId: patch_automations_by_key
+      tags: [Engage]
+      summary: Update an automation (enabled / channel / timing / template)
+      x-status: dashboard-proposed
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Automation" }
+      responses:
+        "200":
+          description: Updated automation
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Automation" }
+        "402": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+
+  # ── Locations (Dashboard) ──────────────────────────────────────────────────
+  /api/v1/locations:
+    get:
+      operationId: get_locations
+      tags: [Locations]
+      summary: List locations
+      x-status: dashboard-proposed
+      responses:
+        "200":
+          description: Paginated locations
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/PaginatedList"
+                  - type: object
+                    properties:
+                      results:
+                        type: array
+                        items: { $ref: "#/components/schemas/Location" }
+    post:
+      operationId: post_locations
+      tags: [Locations]
+      summary: Create a location
+      x-status: dashboard-proposed
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LocationWrite" }
+      responses:
+        "201":
+          description: Created location
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Location" }
+        "402": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+
+  /api/v1/locations/{id}:
+    parameters:
+      - $ref: "#/components/parameters/ResourceId"
+    patch:
+      operationId: patch_locations_by_id
+      tags: [Locations]
+      summary: Update a location
+      x-status: dashboard-proposed
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LocationWrite" }
+      responses:
+        "200":
+          description: Updated location
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Location" }
+        "404": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+
+  /api/v1/locations/{id}/stats:
+    parameters:
+      - $ref: "#/components/parameters/ResourceId"
+    get:
+      operationId: get_locations_by_id_stats
+      tags: [Locations]
+      summary: Per-location stats
+      x-status: dashboard-proposed
+      responses:
+        "200":
+          description: Location stats
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  stamps: { type: integer }
+                  redemptions: { type: integer }
+                  customers: { type: integer }
+        "404": { $ref: "#/components/responses/Error" }
+
+  # ── Team (Dashboard) ───────────────────────────────────────────────────────
+  /api/v1/staff:
+    get:
+      operationId: get_staff
+      tags: [Team]
+      summary: List staff
+      x-status: dashboard-proposed
+      responses:
+        "200":
+          description: Paginated staff
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/PaginatedList"
+                  - type: object
+                    properties:
+                      results:
+                        type: array
+                        items: { $ref: "#/components/schemas/Staff" }
+
+  /api/v1/staff/invite:
+    post:
+      operationId: post_staff_invite
+      tags: [Team]
+      summary: Invite a staff member
+      x-status: dashboard-proposed
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, role]
+              properties:
+                email: { type: string, format: email }
+                role: { type: string, enum: [OWNER, ADMIN, SCANNER] }
+                location_id: { type: string, format: uuid, nullable: true }
+      responses:
+        "201":
+          description: Invite sent
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Ok" }
+        "402": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+
+  /api/v1/staff/{id}:
+    parameters:
+      - $ref: "#/components/parameters/ResourceId"
+    patch:
+      operationId: patch_staff_by_id
+      tags: [Team]
+      summary: Update a staff member (role / location / active). Last Owner is protected.
+      x-status: dashboard-proposed
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StaffWrite" }
+      responses:
+        "200":
+          description: Updated staff
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Staff" }
+        "409": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+
+  # ── Billing (Phase 1.4 · Momen) ────────────────────────────────────────────
+  /api/v1/billing:
+    get:
+      operationId: get_billing
+      tags: [Billing]
+      summary: Current subscription state + usage + payment method
+      x-status: dashboard-proposed
+      responses:
+        "200":
+          description: Billing state
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BillingState" }
+
+  /api/v1/billing/subscribe:
+    post:
+      operationId: post_billing_subscribe
+      tags: [Billing]
+      summary: Subscribe/switch plan; returns a Paymob/Fawry checkout URL
+      x-status: dashboard-proposed
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [plan]
+              properties:
+                plan: { type: string, enum: [starter, growth, chain] }
+      responses:
+        "200":
+          description: Checkout URL
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  checkout_url: { type: string }
+        "409": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+
+  /api/v1/billing/invoices:
+    get:
+      operationId: get_billing_invoices
+      tags: [Billing]
+      summary: List invoices
+      x-status: dashboard-proposed
+      responses:
+        "200":
+          description: Paginated invoices
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/PaginatedList"
+                  - type: object
+                    properties:
+                      results:
+                        type: array
+                        items: { $ref: "#/components/schemas/Invoice" }
+
+  /api/v1/billing/cancel:
+    post:
+      operationId: post_billing_cancel
+      tags: [Billing]
+      summary: Cancel the subscription
+      x-status: dashboard-proposed
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason: { type: string }
+      responses:
+        "200":
+          description: Cancelled
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Ok" }
+
+  /api/v1/billing/webhook/paymob:
+    post:
+      operationId: post_billing_webhook_paymob
+      tags: [Billing]
+      summary: Paymob subscription webhook
+      security: []
+      responses:
+        "200": { description: Acknowledged }
+
+  /api/v1/billing/webhook/fawry:
+    post:
+      operationId: post_billing_webhook_fawry
+      tags: [Billing]
+      summary: Fawry subscription webhook
+      security: []
+      responses:
+        "200": { description: Acknowledged }
+
+  # ── Settings (Dashboard) ───────────────────────────────────────────────────
+  /api/v1/settings/business:
+    get:
+      operationId: get_settings_business
+      tags: [Settings]
+      summary: Read business settings (returns the merchant)
+      x-status: dashboard-proposed
+      responses:
+        "200":
+          description: Merchant
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Merchant" }
+    patch:
+      operationId: patch_settings_business
+      tags: [Settings]
+      summary: Update business settings (name, branding, contact)
+      x-status: dashboard-proposed
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BusinessSettings" }
+      responses:
+        "200":
+          description: Updated merchant
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Merchant" }
+        "422": { $ref: "#/components/responses/Error" }
+
+  /api/v1/settings/account:
+    get:
+      operationId: get_settings_account
+      tags: [Settings]
+      summary: Read account settings (language + notification prefs)
+      x-status: dashboard-proposed
+      responses:
+        "200":
+          description: Account settings
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AccountSettings" }
+    patch:
+      operationId: patch_settings_account
+      tags: [Settings]
+      summary: Update account settings
+      x-status: dashboard-proposed
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AccountSettings" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AccountSettings" }
+        "422": { $ref: "#/components/responses/Error" }
+
+  /api/v1/settings/account/password:
+    post:
+      operationId: post_settings_account_password
+      tags: [Settings]
+      summary: Change password (current + new)
+      x-status: dashboard-proposed
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [current, new]
+              properties:
+                current: { type: string, format: password }
+                new: { type: string, format: password, minLength: 8 }
+      responses:
+        "200":
+          description: Changed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Ok" }
+        "422": { $ref: "#/components/responses/Error" }
+
+  # ── Apple Wallet web service (Phase 1.1 · Momen — Apple's camelCase spec) ───
+  /api/v1/wallet/apple/v1/devices/{device_library_id}/registrations/{pass_type_id}/{serial}:
+    parameters:
+      - { name: device_library_id, in: path, required: true, schema: { type: string } }
+      - { name: pass_type_id, in: path, required: true, schema: { type: string } }
+      - { name: serial, in: path, required: true, schema: { type: string } }
+    post:
+      operationId: post_apple_devices_by_device_library_id_registrations_by_pass_type_id_by_serial
+      tags: [Apple Wallet]
+      summary: Register a device for a pass
+      description: Body uses Apple's camelCase (e.g. `pushToken`). External spec — not snake_case.
+      security:
+        - applePassAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                pushToken: { type: string }
+      responses:
+        "201": { description: Registered }
+        "200": { description: Already registered }
+        "401": { description: Unauthorized }
+    delete:
+      operationId: delete_apple_devices_by_device_library_id_registrations_by_pass_type_id_by_serial
+      tags: [Apple Wallet]
+      summary: Unregister a device for a pass
+      security:
+        - applePassAuth: []
+      responses:
+        "200": { description: Unregistered }
+        "401": { description: Unauthorized }
+
+  /api/v1/wallet/apple/v1/devices/{device_library_id}/registrations/{pass_type_id}:
+    parameters:
+      - { name: device_library_id, in: path, required: true, schema: { type: string } }
+      - { name: pass_type_id, in: path, required: true, schema: { type: string } }
+      - name: passesUpdatedSince
+        in: query
+        required: false
+        schema: { type: string }
+    get:
+      operationId: get_apple_devices_by_device_library_id_registrations_by_pass_type_id
+      tags: [Apple Wallet]
+      summary: List serials updated since a tag
+      responses:
+        "200":
+          description: Serials + last updated tag
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  serialNumbers:
+                    type: array
+                    items: { type: string }
+                  lastUpdated: { type: string }
+        "204": { description: No matching passes }
+
+  /api/v1/wallet/apple/v1/passes/{pass_type_id}/{serial}:
+    parameters:
+      - { name: pass_type_id, in: path, required: true, schema: { type: string } }
+      - { name: serial, in: path, required: true, schema: { type: string } }
+    get:
+      operationId: get_apple_passes_by_pass_type_id_by_serial
+      tags: [Apple Wallet]
+      summary: Fetch the latest .pkpass for a serial
+      security:
+        - applePassAuth: []
+      responses:
+        "200":
+          description: The signed pass
+          content:
+            application/vnd.apple.pkpass:
+              schema: { type: string, format: binary }
+        "401": { description: Unauthorized }
+        "304": { description: Not modified }
+
+  /api/v1/wallet/apple/v1/log:
+    post:
+      operationId: post_apple_log
+      tags: [Apple Wallet]
+      summary: Apple device log sink
+      security: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                logs:
+                  type: array
+                  items: { type: string }
+      responses:
+        "200": { description: Logged }
+
+components:
+  securitySchemes:
+    bearerJWT:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    applePassAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: "ApplePass <CustomerCard.auth_token>"
+
+  parameters:
+    EnrollToken:
+      name: token
+      in: path
+      required: true
+      schema: { type: string }
+    InviteToken:
+      name: t
+      in: path
+      required: true
+      schema: { type: string }
+    ResourceId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    AutomationKey:
+      name: key
+      in: path
+      required: true
+      schema: { type: string, enum: [reward_ready, expiry, birthday, winback, welcome] }
+    Cursor:
+      name: cursor
+      in: query
+      required: false
+      schema: { type: string }
+    PageSize:
+      name: page_size
+      in: query
+      required: false
+      schema: { type: integer, default: 25, maximum: 100 }
+    DateFrom:
+      name: from
+      in: query
+      required: false
+      schema: { type: string, format: date }
+    DateTo:
+      name: to
+      in: query
+      required: false
+      schema: { type: string, format: date }
+
+  responses:
+    Error:
+      description: Error (contract §3.7 envelope)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              enum:
+                - VALIDATION_ERROR
+                - UNAUTHENTICATED
+                - PERMISSION_DENIED
+                - NOT_FOUND
+                - CONFLICT
+                - ALREADY_ENROLLED
+                - TOKEN_EXPIRED
+                - COOLDOWN_ACTIVE
+                - RATE_LIMITED
+                - REWARD_NOT_READY
+                - PLAN_LIMIT
+                - WALLET_PROVISION_FAILED
+                - SERVER_ERROR
+            message: { type: string }
+            fields:
+              type: object
+              additionalProperties:
+                type: array
+                items: { type: string }
+    Ok:
+      type: object
+      properties:
+        ok: { type: boolean }
+    PaginatedList:
+      type: object
+      properties:
+        next: { type: string, nullable: true }
+        previous: { type: string, nullable: true }
+        results:
+          type: array
+          items: { type: object }
+    TokenPair:
+      type: object
+      properties:
+        access: { type: string }
+        refresh: { type: string }
+
+    # ── Domain objects (spec §4) ──────────────────────────────────────────────
+    Merchant:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        slug: { type: string }
+        status: { type: string, enum: [trial, active, suspended] }
+        plan: { type: string, enum: [trial, starter, growth, chain] }
+        trial_ends_at: { type: string, format: date-time, nullable: true }
+        logo_url: { type: string, nullable: true }
+        color_bg: { type: string }
+        color_fg: { type: string }
+      required: [id, name, slug, status, plan]
+
+    Entitlements:
+      type: object
+      properties:
+        plan: { type: string, enum: [trial, starter, growth, chain] }
+        limits:
+          type: object
+          description: "null = unlimited"
+          properties:
+            max_cards: { type: integer, nullable: true }
+            max_locations: { type: integer, nullable: true }
+            max_staff: { type: integer, nullable: true }
+            max_customers: { type: integer, nullable: true }
+        features:
+          type: object
+          properties:
+            whatsapp: { type: boolean }
+            export: { type: boolean }
+            api: { type: boolean }
+            automations: { type: integer }
+            analytics: { type: string, enum: [basic, full] }
+        usage: { $ref: "#/components/schemas/Usage" }
+      required: [plan, limits, features, usage]
+    Usage:
+      type: object
+      properties:
+        cards: { type: integer }
+        locations: { type: integer }
+        staff: { type: integer }
+        customers: { type: integer }
+        whatsapp_used: { type: integer }
+        whatsapp_quota: { type: integer, nullable: true }
+
+    Card:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, enum: [STAMP] }
+        name: { type: string }
+        stamps_required: { type: integer, minimum: 1, maximum: 30 }
+        reward_title: { type: string }
+        reward_description: { type: string }
+        color_bg: { type: string }
+        color_fg: { type: string }
+        logo_url: { type: string, nullable: true }
+        status: { type: string, enum: [DRAFT, ACTIVE, ARCHIVED] }
+        holders: { type: integer }
+        stamps_issued: { type: integer }
+        rewards_redeemed: { type: integer }
+      required: [id, name, stamps_required, reward_title, status]
+    CardWrite:
+      type: object
+      properties:
+        name: { type: string }
+        stamps_required: { type: integer, minimum: 1, maximum: 30 }
+        reward_title: { type: string }
+        reward_description: { type: string }
+        color_bg: { type: string }
+        color_fg: { type: string }
+        logo_url: { type: string, nullable: true }
+        status: { type: string, enum: [DRAFT, ACTIVE, ARCHIVED] }
+    CardStats:
+      type: object
+      properties:
+        holders: { type: integer }
+        stamps_issued: { type: integer }
+        rewards_redeemed: { type: integer }
+        completion_rate: { type: number, format: float }
+        apple_count: { type: integer }
+        google_count: { type: integer }
+
+    CustomerCard:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        customer_name: { type: string, nullable: true }
+        customer_phone: { type: string }
+        stamp_count: { type: integer }
+        stamps_required: { type: integer }
+        wallet_platform: { type: string, enum: [APPLE, GOOGLE], nullable: true }
+        status: { type: string }
+        birthday: { type: string, format: date, nullable: true }
+        consent_at: { type: string, format: date-time }
+        last_event_at: { type: string, format: date-time, nullable: true }
+        enrolled_at: { type: string, format: date-time }
+      required: [id, customer_phone, stamp_count, stamps_required]
+    TimelineEvent:
+      type: object
+      properties:
+        event_type: { type: string, enum: [enroll, stamp, redeem, message] }
+        delta: { type: integer }
+        balance_after: { type: integer }
+        staff_name: { type: string, nullable: true }
+        location: { type: string, nullable: true }
+        gps: { type: string, nullable: true }
+        at: { type: string, format: date-time }
+      required: [event_type, at]
+
+    Campaign:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        channel: { type: string, enum: [PUSH, WHATSAPP, BOTH] }
+        audience: { type: string }
+        message: { type: string }
+        status: { type: string }
+        schedule_at: { type: string, format: date-time, nullable: true }
+        sent_at: { type: string, format: date-time, nullable: true }
+        stats:
+          type: object
+          properties:
+            delivered: { type: integer }
+            opened: { type: integer }
+      required: [id, channel, audience, message, status]
+    CampaignWrite:
+      type: object
+      required: [channel, audience, message]
+      properties:
+        channel: { type: string, enum: [PUSH, WHATSAPP, BOTH] }
+        audience: { type: string }
+        message: { type: string }
+        schedule_at: { type: string, format: date-time, nullable: true }
+    Segment:
+      type: object
+      properties:
+        key: { type: string }
+        label: { type: string }
+        count: { type: integer }
+      required: [key, label, count]
+    Automation:
+      type: object
+      properties:
+        key: { type: string, enum: [reward_ready, expiry, birthday, winback, welcome] }
+        enabled: { type: boolean }
+        channel: { type: string, enum: [PUSH, WHATSAPP, BOTH] }
+        timing: { type: string }
+        template: { type: string }
+      required: [key, enabled]
+
+    Location:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        address: { type: string }
+        lat: { type: number, nullable: true }
+        lng: { type: number, nullable: true }
+        staff_count: { type: integer }
+        stamps_issued: { type: integer }
+      required: [id, name, address]
+    LocationWrite:
+      type: object
+      required: [name, address]
+      properties:
+        name: { type: string }
+        address: { type: string }
+        lat: { type: number, nullable: true }
+        lng: { type: number, nullable: true }
+    LocationStat:
+      type: object
+      properties:
+        location_id: { type: string, format: uuid }
+        name: { type: string }
+        stamps: { type: integer }
+        redemptions: { type: integer }
+
+    Staff:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        email: { type: string, format: email }
+        role: { type: string, enum: [OWNER, ADMIN, SCANNER] }
+        location_id: { type: string, format: uuid, nullable: true }
+        is_active: { type: boolean }
+      required: [id, name, email, role, is_active]
+    StaffWrite:
+      type: object
+      properties:
+        role: { type: string, enum: [OWNER, ADMIN, SCANNER] }
+        location_id: { type: string, format: uuid, nullable: true }
+        is_active: { type: boolean }
+
+    # ── Analytics payloads ────────────────────────────────────────────────────
+    AnalyticsSummary:
+      type: object
+      properties:
+        enrollments: { type: integer }
+        active_cards: { type: integer }
+        redemptions: { type: integer }
+        apple_count: { type: integer }
+        google_count: { type: integer }
+        repeat_rate: { type: number, format: float }
+    TimeseriesPoint:
+      type: object
+      properties:
+        date: { type: string, format: date }
+        value: { type: number }
+      required: [date, value]
+    RetentionPoint:
+      type: object
+      properties:
+        day: { type: integer }
+        retained_pct: { type: number, format: float }
+      required: [day, retained_pct]
+    ActivityItem:
+      type: object
+      properties:
+        type: { type: string, enum: [join, stamp, redeem] }
+        actor_name: { type: string, nullable: true }
+        customer_name: { type: string, nullable: true }
+        location: { type: string, nullable: true }
+        at: { type: string, format: date-time }
+      required: [type, at]
+
+    # ── Billing ───────────────────────────────────────────────────────────────
+    BillingState:
+      type: object
+      properties:
+        plan: { type: string, enum: [trial, starter, growth, chain] }
+        trial_ends_at: { type: string, format: date-time, nullable: true }
+        price_egp: { type: number, description: "Amount in EGP (major units)" }
+        usage: { $ref: "#/components/schemas/Usage" }
+        next_renewal: { type: string, format: date-time, nullable: true }
+        payment_method:
+          type: object
+          nullable: true
+          properties:
+            brand: { type: string }
+            last4: { type: string }
+    Invoice:
+      type: object
+      properties:
+        id: { type: string }
+        date: { type: string, format: date }
+        amount_egp: { type: number, description: "Amount in EGP (major units)" }
+        status: { type: string, enum: [paid, pending, failed] }
+        pdf_url: { type: string }
+      required: [id, date, amount_egp, status]
+
+    # ── Settings ──────────────────────────────────────────────────────────────
+    BusinessSettings:
+      type: object
+      properties:
+        name: { type: string }
+        legal_name: { type: string, nullable: true }
+        logo_url: { type: string, nullable: true }
+        color_bg: { type: string }
+        color_fg: { type: string }
+        contact:
+          type: object
+          nullable: true
+          properties:
+            phone: { type: string }
+            email: { type: string, format: email }
+        address: { type: string, nullable: true }
+    AccountSettings:
+      type: object
+      properties:
+        language: { type: string, enum: [ar, en] }
+        notifications:
+          type: object
+          properties:
+            email: { type: boolean }
+            whatsapp: { type: boolean }

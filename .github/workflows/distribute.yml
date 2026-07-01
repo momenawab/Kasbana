@@ -1,0 +1,97 @@
+name: Distribute dev to component branches
+
+# Single source of truth: the `dev` branch (monorepo with frontend/ + backend/).
+# On every push to dev, this workflow distributes each part to its own branch:
+#   main/      ->  main branch        (docs)
+#   frontend/  ->  frontend branch
+#   backend/   ->  Backend branch
+#   build      ->  deployment branch  (Hostinger serves this)
+#
+# All pushes here use GITHUB_TOKEN, so they do NOT re-trigger other workflows.
+
+on:
+  push:
+    branches: [dev]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: distribute-dev
+  cancel-in-progress: false
+
+jobs:
+  distribute:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout dev
+        uses: actions/checkout@v4
+
+      # ── main/ -> main branch (docs) ─────────────────────────────────────────
+      - name: Sync docs to main
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: main
+          publish_dir: ./main
+          force_orphan: true
+          enable_jekyll: true
+          commit_message: "sync: docs from dev"
+
+      # ── frontend/ -> frontend branch ────────────────────────────────────────
+      - name: Sync frontend source
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: frontend
+          publish_dir: ./frontend
+          force_orphan: true
+          enable_jekyll: true
+          commit_message: "sync: frontend from dev"
+
+      # ── backend/ -> Backend branch ──────────────────────────────────────────
+      - name: Sync backend source
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: Backend
+          publish_dir: ./backend
+          force_orphan: true
+          enable_jekyll: true
+          commit_message: "sync: backend from dev"
+
+      # ── infra/ -> infra branch (devops) ─────────────────────────────────────
+      - name: Sync infra source
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: infra
+          publish_dir: ./infra
+          force_orphan: true
+          enable_jekyll: true
+          commit_message: "sync: infra from dev"
+
+      # ── build frontend/ -> deployment branch ────────────────────────────────
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Publish build to deployment
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: deployment
+          publish_dir: ./frontend/dist
+          force_orphan: true
+          enable_jekyll: true
+          commit_message: "deploy: build from dev"

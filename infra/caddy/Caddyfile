@@ -1,0 +1,39 @@
+# Caddy reverse proxy + automatic HTTPS (Let's Encrypt).
+#
+# Two public subdomains, both pointing (A record) at this EC2 box:
+#   api.stampn.net   -> REST API (+ Apple Wallet web service; needs valid HTTPS)
+#   admin.stampn.net -> Django admin panel (root redirects to /admin/)
+#
+# Certs are issued automatically once DNS resolves to this server. The bare-IP
+# HTTP block is a fallback for health checks before/without DNS.
+
+api.stampn.net {
+	encode zstd gzip
+
+	# User uploads (logos) are written by the app to the shared `media` volume
+	# and served as static files here — Django doesn't serve /media in prod.
+	handle_path /media/* {
+		root * /srv/media
+		file_server
+	}
+
+	reverse_proxy web:8000 {
+		header_up X-Forwarded-Proto {scheme}
+		header_up X-Forwarded-For {remote_host}
+	}
+}
+
+admin.stampn.net {
+	encode zstd gzip
+	@root path /
+	redir @root /admin/ 308
+	reverse_proxy web:8000 {
+		header_up X-Forwarded-Proto {scheme}
+		header_up X-Forwarded-For {remote_host}
+	}
+}
+
+# Plain-HTTP access by IP (health checks / fallback) — no TLS on a bare IP.
+http://13.49.70.197 {
+	reverse_proxy web:8000
+}

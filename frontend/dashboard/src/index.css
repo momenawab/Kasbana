@@ -1,0 +1,41 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: theme('fontFamily.body');
+  }
+  html[lang='ar'] {
+    font-family: theme('fontFamily.ar');
+  }
+  body {
+    @apply bg-paper text-tx;
+  }
+  /* Arabic headings reset letter-spacing (Direction-C rule). */
+  html[lang='ar'] :is(h1, h2, h3, h4) {
+    letter-spacing: 0;
+  }
+  .font-num {
+    @apply font-mono tabular-nums;
+  }
+}
+
+/* Print: only the enrollment poster sheet prints (Poster.jsx → Save as PDF). */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .poster-sheet,
+  .poster-sheet * {
+    visibility: visible;
+  }
+  .poster-sheet {
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    box-shadow: none;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
