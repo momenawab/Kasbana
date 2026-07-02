@@ -417,8 +417,37 @@ leave notes; every impersonated action is attributable to the admin.
 
 ---
 
-## Phase 7 — Revenue & Financial Analytics
+## Phase 7 — Revenue & Financial Analytics — ✅ DONE
 **Goal:** know the health of the business at a glance.
+
+**Shipped:** `GET /api/admin/v1/analytics/revenue` (date-ranged, default trailing
+12 months, cached 5 min) returning KPIs — **MRR, ARR, ARPU, LTV, logo & revenue
+churn, trial→paid conversion, NRR**, paying/trial/comped counts — plus
+`revenue_by_plan`, a monthly `monthly_series` (collected EGP, paid-invoice
+count, new payers), and `cohort_retention` by signup month. `GET
+/analytics/revenue/export` streams the monthly series as CSV. Both gated to
+**Finance/Super-admin** (Support + Read-only 403'd — the one console area that
+is *not* open-read, since it's raw financials). **Honest metric definitions**
+(this system has one-time checkouts, no auto-renewal — Phase 5): MRR is
+*modelled* as the committed monthly value of currently-paying subscriptions
+(`status=ACTIVE`, not comp, non-free) at the live catalogue price (Phase 3);
+trials/comps contribute 0; ARR = MRR×12, ARPU = MRR÷paying. Churn is
+*cumulative* (ever-paid but no paying sub now) — a true period rate needs an MRR
+snapshot job that doesn't exist yet, so we report what the ledger proves. NRR is
+the one range-scoped figure: this period's collections from merchants who also
+paid the prior equal period ÷ that prior period's collections. Every number is a
+pure function of the subscription + invoice ledger (no metrics store). Frontend
+**Revenue** dashboard (`frontend/admin`): KPI tiles, a collected-revenue +
+new-payers bar chart, MRR-by-plan table, cohort-retention line chart (recharts),
+date-range pickers, and a token-authenticated CSV download. Revenue nav item +
+route are Finance/Super-admin-gated (hidden for others; the route also guards, so
+a direct URL can't leak). 16 new backend tests (role gate incl. Support/RO 403,
+MRR/ARR/ARPU accuracy vs raw data, comp/trial exclusion, revenue-by-plan,
+conversion, logo+revenue churn, monthly series + new payers, cohort retention,
+date-range scoping, CSV content, empty-platform zeroing); 325 backend tests
+green; ruff/black/mypy/spectacular clean; admin lint/build clean. **Deferred:**
+a cohort-retention *heatmap* (shipped as a line chart — simpler, same signal) and
+live in-browser verification (covered by the automated accuracy tests).
 
 **Backend**
 - `GET /api/admin/v1/analytics/revenue`: **MRR, ARR, ARPU, LTV, churn rate

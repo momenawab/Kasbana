@@ -5,6 +5,7 @@ from __future__ import annotations
 from django.urls import path
 
 from console.views import AdminLoginView, AdminMeView, AdminRefreshView
+from console.views_analytics import RevenueAnalyticsView, RevenueExportView
 from console.views_billing import DunningListView, DunningNotifyView, ReconciliationView
 from console.views_invoices import (
     InvoiceDetailView,
@@ -132,5 +133,12 @@ urlpatterns = [
         "merchants/<uuid:merchant_id>/activity",
         ActivityView.as_view(),
         name="admin-merchant-activity",
+    ),
+    # Revenue & financial analytics (Phase 7)
+    path("analytics/revenue", RevenueAnalyticsView.as_view(), name="admin-analytics-revenue"),
+    path(
+        "analytics/revenue/export",
+        RevenueExportView.as_view(),
+        name="admin-analytics-revenue-export",
     ),
 ]
