@@ -188,6 +188,81 @@ class ContentFlag(models.Model):
         return f"{self.target_type}:{self.target_id} · {self.reason} ({self.status})"
 
 
+class Announcement(models.Model):
+    """A platform broadcast to a merchant segment (Phase 10).
+
+    Delivered in-app (a per-merchant ``AnnouncementDelivery`` row the dashboard
+    reads) and/or by email. ``recipients``/``emails_sent`` are snapshotted at
+    send; opens are derived from ``AnnouncementDelivery.read_at``.
+    """
+
+    class Channel(models.TextChoices):
+        IN_APP = "in_app", "In-app"
+        EMAIL = "email", "Email"
+        BOTH = "both", "In-app + email"
+
+    class Segment(models.TextChoices):
+        ALL = "all", "All merchants"
+        PLAN = "plan", "By plan"
+        TRIAL_ENDING = "trial_ending", "Trial ending"
+        AT_RISK = "at_risk", "At-risk"
+        ACTIVE = "active", "Recently active"
+
+    class Status(models.TextChoices):
+        DRAFT = "draft", "Draft"
+        SCHEDULED = "scheduled", "Scheduled"
+        SENT = "sent", "Sent"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    title = models.CharField(max_length=160)
+    body = models.TextField()
+    channel = models.CharField(max_length=8, choices=Channel.choices, default=Channel.IN_APP)
+    audience = models.CharField(max_length=16, choices=Segment.choices, default=Segment.ALL)
+    audience_param = models.CharField(max_length=32, blank=True)  # e.g. plan key for PLAN
+    status = models.CharField(max_length=12, choices=Status.choices, default=Status.DRAFT)
+    schedule_at = models.DateTimeField(null=True, blank=True)
+    sent_at = models.DateTimeField(null=True, blank=True)
+    recipients = models.IntegerField(default=0)  # audience size at send
+    emails_sent = models.IntegerField(default=0)
+    created_by = models.ForeignKey(
+        AdminUser, on_delete=models.SET_NULL, null=True, related_name="announcements"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return f"{self.title} → {self.audience} ({self.status})"
+
+
+class AnnouncementDelivery(models.Model):
+    """One in-app delivery of an announcement to a merchant; ``read_at`` powers
+    the dashboard's unread state + the open-rate stat."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    announcement = models.ForeignKey(
+        Announcement, on_delete=models.CASCADE, related_name="deliveries"
+    )
+    merchant = models.ForeignKey(
+        Merchant, on_delete=models.CASCADE, related_name="announcement_deliveries"
+    )
+    read_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["announcement", "merchant"], name="uniq_announcement_merchant"
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.announcement_id} → {self.merchant_id}"
+
+
 class AdminAuditLog(models.Model):
     """One admin action. Append-only; never edited or deleted in normal operation."""
 

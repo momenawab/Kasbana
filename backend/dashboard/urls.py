@@ -23,6 +23,12 @@ from dashboard.views import (
     StaffListCreateView,
     UploadView,
 )
+from dashboard.views_announcements import (
+    AnnouncementListView as InAppAnnouncementListView,
+)
+from dashboard.views_announcements import (
+    AnnouncementReadView,
+)
 
 urlpatterns = [
     # Cards
@@ -54,4 +60,11 @@ urlpatterns = [
     path("analytics/retention", AnalyticsRetentionView.as_view(), name="analytics-retention"),
     path("analytics/by_location", AnalyticsByLocationView.as_view(), name="analytics-by-location"),
     path("activity", ActivityFeedView.as_view(), name="activity"),
+    # In-app announcements (Phase 10)
+    path("announcements", InAppAnnouncementListView.as_view(), name="announcement-list"),
+    path(
+        "announcements/<uuid:delivery_id>/read",
+        AnnouncementReadView.as_view(),
+        name="announcement-read",
+    ),
 ]

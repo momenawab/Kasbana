@@ -10,6 +10,13 @@ from console.views_analytics import (
     RevenueAnalyticsView,
     RevenueExportView,
 )
+from console.views_announcements import (
+    AnnouncementDetailView,
+    AnnouncementListView,
+    AnnouncementScheduleView,
+    AnnouncementSendView,
+    AudiencePreviewView,
+)
 from console.views_billing import DunningListView, DunningNotifyView, ReconciliationView
 from console.views_invoices import (
     InvoiceDetailView,
@@ -173,5 +180,27 @@ urlpatterns = [
         "moderation/flags/<uuid:flag_id>/resolve",
         ResolveFlagView.as_view(),
         name="admin-moderation-resolve",
+    ),
+    # Communications & announcements (Phase 10)
+    path("announcements", AnnouncementListView.as_view(), name="admin-announcements"),
+    path(
+        "announcements/audience-preview",
+        AudiencePreviewView.as_view(),
+        name="admin-announcement-audience-preview",
+    ),
+    path(
+        "announcements/<uuid:announcement_id>",
+        AnnouncementDetailView.as_view(),
+        name="admin-announcement-detail",
+    ),
+    path(
+        "announcements/<uuid:announcement_id>/send",
+        AnnouncementSendView.as_view(),
+        name="admin-announcement-send",
+    ),
+    path(
+        "announcements/<uuid:announcement_id>/schedule",
+        AnnouncementScheduleView.as_view(),
+        name="admin-announcement-schedule",
     ),
 ]

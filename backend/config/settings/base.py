@@ -335,6 +335,11 @@ CELERY_BEAT_SCHEDULE = {
         "task": "messaging.tasks.send_due_campaigns",
         "schedule": 60.0,  # every minute (near-real-time scheduled sends)
     },
+    # Dispatch scheduled admin announcements whose send time has arrived (Phase 10).
+    "console-send-due-announcements": {
+        "task": "console.tasks.send_due_announcements",
+        "schedule": 300.0,  # every 5 minutes
+    },
 }
 CELERY_TASK_ACKS_LATE = True
 CELERY_TIMEZONE = TIME_ZONE

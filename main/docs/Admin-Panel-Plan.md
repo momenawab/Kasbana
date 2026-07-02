@@ -566,8 +566,40 @@ suspended and is immediately blocked; flagged content is reviewable.
 
 ---
 
-## Phase 10 — Communications & Announcements
+## Phase 10 — Communications & Announcements — ✅ DONE
 **Goal:** reach merchants — product news, outages, upgrade nudges.
+
+**Shipped:** `console.Announcement` + `console.AnnouncementDelivery` models
+(migration 0005). Full CRUD at `/announcements` (list/detail open to any admin;
+create/edit/delete/send/schedule gated to **Super-admin/Marketing-admin** via a
+new `IsMarketingAdmin` permission; a SENT announcement is immutable). Segments
+(`console.segments`): **all / by plan / trial-ending / at-risk / recently-active**
+— trial-ending and at-risk reuse the Phase 9 lifecycle logic so targeting
+matches those screens. `GET /announcements/audience-preview?audience=&param=`
+returns the recipient count (preview + confirm before send). `POST
+.../{id}/send` delivers now: in-app channels bulk-create per-merchant delivery
+rows (`ignore_conflicts`), email channels `send_mail` to each owner (existing
+backend, fail-silently); both snapshot `recipients`/`emails_sent`, and the send
+path is a plain `announcements.send()` function so it's identical from the API
+or the scheduler. `POST .../{id}/schedule` (requires a future `schedule_at`)
+marks SCHEDULED; a new Celery beat task `console.tasks.send_due_announcements`
+(every 5 min) delivers due ones — flipping to SENT so it never double-sends.
+Delivery stats (recipients/delivered/emails_sent/opened/open_rate) are computed
+from the delivery rows. **Merchant-facing** (dashboard, Phase 10 addition):
+`GET /api/v1/announcements` lists this merchant's in-app deliveries + read
+state; `POST /api/v1/announcements/{id}/read` marks one read (scoped 404 for
+another merchant's delivery) → feeds the admin open-rate. Every send/schedule
+audited. Frontend: admin **Announcements** screen (composer with channel +
+audience + live recipient preview + confirm-before-send, list with status &
+reach/open stats, per-draft send/delete) and a dashboard dismissible
+announcement banner (dismiss = mark read). 14 new backend tests (role gate,
+segment resolution, preview, in-app+email send with stats, no-double-send, SENT
+immutability, schedule→beat-task delivery, merchant list + mark-read + open
+stat, cross-merchant 404); 364 backend tests green; ruff/black/mypy/spectacular
+clean; admin + dashboard lint/build clean. **Deferred (not needed for the DoD):**
+the template library and a dedicated changelog/release-notes publisher — the
+composer + segments already cover broadcast; templates are a convenience layer
+that can land later. Live in-browser verification deferred (covered by tests).
 
 **Backend**
 - `Announcement` model (title, body, audience-segment, channel[in-app|email],
