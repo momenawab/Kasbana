@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Loader2, Apple, Smartphone, Ban, ShieldCheck } from 'lucide-react'
+import { ArrowLeft, Loader2, Apple, Smartphone, Ban, ShieldCheck, Ticket } from 'lucide-react'
 import { useMerchant } from './api'
 import { useSuspendMerchant } from '../lifecycle/api'
+import { useApplyCouponToMerchant } from '../promotions/api'
 import { useAuth } from '../../hooks/useAuth'
 import Badge from '../../components/Badge'
 import { normalizeError } from '../../lib/api'
@@ -35,6 +36,7 @@ export default function MerchantDetail() {
   const { role } = useAuth()
   const { data: m, isLoading } = useMerchant(id)
   const suspendMut = useSuspendMerchant(id)
+  const applyCoupon = useApplyCouponToMerchant(id)
   const [tab, setTab] = useState('overview')
 
   if (isLoading || !m) {
@@ -44,6 +46,7 @@ export default function MerchantDetail() {
   const usage = m.usage || {}
   const isSuspended = m.status === 'SUSPENDED'
   const canSuspend = role === 'SUPER_ADMIN'
+  const canApplyCoupon = ['SUPER_ADMIN', 'FINANCE'].includes(role)
 
   async function toggleSuspend() {
     const suspend = !isSuspended
@@ -53,6 +56,17 @@ export default function MerchantDetail() {
     if (!reason) return
     try {
       await suspendMut.mutateAsync({ suspend, reason })
+    } catch (err) {
+      window.alert(normalizeError(err).message)
+    }
+  }
+
+  async function applyCouponCode() {
+    const code = window.prompt('Coupon code to grant (trial-extension / free-months):')
+    if (!code) return
+    try {
+      const res = await applyCoupon.mutateAsync(code.trim())
+      window.alert(`Applied: ${res.detail}`)
     } catch (err) {
       window.alert(normalizeError(err).message)
     }
@@ -93,21 +107,32 @@ export default function MerchantDetail() {
         <div className="flex flex-col items-end gap-2 text-right text-sm text-tx-2">
           <div>Joined {shortDate(m.created_at)}</div>
           {m.trial_ends_at && <div className="text-tx-3">Trial ends {shortDate(m.trial_ends_at)}</div>}
-          {canSuspend && (
-            <button
-              onClick={toggleSuspend}
-              disabled={suspendMut.isPending}
-              className={
-                'flex items-center gap-1.5 rounded-ctl border px-3 py-1.5 text-sm font-semibold disabled:opacity-60 ' +
-                (isSuspended
-                  ? 'border-line text-tx-2 hover:border-success hover:text-success'
-                  : 'border-danger/50 text-danger hover:bg-danger hover:text-bg')
-              }
-            >
-              {isSuspended ? <ShieldCheck size={15} /> : <Ban size={15} />}
-              {isSuspended ? 'Reactivate' : 'Suspend'}
-            </button>
-          )}
+          <div className="flex gap-2">
+            {canApplyCoupon && (
+              <button
+                onClick={applyCouponCode}
+                disabled={applyCoupon.isPending}
+                className="flex items-center gap-1.5 rounded-ctl border border-line px-3 py-1.5 text-sm font-semibold text-tx-2 hover:border-brand hover:text-brand disabled:opacity-60"
+              >
+                <Ticket size={15} /> Apply coupon
+              </button>
+            )}
+            {canSuspend && (
+              <button
+                onClick={toggleSuspend}
+                disabled={suspendMut.isPending}
+                className={
+                  'flex items-center gap-1.5 rounded-ctl border px-3 py-1.5 text-sm font-semibold disabled:opacity-60 ' +
+                  (isSuspended
+                    ? 'border-line text-tx-2 hover:border-success hover:text-success'
+                    : 'border-danger/50 text-danger hover:bg-danger hover:text-bg')
+                }
+              >
+                {isSuspended ? <ShieldCheck size={15} /> : <Ban size={15} />}
+                {isSuspended ? 'Reactivate' : 'Suspend'}
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

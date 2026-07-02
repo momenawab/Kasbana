@@ -30,7 +30,7 @@ const NAV = [
   { to: '/platform', key: 'Platform', Icon: PieChart, ready: true },
   { to: '/lifecycle', key: 'Lifecycle', Icon: Workflow, ready: true },
   { to: '/announcements', key: 'Announcements', Icon: Megaphone, ready: true },
-  { to: '/promotions', key: 'Promotions', Icon: Ticket, phase: 11 },
+  { to: '/promotions', key: 'Promotions', Icon: Ticket, ready: true },
   { to: '/team', key: 'Admin Team', Icon: Users2, phase: 12 },
   { to: '/audit', key: 'Audit Log', Icon: ScrollText, phase: 13 },
   { to: '/ops', key: 'Operations', Icon: Activity, phase: 14 },

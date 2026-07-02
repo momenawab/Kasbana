@@ -621,8 +621,39 @@ segment (in-app + email) and see delivery stats.
 
 ---
 
-## Phase 11 — Coupons, Discounts & Promotions
+## Phase 11 — Coupons, Discounts & Promotions — ✅ DONE
 **Goal:** run growth levers — discounts, comps, trial extensions, partners.
+
+**Shipped:** `billing.Coupon` + `billing.CouponRedemption` models (migration
+0008; billing-owned config like `Plan`, since checkout consumes it). Types:
+`percent` / `fixed` (reduce a checkout charge) and `free_months` / `trial_extension`
+(admin-granted directly). `billing.coupons` is the trusted server-side layer:
+`validate` (active / expiry / plan-scope / global-cap / per-merchant-once),
+`discounted_amount` (percent/fixed, floored at 0), and `redeem` — which
+**re-checks the global cap under a `select_for_update` row lock** so concurrent
+redemptions can't overshoot `max_redemptions`. **Checkout integration (the DoD):**
+`POST /api/v1/billing/subscribe` now takes an optional `coupon`; a percent/fixed
+code is validated and applied to the charge, and a capped redemption is recorded
+(unknown/exhausted/scoped → 400). Admin console (Finance/Super-admin writes via
+`IsFinanceAdmin`; list/detail/report open to any admin, audited): `GET/POST
+/coupons`, `GET/PATCH /coupons/{code}` (code stored uppercased, duplicate 400;
+PATCH only toggles active/expiry/cap/scope — never code/type/value),
+`GET /coupons/{code}/redemptions` (the report), and `POST
+/merchants/{id}/apply-coupon` which grants a `trial_extension` (extend trial N
+days) or `free_months` (comp) — percent/fixed there → 400 `COUPON_NOT_GRANTABLE`.
+Frontend: admin **Promotions** screen (coupon builder, active-codes table with
+redemption stats + remaining-cap, activate/deactivate, expandable per-coupon
+redemption report) + a Finance/Super-admin "Apply coupon" action on the merchant
+detail header. 21 new backend tests (role gate, discount math, global +
+per-merchant caps, expiry, plan-scope, checkout-reduces-charge + records
+redemption, exhausted-blocks-subscribe, redemption report, apply
+trial-extension/free-months, percent-not-grantable, Finance gate); 385 backend
+tests green; ruff/black/mypy/spectacular clean; admin lint/build clean.
+**Deferred (plan marks it optional):** the `Promotion` grouping model and
+**partner/affiliate** tracking/payout report — the coupon engine + redemption
+report already meet the DoD ("a discount code reduces a merchant's charge;
+redemptions capped + reported"); affiliate attribution is a separate data model
+that can land later. Live in-browser verification deferred (covered by tests).
 
 **Backend**
 - `Coupon` model (code, type[percent|fixed|free-months|trial-extension], value,

@@ -18,6 +18,12 @@ from console.views_announcements import (
     AudiencePreviewView,
 )
 from console.views_billing import DunningListView, DunningNotifyView, ReconciliationView
+from console.views_coupons import (
+    ApplyCouponView,
+    CouponDetailView,
+    CouponListView,
+    CouponRedemptionsView,
+)
 from console.views_invoices import (
     InvoiceDetailView,
     InvoiceListView,
@@ -202,5 +208,18 @@ urlpatterns = [
         "announcements/<uuid:announcement_id>/schedule",
         AnnouncementScheduleView.as_view(),
         name="admin-announcement-schedule",
+    ),
+    # Coupons, discounts & promotions (Phase 11)
+    path("coupons", CouponListView.as_view(), name="admin-coupons"),
+    path("coupons/<str:code>", CouponDetailView.as_view(), name="admin-coupon-detail"),
+    path(
+        "coupons/<str:code>/redemptions",
+        CouponRedemptionsView.as_view(),
+        name="admin-coupon-redemptions",
+    ),
+    path(
+        "merchants/<uuid:merchant_id>/apply-coupon",
+        ApplyCouponView.as_view(),
+        name="admin-merchant-apply-coupon",
     ),
 ]
