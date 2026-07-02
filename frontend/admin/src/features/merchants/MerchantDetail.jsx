@@ -1,8 +1,11 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Loader2, Apple, Smartphone } from 'lucide-react'
+import { ArrowLeft, Loader2, Apple, Smartphone, Ban, ShieldCheck } from 'lucide-react'
 import { useMerchant } from './api'
+import { useSuspendMerchant } from '../lifecycle/api'
+import { useAuth } from '../../hooks/useAuth'
 import Badge from '../../components/Badge'
+import { normalizeError } from '../../lib/api'
 import { num, shortDate, statusTone } from '../../lib/format'
 import SubscriptionTab from './SubscriptionTab'
 import MerchantBillingTab from './MerchantBillingTab'
@@ -29,7 +32,9 @@ function Stat({ label, value }) {
 export default function MerchantDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { role } = useAuth()
   const { data: m, isLoading } = useMerchant(id)
+  const suspendMut = useSuspendMerchant(id)
   const [tab, setTab] = useState('overview')
 
   if (isLoading || !m) {
@@ -37,6 +42,21 @@ export default function MerchantDetail() {
   }
 
   const usage = m.usage || {}
+  const isSuspended = m.status === 'SUSPENDED'
+  const canSuspend = role === 'SUPER_ADMIN'
+
+  async function toggleSuspend() {
+    const suspend = !isSuspended
+    const reason = window.prompt(
+      suspend ? 'Reason for suspending this merchant (audited):' : 'Reason for reactivating:'
+    )
+    if (!reason) return
+    try {
+      await suspendMut.mutateAsync({ suspend, reason })
+    } catch (err) {
+      window.alert(normalizeError(err).message)
+    }
+  }
 
   return (
     <div className="flex flex-col gap-5">
@@ -66,12 +86,28 @@ export default function MerchantDetail() {
               <span>{m.slug}</span>
               <Badge tone="brand">{m.plan}</Badge>
               <Badge tone={statusTone(m.billing_status)}>{m.billing_status}</Badge>
+              {isSuspended && <Badge tone="danger">SUSPENDED</Badge>}
             </div>
           </div>
         </div>
-        <div className="text-right text-sm text-tx-2">
+        <div className="flex flex-col items-end gap-2 text-right text-sm text-tx-2">
           <div>Joined {shortDate(m.created_at)}</div>
           {m.trial_ends_at && <div className="text-tx-3">Trial ends {shortDate(m.trial_ends_at)}</div>}
+          {canSuspend && (
+            <button
+              onClick={toggleSuspend}
+              disabled={suspendMut.isPending}
+              className={
+                'flex items-center gap-1.5 rounded-ctl border px-3 py-1.5 text-sm font-semibold disabled:opacity-60 ' +
+                (isSuspended
+                  ? 'border-line text-tx-2 hover:border-success hover:text-success'
+                  : 'border-danger/50 text-danger hover:bg-danger hover:text-bg')
+              }
+            >
+              {isSuspended ? <ShieldCheck size={15} /> : <Ban size={15} />}
+              {isSuspended ? 'Reactivate' : 'Suspend'}
+            </button>
+          )}
         </div>
       </div>
 

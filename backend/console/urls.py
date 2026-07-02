@@ -17,6 +17,15 @@ from console.views_invoices import (
     InvoiceRetryView,
     MerchantInvoiceCreateView,
 )
+from console.views_lifecycle import (
+    AtRiskView,
+    ModerationQueueView,
+    ModerationScanView,
+    PipelineView,
+    ResolveFlagView,
+    SuspendView,
+    UnsuspendView,
+)
 from console.views_merchants import MerchantDetailView, MerchantListView
 from console.views_plans import PlanDetailView, PlanListView
 from console.views_subscription import (
@@ -147,4 +156,22 @@ urlpatterns = [
     ),
     # Platform analytics & usage (Phase 8)
     path("analytics/platform", PlatformAnalyticsView.as_view(), name="admin-analytics-platform"),
+    # Lifecycle & moderation (Phase 9)
+    path("lifecycle/pipeline", PipelineView.as_view(), name="admin-lifecycle-pipeline"),
+    path("lifecycle/at-risk", AtRiskView.as_view(), name="admin-lifecycle-at-risk"),
+    path(
+        "merchants/<uuid:merchant_id>/suspend", SuspendView.as_view(), name="admin-merchant-suspend"
+    ),
+    path(
+        "merchants/<uuid:merchant_id>/unsuspend",
+        UnsuspendView.as_view(),
+        name="admin-merchant-unsuspend",
+    ),
+    path("moderation/flags", ModerationQueueView.as_view(), name="admin-moderation-flags"),
+    path("moderation/scan", ModerationScanView.as_view(), name="admin-moderation-scan"),
+    path(
+        "moderation/flags/<uuid:flag_id>/resolve",
+        ResolveFlagView.as_view(),
+        name="admin-moderation-resolve",
+    ),
 ]

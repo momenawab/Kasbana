@@ -27,6 +27,17 @@ export default function Shell() {
   // Soft-lock: trial elapsed but still on the trial plan (data visible, actions disabled).
   const softLocked = trialing && merchant?.trial_ends_at && daysLeft <= 0
 
+  // Hard-lock: an admin suspended this merchant (Phase 9). The API already 403s
+  // every action; show a clear full-screen state so staff aren't left guessing.
+  if (status === 'suspended') {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-paper p-6 text-center">
+        <h1 className="font-head text-2xl font-bold text-ink">{t('suspended.title')}</h1>
+        <p className="max-w-md text-tx-2">{t('suspended.body')}</p>
+      </div>
+    )
+  }
+
   return (
     <div className="flex min-h-screen bg-paper">
       <Sidebar />

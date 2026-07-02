@@ -511,8 +511,39 @@ informs the roadmap.
 
 ---
 
-## Phase 9 — Merchant Lifecycle & Moderation
+## Phase 9 — Merchant Lifecycle & Moderation — ✅ DONE
 **Goal:** manage merchants through their lifecycle and keep the platform clean.
+
+**Shipped:** `GET /lifecycle/pipeline` buckets every merchant into
+`lead → trial → active → churned` (mutually exclusive, derived live from
+subscription state; expired-trial counts as churned) with per-stage counts + a
+sample. `GET /lifecycle/at-risk` returns non-churned merchants with a **computed
+health_score** (0–100) and reasons — each of *past due / trial ending (≤3d) /
+low activity (no stamps in 14d) / failed payment* is a strong enough signal to
+drop below the at-risk threshold (70) on its own. Health is computed on the fly
+(no stored column / snapshot job), always current. `POST /merchants/{id}/suspend`
++ `/unsuspend` (**Super-admin only**, reason required, audited) flip
+`Merchant.status`; **suspension is now enforced on the merchant API** — a new
+guard in `common.permissions` 403s a suspended merchant on every role-gated
+endpoint EXCEPT `/me` (which opts in via `allow_suspended`), so the dashboard
+still bootstraps and shows a full-screen "Account suspended" state (ar/en). New
+`console.ContentFlag` model (migration 0004) + a transparent heuristic scan
+(`POST /moderation/scan`, Support+) that flags cards/merchants containing banned
+keywords, idempotent via a unique partial constraint on pending
+(target, reason). `GET /moderation/flags?status=` is the review queue (any
+admin); `POST /moderation/flags/{id}/resolve {action, notes}` approves
+(dismiss) or rejects (409 if already resolved) — Support+, audited. Frontend:
+admin **Lifecycle** screen (Pipeline board · At-risk list with health + reason
+badges · Moderation queue with run-scan + approve/reject) and a Super-admin
+suspend/reactivate action + SUSPENDED badge on the merchant detail header;
+dashboard suspended lock screen. 14 new backend tests (pipeline staging incl.
+expired-trial-as-churned, at-risk signals + healthy exclusion, Super-admin
+suspend gate, **suspend-blocks-the-merchant-API-but-/me-still-works**, unsuspend
+restores, idempotent scan, Support+ scan/resolve gate, approve/reject, 409 on
+double-resolve, merchant-token-rejected); 350 backend tests green;
+ruff/black/mypy/spectacular clean; admin + dashboard lint/build clean.
+**Deferred:** live in-browser verification (covered by the enforcement +
+behaviour tests).
 
 **Backend**
 - **Lifecycle pipeline**: leads → trial → active → churned states; `Merchant`

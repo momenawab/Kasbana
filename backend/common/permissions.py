@@ -22,7 +22,19 @@ from rest_framework.request import Request
 from rest_framework.views import APIView
 
 from common.middleware import resolve_staff
-from core.enums import Role
+from core.enums import MerchantStatus, Role
+
+
+def _merchant_suspended(staff: object, view: APIView) -> bool:
+    """A suspended merchant is blocked from every role-gated endpoint (Phase 9),
+    EXCEPT views that opt in via ``allow_suspended = True`` — namely ``/me``, so
+    the dashboard can still bootstrap and render its 'account suspended' state.
+    """
+    if staff is None or getattr(view, "allow_suspended", False):
+        return False
+    merchant = getattr(staff, "merchant", None)
+    return merchant is not None and merchant.status == MerchantStatus.SUSPENDED
+
 
 # Higher number = more authority. The lateral roles (designer/marketing) rank at
 # the base so the hierarchical checks below treat them like a scanner — their
@@ -44,6 +56,8 @@ class HasMerchantRole(BasePermission):
     def has_permission(self, request: Request, view: APIView) -> bool:
         staff = resolve_staff(request)
         if staff is None:
+            return False
+        if _merchant_suspended(staff, view):
             return False
         return ROLE_RANK.get(getattr(staff, "role", ""), 0) >= ROLE_RANK[self.min_role]
 
@@ -79,7 +93,9 @@ class _RoleSet(BasePermission):
 
     def has_permission(self, request: Request, view: APIView) -> bool:
         staff = resolve_staff(request)
-        return staff is not None and getattr(staff, "role", "") in self.roles
+        if staff is None or _merchant_suspended(staff, view):
+            return False
+        return getattr(staff, "role", "") in self.roles
 
 
 class CanManageCards(_RoleSet):

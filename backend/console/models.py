@@ -136,6 +136,58 @@ class SupportNote(models.Model):
         return f"note({self.merchant_id}) by {self.admin_email}"
 
 
+class ContentFlag(models.Model):
+    """A flagged piece of merchant content for moderation review (Phase 9).
+
+    Raised by a heuristic scan or a report; a Support+ admin approves (content is
+    fine → dismiss) or rejects (content violates). One row per (target, reason)
+    while pending, so a re-scan doesn't pile up duplicates.
+    """
+
+    class TargetType(models.TextChoices):
+        CARD = "card", "Card"
+        MERCHANT = "merchant", "Merchant"
+
+    class Source(models.TextChoices):
+        HEURISTIC = "heuristic", "Heuristic scan"
+        REPORT = "report", "Report"
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        APPROVED = "approved", "Approved"  # reviewed, content is fine
+        REJECTED = "rejected", "Rejected"  # reviewed, content violates
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    merchant = models.ForeignKey(Merchant, on_delete=models.CASCADE, related_name="content_flags")
+    target_type = models.CharField(max_length=16, choices=TargetType.choices)
+    target_id = models.CharField(max_length=64)  # card id, or merchant id
+    label = models.CharField(max_length=200, blank=True)  # snapshot of the flagged text
+    reason = models.CharField(max_length=200)
+    source = models.CharField(max_length=16, choices=Source.choices, default=Source.HEURISTIC)
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.PENDING)
+    resolved_by = models.ForeignKey(
+        AdminUser, on_delete=models.SET_NULL, null=True, blank=True, related_name="resolved_flags"
+    )
+    resolution_notes = models.CharField(max_length=500, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            # A given target can only have one PENDING flag for the same reason —
+            # keeps a repeated heuristic scan idempotent.
+            models.UniqueConstraint(
+                fields=["target_type", "target_id", "reason"],
+                condition=models.Q(status="pending"),
+                name="uniq_pending_content_flag",
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.target_type}:{self.target_id} · {self.reason} ({self.status})"
+
+
 class AdminAuditLog(models.Model):
     """One admin action. Append-only; never edited or deleted in normal operation."""
 
