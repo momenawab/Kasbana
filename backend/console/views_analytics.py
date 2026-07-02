@@ -18,9 +18,12 @@ from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework.request import Request
 from rest_framework.response import Response
 
-from console import analytics_revenue
+from console import analytics_platform, analytics_revenue
 from console.permissions import AdminAPIView, IsAdminUser, IsFinanceAdmin
-from console.serializers_analytics import RevenueAnalyticsSerializer
+from console.serializers_analytics import (
+    PlatformAnalyticsSerializer,
+    RevenueAnalyticsSerializer,
+)
 
 DEFAULT_WINDOW_DAYS = 365
 
@@ -90,3 +93,12 @@ class RevenueExportView(AdminAPIView):
                 [row["month"], row["collected_egp"], row["paid_invoices"], row["new_payers"]]
             )
         return response
+
+
+class PlatformAnalyticsView(AdminAPIView):
+    """GET /analytics/platform — non-financial usage aggregates (any admin)."""
+
+    @extend_schema(responses=PlatformAnalyticsSerializer)
+    def get(self, request: Request) -> Response:
+        data = analytics_platform.platform_analytics()
+        return Response(PlatformAnalyticsSerializer(data).data)
