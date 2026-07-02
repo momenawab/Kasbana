@@ -5,6 +5,12 @@ from __future__ import annotations
 from django.urls import path
 
 from console.views import AdminLoginView, AdminMeView, AdminRefreshView
+from console.views_admins import (
+    AdminActivityView,
+    AdminDetailView,
+    AdminListCreateView,
+    RbacMatrixView,
+)
 from console.views_analytics import (
     PlatformAnalyticsView,
     RevenueAnalyticsView,
@@ -222,4 +228,13 @@ urlpatterns = [
         ApplyCouponView.as_view(),
         name="admin-merchant-apply-coupon",
     ),
+    # Admin team & RBAC (Phase 12)
+    path("admins", AdminListCreateView.as_view(), name="admin-admins"),
+    path("admins/<uuid:admin_id>", AdminDetailView.as_view(), name="admin-admin-detail"),
+    path(
+        "admins/<uuid:admin_id>/activity",
+        AdminActivityView.as_view(),
+        name="admin-admin-activity",
+    ),
+    path("rbac/matrix", RbacMatrixView.as_view(), name="admin-rbac-matrix"),
 ]

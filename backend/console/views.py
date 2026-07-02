@@ -91,6 +91,8 @@ class AdminMeView(AdminAPIView):
 
     @extend_schema(responses=AdminMeSerializer)
     def get(self, request: Request) -> Response:
+        from console.rbac import mfa_required, permissions_for
+
         admin = cast(AdminUser, request.user)  # AdminAPIView guarantees this
         return Response(
             AdminMeSerializer(
@@ -100,6 +102,8 @@ class AdminMeView(AdminAPIView):
                     "name": admin.name,
                     "role": admin.role,
                     "mfa_enabled": admin.mfa_enabled,
+                    "mfa_required": mfa_required(admin.role),
+                    "permissions": sorted(permissions_for(admin.role)),
                 }
             ).data
         )
