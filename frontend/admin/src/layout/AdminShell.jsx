@@ -6,6 +6,8 @@ import {
   Receipt,
   LifeBuoy,
   BarChart3,
+  PieChart,
+  Workflow,
   Megaphone,
   Ticket,
   Users2,
@@ -24,9 +26,11 @@ const NAV = [
   { to: '/plans', key: 'Plans', Icon: CreditCard, ready: true },
   { to: '/billing', key: 'Billing', Icon: Receipt, ready: true },
   { to: '/support', key: 'Support', Icon: LifeBuoy, phase: 6 },
-  { to: '/revenue', key: 'Revenue', Icon: BarChart3, phase: 7 },
-  { to: '/announcements', key: 'Announcements', Icon: Megaphone, phase: 10 },
-  { to: '/promotions', key: 'Promotions', Icon: Ticket, phase: 11 },
+  { to: '/revenue', key: 'Revenue', Icon: BarChart3, ready: true, financeOnly: true },
+  { to: '/platform', key: 'Platform', Icon: PieChart, ready: true },
+  { to: '/lifecycle', key: 'Lifecycle', Icon: Workflow, ready: true },
+  { to: '/announcements', key: 'Announcements', Icon: Megaphone, ready: true },
+  { to: '/promotions', key: 'Promotions', Icon: Ticket, ready: true },
   { to: '/team', key: 'Admin Team', Icon: Users2, phase: 12 },
   { to: '/audit', key: 'Audit Log', Icon: ScrollText, phase: 13 },
   { to: '/ops', key: 'Operations', Icon: Activity, phase: 14 },
@@ -39,8 +43,14 @@ function itemClass({ isActive }) {
   )
 }
 
+const FINANCE_ROLES = ['SUPER_ADMIN', 'FINANCE']
+
 export default function AdminShell() {
-  const { admin, isLoading, logout } = useAuth()
+  const { admin, role, isLoading, logout } = useAuth()
+
+  // Financials are Finance/Super-admin only — hide the Revenue nav for everyone
+  // else (the route itself also guards, so a direct URL still won't leak data).
+  const nav = NAV.filter((item) => !item.financeOnly || FINANCE_ROLES.includes(role))
 
   return (
     <div className="flex min-h-screen bg-bg">
@@ -50,7 +60,7 @@ export default function AdminShell() {
           Stampn <span className="text-brand">Admin</span>
         </div>
         <nav className="mt-2 flex flex-1 flex-col gap-1">
-          {NAV.map(({ to, key, Icon, end, ready }) => (
+          {nav.map(({ to, key, Icon, end, ready }) => (
             <NavLink
               key={to}
               to={to}

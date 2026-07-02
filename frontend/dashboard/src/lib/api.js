@@ -3,7 +3,15 @@
 // - response interceptor: on 401 refresh once + retry, else log out
 // - error envelope {error:{code,message,fields}} surfaced via normalizeError()
 import axios from 'axios'
-import { clearSession, getAccess, getRefresh, setAccess, setTokens } from './auth'
+import {
+  clearSession,
+  endImpersonation,
+  getAccess,
+  getRefresh,
+  isImpersonating,
+  setAccess,
+  setTokens,
+} from './auth'
 import { queryClient } from './queryClient'
 import { gating } from './gating'
 
@@ -32,6 +40,13 @@ api.interceptors.response.use(
   (res) => res,
   async (error) => {
     const { response, config } = error
+    // An impersonated session has no refresh token — a 401 means it expired or
+    // the admin ended it server-side. Exit cleanly instead of trying to refresh.
+    if (response?.status === 401 && isImpersonating()) {
+      endImpersonation()
+      logout()
+      return Promise.reject(error)
+    }
     if (response?.status === 401 && !config.__retried && getRefresh()) {
       config.__retried = true
       try {

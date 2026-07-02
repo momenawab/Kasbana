@@ -140,6 +140,8 @@ class MeOutSerializer(serializers.Serializer):
     merchant = MerchantOutSerializer()
     entitlements = EntitlementsOutSerializer()
     staff = serializers.DictField()
+    # Present only on an impersonated session (Phase 6): {admin_email, expires_at}.
+    impersonation = serializers.DictField(required=False)
 
 
 class AccountSettingsOutSerializer(serializers.Serializer):

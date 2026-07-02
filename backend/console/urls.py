@@ -5,12 +5,39 @@ from __future__ import annotations
 from django.urls import path
 
 from console.views import AdminLoginView, AdminMeView, AdminRefreshView
+from console.views_analytics import (
+    PlatformAnalyticsView,
+    RevenueAnalyticsView,
+    RevenueExportView,
+)
+from console.views_announcements import (
+    AnnouncementDetailView,
+    AnnouncementListView,
+    AnnouncementScheduleView,
+    AnnouncementSendView,
+    AudiencePreviewView,
+)
 from console.views_billing import DunningListView, DunningNotifyView, ReconciliationView
+from console.views_coupons import (
+    ApplyCouponView,
+    CouponDetailView,
+    CouponListView,
+    CouponRedemptionsView,
+)
 from console.views_invoices import (
     InvoiceDetailView,
     InvoiceListView,
     InvoiceRetryView,
     MerchantInvoiceCreateView,
+)
+from console.views_lifecycle import (
+    AtRiskView,
+    ModerationQueueView,
+    ModerationScanView,
+    PipelineView,
+    ResolveFlagView,
+    SuspendView,
+    UnsuspendView,
 )
 from console.views_merchants import MerchantDetailView, MerchantListView
 from console.views_plans import PlanDetailView, PlanListView
@@ -21,6 +48,16 @@ from console.views_subscription import (
     MerchantSubscriptionView,
     SubscriptionAuditView,
     UnlockView,
+)
+from console.views_support import (
+    ActivityView,
+    ClearStuckCheckoutView,
+    ImpersonateView,
+    ImpersonationEndView,
+    ImpersonationListView,
+    ResendInviteView,
+    SendPasswordResetView,
+    SupportNotesView,
 )
 
 urlpatterns = [
@@ -85,5 +122,104 @@ urlpatterns = [
     ),
     path(
         "billing/reconciliation", ReconciliationView.as_view(), name="admin-billing-reconciliation"
+    ),
+    # Support tools & impersonation (Phase 6)
+    path(
+        "merchants/<uuid:merchant_id>/impersonate",
+        ImpersonateView.as_view(),
+        name="admin-merchant-impersonate",
+    ),
+    path(
+        "merchants/<uuid:merchant_id>/impersonations",
+        ImpersonationListView.as_view(),
+        name="admin-merchant-impersonations",
+    ),
+    path("impersonate/end", ImpersonationEndView.as_view(), name="admin-impersonate-end"),
+    path(
+        "merchants/<uuid:merchant_id>/support/send-password-reset",
+        SendPasswordResetView.as_view(),
+        name="admin-merchant-send-password-reset",
+    ),
+    path(
+        "merchants/<uuid:merchant_id>/support/resend-invite",
+        ResendInviteView.as_view(),
+        name="admin-merchant-resend-invite",
+    ),
+    path(
+        "merchants/<uuid:merchant_id>/support/clear-stuck-checkout",
+        ClearStuckCheckoutView.as_view(),
+        name="admin-merchant-clear-stuck-checkout",
+    ),
+    path(
+        "merchants/<uuid:merchant_id>/support/notes",
+        SupportNotesView.as_view(),
+        name="admin-merchant-support-notes",
+    ),
+    path(
+        "merchants/<uuid:merchant_id>/activity",
+        ActivityView.as_view(),
+        name="admin-merchant-activity",
+    ),
+    # Revenue & financial analytics (Phase 7)
+    path("analytics/revenue", RevenueAnalyticsView.as_view(), name="admin-analytics-revenue"),
+    path(
+        "analytics/revenue/export",
+        RevenueExportView.as_view(),
+        name="admin-analytics-revenue-export",
+    ),
+    # Platform analytics & usage (Phase 8)
+    path("analytics/platform", PlatformAnalyticsView.as_view(), name="admin-analytics-platform"),
+    # Lifecycle & moderation (Phase 9)
+    path("lifecycle/pipeline", PipelineView.as_view(), name="admin-lifecycle-pipeline"),
+    path("lifecycle/at-risk", AtRiskView.as_view(), name="admin-lifecycle-at-risk"),
+    path(
+        "merchants/<uuid:merchant_id>/suspend", SuspendView.as_view(), name="admin-merchant-suspend"
+    ),
+    path(
+        "merchants/<uuid:merchant_id>/unsuspend",
+        UnsuspendView.as_view(),
+        name="admin-merchant-unsuspend",
+    ),
+    path("moderation/flags", ModerationQueueView.as_view(), name="admin-moderation-flags"),
+    path("moderation/scan", ModerationScanView.as_view(), name="admin-moderation-scan"),
+    path(
+        "moderation/flags/<uuid:flag_id>/resolve",
+        ResolveFlagView.as_view(),
+        name="admin-moderation-resolve",
+    ),
+    # Communications & announcements (Phase 10)
+    path("announcements", AnnouncementListView.as_view(), name="admin-announcements"),
+    path(
+        "announcements/audience-preview",
+        AudiencePreviewView.as_view(),
+        name="admin-announcement-audience-preview",
+    ),
+    path(
+        "announcements/<uuid:announcement_id>",
+        AnnouncementDetailView.as_view(),
+        name="admin-announcement-detail",
+    ),
+    path(
+        "announcements/<uuid:announcement_id>/send",
+        AnnouncementSendView.as_view(),
+        name="admin-announcement-send",
+    ),
+    path(
+        "announcements/<uuid:announcement_id>/schedule",
+        AnnouncementScheduleView.as_view(),
+        name="admin-announcement-schedule",
+    ),
+    # Coupons, discounts & promotions (Phase 11)
+    path("coupons", CouponListView.as_view(), name="admin-coupons"),
+    path("coupons/<str:code>", CouponDetailView.as_view(), name="admin-coupon-detail"),
+    path(
+        "coupons/<str:code>/redemptions",
+        CouponRedemptionsView.as_view(),
+        name="admin-coupon-redemptions",
+    ),
+    path(
+        "merchants/<uuid:merchant_id>/apply-coupon",
+        ApplyCouponView.as_view(),
+        name="admin-merchant-apply-coupon",
     ),
 ]

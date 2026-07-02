@@ -18,6 +18,7 @@ export function useAuth() {
     merchant: me.data?.merchant ?? null,
     entitlements: me.data?.entitlements ?? null,
     role: me.data?.staff?.role ?? null,
+    impersonation: me.data?.impersonation ?? null,
     login: apiLogin,
     logout: apiLogout,
   }

@@ -84,6 +84,185 @@ class MerchantAdminMeta(UUIDModel, TimeStampedModel):
         return f"admin_meta({self.merchant_id})"
 
 
+class Impersonation(models.Model):
+    """One admin view-as-merchant session (Phase 6) — the sharpest support tool.
+
+    The impersonation token is a short-lived *merchant* access token carrying
+    ``impersonation_id``; the merchant auth layer (``common.auth``) checks this
+    row on every request so an admin-side "end" kills the session before its
+    JWT expiry. Time-limited, fully audited, and blocked from billing actions.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    admin = models.ForeignKey(
+        AdminUser, on_delete=models.SET_NULL, null=True, related_name="impersonations"
+    )
+    admin_email = models.EmailField(blank=True)  # snapshot (survives admin delete)
+    merchant = models.ForeignKey(Merchant, on_delete=models.CASCADE, related_name="impersonations")
+    target_email = models.EmailField(blank=True)  # the staff identity impersonated
+    reason = models.CharField(max_length=255)
+    expires_at = models.DateTimeField()
+    ended_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return f"{self.admin_email} as {self.merchant_id} until {self.expires_at:%H:%M}"
+
+    def is_active(self) -> bool:
+        from django.utils import timezone
+
+        return self.ended_at is None and self.expires_at > timezone.now()
+
+
+class SupportNote(models.Model):
+    """A support-thread note on a merchant (Phase 6). Append-only in practice."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    merchant = models.ForeignKey(Merchant, on_delete=models.CASCADE, related_name="support_notes")
+    admin = models.ForeignKey(
+        AdminUser, on_delete=models.SET_NULL, null=True, related_name="support_notes"
+    )
+    admin_email = models.EmailField(blank=True)  # snapshot (survives admin delete)
+    body = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return f"note({self.merchant_id}) by {self.admin_email}"
+
+
+class ContentFlag(models.Model):
+    """A flagged piece of merchant content for moderation review (Phase 9).
+
+    Raised by a heuristic scan or a report; a Support+ admin approves (content is
+    fine → dismiss) or rejects (content violates). One row per (target, reason)
+    while pending, so a re-scan doesn't pile up duplicates.
+    """
+
+    class TargetType(models.TextChoices):
+        CARD = "card", "Card"
+        MERCHANT = "merchant", "Merchant"
+
+    class Source(models.TextChoices):
+        HEURISTIC = "heuristic", "Heuristic scan"
+        REPORT = "report", "Report"
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        APPROVED = "approved", "Approved"  # reviewed, content is fine
+        REJECTED = "rejected", "Rejected"  # reviewed, content violates
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    merchant = models.ForeignKey(Merchant, on_delete=models.CASCADE, related_name="content_flags")
+    target_type = models.CharField(max_length=16, choices=TargetType.choices)
+    target_id = models.CharField(max_length=64)  # card id, or merchant id
+    label = models.CharField(max_length=200, blank=True)  # snapshot of the flagged text
+    reason = models.CharField(max_length=200)
+    source = models.CharField(max_length=16, choices=Source.choices, default=Source.HEURISTIC)
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.PENDING)
+    resolved_by = models.ForeignKey(
+        AdminUser, on_delete=models.SET_NULL, null=True, blank=True, related_name="resolved_flags"
+    )
+    resolution_notes = models.CharField(max_length=500, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            # A given target can only have one PENDING flag for the same reason —
+            # keeps a repeated heuristic scan idempotent.
+            models.UniqueConstraint(
+                fields=["target_type", "target_id", "reason"],
+                condition=models.Q(status="pending"),
+                name="uniq_pending_content_flag",
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.target_type}:{self.target_id} · {self.reason} ({self.status})"
+
+
+class Announcement(models.Model):
+    """A platform broadcast to a merchant segment (Phase 10).
+
+    Delivered in-app (a per-merchant ``AnnouncementDelivery`` row the dashboard
+    reads) and/or by email. ``recipients``/``emails_sent`` are snapshotted at
+    send; opens are derived from ``AnnouncementDelivery.read_at``.
+    """
+
+    class Channel(models.TextChoices):
+        IN_APP = "in_app", "In-app"
+        EMAIL = "email", "Email"
+        BOTH = "both", "In-app + email"
+
+    class Segment(models.TextChoices):
+        ALL = "all", "All merchants"
+        PLAN = "plan", "By plan"
+        TRIAL_ENDING = "trial_ending", "Trial ending"
+        AT_RISK = "at_risk", "At-risk"
+        ACTIVE = "active", "Recently active"
+
+    class Status(models.TextChoices):
+        DRAFT = "draft", "Draft"
+        SCHEDULED = "scheduled", "Scheduled"
+        SENT = "sent", "Sent"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    title = models.CharField(max_length=160)
+    body = models.TextField()
+    channel = models.CharField(max_length=8, choices=Channel.choices, default=Channel.IN_APP)
+    audience = models.CharField(max_length=16, choices=Segment.choices, default=Segment.ALL)
+    audience_param = models.CharField(max_length=32, blank=True)  # e.g. plan key for PLAN
+    status = models.CharField(max_length=12, choices=Status.choices, default=Status.DRAFT)
+    schedule_at = models.DateTimeField(null=True, blank=True)
+    sent_at = models.DateTimeField(null=True, blank=True)
+    recipients = models.IntegerField(default=0)  # audience size at send
+    emails_sent = models.IntegerField(default=0)
+    created_by = models.ForeignKey(
+        AdminUser, on_delete=models.SET_NULL, null=True, related_name="announcements"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return f"{self.title} → {self.audience} ({self.status})"
+
+
+class AnnouncementDelivery(models.Model):
+    """One in-app delivery of an announcement to a merchant; ``read_at`` powers
+    the dashboard's unread state + the open-rate stat."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    announcement = models.ForeignKey(
+        Announcement, on_delete=models.CASCADE, related_name="deliveries"
+    )
+    merchant = models.ForeignKey(
+        Merchant, on_delete=models.CASCADE, related_name="announcement_deliveries"
+    )
+    read_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["announcement", "merchant"], name="uniq_announcement_merchant"
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.announcement_id} → {self.merchant_id}"
+
+
 class AdminAuditLog(models.Model):
     """One admin action. Append-only; never edited or deleted in normal operation."""
 

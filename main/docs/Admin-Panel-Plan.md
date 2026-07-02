@@ -350,8 +350,48 @@ internal data-integrity gaps.
 
 ---
 
-## Phase 6 — Support Tools & Impersonation
+## Phase 6 — Support Tools & Impersonation — ✅ DONE
 **Goal:** resolve merchant tickets fast — see what they see, fix their account.
+
+**Shipped:** `console.Impersonation` + `console.SupportNote` models (migration
+0003). Impersonation is a **short-lived (15 min), refresh-less merchant access
+token** minted for the merchant's owner (else any active staff), carrying
+`impersonated_by` + `impersonation_id`. A new `common.auth.MerchantJWTAuthentication`
+(now the project's default merchant auth — transparent for normal tokens)
+enforces the impersonation contract on **every** request: the `Impersonation`
+row must still be active (so an admin "end" or the 15-min expiry kills the token
+server-side, refresh-proof because none is issued), **billing endpoints are
+403'd** (`/api/v1/billing…` — impersonation is never for billing), and every
+mutating request writes an `impersonation.request` admin-audit row so anything
+done *as* the merchant stays attributable to the admin. `POST
+/merchants/{id}/impersonate` (Support+; 409 `NO_ACTIVE_STAFF` if none) + `POST
+/impersonate/end` + `GET /merchants/{id}/impersonations`. Support actions
+(Support+, audited): `POST …/support/send-password-reset` (emails the owner a
+1-hour reset link), `…/support/resend-invite {email}` (refreshes the invite
+expiry + re-emails), `…/support/clear-stuck-checkout {reason}` (drops an
+abandoned `pending_plan`). `GET/POST /merchants/{id}/support/notes` — the notes
+thread (POST Support+, read open to any admin). `GET /merchants/{id}/activity`
+— a cross-sourced timeline (loyalty ledger + invoices + admin actions targeting
+the merchant), reverse-chronological. `/me` now surfaces an `impersonation`
+block on an impersonated session so the **merchant dashboard** shows a
+persistent red "Support view — viewing {merchant} as {admin} · Exit" banner
+(token handed off via the dashboard URL fragment → sessionStorage, scrubbed from
+history, never refreshed). Mutations Support/Super-admin (Finance **deliberately
+excluded** — support tools never touch billing); reads open to any admin.
+Frontend: admin **Support** tab (view-as button, the three support actions,
+recent view-as sessions, notes thread) + **Activity** tab; dashboard
+impersonation banner + session handling. 24 new backend tests (auth boundary,
+role gate incl. Finance-excluded, the full impersonation lifecycle —
+mint → works on the merchant API → mutations tagged → billing blocked → admin
+end kills the token → expiry kills the token → normal tokens unaffected — plus
+the support actions, notes, and the cross-sourced timeline); 309 backend tests
+green; ruff/black/mypy/spectacular clean; admin + dashboard lint/build clean.
+**Not built (from the illustrative action list):** "unlock account" already
+exists as the Phase 4 subscription unlock action (not duplicated here);
+"force-verify email" is N/A — this merchant app has no email-verification gate
+(signup logs in directly), so there's no stuck-verification state to clear.
+**Deferred:** live verification in-browser (the token handoff + banner were
+verified by the automated lifecycle tests; a manual click-through is pending).
 
 **Backend**
 - **Impersonation**: `POST /merchants/{id}/impersonate` → a **short-lived, scoped
@@ -377,8 +417,37 @@ leave notes; every impersonated action is attributable to the admin.
 
 ---
 
-## Phase 7 — Revenue & Financial Analytics
+## Phase 7 — Revenue & Financial Analytics — ✅ DONE
 **Goal:** know the health of the business at a glance.
+
+**Shipped:** `GET /api/admin/v1/analytics/revenue` (date-ranged, default trailing
+12 months, cached 5 min) returning KPIs — **MRR, ARR, ARPU, LTV, logo & revenue
+churn, trial→paid conversion, NRR**, paying/trial/comped counts — plus
+`revenue_by_plan`, a monthly `monthly_series` (collected EGP, paid-invoice
+count, new payers), and `cohort_retention` by signup month. `GET
+/analytics/revenue/export` streams the monthly series as CSV. Both gated to
+**Finance/Super-admin** (Support + Read-only 403'd — the one console area that
+is *not* open-read, since it's raw financials). **Honest metric definitions**
+(this system has one-time checkouts, no auto-renewal — Phase 5): MRR is
+*modelled* as the committed monthly value of currently-paying subscriptions
+(`status=ACTIVE`, not comp, non-free) at the live catalogue price (Phase 3);
+trials/comps contribute 0; ARR = MRR×12, ARPU = MRR÷paying. Churn is
+*cumulative* (ever-paid but no paying sub now) — a true period rate needs an MRR
+snapshot job that doesn't exist yet, so we report what the ledger proves. NRR is
+the one range-scoped figure: this period's collections from merchants who also
+paid the prior equal period ÷ that prior period's collections. Every number is a
+pure function of the subscription + invoice ledger (no metrics store). Frontend
+**Revenue** dashboard (`frontend/admin`): KPI tiles, a collected-revenue +
+new-payers bar chart, MRR-by-plan table, cohort-retention line chart (recharts),
+date-range pickers, and a token-authenticated CSV download. Revenue nav item +
+route are Finance/Super-admin-gated (hidden for others; the route also guards, so
+a direct URL can't leak). 16 new backend tests (role gate incl. Support/RO 403,
+MRR/ARR/ARPU accuracy vs raw data, comp/trial exclusion, revenue-by-plan,
+conversion, logo+revenue churn, monthly series + new payers, cohort retention,
+date-range scoping, CSV content, empty-platform zeroing); 325 backend tests
+green; ruff/black/mypy/spectacular clean; admin lint/build clean. **Deferred:**
+a cohort-retention *heatmap* (shipped as a line chart — simpler, same signal) and
+live in-browser verification (covered by the automated accuracy tests).
 
 **Backend**
 - `GET /api/admin/v1/analytics/revenue`: **MRR, ARR, ARPU, LTV, churn rate
@@ -398,8 +467,31 @@ subscription+invoice data; finance can export.
 
 ---
 
-## Phase 8 — Platform Analytics & Usage
+## Phase 8 — Platform Analytics & Usage — ✅ DONE
 **Goal:** operational insight into how the platform is used (non-financial).
+
+**Shipped:** `GET /api/admin/v1/analytics/platform` (cached 5 min, **open to any
+admin** — aggregates only, no PII, unlike the Finance-gated revenue endpoint):
+merchant lifecycle counts (total/active/trialing/past_due/churned/suspended),
+platform totals (customers/cards/stamps/redemptions), wallet split (Apple vs
+Google active passes), feature adoption (# and % of merchants using referrals /
+points cards / automations / branded enroll / campaigns), merchant growth by
+month (new + cumulative), an acquisition funnel (signed-up → built-a-card →
+active-access → paying), and a top-10 activity leaderboard (by loyalty-ledger
+events, with customer counts). Every figure is a live cross-tenant aggregate
+over the raw tables (the `TenantManager` default manager is unscoped). Frontend
+**Platform** dashboard (`frontend/admin`): lifecycle + totals stat tiles, a
+cumulative-growth area chart, horizontal feature-adoption bars, a wallet-split
+meter, a funnel, and the leaderboard (recharts); nav item open to every admin.
+11 new backend tests (any-admin read incl. Support + Read-only, lifecycle counts,
+totals vs raw data, wallet split incl. inactive-excluded, feature adoption +
+%, disabled-automation-excluded, growth + funnel, leaderboard ordering,
+empty-platform zeroing); 336 backend tests green; ruff/black/mypy/spectacular
+clean; admin lint/build clean. **Not built:** geographic/city distribution —
+there's no structured city field today (`Location` has only a freeform address +
+optional lat/lng), so a trustworthy breakdown isn't derivable; it lands when a
+city field does. Live in-browser verification deferred (covered by the accuracy
+tests).
 
 **Backend**
 - `GET /api/admin/v1/analytics/platform`: total/active/trial/churned merchants,
@@ -419,8 +511,39 @@ informs the roadmap.
 
 ---
 
-## Phase 9 — Merchant Lifecycle & Moderation
+## Phase 9 — Merchant Lifecycle & Moderation — ✅ DONE
 **Goal:** manage merchants through their lifecycle and keep the platform clean.
+
+**Shipped:** `GET /lifecycle/pipeline` buckets every merchant into
+`lead → trial → active → churned` (mutually exclusive, derived live from
+subscription state; expired-trial counts as churned) with per-stage counts + a
+sample. `GET /lifecycle/at-risk` returns non-churned merchants with a **computed
+health_score** (0–100) and reasons — each of *past due / trial ending (≤3d) /
+low activity (no stamps in 14d) / failed payment* is a strong enough signal to
+drop below the at-risk threshold (70) on its own. Health is computed on the fly
+(no stored column / snapshot job), always current. `POST /merchants/{id}/suspend`
++ `/unsuspend` (**Super-admin only**, reason required, audited) flip
+`Merchant.status`; **suspension is now enforced on the merchant API** — a new
+guard in `common.permissions` 403s a suspended merchant on every role-gated
+endpoint EXCEPT `/me` (which opts in via `allow_suspended`), so the dashboard
+still bootstraps and shows a full-screen "Account suspended" state (ar/en). New
+`console.ContentFlag` model (migration 0004) + a transparent heuristic scan
+(`POST /moderation/scan`, Support+) that flags cards/merchants containing banned
+keywords, idempotent via a unique partial constraint on pending
+(target, reason). `GET /moderation/flags?status=` is the review queue (any
+admin); `POST /moderation/flags/{id}/resolve {action, notes}` approves
+(dismiss) or rejects (409 if already resolved) — Support+, audited. Frontend:
+admin **Lifecycle** screen (Pipeline board · At-risk list with health + reason
+badges · Moderation queue with run-scan + approve/reject) and a Super-admin
+suspend/reactivate action + SUSPENDED badge on the merchant detail header;
+dashboard suspended lock screen. 14 new backend tests (pipeline staging incl.
+expired-trial-as-churned, at-risk signals + healthy exclusion, Super-admin
+suspend gate, **suspend-blocks-the-merchant-API-but-/me-still-works**, unsuspend
+restores, idempotent scan, Support+ scan/resolve gate, approve/reject, 409 on
+double-resolve, merchant-token-rejected); 350 backend tests green;
+ruff/black/mypy/spectacular clean; admin + dashboard lint/build clean.
+**Deferred:** live in-browser verification (covered by the enforcement +
+behaviour tests).
 
 **Backend**
 - **Lifecycle pipeline**: leads → trial → active → churned states; `Merchant`
@@ -443,8 +566,40 @@ suspended and is immediately blocked; flagged content is reviewable.
 
 ---
 
-## Phase 10 — Communications & Announcements
+## Phase 10 — Communications & Announcements — ✅ DONE
 **Goal:** reach merchants — product news, outages, upgrade nudges.
+
+**Shipped:** `console.Announcement` + `console.AnnouncementDelivery` models
+(migration 0005). Full CRUD at `/announcements` (list/detail open to any admin;
+create/edit/delete/send/schedule gated to **Super-admin/Marketing-admin** via a
+new `IsMarketingAdmin` permission; a SENT announcement is immutable). Segments
+(`console.segments`): **all / by plan / trial-ending / at-risk / recently-active**
+— trial-ending and at-risk reuse the Phase 9 lifecycle logic so targeting
+matches those screens. `GET /announcements/audience-preview?audience=&param=`
+returns the recipient count (preview + confirm before send). `POST
+.../{id}/send` delivers now: in-app channels bulk-create per-merchant delivery
+rows (`ignore_conflicts`), email channels `send_mail` to each owner (existing
+backend, fail-silently); both snapshot `recipients`/`emails_sent`, and the send
+path is a plain `announcements.send()` function so it's identical from the API
+or the scheduler. `POST .../{id}/schedule` (requires a future `schedule_at`)
+marks SCHEDULED; a new Celery beat task `console.tasks.send_due_announcements`
+(every 5 min) delivers due ones — flipping to SENT so it never double-sends.
+Delivery stats (recipients/delivered/emails_sent/opened/open_rate) are computed
+from the delivery rows. **Merchant-facing** (dashboard, Phase 10 addition):
+`GET /api/v1/announcements` lists this merchant's in-app deliveries + read
+state; `POST /api/v1/announcements/{id}/read` marks one read (scoped 404 for
+another merchant's delivery) → feeds the admin open-rate. Every send/schedule
+audited. Frontend: admin **Announcements** screen (composer with channel +
+audience + live recipient preview + confirm-before-send, list with status &
+reach/open stats, per-draft send/delete) and a dashboard dismissible
+announcement banner (dismiss = mark read). 14 new backend tests (role gate,
+segment resolution, preview, in-app+email send with stats, no-double-send, SENT
+immutability, schedule→beat-task delivery, merchant list + mark-read + open
+stat, cross-merchant 404); 364 backend tests green; ruff/black/mypy/spectacular
+clean; admin + dashboard lint/build clean. **Deferred (not needed for the DoD):**
+the template library and a dedicated changelog/release-notes publisher — the
+composer + segments already cover broadcast; templates are a convenience layer
+that can land later. Live in-browser verification deferred (covered by tests).
 
 **Backend**
 - `Announcement` model (title, body, audience-segment, channel[in-app|email],
@@ -466,8 +621,39 @@ segment (in-app + email) and see delivery stats.
 
 ---
 
-## Phase 11 — Coupons, Discounts & Promotions
+## Phase 11 — Coupons, Discounts & Promotions — ✅ DONE
 **Goal:** run growth levers — discounts, comps, trial extensions, partners.
+
+**Shipped:** `billing.Coupon` + `billing.CouponRedemption` models (migration
+0008; billing-owned config like `Plan`, since checkout consumes it). Types:
+`percent` / `fixed` (reduce a checkout charge) and `free_months` / `trial_extension`
+(admin-granted directly). `billing.coupons` is the trusted server-side layer:
+`validate` (active / expiry / plan-scope / global-cap / per-merchant-once),
+`discounted_amount` (percent/fixed, floored at 0), and `redeem` — which
+**re-checks the global cap under a `select_for_update` row lock** so concurrent
+redemptions can't overshoot `max_redemptions`. **Checkout integration (the DoD):**
+`POST /api/v1/billing/subscribe` now takes an optional `coupon`; a percent/fixed
+code is validated and applied to the charge, and a capped redemption is recorded
+(unknown/exhausted/scoped → 400). Admin console (Finance/Super-admin writes via
+`IsFinanceAdmin`; list/detail/report open to any admin, audited): `GET/POST
+/coupons`, `GET/PATCH /coupons/{code}` (code stored uppercased, duplicate 400;
+PATCH only toggles active/expiry/cap/scope — never code/type/value),
+`GET /coupons/{code}/redemptions` (the report), and `POST
+/merchants/{id}/apply-coupon` which grants a `trial_extension` (extend trial N
+days) or `free_months` (comp) — percent/fixed there → 400 `COUPON_NOT_GRANTABLE`.
+Frontend: admin **Promotions** screen (coupon builder, active-codes table with
+redemption stats + remaining-cap, activate/deactivate, expandable per-coupon
+redemption report) + a Finance/Super-admin "Apply coupon" action on the merchant
+detail header. 21 new backend tests (role gate, discount math, global +
+per-merchant caps, expiry, plan-scope, checkout-reduces-charge + records
+redemption, exhausted-blocks-subscribe, redemption report, apply
+trial-extension/free-months, percent-not-grantable, Finance gate); 385 backend
+tests green; ruff/black/mypy/spectacular clean; admin lint/build clean.
+**Deferred (plan marks it optional):** the `Promotion` grouping model and
+**partner/affiliate** tracking/payout report — the coupon engine + redemption
+report already meet the DoD ("a discount code reduces a merchant's charge;
+redemptions capped + reported"); affiliate attribution is a separate data model
+that can land later. Live in-browser verification deferred (covered by tests).
 
 **Backend**
 - `Coupon` model (code, type[percent|fixed|free-months|trial-extension], value,

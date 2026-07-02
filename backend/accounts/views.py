@@ -149,18 +149,28 @@ class InviteView(APIView):
 # ── Session + settings (authenticated) ───────────────────────────────────────
 class MeView(APIView):
     permission_classes = [IsScannerOrAbove]
+    # A suspended merchant's staff must still load /me so the dashboard can show
+    # the "account suspended" state (every other endpoint stays blocked).
+    allow_suspended = True
 
     @extend_schema(responses=MeOutSerializer)
     def get(self, request: Request) -> Response:
         merchant = get_request_merchant(request)
         staff = cast(StaffUser, resolve_staff(request))  # non-null: IsScannerOrAbove passed
-        return Response(
-            {
-                "merchant": merchant_payload(merchant),
-                "entitlements": entitlements.describe(merchant),
-                "staff": {"role": staff.role},
+        payload = {
+            "merchant": merchant_payload(merchant),
+            "entitlements": entitlements.describe(merchant),
+            "staff": {"role": staff.role},
+        }
+        # Set by MerchantJWTAuthentication for an impersonation token (Phase 6) —
+        # the dashboard shows its "viewing as" banner off this.
+        imp = getattr(request, "impersonation", None)
+        if imp is not None:
+            payload["impersonation"] = {
+                "admin_email": imp.admin_email,
+                "expires_at": imp.expires_at,
             }
-        )
+        return Response(payload)
 
 
 class SettingsBusinessView(APIView):

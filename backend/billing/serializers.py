@@ -37,6 +37,8 @@ class BillingStateSerializer(serializers.Serializer):
 
 class SubscribeRequestSerializer(serializers.Serializer):
     plan = serializers.ChoiceField(choices=[PlanTier.STARTER, PlanTier.GROWTH, PlanTier.CHAIN])
+    # Optional discount code (Phase 11) — validated + applied server-side.
+    coupon = serializers.CharField(required=False, allow_blank=True)
 
     def to_internal_value(self, data: dict) -> dict:
         # Contract sends lowercase plan values; map to the uppercase PlanTier.

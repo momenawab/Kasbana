@@ -7,8 +7,19 @@ import App from './App'
 import i18n from './lib/i18n'
 import { queryClient } from './lib/queryClient'
 import { bootstrapSession } from './lib/api'
+import { startImpersonation } from './lib/auth'
 import { ToastProvider } from './hooks/useToast'
 import './index.css'
+
+// Admin "view as merchant" handoff (Phase 6): the admin console opens the
+// dashboard with #impersonate=<short-lived token>. Capture it into
+// sessionStorage before anything renders and scrub it from the URL/history.
+function captureImpersonation() {
+  const match = window.location.hash.match(/[#&]impersonate=([^&]+)/)
+  if (!match) return
+  startImpersonation(decodeURIComponent(match[1]))
+  window.history.replaceState(null, '', window.location.pathname + window.location.search)
+}
 
 async function enableMocking() {
   if (import.meta.env.VITE_USE_MOCKS !== '1') return
@@ -17,6 +28,7 @@ async function enableMocking() {
 }
 
 async function start() {
+  captureImpersonation()
   await enableMocking()
   await bootstrapSession()
 
