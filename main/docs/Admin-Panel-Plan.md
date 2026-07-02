@@ -675,8 +675,35 @@ redemptions are capped and reported.
 
 ---
 
-## Phase 12 — Admin Team & RBAC
+## Phase 12 — Admin Team & RBAC — ✅ DONE
 **Goal:** safely delegate — multiple admins with scoped permissions.
+
+**Shipped:** `console/rbac.py` is the **single source of truth** — granular
+`Permission` keys + a `ROLE_PERMISSIONS` matrix (super-admin implicitly holds
+all, so a new permission is never silently withheld) + `role_can`/
+`permissions_for`/`mfa_required`. The ad-hoc per-domain gates from Phases 3–11
+were retrofitted onto it: `IsFinanceAdmin`/`IsSupportAdmin`/`IsMarketingAdmin`
+are now thin matrix lookups (verified behavior-identical to the old role checks
+across all six roles + inactive-admin denial — zero regression, full suite
+green), and new endpoints gate with `require(Permission.X)`. Admin management
+(super-admin only, `ADMINS_MANAGE`): `GET/POST /admins` (invite generates a
+one-time temp password, returned once, never logged; duplicate-email 409),
+`PATCH /admins/{id}` (change role/active, reason required, audited with
+before/after), `GET /admins/{id}/activity` (their audit rows), `GET
+/rbac/matrix` (read-only reference, any admin). Guardrail: the **last active
+super-admin** can't be demoted or deactivated (self or other) — the `createadmin`
+management command remains the out-of-band recovery path. `mfa_required` per
+role declared in the matrix (privileged roles) and surfaced on `/me` + the admin
+list; enforcement is Phase 15. Frontend **Admin Team** screen: admins table
+(inline role dropdown, activate/deactivate, MFA badge, expandable per-admin
+activity, invite form surfacing the temp password) + a read-only **Permission
+matrix** grid; non-super admins see a clear "super-admins only" message but can
+still read the matrix. 20 new backend tests (matrix correctness, DoD role
+separations, invite/duplicate, role/active change + audit, last-super
+protection, activity, matrix + /me shape); 405 backend tests green;
+ruff/black/mypy/spectacular clean; admin lint/build clean. Verified live
+in-browser: invite→temp-password, role/active edits, the matrix grid, and the
+non-super read-only view.
 
 **Backend**
 - Admin roles: **Super-admin, Finance, Support, Marketing-admin, Read-only,

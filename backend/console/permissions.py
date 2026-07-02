@@ -3,8 +3,11 @@
 ``AdminAPIView`` centralises the three guarantees every admin endpoint needs:
 admin-only auth, a role gate, and the deliberate cross-tenant access (it never
 applies ``for_merchant`` scoping — that inversion lives here, not scattered).
-The full per-role permission matrix arrives in Phase 12; for now roles are
-checked with simple class attributes.
+
+Since Phase 12 every gate derives from the central matrix in ``console.rbac``:
+the named per-domain classes below are thin ``require(...)`` aliases, and new
+endpoints gate with ``require(Permission.X)`` directly. There is one source of
+truth for who-can-do-what — the matrix — not scattered role checks.
 """
 
 from __future__ import annotations
@@ -16,8 +19,8 @@ from rest_framework.request import Request
 from rest_framework.views import APIView
 
 from console.auth import AdminJWTAuthentication
-from console.enums import AdminRole
 from console.models import AdminUser
+from console.rbac import Permission, role_can
 
 
 class IsAdminUser(BasePermission):
@@ -32,47 +35,53 @@ class IsSuperAdmin(BasePermission):
         return isinstance(request.user, AdminUser) and request.user.is_super_admin
 
 
-class IsFinanceAdmin(BasePermission):
-    """Grant to Super-admin or Finance — gates billing-impacting mutations
-    (e.g. plan catalogue edits, Phase 3) without waiting for the full
-    per-role permission matrix (Phase 12)."""
+class _MatrixPermission(BasePermission):
+    """Grant when the active admin's role holds ``required_permission`` in the
+    RBAC matrix. Super-admin holds every permission (see ``rbac.permissions_for``)."""
+
+    required_permission: ClassVar[str] = ""
 
     def has_permission(self, request: Request, view: APIView) -> bool:
         admin = request.user
         return (
             isinstance(admin, AdminUser)
             and admin.is_active
-            and (admin.is_super_admin or admin.role == AdminRole.FINANCE)
+            and role_can(admin.role, self.required_permission)
         )
 
 
-class IsSupportAdmin(BasePermission):
-    """Grant to Super-admin or Support — gates the support tools (impersonation,
-    support actions, notes; Phase 6). Deliberately does NOT include Finance:
-    support tools never touch billing, and billing tools never need support's
-    sharpest instrument (impersonation)."""
+def require(permission: str) -> type[_MatrixPermission]:
+    """Build a matrix-backed permission class for ``permission`` (use inline in
+    ``get_permissions`` or ``permission_classes``)."""
 
-    def has_permission(self, request: Request, view: APIView) -> bool:
-        admin = request.user
-        return (
-            isinstance(admin, AdminUser)
-            and admin.is_active
-            and (admin.is_super_admin or admin.role == AdminRole.SUPPORT)
-        )
+    return type(
+        f"Require_{permission.replace('.', '_')}",
+        (_MatrixPermission,),
+        {"required_permission": permission},
+    )
 
 
-class IsMarketingAdmin(BasePermission):
-    """Grant to Super-admin or Marketing-admin — gates broadcasts / announcements
-    (Phase 10) and promotions (Phase 11). High-visibility, so kept off the other
-    roles."""
+# ── Named per-domain aliases (matrix-backed) ────────────────────────────────────
+# Each maps to a representative permission of its role's bucket; because Finance
+# holds all finance-domain permissions (etc.), the representative check grants
+# exactly the same roles as before, now sourced from the matrix. New granular
+# gates should prefer ``require(Permission.X)`` over these coarse aliases.
+class IsFinanceAdmin(_MatrixPermission):
+    """Super-admin or Finance — billing/plans/subscriptions/revenue/promotions."""
 
-    def has_permission(self, request: Request, view: APIView) -> bool:
-        admin = request.user
-        return (
-            isinstance(admin, AdminUser)
-            and admin.is_active
-            and (admin.is_super_admin or admin.role == AdminRole.MARKETING_ADMIN)
-        )
+    required_permission = Permission.BILLING_MANAGE
+
+
+class IsSupportAdmin(_MatrixPermission):
+    """Super-admin or Support — impersonation, support actions, notes, moderation."""
+
+    required_permission = Permission.SUPPORT_TOOLS
+
+
+class IsMarketingAdmin(_MatrixPermission):
+    """Super-admin or Marketing-admin — broadcasts / announcements / promotions."""
+
+    required_permission = Permission.ANNOUNCEMENTS_MANAGE
 
 
 class HasAdminRole(BasePermission):

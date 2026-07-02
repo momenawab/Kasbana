@@ -29,3 +29,5 @@ class AdminMeSerializer(serializers.Serializer):
     name = serializers.CharField(allow_blank=True)
     role = serializers.CharField()
     mfa_enabled = serializers.BooleanField()
+    mfa_required = serializers.BooleanField()
+    permissions = serializers.ListField(child=serializers.CharField())

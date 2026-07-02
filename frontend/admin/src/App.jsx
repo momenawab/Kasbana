@@ -12,6 +12,7 @@ import PlatformHome from './features/platform/PlatformHome'
 import LifecycleHome from './features/lifecycle/LifecycleHome'
 import AnnouncementsHome from './features/announcements/AnnouncementsHome'
 import PromotionsHome from './features/promotions/PromotionsHome'
+import TeamHome from './features/team/TeamHome'
 
 export default function App() {
   return (
@@ -34,6 +35,7 @@ export default function App() {
         <Route path="/lifecycle" element={<LifecycleHome />} />
         <Route path="/announcements" element={<AnnouncementsHome />} />
         <Route path="/promotions" element={<PromotionsHome />} />
+        <Route path="/team" element={<TeamHome />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
