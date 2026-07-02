@@ -68,6 +68,10 @@
     "banner": "Support view — you are viewing {{merchant}} as {{admin}}.",
     "exit": "Exit"
   },
+  "suspended": {
+    "title": "Account suspended",
+    "body": "This account has been suspended. Please contact Stampn support to resolve the issue and restore access."
+  },
   "trial": {
     "banner": "You're on the free trial — {{count}} days left.",
     "chip": "Trial · {{count}}d",

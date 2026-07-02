@@ -149,6 +149,9 @@ class InviteView(APIView):
 # ── Session + settings (authenticated) ───────────────────────────────────────
 class MeView(APIView):
     permission_classes = [IsScannerOrAbove]
+    # A suspended merchant's staff must still load /me so the dashboard can show
+    # the "account suspended" state (every other endpoint stays blocked).
+    allow_suspended = True
 
     @extend_schema(responses=MeOutSerializer)
     def get(self, request: Request) -> Response:
