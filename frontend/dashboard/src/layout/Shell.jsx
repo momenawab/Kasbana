@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import Sidebar from './Sidebar'
 import Topbar from './Topbar'
 import UpgradeDrawer from '../components/UpgradeDrawer'
+import AnnouncementBanner from '../components/AnnouncementBanner'
 import { useAuth } from '../hooks/useAuth'
 import { areaForPath, canAccess, landingFor } from '../lib/roles'
 import { arDigits, daysUntil } from '../lib/format'
@@ -43,6 +44,9 @@ export default function Shell() {
       <Sidebar />
       <div className="flex flex-1 flex-col">
         <Topbar />
+
+        {/* Platform announcement banner (Phase 10) — most recent unread. */}
+        <AnnouncementBanner />
 
         {/* Persistent impersonation banner (Phase 6) — an admin is viewing as
             this merchant; Exit discards the session token and closes the tab. */}

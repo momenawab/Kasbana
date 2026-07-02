@@ -29,7 +29,7 @@ const NAV = [
   { to: '/revenue', key: 'Revenue', Icon: BarChart3, ready: true, financeOnly: true },
   { to: '/platform', key: 'Platform', Icon: PieChart, ready: true },
   { to: '/lifecycle', key: 'Lifecycle', Icon: Workflow, ready: true },
-  { to: '/announcements', key: 'Announcements', Icon: Megaphone, phase: 10 },
+  { to: '/announcements', key: 'Announcements', Icon: Megaphone, ready: true },
   { to: '/promotions', key: 'Promotions', Icon: Ticket, phase: 11 },
   { to: '/team', key: 'Admin Team', Icon: Users2, phase: 12 },
   { to: '/audit', key: 'Audit Log', Icon: ScrollText, phase: 13 },

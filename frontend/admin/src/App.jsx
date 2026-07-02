@@ -10,6 +10,7 @@ import BillingHome from './features/billing/BillingHome'
 import RevenueHome from './features/revenue/RevenueHome'
 import PlatformHome from './features/platform/PlatformHome'
 import LifecycleHome from './features/lifecycle/LifecycleHome'
+import AnnouncementsHome from './features/announcements/AnnouncementsHome'
 
 export default function App() {
   return (
@@ -30,6 +31,7 @@ export default function App() {
         <Route path="/revenue" element={<RevenueHome />} />
         <Route path="/platform" element={<PlatformHome />} />
         <Route path="/lifecycle" element={<LifecycleHome />} />
+        <Route path="/announcements" element={<AnnouncementsHome />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

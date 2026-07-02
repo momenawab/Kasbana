@@ -61,6 +61,20 @@ class IsSupportAdmin(BasePermission):
         )
 
 
+class IsMarketingAdmin(BasePermission):
+    """Grant to Super-admin or Marketing-admin — gates broadcasts / announcements
+    (Phase 10) and promotions (Phase 11). High-visibility, so kept off the other
+    roles."""
+
+    def has_permission(self, request: Request, view: APIView) -> bool:
+        admin = request.user
+        return (
+            isinstance(admin, AdminUser)
+            and admin.is_active
+            and (admin.is_super_admin or admin.role == AdminRole.MARKETING_ADMIN)
+        )
+
+
 class HasAdminRole(BasePermission):
     """Grant when the admin's role is in ``view.allowed_roles`` (super always ok)."""
 
