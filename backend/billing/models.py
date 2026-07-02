@@ -204,3 +204,54 @@ class Invoice(UUIDModel, TimeStampedModel):
 
     def __str__(self) -> str:
         return f"{self.merchant_id} · {self.amount_egp} EGP · {self.status}"
+
+
+class Coupon(UUIDModel, TimeStampedModel):
+    """A discount/promo code (Phase 11) — billing-owned config, admin-managed.
+
+    ``percent``/``fixed`` reduce a subscribe/checkout charge; ``free_months``/
+    ``trial_extension`` are admin-granted directly to a merchant (no checkout).
+    Caps are enforced server-side in ``billing.coupons``.
+    """
+
+    class Type(models.TextChoices):
+        PERCENT = "percent", "Percent off"
+        FIXED = "fixed", "Fixed EGP off"
+        FREE_MONTHS = "free_months", "Free months (comp)"
+        TRIAL_EXTENSION = "trial_extension", "Trial extension (days)"
+
+    code = models.CharField(max_length=32, unique=True)  # stored uppercased
+    type = models.CharField(max_length=16, choices=Type.choices)
+    value = models.DecimalField(max_digits=10, decimal_places=2)  # % | EGP | months | days
+    # Empty list = every plan; else the PlanTier keys the code is valid for.
+    plan_scope = models.JSONField(default=list, blank=True)
+    max_redemptions = models.IntegerField(null=True, blank=True)  # null = unlimited
+    per_merchant_once = models.BooleanField(default=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
+    active = models.BooleanField(default=True)
+    redemption_count = models.IntegerField(default=0)  # denormalised for cap checks
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return f"{self.code} ({self.type} {self.value})"
+
+
+class CouponRedemption(UUIDModel):
+    """One application of a coupon to a merchant (Phase 11) — the report + cap
+    source of truth."""
+
+    coupon = models.ForeignKey(Coupon, on_delete=models.CASCADE, related_name="redemptions")
+    merchant = models.ForeignKey(
+        Merchant, on_delete=models.CASCADE, related_name="coupon_redemptions"
+    )
+    discount_egp = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0"))
+    detail = models.CharField(max_length=120, blank=True)  # e.g. "trial +14d", "GROWTH -20%"
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return f"{self.coupon_id} → {self.merchant_id}"

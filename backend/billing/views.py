@@ -21,10 +21,10 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from billing import services
+from billing import coupons, services
 from billing.gateways import DEFAULT_PROVIDER, get_gateway
 from billing.gateways.base import WebhookVerificationError
-from billing.models import Invoice
+from billing.models import Coupon, Invoice
 from billing.plans import BillingStatus, plan_price
 from billing.serializers import (
     BillingStateSerializer,
@@ -88,6 +88,25 @@ class SubscribeView(APIView):
         if sub.status == BillingStatus.ACTIVE and sub.plan == plan:
             raise Conflict("Already subscribed to this plan.")
 
+        # Optional discount code (Phase 11): validate + apply to the charge, and
+        # record the (capped) redemption. Only percent/fixed change a checkout
+        # charge; other coupon types are admin-granted, not used here.
+        amount = plan_price(plan)
+        coupon_code = body.validated_data.get("coupon", "")
+        applied_coupon = None
+        if coupon_code:
+            coupon = coupons.get_active(coupon_code)
+            if coupon is None:
+                raise DRFValidationError({"coupon": "Unknown code."})
+            if coupon.type not in (Coupon.Type.PERCENT, Coupon.Type.FIXED):
+                raise DRFValidationError({"coupon": "This code isn't a checkout discount."})
+            try:
+                coupons.validate(coupon, merchant, plan)
+            except coupons.CouponError as exc:
+                raise DRFValidationError({"coupon": exc.message}) from exc
+            amount = coupons.discounted_amount(coupon, amount)
+            applied_coupon = coupon
+
         provider = request.query_params.get("provider", DEFAULT_PROVIDER)
         try:
             gateway = get_gateway(provider)
@@ -97,12 +116,19 @@ class SubscribeView(APIView):
         session = gateway.create_checkout(
             merchant_id=str(merchant.id),
             plan=plan,
-            amount_egp=plan_price(plan),
+            amount_egp=amount,
             customer_email=getattr(getattr(request, "user", None), "email", ""),
         )
         services.begin_checkout(
             merchant, plan=plan, provider=provider, gateway_ref=session.gateway_ref
         )
+        if applied_coupon is not None:
+            coupons.redeem(
+                applied_coupon,
+                merchant,
+                discount_egp=plan_price(plan) - amount,
+                detail=f"{plan} checkout",
+            )
         return Response({"checkout_url": session.checkout_url})
 
 
