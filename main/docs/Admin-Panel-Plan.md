@@ -467,8 +467,31 @@ subscription+invoice data; finance can export.
 
 ---
 
-## Phase 8 — Platform Analytics & Usage
+## Phase 8 — Platform Analytics & Usage — ✅ DONE
 **Goal:** operational insight into how the platform is used (non-financial).
+
+**Shipped:** `GET /api/admin/v1/analytics/platform` (cached 5 min, **open to any
+admin** — aggregates only, no PII, unlike the Finance-gated revenue endpoint):
+merchant lifecycle counts (total/active/trialing/past_due/churned/suspended),
+platform totals (customers/cards/stamps/redemptions), wallet split (Apple vs
+Google active passes), feature adoption (# and % of merchants using referrals /
+points cards / automations / branded enroll / campaigns), merchant growth by
+month (new + cumulative), an acquisition funnel (signed-up → built-a-card →
+active-access → paying), and a top-10 activity leaderboard (by loyalty-ledger
+events, with customer counts). Every figure is a live cross-tenant aggregate
+over the raw tables (the `TenantManager` default manager is unscoped). Frontend
+**Platform** dashboard (`frontend/admin`): lifecycle + totals stat tiles, a
+cumulative-growth area chart, horizontal feature-adoption bars, a wallet-split
+meter, a funnel, and the leaderboard (recharts); nav item open to every admin.
+11 new backend tests (any-admin read incl. Support + Read-only, lifecycle counts,
+totals vs raw data, wallet split incl. inactive-excluded, feature adoption +
+%, disabled-automation-excluded, growth + funnel, leaderboard ordering,
+empty-platform zeroing); 336 backend tests green; ruff/black/mypy/spectacular
+clean; admin lint/build clean. **Not built:** geographic/city distribution —
+there's no structured city field today (`Location` has only a freeform address +
+optional lat/lng), so a trustworthy breakdown isn't derivable; it lands when a
+city field does. Live in-browser verification deferred (covered by the accuracy
+tests).
 
 **Backend**
 - `GET /api/admin/v1/analytics/platform`: total/active/trial/churned merchants,

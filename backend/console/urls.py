@@ -5,7 +5,11 @@ from __future__ import annotations
 from django.urls import path
 
 from console.views import AdminLoginView, AdminMeView, AdminRefreshView
-from console.views_analytics import RevenueAnalyticsView, RevenueExportView
+from console.views_analytics import (
+    PlatformAnalyticsView,
+    RevenueAnalyticsView,
+    RevenueExportView,
+)
 from console.views_billing import DunningListView, DunningNotifyView, ReconciliationView
 from console.views_invoices import (
     InvoiceDetailView,
@@ -141,4 +145,6 @@ urlpatterns = [
         RevenueExportView.as_view(),
         name="admin-analytics-revenue-export",
     ),
+    # Platform analytics & usage (Phase 8)
+    path("analytics/platform", PlatformAnalyticsView.as_view(), name="admin-analytics-platform"),
 ]

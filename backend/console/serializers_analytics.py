@@ -45,3 +45,60 @@ class RevenueAnalyticsSerializer(serializers.Serializer):
     revenue_by_plan = RevenueByPlanSerializer(many=True)
     monthly_series = MonthlyRevenueSerializer(many=True)
     cohort_retention = CohortRetentionSerializer(many=True)
+
+
+# ── Platform analytics (Phase 8) ───────────────────────────────────────────────
+class MerchantCountsSerializer(serializers.Serializer):
+    total = serializers.IntegerField()
+    active = serializers.IntegerField()
+    trialing = serializers.IntegerField()
+    past_due = serializers.IntegerField()
+    churned = serializers.IntegerField()
+    suspended = serializers.IntegerField()
+
+
+class PlatformTotalsSerializer(serializers.Serializer):
+    customers = serializers.IntegerField()
+    cards = serializers.IntegerField()
+    stamps = serializers.IntegerField()
+    redemptions = serializers.IntegerField()
+
+
+class WalletSplitSerializer(serializers.Serializer):
+    apple = serializers.IntegerField()
+    google = serializers.IntegerField()
+
+
+class FeatureAdoptionSerializer(serializers.Serializer):
+    key = serializers.CharField()
+    merchants = serializers.IntegerField()
+    pct = serializers.FloatField()
+
+
+class GrowthPointSerializer(serializers.Serializer):
+    month = serializers.CharField()
+    new_merchants = serializers.IntegerField()
+    cumulative = serializers.IntegerField()
+
+
+class FunnelStageSerializer(serializers.Serializer):
+    stage = serializers.CharField()
+    count = serializers.IntegerField()
+
+
+class TopMerchantSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    name = serializers.CharField()
+    slug = serializers.CharField()
+    activity = serializers.IntegerField()
+    customers = serializers.IntegerField()
+
+
+class PlatformAnalyticsSerializer(serializers.Serializer):
+    merchants = MerchantCountsSerializer()
+    totals = PlatformTotalsSerializer()
+    wallet = WalletSplitSerializer()
+    feature_adoption = FeatureAdoptionSerializer(many=True)
+    growth = GrowthPointSerializer(many=True)
+    funnel = FunnelStageSerializer(many=True)
+    top_merchants = TopMerchantSerializer(many=True)

@@ -8,6 +8,7 @@ import MerchantDetail from './features/merchants/MerchantDetail'
 import PlansList from './features/plans/PlansList'
 import BillingHome from './features/billing/BillingHome'
 import RevenueHome from './features/revenue/RevenueHome'
+import PlatformHome from './features/platform/PlatformHome'
 
 export default function App() {
   return (
@@ -26,6 +27,7 @@ export default function App() {
         <Route path="/plans" element={<PlansList />} />
         <Route path="/billing" element={<BillingHome />} />
         <Route path="/revenue" element={<RevenueHome />} />
+        <Route path="/platform" element={<PlatformHome />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
