@@ -30,6 +30,9 @@ class Permission:
     ANNOUNCEMENTS_MANAGE = "announcements.manage"  # Phase 10 — broadcasts
     PROMOTIONS_MANAGE = "promotions.manage"  # Phase 11 — coupons / promotions
     ADMINS_MANAGE = "admins.manage"  # Phase 12 — manage the admin team
+    COMPLIANCE_EXPORT = "compliance.export"  # Phase 13 — export a merchant's data bundle (PII)
+    COMPLIANCE_DELETE = "compliance.delete"  # Phase 13 — right-to-be-forgotten merchant delete
+    RETENTION_MANAGE = "retention.manage"  # Phase 13 — edit the data-retention policy
 
 
 ALL_PERMISSIONS: frozenset[str] = frozenset(
@@ -42,6 +45,11 @@ ALL_PERMISSIONS: frozenset[str] = frozenset(
 # The matrix. Super-admin is intentionally absent here — it holds *everything*
 # (resolved in ``permissions_for``) so a newly added permission is granted to
 # super-admin by default and never silently withheld.
+#
+# The Phase 13 compliance keys (COMPLIANCE_EXPORT/DELETE, RETENTION_MANAGE) are
+# deliberately in NO role's set below: they are super-admin-only. Merchant delete
+# is irreversible and export dumps cross-tenant PII, so these stay the sharpest
+# tools in the box — held only by the role that implicitly holds everything.
 ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
     AdminRole.FINANCE: frozenset(
         {
