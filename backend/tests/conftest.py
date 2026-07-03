@@ -7,7 +7,6 @@ from rest_framework.test import APIClient
 
 from tests import factories
 
-
 # A per-process in-memory cache. Forcing this for the whole suite means tests
 # never touch Redis even when the environment (e.g. a copied .env) points
 # CACHES at a Redis that isn't running — otherwise every test errors at setup
