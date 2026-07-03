@@ -58,6 +58,12 @@ class EnrollView(APIView):
         headline = (getattr(settings, "enroll_headline", "") or "") if branded else ""
         tagline = (getattr(settings, "enroll_tagline", "") or "") if branded else ""
 
+        # Resolved registration theme (finalize Phase 1). Gating is applied inside
+        # resolve_theme, so the footer follows the resolved hide_powered_by.
+        from branding.services import resolve_theme
+
+        theme = resolve_theme(merchant, card)
+
         data = EnrollLandingSerializer(
             {
                 "merchant_name": merchant.name,
@@ -69,7 +75,8 @@ class EnrollView(APIView):
                 "logo_url": card.logo_url or merchant.logo_url,
                 "headline": headline,
                 "tagline": tagline,
-                "show_powered_by": not branded,
+                "show_powered_by": not theme["hide_powered_by"],
+                "theme": theme,
             }
         ).data
         return Response(data)

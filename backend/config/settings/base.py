@@ -96,6 +96,7 @@ LOCAL_APPS = [
     "dashboard",
     "billing",
     "messaging",
+    "branding",  # registration-page theme + QR styling (finalize Phase 1)
     "console",  # platform admin panel (separate auth boundary)
 ]
 

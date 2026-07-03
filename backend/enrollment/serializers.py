@@ -6,6 +6,8 @@ import re
 
 from rest_framework import serializers
 
+from branding.serializers import EnrollThemeSerializer
+
 # E.164: optional +, leading non-zero, 7–14 more digits.
 _E164 = re.compile(r"^\+?[1-9]\d{7,14}$")
 
@@ -24,6 +26,8 @@ class EnrollLandingSerializer(serializers.Serializer):
     headline = serializers.CharField(allow_blank=True)
     tagline = serializers.CharField(allow_blank=True)
     show_powered_by = serializers.BooleanField()
+    # Resolved registration theme (finalize Phase 1) — stock look on free plans.
+    theme = EnrollThemeSerializer()
 
 
 class EnrollRequestSerializer(serializers.Serializer):
