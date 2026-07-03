@@ -19,7 +19,8 @@ from rest_framework.response import Response
 
 from console import audit, lifecycle, moderation
 from console.models import AdminUser, ContentFlag
-from console.permissions import AdminAPIView, IsAdminUser, IsSuperAdmin, IsSupportAdmin
+from console.permissions import AdminAPIView, IsAdminUser, require
+from console.rbac import Permission
 from console.serializers_lifecycle import (
     AtRiskSerializer,
     ContentFlagSerializer,
@@ -51,7 +52,7 @@ class AtRiskView(AdminAPIView):
 class SuspendView(AdminAPIView):
     """POST /merchants/{id}/suspend {reason} — Super-admin only."""
 
-    permission_classes = [IsAdminUser, IsSuperAdmin]
+    permission_classes = [IsAdminUser, require(Permission.MERCHANTS_SUSPEND)]
 
     @extend_schema(request=SuspendSerializer, responses=SuspendSerializer)
     def post(self, request: Request, merchant_id: str) -> Response:
@@ -75,7 +76,7 @@ class SuspendView(AdminAPIView):
 class UnsuspendView(AdminAPIView):
     """POST /merchants/{id}/unsuspend {reason} — Super-admin only."""
 
-    permission_classes = [IsAdminUser, IsSuperAdmin]
+    permission_classes = [IsAdminUser, require(Permission.MERCHANTS_SUSPEND)]
 
     @extend_schema(request=SuspendSerializer, responses=SuspendSerializer)
     def post(self, request: Request, merchant_id: str) -> Response:
@@ -112,7 +113,7 @@ class ModerationQueueView(AdminAPIView):
 class ModerationScanView(AdminAPIView):
     """POST /moderation/scan — run the heuristic content scan (Support+)."""
 
-    permission_classes = [IsAdminUser, IsSupportAdmin]
+    permission_classes = [IsAdminUser, require(Permission.MERCHANTS_MODERATE)]
 
     @extend_schema(request=None, responses=ScanResultSerializer)
     def post(self, request: Request) -> Response:
@@ -124,7 +125,7 @@ class ModerationScanView(AdminAPIView):
 class ResolveFlagView(AdminAPIView):
     """POST /moderation/flags/{id}/resolve {action, notes} — Support+."""
 
-    permission_classes = [IsAdminUser, IsSupportAdmin]
+    permission_classes = [IsAdminUser, require(Permission.MERCHANTS_MODERATE)]
 
     @extend_schema(request=ResolveFlagSerializer, responses=ContentFlagSerializer)
     def post(self, request: Request, flag_id: str) -> Response:
