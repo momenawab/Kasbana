@@ -158,6 +158,36 @@ class AdminActivityView(AdminAPIView):
         return Response(AdminActivitySerializer(logs, many=True).data)
 
 
+class AdminResetMfaView(AdminAPIView):
+    """POST /admins/{id}/reset-mfa — clear an admin's MFA (Phase 15 recovery).
+
+    The path back when an admin loses their authenticator: a super-admin resets
+    it, and the target is forced to re-enrol on their next login (privileged
+    roles) or is simply MFA-less again. Also revokes the target's sessions so a
+    compromised device can't keep a live token. Super-admin only, audited.
+    """
+
+    permission_classes = [IsAdminUser, require(Permission.ADMINS_MANAGE)]
+
+    @extend_schema(request=None, responses=AdminUserSerializer)
+    def post(self, request: Request, admin_id: str) -> Response:
+        from console import security
+
+        target = get_object_or_404(AdminUser, pk=admin_id)
+        target.mfa_enabled = False
+        target.mfa_secret = ""
+        target.save(update_fields=["mfa_enabled", "mfa_secret", "updated_at"])
+        revoked = security.revoke_all_sessions(target)
+        audit.record(
+            request,
+            "admin.reset_mfa",
+            target_type="admin",
+            target_id=str(target.id),
+            metadata={"email": target.email, "sessions_revoked": revoked},
+        )
+        return Response(AdminUserSerializer(target).data)
+
+
 class RbacMatrixView(AdminAPIView):
     """GET /rbac/matrix — the permission matrix (read-only reference).
 

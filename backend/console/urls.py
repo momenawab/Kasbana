@@ -4,11 +4,22 @@ from __future__ import annotations
 
 from django.urls import path
 
-from console.views import AdminLoginView, AdminMeView, AdminRefreshView
+from console.views import (
+    AdminLoginView,
+    AdminMeView,
+    AdminRefreshView,
+    AdminSessionListView,
+    AdminSessionRevokeView,
+    MfaConfirmView,
+    MfaSetupView,
+    MfaVerifyView,
+    StepUpView,
+)
 from console.views_admins import (
     AdminActivityView,
     AdminDetailView,
     AdminListCreateView,
+    AdminResetMfaView,
     RbacMatrixView,
 )
 from console.views_analytics import (
@@ -90,7 +101,17 @@ from console.views_support import (
 
 urlpatterns = [
     path("auth/login", AdminLoginView.as_view(), name="admin-login"),
+    path("auth/mfa/verify", MfaVerifyView.as_view(), name="admin-mfa-verify"),
     path("auth/refresh", AdminRefreshView.as_view(), name="admin-refresh"),
+    path("auth/mfa/setup", MfaSetupView.as_view(), name="admin-mfa-setup"),
+    path("auth/mfa/confirm", MfaConfirmView.as_view(), name="admin-mfa-confirm"),
+    path("auth/step-up", StepUpView.as_view(), name="admin-step-up"),
+    path("auth/sessions", AdminSessionListView.as_view(), name="admin-sessions"),
+    path(
+        "auth/sessions/<uuid:session_id>",
+        AdminSessionRevokeView.as_view(),
+        name="admin-session-revoke",
+    ),
     path("me", AdminMeView.as_view(), name="admin-me"),
     # Merchant directory (Phase 2)
     path("merchants", MerchantListView.as_view(), name="admin-merchants"),
@@ -257,6 +278,11 @@ urlpatterns = [
         "admins/<uuid:admin_id>/activity",
         AdminActivityView.as_view(),
         name="admin-admin-activity",
+    ),
+    path(
+        "admins/<uuid:admin_id>/reset-mfa",
+        AdminResetMfaView.as_view(),
+        name="admin-admin-reset-mfa",
     ),
     path("rbac/matrix", RbacMatrixView.as_view(), name="admin-rbac-matrix"),
     # Audit log viewer & compliance (Phase 13)

@@ -1,7 +1,7 @@
 // Admin API client — talks to /api/admin/v1 with the admin bearer token.
 // On a 401 it tries a one-shot refresh, then forces re-login.
 import axios from 'axios'
-import { getAccess, getRefresh, setAccess, clearTokens } from './auth'
+import { getAccess, getRefresh, setTokens, clearTokens } from './auth'
 
 const BASE = (import.meta.env.VITE_API_URL || '') + '/api/admin/v1'
 
@@ -30,7 +30,9 @@ api.interceptors.response.use(
             refreshing = null
           })
         const { data } = await refreshing
-        setAccess(data.access)
+        // Refresh ROTATES both tokens (Phase 15): we must persist the new refresh
+        // too, or replaying the old one trips reuse-detection and kills the session.
+        setTokens({ access: data.access, refresh: data.refresh })
         original.headers.Authorization = `Bearer ${data.access}`
         return api(original)
       } catch {

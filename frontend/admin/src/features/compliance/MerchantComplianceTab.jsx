@@ -4,6 +4,7 @@ import { Loader2, Download, Trash2, AlertTriangle } from 'lucide-react'
 import { useConsent, useEraseMerchant, downloadMerchantExport } from './api'
 import { useAuth } from '../../hooks/useAuth'
 import { normalizeError } from '../../lib/api'
+import StepUpModal from '../security/StepUpModal'
 
 function fmt(ts) {
   return ts ? new Date(ts).toLocaleDateString() : '—'
@@ -112,7 +113,13 @@ function DangerZone({ merchantId, slug, name }) {
   const erase = useEraseMerchant(merchantId)
   const [confirm, setConfirm] = useState('')
   const [reason, setReason] = useState('')
+  const [stepUp, setStepUp] = useState(false)
   const ready = confirm === slug && reason.trim().length > 0
+
+  async function doErase() {
+    await erase.mutateAsync({ confirm, reason })
+    navigate('/merchants')
+  }
 
   async function run() {
     if (!ready) return
@@ -120,9 +127,14 @@ function DangerZone({ merchantId, slug, name }) {
       return
     }
     try {
-      await erase.mutateAsync({ confirm, reason })
-      navigate('/merchants')
+      await doErase()
     } catch (err) {
+      // A stale session needs a fresh credential proof first (Phase 15) — open
+      // the step-up modal, then it retries the erase on success.
+      if (normalizeError(err).code === 'STEP_UP_REQUIRED') {
+        setStepUp(true)
+        return
+      }
       window.alert(normalizeError(err).message)
     }
   }
@@ -165,6 +177,12 @@ function DangerZone({ merchantId, slug, name }) {
           <Trash2 size={15} /> {erase.isPending ? 'Erasing…' : 'Erase merchant'}
         </button>
       </div>
+      {stepUp && (
+        <StepUpModal
+          onClose={() => setStepUp(false)}
+          onConfirmed={doErase}
+        />
+      )}
     </div>
   )
 }
