@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpRequest, HttpResponse, JsonResponse
 
 
 class StaffContextMiddleware:
@@ -18,6 +18,38 @@ class StaffContextMiddleware:
 
     def __call__(self, request: HttpRequest) -> HttpResponse:
         request.staff = None  # type: ignore[attr-defined]
+        return self.get_response(request)
+
+
+class MaintenanceModeMiddleware:
+    """Return 503 for merchant-facing API traffic while maintenance mode is on
+    (Phase 14). The admin console (``/api/admin/``) and the health check are
+    always allowed, so operators can toggle it back off and deploys still verify.
+
+    The state is read from a briefly-cached PlatformSetting (see
+    ``console.flags.maintenance_state``), so the per-request cost is a cache hit,
+    not a DB query, when nothing is wrong.
+    """
+
+    # Prefixes that stay reachable during maintenance.
+    ALLOW_PREFIXES = ("/api/admin/", "/api/health")
+
+    def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]) -> None:
+        self.get_response = get_response
+
+    def __call__(self, request: HttpRequest) -> HttpResponse:
+        path = request.path
+        if path.startswith("/api/") and not path.startswith(self.ALLOW_PREFIXES):
+            from console.flags import maintenance_state
+
+            state = maintenance_state()
+            if state["enabled"]:
+                message = state["message"] or "Stampn is temporarily down for maintenance."
+                response = JsonResponse(
+                    {"error": {"code": "MAINTENANCE", "message": message}}, status=503
+                )
+                response["Retry-After"] = "300"
+                return response
         return self.get_response(request)
 
 

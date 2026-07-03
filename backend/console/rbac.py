@@ -33,6 +33,7 @@ class Permission:
     COMPLIANCE_EXPORT = "compliance.export"  # Phase 13 — export a merchant's data bundle (PII)
     COMPLIANCE_DELETE = "compliance.delete"  # Phase 13 — right-to-be-forgotten merchant delete
     RETENTION_MANAGE = "retention.manage"  # Phase 13 — edit the data-retention policy
+    OPS_MANAGE = "ops.manage"  # Phase 14 — flags/settings/maintenance, job & webhook retries
 
 
 ALL_PERMISSIONS: frozenset[str] = frozenset(
@@ -67,7 +68,7 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
         }
     ),
     AdminRole.MARKETING_ADMIN: frozenset({Permission.ANNOUNCEMENTS_MANAGE}),
-    AdminRole.ENGINEERING: frozenset(),  # ops permissions arrive in Phase 14
+    AdminRole.ENGINEERING: frozenset({Permission.OPS_MANAGE}),  # platform ops (Phase 14)
     AdminRole.READ_ONLY: frozenset(),  # view everything, mutate nothing
 }
 
@@ -75,7 +76,13 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
 # Roles for which MFA is mandatory (flag per role — Phase 12 declares it, Phase 15
 # enforces it at login). Any role holding a mutating permission is privileged.
 MFA_REQUIRED_ROLES: frozenset[str] = frozenset(
-    {AdminRole.SUPER_ADMIN, AdminRole.FINANCE, AdminRole.SUPPORT, AdminRole.MARKETING_ADMIN}
+    {
+        AdminRole.SUPER_ADMIN,
+        AdminRole.FINANCE,
+        AdminRole.SUPPORT,
+        AdminRole.MARKETING_ADMIN,
+        AdminRole.ENGINEERING,  # holds OPS_MANAGE since Phase 14 → now privileged
+    }
 )
 
 

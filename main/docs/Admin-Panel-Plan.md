@@ -774,8 +774,35 @@ merchant's data can be exported or fully deleted on request.
 
 ---
 
-## Phase 14 — Platform Operations, Health & Config
+## Phase 14 — Platform Operations, Health & Config — ✅ DONE
 **Goal:** run the machine — health, jobs, integrations, feature flags, settings.
+
+**Shipped:** new `OPS_MANAGE` matrix key held by **Engineering + super-admin**
+(Engineering's first permission — it is now MFA-required alongside the other
+privileged roles). **Health** (`GET /ops/health`, any admin) runs *real*
+best-effort probes — DB `SELECT 1`, cache round-trip, Celery worker ping, per-
+queue Redis backlog, Sentry-configured flag — each degrading to an honest red
+tile, never fabricated. **Feature flags** (`FeatureFlag` + per-merchant
+`FeatureFlagOverride`, console-owned) with a `console.flags.flag_enabled(key,
+merchant)` resolver (override wins over the global default; unknown → off) that
+runtime reads via a lazy import; CRUD + toggle + override endpoints. **Platform
+settings** (`PlatformSetting` key/JSON) and **maintenance mode** (`GET/PATCH
+/ops/maintenance`) enforced by `MaintenanceModeMiddleware`, which 503s merchant
+API traffic while leaving `/api/admin/` + health reachable (state briefly cached,
+refreshed on write). **Observability**: added `django_celery_results` (result
+backend → Postgres, nothing reads results synchronously) for a queryable **task
+monitor** + retry (`ops/tasks`, re-enqueue by name+args); a **webhook delivery
+log** (`billing.WebhookDelivery`, recorded by the Paymob/Fawry webhook views with
+a signature-free replayable payload) + replay; and a **wallet-sync failure log**
+(`wallets.WalletSyncFailure`, recorded by the provision/push tasks on error) +
+re-provision. New models live in their owning app (billing/wallets/console), not
+the frozen `core`. Frontend **Operations** dashboard: Health tiles, Feature Flags
+manager (toggle + per-merchant overrides), Settings + maintenance toggle, Jobs
+monitor + retry, Webhooks log + replay, Wallet Sync failures + re-provision —
+mutating actions shown only to Engineering/super. 20 new backend tests (health,
+flag resolver + override, settings, maintenance + middleware 503, task retry +
+unparseable-args guard, webhook replay, wallet re-provision, OPS_MANAGE gating);
+442 backend tests green; ruff/black/mypy/spectacular clean; admin lint/build clean.
 
 **Backend**
 - **Health**: API/DB/Redis/Celery status, queue depth, failed-task list

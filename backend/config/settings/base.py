@@ -81,6 +81,7 @@ THIRD_PARTY_APPS = [
     "drf_spectacular",
     "corsheaders",
     "django_celery_beat",
+    "django_celery_results",  # queryable TaskResult table for the ops task monitor (Phase 14)
 ]
 
 # All persistent models live in ``core`` (contract §3.4). The other apps own
@@ -109,6 +110,7 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "common.middleware.StaffContextMiddleware",  # attaches request.staff
+    "common.middleware.MaintenanceModeMiddleware",  # 503s merchant API in maintenance (Phase 14)
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -305,7 +307,11 @@ STAMP_COOLDOWN_SECONDS = constants.STAMP_COOLDOWN_SECONDS
 
 # ── Celery (contract §3.9) ────────────────────────────────────────────────────
 CELERY_BROKER_URL = env("CELERY_BROKER_URL") or env("REDIS_URL", "redis://localhost:6379/0")
-CELERY_RESULT_BACKEND = env("CELERY_RESULT_BACKEND") or env("REDIS_URL", "redis://localhost:6379/1")
+# Results land in Postgres (django_celery_results) so the Phase 14 ops task monitor
+# can query/retry them; nothing reads results synchronously, so this is safe.
+# RESULT_EXTENDED stores the task name + args, which the retry action re-enqueues.
+CELERY_RESULT_BACKEND = env("CELERY_RESULT_BACKEND") or "django-db"
+CELERY_RESULT_EXTENDED = True
 CELERY_TASK_DEFAULT_QUEUE = "default"
 CELERY_TASK_QUEUES: dict[str, dict] = {
     "default": {},

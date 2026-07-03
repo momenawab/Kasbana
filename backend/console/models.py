@@ -325,3 +325,60 @@ class RetentionPolicy(UUIDModel, TimeStampedModel):
             f"RetentionPolicy(inactive={self.inactive_customer_days}d, "
             f"audit={self.audit_log_days}d)"
         )
+
+
+class FeatureFlag(UUIDModel, TimeStampedModel):
+    """A platform feature toggle (Phase 14) — flip behaviour without a deploy.
+
+    ``enabled`` is the global default; per-merchant exceptions live in
+    ``FeatureFlagOverride``. Runtime reads the resolved value via
+    ``console.flags.flag_enabled(key, merchant)`` (a lazy import, so low-level
+    apps don't take a load-time dependency on the console).
+    """
+
+    key = models.SlugField(max_length=64, unique=True)  # e.g. "whatsapp_channel"
+    label = models.CharField(max_length=120, blank=True)
+    description = models.TextField(blank=True)
+    enabled = models.BooleanField(default=False)
+    updated_by_email = models.EmailField(blank=True)
+
+    class Meta:
+        ordering = ["key"]
+
+    def __str__(self) -> str:
+        return f"{self.key}={'on' if self.enabled else 'off'}"
+
+
+class FeatureFlagOverride(UUIDModel, TimeStampedModel):
+    """A per-merchant override of a ``FeatureFlag``'s global default."""
+
+    flag = models.ForeignKey(FeatureFlag, on_delete=models.CASCADE, related_name="overrides")
+    merchant = models.ForeignKey(
+        Merchant, on_delete=models.CASCADE, related_name="feature_flag_overrides"
+    )
+    enabled = models.BooleanField()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["flag", "merchant"], name="uniq_flag_merchant")
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.flag.key}[{self.merchant_id}]={'on' if self.enabled else 'off'}"
+
+
+class PlatformSetting(UUIDModel, TimeStampedModel):
+    """Global key/value config (Phase 14). ``value`` is JSON. Well-known keys:
+    ``maintenance_mode`` -> ``{"enabled": bool, "message": str}`` (enforced by
+    ``common.middleware.MaintenanceModeMiddleware``)."""
+
+    key = models.SlugField(max_length=64, unique=True)
+    value = models.JSONField(default=dict, blank=True)
+    description = models.TextField(blank=True)
+    updated_by_email = models.EmailField(blank=True)
+
+    class Meta:
+        ordering = ["key"]
+
+    def __str__(self) -> str:
+        return f"setting({self.key})"

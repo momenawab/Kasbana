@@ -64,9 +64,10 @@ def test_finance_holds_finance_bucket_only():
     assert Permission.ADMINS_MANAGE not in perms
 
 
-def test_readonly_and_engineering_hold_nothing():
+def test_readonly_holds_nothing_engineering_holds_ops():
     assert permissions_for(AdminRole.READ_ONLY) == frozenset()
-    assert permissions_for(AdminRole.ENGINEERING) == frozenset()
+    # Engineering's only permission is platform ops (Phase 14).
+    assert permissions_for(AdminRole.ENGINEERING) == frozenset({Permission.OPS_MANAGE})
 
 
 def test_only_super_admin_can_manage_admins():
@@ -84,8 +85,9 @@ def test_only_super_admin_can_manage_admins():
 def test_mfa_required_for_privileged_roles_only():
     assert mfa_required(AdminRole.SUPER_ADMIN)
     assert mfa_required(AdminRole.FINANCE)
+    # Engineering holds OPS_MANAGE since Phase 14, so it is now privileged too.
+    assert mfa_required(AdminRole.ENGINEERING)
     assert not mfa_required(AdminRole.READ_ONLY)
-    assert not mfa_required(AdminRole.ENGINEERING)
 
 
 # ── DoD: role separation still enforced on real endpoints ───────────────────

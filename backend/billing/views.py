@@ -172,22 +172,30 @@ class _WebhookView(APIView):
 
     @extend_schema(request=None, responses=None)
     def post(self, request: Request) -> Response:
+        from billing import webhook_log
+        from billing.models import WebhookDelivery
+
         try:
             gateway = get_gateway(self.provider)
         except ValueError:
             # Provider implemented but disabled (e.g. Fawry). The route is kept
             # for the frozen contract, but we don't process its callbacks.
             logger.info("%s webhook hit but provider is disabled", self.provider)
+            webhook_log.record(self.provider, WebhookDelivery.Status.DISABLED)
             return Response({"detail": "provider not enabled"}, status=status.HTTP_404_NOT_FOUND)
         try:
             event = gateway.verify_and_parse(headers=dict(request.headers), body=request.body)
         except WebhookVerificationError as exc:
             logger.warning("%s webhook verification failed: %s", self.provider, exc)
+            webhook_log.record(self.provider, WebhookDelivery.Status.INVALID, error=str(exc))
             return Response({"detail": "invalid signature"}, status=status.HTTP_400_BAD_REQUEST)
 
         sub = services.apply_webhook_event(event)
         if sub is None:
             logger.warning("%s webhook: no merchant for ref=%s", self.provider, event.gateway_ref)
+            webhook_log.record(self.provider, WebhookDelivery.Status.NO_MERCHANT, event=event)
+        else:
+            webhook_log.record(self.provider, WebhookDelivery.Status.PROCESSED, event=event)
         # Always 200 once verified so the gateway stops retrying (contract).
         return Response({"received": True, "at": timezone.now().isoformat()})
 

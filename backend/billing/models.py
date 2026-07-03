@@ -255,3 +255,40 @@ class CouponRedemption(UUIDModel):
 
     def __str__(self) -> str:
         return f"{self.coupon_id} → {self.merchant_id}"
+
+
+class WebhookDelivery(UUIDModel, TimeStampedModel):
+    """A received gateway webhook (Phase 14 ops log).
+
+    Recorded by the webhook views so the ops console can inspect deliveries and
+    replay a failed one. ``payload`` holds the parsed event fields (not the raw
+    signed body), which is all ``apply_webhook_event`` needs for a replay.
+    Recording never blocks the webhook ack — write failures are swallowed.
+    """
+
+    class Status(models.TextChoices):
+        PROCESSED = "processed", "Processed"
+        NO_MERCHANT = "no_merchant", "No merchant matched"
+        INVALID = "invalid", "Invalid signature"
+        DISABLED = "disabled", "Provider disabled"
+        FAILED = "failed", "Processing failed"
+
+    provider = models.CharField(max_length=16)
+    kind = models.CharField(max_length=24, blank=True)  # success/failed/canceled/ignored
+    gateway_ref = models.CharField(max_length=128, blank=True)
+    # Not an FK: the merchant may be gone (erased) but we still keep the log row.
+    merchant_id_hint = models.CharField(max_length=64, blank=True)
+    status = models.CharField(max_length=16, choices=Status.choices)
+    payload = models.JSONField(default=dict, blank=True)  # parsed event fields, for replay
+    error = models.CharField(max_length=500, blank=True)
+    processed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["provider", "-created_at"]),
+            models.Index(fields=["status", "-created_at"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.provider} · {self.kind or '?'} · {self.status}"
