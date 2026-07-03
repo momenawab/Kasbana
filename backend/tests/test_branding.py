@@ -64,6 +64,20 @@ def test_free_plan_is_gated_to_stock_look(merchant, card):
     assert theme["hide_powered_by"] is False  # free plans always show the footer
 
 
+def test_accent_color_inherits_from_card(merchant, card):
+    # No theme color set -> the page inherits the card's brand color.
+    card.color_bg = "#123456"
+    card.color_fg = "#FEDCBA"
+    card.save(update_fields=["color_bg", "color_fg"])
+    theme = resolve_theme(merchant, card)
+    assert theme["accent_color"] == "#123456"
+    assert theme["button_text_color"] == "#FEDCBA"
+
+    # An explicit theme accent overrides the inherited card color.
+    RegistrationTheme.objects.create(merchant=merchant, card=None, accent_color="#0A0A0A")
+    assert resolve_theme(merchant, card)["accent_color"] == "#0A0A0A"
+
+
 def test_branded_plan_keeps_rich_theme(merchant, card):
     RegistrationTheme.objects.create(
         merchant=merchant, card=None, template_key="hero", welcome_body="Hi!"
@@ -112,6 +126,14 @@ def test_patch_rejects_unknown_field_config(auth_client):
         format="json",
     )
     assert resp.status_code == 400
+
+
+def test_card_theme_get_does_not_autocreate_override(auth_client, card):
+    """GET the card theme returns inherited values without creating a row."""
+    resp = auth_client.get(f"/api/v1/cards/{card.id}/enroll-theme")
+    assert resp.status_code == 200
+    assert resp.json()["is_override"] is False
+    assert not RegistrationTheme.objects.filter(merchant=card.merchant, card=card).exists()
 
 
 def test_card_theme_override_and_clear(auth_client, card):

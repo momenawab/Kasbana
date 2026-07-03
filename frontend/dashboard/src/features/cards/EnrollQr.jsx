@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Copy, Printer, MessageCircle, ArrowLeft } from 'lucide-react'
+import { Copy, Printer, MessageCircle, ArrowLeft, Palette } from 'lucide-react'
 import api from '../../lib/api'
 import QrBlock from '../../components/QrBlock'
 import Button from '../../components/Button'
@@ -40,7 +40,12 @@ export default function EnrollQr() {
 
   return (
     <div className="mx-auto max-w-lg">
-      <Button variant="ghost" iconStart={ArrowLeft} onClick={() => navigate(`/cards/${id}`)} className="mb-4">
+      <Button
+        variant="ghost"
+        iconStart={ArrowLeft}
+        onClick={() => navigate(`/cards/${id}`)}
+        className="mb-4"
+      >
         {t('onboarding.back')}
       </Button>
 
@@ -77,6 +82,15 @@ export default function EnrollQr() {
                 </Button>
               </a>
             </div>
+
+            <Button
+              variant="ghost"
+              iconStart={Palette}
+              className="w-full"
+              onClick={() => navigate(`/cards/${id}/enroll-page`)}
+            >
+              {t('enrollTheme.editCardPage')}
+            </Button>
           </>
         )}
       </div>
