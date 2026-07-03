@@ -53,6 +53,21 @@ from console.views_lifecycle import (
     UnsuspendView,
 )
 from console.views_merchants import MerchantDetailView, MerchantListView
+from console.views_ops import (
+    FeatureFlagDetailView,
+    FeatureFlagListView,
+    FeatureFlagOverrideView,
+    HealthView,
+    MaintenanceView,
+    PlatformSettingDetailView,
+    PlatformSettingListView,
+    TaskResultListView,
+    TaskRetryView,
+    WalletFailureListView,
+    WalletReprovisionView,
+    WebhookDeliveryListView,
+    WebhookReplayView,
+)
 from console.views_plans import PlanDetailView, PlanListView
 from console.views_subscription import (
     CompView,
@@ -262,5 +277,35 @@ urlpatterns = [
         "merchants/<uuid:merchant_id>/erase",
         MerchantDeleteView.as_view(),
         name="admin-merchant-erase",
+    ),
+    # Platform operations, health & config (Phase 14)
+    path("ops/health", HealthView.as_view(), name="admin-ops-health"),
+    path("ops/flags", FeatureFlagListView.as_view(), name="admin-ops-flags"),
+    path("ops/flags/<slug:key>", FeatureFlagDetailView.as_view(), name="admin-ops-flag-detail"),
+    path(
+        "ops/flags/<slug:key>/override",
+        FeatureFlagOverrideView.as_view(),
+        name="admin-ops-flag-override",
+    ),
+    path("ops/settings", PlatformSettingListView.as_view(), name="admin-ops-settings"),
+    path(
+        "ops/settings/<slug:key>",
+        PlatformSettingDetailView.as_view(),
+        name="admin-ops-setting-detail",
+    ),
+    path("ops/maintenance", MaintenanceView.as_view(), name="admin-ops-maintenance"),
+    path("ops/tasks", TaskResultListView.as_view(), name="admin-ops-tasks"),
+    path("ops/tasks/<str:task_id>/retry", TaskRetryView.as_view(), name="admin-ops-task-retry"),
+    path("ops/webhooks", WebhookDeliveryListView.as_view(), name="admin-ops-webhooks"),
+    path(
+        "ops/webhooks/<uuid:delivery_id>/replay",
+        WebhookReplayView.as_view(),
+        name="admin-ops-webhook-replay",
+    ),
+    path("ops/wallet-failures", WalletFailureListView.as_view(), name="admin-ops-wallet-failures"),
+    path(
+        "ops/wallet-failures/<uuid:failure_id>/reprovision",
+        WalletReprovisionView.as_view(),
+        name="admin-ops-wallet-reprovision",
     ),
 ]

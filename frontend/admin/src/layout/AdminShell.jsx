@@ -35,7 +35,7 @@ const NAV = [
   { to: '/team', key: 'Admin Team', Icon: Users2, ready: true },
   { to: '/audit', key: 'Audit Log', Icon: ScrollText, ready: true },
   { to: '/compliance', key: 'Compliance', Icon: ShieldAlert, ready: true },
-  { to: '/ops', key: 'Operations', Icon: Activity, phase: 14 },
+  { to: '/ops', key: 'Operations', Icon: Activity, ready: true },
 ]
 
 function itemClass({ isActive }) {

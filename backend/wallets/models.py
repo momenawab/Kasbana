@@ -12,7 +12,8 @@ from __future__ import annotations
 
 from django.db import models
 
-from core.models import CustomerCard, TimeStampedModel, UUIDModel
+from core.enums import WalletPlatform
+from core.models import CustomerCard, Merchant, TimeStampedModel, UUIDModel
 
 
 class WalletMessage(UUIDModel, TimeStampedModel):
@@ -34,3 +35,38 @@ class WalletMessage(UUIDModel, TimeStampedModel):
 
     def __str__(self) -> str:
         return f"{self.customer_card_id}: {self.body[:32]}"
+
+
+class WalletSyncFailure(UUIDModel, TimeStampedModel):
+    """A failed wallet provisioning/push operation (Phase 14 ops log).
+
+    Recorded by the wallet tasks when a Google/Apple sync raises, so the ops
+    console can surface it and re-provision (re-enqueue the task). ``resolved``
+    flips when an admin re-provisions or the row is dismissed.
+    """
+
+    customer_card = models.ForeignKey(
+        CustomerCard,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="sync_failures",
+    )
+    merchant = models.ForeignKey(
+        Merchant, on_delete=models.CASCADE, related_name="wallet_sync_failures"
+    )
+    platform = models.CharField(max_length=16, choices=WalletPlatform.choices, blank=True)
+    operation = models.CharField(max_length=32)  # provision / push_update
+    error = models.CharField(max_length=500, blank=True)
+    resolved = models.BooleanField(default=False)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["resolved", "-created_at"]),
+            models.Index(fields=["merchant", "-created_at"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.operation} {self.platform} · {self.customer_card_id} · {self.error[:40]}"
