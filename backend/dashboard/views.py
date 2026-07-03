@@ -196,14 +196,14 @@ class CardQRView(APIView):
         # then calls the API — not the raw API endpoint.
         join_url = f"{settings.ENROLL_BASE_URL}/enroll/{token.token}"
 
+        # Styled QR from the merchant's resolved theme (finalize Phase 1): brand
+        # colors + module shape. Logo-in-centre + poster PDF land in Phase 3.
         try:
-            import qrcode
-            from qrcode.image.svg import SvgImage
+            from branding.qr import render_qr_svg
+            from branding.services import resolve_theme
 
-            qr = qrcode.QRCode(box_size=6, border=2)
-            qr.add_data(join_url)
-            qr.make(fit=True)
-            svg = qr.make_image(image_factory=SvgImage).to_string().decode("utf-8")
+            theme = resolve_theme(get_request_merchant(request), card)
+            svg = render_qr_svg(join_url, theme["qr_style"])
         except Exception:  # pragma: no cover - QR library unavailable
             svg = ""
 
