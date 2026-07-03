@@ -8,10 +8,19 @@ from rest_framework.test import APIClient
 from tests import factories
 
 
+# A per-process in-memory cache. Forcing this for the whole suite means tests
+# never touch Redis even when the environment (e.g. a copied .env) points
+# CACHES at a Redis that isn't running — otherwise every test errors at setup
+# and redis connection-retry backoff drags the run out to ~20 minutes.
+_LOCMEM_CACHE = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
+
+
 @pytest.fixture(autouse=True)
-def _clear_throttle_cache():
-    """Reset rate-limit counters between tests so throttles (which key on the
-    shared test-client IP) don't bleed across the suite."""
+def _clear_throttle_cache(settings):
+    """Pin an in-process cache (Redis-independent) and reset rate-limit counters
+    between tests so throttles (which key on the shared test-client IP) don't
+    bleed across the suite."""
+    settings.CACHES = _LOCMEM_CACHE
     from django.core.cache import cache
 
     cache.clear()
