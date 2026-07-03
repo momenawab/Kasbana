@@ -11,6 +11,7 @@ Every queryset is scoped to the caller's merchant via ``for_merchant`` /
 
 from __future__ import annotations
 
+import csv
 import re
 from datetime import date, timedelta
 from pathlib import Path
@@ -18,7 +19,9 @@ from typing import Any
 
 from django.conf import settings
 from django.db.models import Count, F, Prefetch, Q, QuerySet
+from django.http import StreamingHttpResponse
 from django.utils import timezone
+from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema
 from rest_framework import generics, status
 from rest_framework.exceptions import ValidationError
@@ -197,17 +200,32 @@ class CardQRView(APIView):
         join_url = f"{settings.ENROLL_BASE_URL}/enroll/{token.token}"
 
         # Styled QR from the merchant's resolved theme (finalize Phase 1): brand
-        # colors + module shape. Logo-in-centre + poster PDF land in Phase 3.
+        # colors + module shape.
+        merchant = get_request_merchant(request)
+        svg = ""
+        theme = None
         try:
             from branding.qr import render_qr_svg
             from branding.services import resolve_theme
 
-            theme = resolve_theme(get_request_merchant(request), card)
+            theme = resolve_theme(merchant, card)
             svg = render_qr_svg(join_url, theme["qr_style"])
         except Exception:  # pragma: no cover - QR library unavailable
-            svg = ""
+            theme = None
 
-        return Response({"join_url": join_url, "qr_svg": svg, "poster_pdf_url": ""})
+        # Composed poster PDF (Phase 3): logo-in-QR + reward copy, stored to media
+        # and served at /media. Best-effort and independent of the SVG above — a
+        # poster failure (e.g. Pillow missing) must not blank the inline code.
+        poster_url = ""
+        if theme is not None:
+            try:
+                from branding.poster import build_and_store_poster
+
+                poster_url = build_and_store_poster(request, merchant, card, theme, join_url)
+            except Exception:  # pragma: no cover - Pillow/storage unavailable
+                poster_url = ""
+
+        return Response({"join_url": join_url, "qr_svg": svg, "poster_pdf_url": poster_url})
 
 
 # ── Uploads ───────────────────────────────────────────────────────────────────
@@ -379,6 +397,32 @@ class StaffDetailView(generics.RetrieveUpdateAPIView):
 
 
 # ── Customers ─────────────────────────────────────────────────────────────────
+def filter_customers(qs: QuerySet[CustomerCard], params: Any) -> QuerySet[CustomerCard]:
+    """Apply the shared /customers query filters (card/status/phone/location/
+    search/segment) to ``qs``. One source of truth for the list view and the CSV
+    export so a filtered export matches exactly what the table shows."""
+    if card_id := params.get("card"):
+        qs = qs.filter(card_id=card_id)
+    if status_ := params.get("status"):
+        qs = qs.filter(status=status_)
+    if phone := params.get("phone"):
+        qs = qs.filter(customer_phone__icontains=phone)
+    if location_id := params.get("location"):
+        qs = qs.filter(
+            Q(ledger_entries__location_id=location_id) | Q(redemptions__location_id=location_id)
+        ).distinct()
+    if search := params.get("search"):
+        qs = qs.filter(Q(customer_name__icontains=search) | Q(customer_phone__icontains=search))
+    if segment := params.get("segment"):
+        today = timezone.localdate()
+        if segment == "lapsed":
+            cutoff = today - timedelta(days=30)
+            qs = qs.filter(Q(last_event_at__isnull=True) | Q(last_event_at__date__lt=cutoff))
+        elif segment == "reward_ready":
+            qs = qs.filter(stamp_count__gte=F("card__stamps_required"))
+    return qs
+
+
 class CustomerListView(generics.ListAPIView):
     """GET /customers — CustomerCard list, filterable."""
 
@@ -402,29 +446,75 @@ class CustomerListView(generics.ListAPIView):
             )
             .order_by("-created_at")
         )
+        return filter_customers(qs, self.request.query_params)
 
-        params = self.request.query_params
-        if card_id := params.get("card"):
-            qs = qs.filter(card_id=card_id)
-        if status_ := params.get("status"):
-            qs = qs.filter(status=status_)
-        if phone := params.get("phone"):
-            qs = qs.filter(customer_phone__icontains=phone)
-        if location_id := params.get("location"):
-            qs = qs.filter(
-                Q(ledger_entries__location_id=location_id) | Q(redemptions__location_id=location_id)
-            ).distinct()
-        if search := params.get("search"):
-            qs = qs.filter(Q(customer_name__icontains=search) | Q(customer_phone__icontains=search))
-        if segment := params.get("segment"):
-            today = timezone.localdate()
-            if segment == "lapsed":
-                cutoff = today - timedelta(days=30)
-                qs = qs.filter(Q(last_event_at__isnull=True) | Q(last_event_at__date__lt=cutoff))
-            elif segment == "reward_ready":
-                qs = qs.filter(stamp_count__gte=F("card__stamps_required"))
 
-        return qs
+class CustomerExportView(APIView):
+    """GET /customers/export — the (filtered) customer list as a CSV download.
+
+    Gated behind the ``export`` entitlement (Starter+), so a free/locked merchant
+    gets 402 → the dashboard opens the UpgradeDrawer. Honours the same filters as
+    the list, and streams rows so a large book of customers never buffers wholly
+    in memory.
+    """
+
+    permission_classes = [CanEngage]
+
+    _COLUMNS = [
+        "customer_name",
+        "customer_phone",
+        "customer_email",
+        "card_name",
+        "stamp_count",
+        "stamps_required",
+        "status",
+        "enrolled_at",
+        "last_event_at",
+    ]
+
+    @extend_schema(responses={(200, "text/csv"): OpenApiTypes.BINARY})
+    def get(self, request: Request) -> StreamingHttpResponse:
+        merchant = get_request_merchant(request)
+        entitlements.enforce(merchant, "export")
+
+        qs = filter_customers(
+            CustomerCard.objects.for_merchant(merchant).select_related("card"),
+            request.query_params,
+        ).order_by("-created_at")
+
+        # csv.writer needs a file-like object; this pseudo-buffer just hands each
+        # formatted row straight back to the streaming generator (Django docs
+        # "Streaming large CSV files" pattern) so nothing accumulates.
+        class _Echo:
+            def write(self, value: str) -> str:
+                return value
+
+        writer = csv.writer(_Echo())
+
+        def rows() -> Any:
+            # UTF-8 BOM first so Excel opens Arabic names (this is an Arabic-market
+            # product) as UTF-8 instead of the locale ANSI codepage (mojibake).
+            yield "﻿"
+            yield writer.writerow(self._COLUMNS)
+            for c in qs.iterator():
+                yield writer.writerow(
+                    [
+                        c.customer_name or "",
+                        c.customer_phone or "",
+                        c.customer_email or "",
+                        c.card.name,
+                        c.stamp_count,
+                        c.card.stamps_required,
+                        c.status,
+                        c.enrolled_at.isoformat() if c.enrolled_at else "",
+                        c.last_event_at.isoformat() if c.last_event_at else "",
+                    ]
+                )
+
+        stamp = timezone.now().strftime("%Y%m%d")
+        response = StreamingHttpResponse(rows(), content_type="text/csv; charset=utf-8")
+        response["Content-Disposition"] = f'attachment; filename="customers_{stamp}.csv"'
+        return response
 
 
 class CustomerDetailView(generics.RetrieveDestroyAPIView):

@@ -202,6 +202,7 @@
     "statusCol": "الحالة",
     "lastVisit": "آخر زيارة",
     "export": "تصدير CSV",
+    "exportFailed": "فشل التصدير. حاول مرة أخرى.",
     "searchPlaceholder": "ابحث بالاسم أو الهاتف…",
     "segment": {
       "all": "الكل",

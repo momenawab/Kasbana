@@ -4,8 +4,10 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Users, Download } from 'lucide-react'
-import { useCustomers } from './api'
+import { useCustomers, exportCustomersCsv } from './api'
 import { usePlan } from '../../hooks/usePlan'
+import { useToast } from '../../hooks/useToast'
+import { gating } from '../../lib/gating'
 import Table from '../../components/Table'
 import Badge from '../../components/Badge'
 import Button from '../../components/Button'
@@ -19,6 +21,7 @@ export default function CustomersList() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const { can, requireFeature } = usePlan()
+  const toast = useToast()
   const lang = i18n.language
 
   const [search, setSearch] = useState('')
@@ -32,18 +35,36 @@ export default function CustomersList() {
 
   const { data, isLoading } = useCustomers({ search: debounced, segment })
   const rows = data?.results ?? []
+  const [exporting, setExporting] = useState(false)
 
-  function exportCsv() {
-    if (!requireFeature('export')) return // opens UpgradeDrawer when gated
-    const header = ['name', 'phone', 'card', 'stamps', 'status', 'joined']
-    const lines = rows.map((r) =>
-      [r.customer_name, r.customer_phone, r.card_name, `${r.stamp_count}/${r.stamps_required}`, r.status, r.enrolled_at].join(',')
-    )
-    const blob = new Blob([[header.join(','), ...lines].join('\n')], { type: 'text/csv' })
-    const a = document.createElement('a')
-    a.href = URL.createObjectURL(blob)
-    a.download = 'customers.csv'
-    a.click()
+  // Server-side export: streams the full filtered book (not just this page) and
+  // is gated server-side too. requireFeature() short-circuits with the
+  // UpgradeDrawer client-side; a stale-entitlement 402 from the API reopens it.
+  async function exportCsv() {
+    if (exporting) return
+    if (!requireFeature('export')) return
+    setExporting(true)
+    try {
+      const blob = await exportCustomersCsv({ search: debounced, segment })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'customers.csv'
+      // Some browsers (Firefox/Safari) need the anchor in the DOM and cancel the
+      // download if the object URL is revoked before the read finishes — defer it.
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      setTimeout(() => URL.revokeObjectURL(url), 0)
+    } catch (err) {
+      // blob responseType hides the JSON error from the api interceptor, so a
+      // 402 (entitlements went stale mid-session) is handled here; anything else
+      // gets a toast instead of failing silently.
+      if (err?.response?.status === 402) gating.open('export')
+      else toast.error(t('customers.exportFailed'))
+    } finally {
+      setExporting(false)
+    }
   }
 
   const columns = [
@@ -67,7 +88,12 @@ export default function CustomersList() {
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h1 className="font-head text-2xl font-bold text-ink">{t('customers.title')}</h1>
-        <Button variant="ghost" iconStart={Download} onClick={exportCsv} disabled={!can('export')}>
+        <Button
+          variant="ghost"
+          iconStart={Download}
+          onClick={exportCsv}
+          disabled={!can('export') || exporting}
+        >
           {t('customers.export')}
         </Button>
       </div>

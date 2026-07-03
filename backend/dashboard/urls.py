@@ -13,6 +13,7 @@ from dashboard.views import (
     CardQRView,
     CardStatsView,
     CustomerDetailView,
+    CustomerExportView,
     CustomerListView,
     CustomerTimelineView,
     LocationDetailView,
@@ -40,6 +41,8 @@ urlpatterns = [
     path("uploads", UploadView.as_view(), name="upload"),
     # Customers
     path("customers", CustomerListView.as_view(), name="customer-list"),
+    # Static segment before the <uuid> detail route so it can never be shadowed.
+    path("customers/export", CustomerExportView.as_view(), name="customer-export"),
     path("customers/<uuid:customer_id>", CustomerDetailView.as_view(), name="customer-detail"),
     path(
         "customers/<uuid:customer_id>/timeline",
