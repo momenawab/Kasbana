@@ -29,11 +29,15 @@ class AdminUser(UUIDModel, TimeStampedModel):
     password = models.CharField(max_length=128)  # Django-hashed
     role = models.CharField(max_length=20, choices=AdminRole.choices, default=AdminRole.READ_ONLY)
     is_active = models.BooleanField(default=True)
-    # MFA scaffold — populated/enforced in Phase 15.
+    # MFA (TOTP) — enrolled + enforced in Phase 15. ``mfa_secret`` is the base32
+    # TOTP seed; ``mfa_enabled`` flips true only after a code is verified.
     mfa_secret = models.CharField(max_length=64, blank=True)
     mfa_enabled = models.BooleanField(default=False)
     last_login_at = models.DateTimeField(null=True, blank=True)
     last_login_ip = models.GenericIPAddressField(null=True, blank=True)
+    # Brute-force lockout (Phase 15): consecutive password failures + a lock window.
+    failed_login_count = models.IntegerField(default=0)
+    locked_until = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["email"]
@@ -61,6 +65,35 @@ class AdminUser(UUIDModel, TimeStampedModel):
     @property
     def is_anonymous(self) -> bool:
         return False
+
+
+class AdminSession(UUIDModel, TimeStampedModel):
+    """One admin login session (Phase 15) — the backing for device/session list,
+    "log out everywhere", refresh rotation, and step-up re-auth.
+
+    The session ``id`` is the ``sid`` embedded in the admin's access + refresh
+    tokens. Every authenticated request checks the session is still active, so
+    revoking a row kills its tokens immediately. ``refresh_epoch`` increments on
+    each refresh so a replayed (stolen) refresh token is detected and the session
+    is revoked. ``last_auth_at`` timestamps the last full credential proof (login
+    or step-up), which sensitive actions require to be recent.
+    """
+
+    admin = models.ForeignKey(AdminUser, on_delete=models.CASCADE, related_name="sessions")
+    refresh_epoch = models.IntegerField(default=0)  # rotation / reuse-detection counter
+    user_agent = models.CharField(max_length=256, blank=True)
+    ip = models.GenericIPAddressField(null=True, blank=True)
+    last_seen_at = models.DateTimeField(null=True, blank=True)
+    last_auth_at = models.DateTimeField(null=True, blank=True)  # login / step-up proof
+    revoked = models.BooleanField(default=False)
+    revoked_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [models.Index(fields=["admin", "revoked", "-created_at"])]
+
+    def __str__(self) -> str:
+        return f"session({self.admin_id}) {'revoked' if self.revoked else 'active'}"
 
 
 class MerchantAdminMeta(UUIDModel, TimeStampedModel):

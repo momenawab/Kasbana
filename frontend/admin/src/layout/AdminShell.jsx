@@ -14,6 +14,7 @@ import {
   ScrollText,
   ShieldAlert,
   Activity,
+  Lock,
   LogOut,
   Loader2,
 } from 'lucide-react'
@@ -36,6 +37,7 @@ const NAV = [
   { to: '/audit', key: 'Audit Log', Icon: ScrollText, ready: true },
   { to: '/compliance', key: 'Compliance', Icon: ShieldAlert, ready: true },
   { to: '/ops', key: 'Operations', Icon: Activity, ready: true },
+  { to: '/security', key: 'Security', Icon: Lock, ready: true },
 ]
 
 function itemClass({ isActive }) {

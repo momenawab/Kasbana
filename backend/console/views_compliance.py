@@ -11,13 +11,15 @@ Every export and delete is audited.
 
 from __future__ import annotations
 
+from typing import cast
+
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema
 from rest_framework.request import Request
 from rest_framework.response import Response
 
-from console import audit, compliance
+from console import audit, compliance, security
 from console.models import AdminUser, RetentionPolicy
 from console.permissions import AdminAPIView, IsAdminUser, require
 from console.rbac import Permission
@@ -61,6 +63,22 @@ class MerchantDeleteView(AdminAPIView):
     @extend_schema(request=MerchantDeleteConfirmSerializer, responses={204: None})
     def delete(self, request: Request, merchant_id: str) -> Response:
         merchant = get_object_or_404(Merchant, pk=merchant_id)
+
+        # Step-up (Phase 15): an irreversible cross-cascade delete requires a
+        # recent credential re-proof, not just a live session. The client calls
+        # POST /auth/step-up then retries.
+        session = security.current_session(request, cast(AdminUser, request.user))
+        if session is None or not security.step_up_fresh(session):
+            return Response(
+                {
+                    "error": {
+                        "code": "STEP_UP_REQUIRED",
+                        "message": "Re-authenticate (step-up) before erasing a merchant.",
+                    }
+                },
+                status=403,
+            )
+
         body = MerchantDeleteConfirmSerializer(data=request.data)
         body.is_valid(raise_exception=True)
 

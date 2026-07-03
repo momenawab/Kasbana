@@ -16,6 +16,7 @@ import TeamHome from './features/team/TeamHome'
 import AuditHome from './features/audit/AuditHome'
 import ComplianceHome from './features/compliance/ComplianceHome'
 import OpsHome from './features/ops/OpsHome'
+import SecurityHome from './features/security/SecurityHome'
 
 export default function App() {
   return (
@@ -42,6 +43,7 @@ export default function App() {
         <Route path="/audit" element={<AuditHome />} />
         <Route path="/compliance" element={<ComplianceHome />} />
         <Route path="/ops" element={<OpsHome />} />
+        <Route path="/security" element={<SecurityHome />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

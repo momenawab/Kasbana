@@ -826,8 +826,39 @@ failed jobs / re-provision passes, and flip feature flags without a deploy.
 
 ---
 
-## Phase 15 — Hardening, Security & Launch
+## Phase 15 — Hardening, Security & Launch — ✅ DONE (code); launch items owner-assigned
 **Goal:** make the admin panel production-safe and launch it.
+
+**Shipped (code):** **MFA/TOTP** — enrolment (`pyotp`, SVG QR), a login TOTP gate,
+and **forced enrolment** for privileged roles via a scoped `mfa_setup` pending
+token (correct password → must enrol → never locked out); the auth layer rejects
+pending tokens on every real endpoint. **Sessions** — a new `AdminSession` per
+login; access + refresh carry a `sid` checked on every request (revoke = instant
+kill); refresh **rotation with reuse-detection** (`refresh_epoch`; a replayed
+refresh revokes the session); device/session list, per-session revoke, and "log
+out everywhere". **Step-up** re-auth (password + TOTP) guards the irreversible
+merchant-erase (`STEP_UP_REQUIRED`; 5-min freshness window). **Brute-force
+lockout** (5 fails → 15-min lock) atop the `admin_auth` 10/min throttle.
+**Super-admin Reset-MFA** recovery path (clears TOTP + revokes the target's
+sessions). **Frontend**: two-step MFA login (challenge + forced-setup QR),
+**Security** screen (session/device list, log-out-everywhere, voluntary 2FA
+enrolment), a reusable **step-up modal** wired into erase, and the **Sentry**
+browser SDK (guarded by `VITE_SENTRY_DSN`, tagged `app:admin-console`).
+**Security test suite** green: auth-boundary, permission-matrix, MFA gate,
+lockout, session revoke, refresh reuse-detection, step-up, audit-completeness
+(16 new tests; 458 backend tests total). ruff/black/mypy/spectacular clean; admin
+lint/build clean.
+
+**Drafted for the team (owner-assigned, see `Admin-Launch-Checklist.md`):** edge
+IP-allowlist (`infra/caddy/Caddyfile.admin-allowlist.example`, placeholder IPs —
+kept as a separate example so untested rules can't lock the team out); the
+compromised-admin **incident runbook** (`Admin-Incident-Runbook.md`); and the
+**launch checklist** itself. Remaining before public launch: fill the allowlist
+IPs + activate, set `VITE_SENTRY_DSN`, manual pentest pass, dependency audit,
+backup-restore test, analytics load-test, and eng-lead sign-off.
+
+> **Deploy note:** existing admin tokens (pre-Phase-15, no `sid`) are rejected
+> once — every admin re-logs in and privileged roles enrol MFA on that login.
 
 **Scope**
 - **MFA/2FA enforced** (TOTP) for all admins (mandatory for privileged roles).

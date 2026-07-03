@@ -35,11 +35,26 @@ def _bearer(client, token):
 
 # ── login ─────────────────────────────────────────────────────────────────────
 def test_admin_login_succeeds_and_returns_tokens(api_client, admin_user):
+    import pyotp
+
+    # SUPER_ADMIN is MFA-required (Phase 15): the first login forces enrolment,
+    # and completing it with a valid TOTP code issues the token pair.
     resp = api_client.post(
         LOGIN, {"email": "ops@stampn.net", "password": "supersecret1"}, format="json"
     )
     assert resp.status_code == 200
-    assert resp.json()["access"] and resp.json()["refresh"]
+    assert resp.json()["status"] == "mfa_setup"
+    admin_user.refresh_from_db()
+    verify = api_client.post(
+        "/api/admin/v1/auth/mfa/verify",
+        {
+            "pending_token": resp.json()["pending_token"],
+            "code": pyotp.TOTP(admin_user.mfa_secret).now(),
+        },
+        format="json",
+    )
+    assert verify.status_code == 200
+    assert verify.json()["access"] and verify.json()["refresh"]
     # Login is audited.
     assert AdminAuditLog.objects.filter(action="admin.login", actor=admin_user).exists()
 
