@@ -111,7 +111,21 @@ full quality gate green; no `core` change.
 
 ---
 
-## Phase 2 — Registration Theme & QR: dashboard editor + live enroll page
+## Phase 2 — Registration Theme & QR: dashboard editor + live enroll page ✅ DONE
+
+> **Status: shipped on `dev`.** New `src/features/enroll-theme/` module
+> (`EnrollThemeEditor` reused for the merchant default + per-card override,
+> `EnrollPreview` live preview, `api.js` hooks, `EnrollThemePage` card wrapper
+> with inherit/customize/revert). Mounted as a Settings **"Registration page"**
+> tab and a `/cards/:id/enroll-page` route linked from the card QR screen.
+> `Enroll.jsx` now consumes `info.theme` (dynamic fields from `fields_config`,
+> themed CTA, cover, welcome body, terms/privacy links). Backend also gained
+> server-side color inheritance (`theme → card → merchant`) in `resolve_theme`,
+> and the card-theme GET no longer auto-creates an override (returns inherited
+> values + `is_override`). Gate green: eslint 0 warnings, vite build, prettier;
+> backend 472 pytest. i18n keys added (en + ar). **Note:** the live QR preview
+> reflects color instantly; module *shape* (rounded/dots) shows on the saved
+> server QR (client `qrcode.react` renders squares only).
 
 **Goal.** Let the merchant edit the theme with a live preview, and make the
 public join page render it.
@@ -124,6 +138,13 @@ public join page render it.
   - Form for template, colors (pickers), font, welcome body, field toggles,
     terms/privacy URLs, cover-image upload, and the QR style
     (module style, logo on/off, frame).
+  - **Color inheritance (decided): "theme inherits, can override".** The
+    registration page defaults to the card's existing `color_bg`/`color_fg`/
+    `logo_url`; the theme colors + cover are optional overrides (blank = inherit).
+    Resolve the fallback **server-side** in `resolve_theme`
+    (`theme override → card → merchant`) so the enroll page and the live preview
+    share one source of truth — the editor shows each field as
+    "inherited (from card)" until the merchant overrides it.
   - **Live preview** panel: renders the enroll page + the QR side-by-side as the
     merchant edits (reuse the enroll page's presentational components).
   - Per-card override tab: "use merchant default" vs "customize this card".
