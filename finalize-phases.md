@@ -170,7 +170,36 @@ it; free plans see the gated default.
 
 ---
 
-## Phase 3 — Merchant Dashboard hardening
+## Phase 3 — Merchant Dashboard hardening ✅ DONE
+
+> **Status: shipped on `dev` and promoted to `prod`** (2026-07-04, prod image
+> tag `ac706de`). All three sub-tasks landed:
+> - **Browser Sentry** — `@sentry/react` init in `main.jsx` guarded by
+>   `VITE_SENTRY_DSN` (tagged `app:merchant-dashboard`), a top-level
+>   `ErrorBoundary` → `AppCrash` fallback, and query/mutation errors reported via
+>   `lib/queryClient.js` (401 / PLAN_LIMIT dropped as expected-and-handled). No-op
+>   until the DSN is set — provisioning `VITE_SENTRY_DSN` in the prod build is the
+>   owner/launch task, not a code gap.
+> - **Customer CSV export** — `GET /customers/export` streams the full *filtered*
+>   book (shared `filter_customers()` so it matches the table), gated by the
+>   `export` entitlement (402 → UpgradeDrawer), tenancy-scoped, UTF-8 BOM for
+>   Excel; Export button wired in `CustomersList` (gated) with an `exportFailed`
+>   toast (en/ar). Verified live: `/customers/export` → 401 (auth-gated) in prod.
+> - **Logo-in-QR + poster PDF** — `branding/qr.py` raster renderers
+>   (`render_qr_png` module drawers + centre logo, `render_poster_pdf` → A4 PDF via
+>   Pillow) and `branding/poster.py` (content-addressed `/media` storage, stale
+>   pruning), wired into `GET /cards/{id}/qr` as best-effort so a poster failure
+>   never withholds the inline SVG. Pins `qrcode[pil]` + `Pillow`.
+> - **Prod media** needed no change — `/media/*` is served by **Caddy** in prod
+>   (`handle_path /media/*` → `/srv/media`, shared `media` volume mounted into web
+>   + caddy), so the DBUG-only `config/urls.py` route is dev-only and posters/covers
+>   load in prod. (The original "404s in prod" concern was wrong.)
+>
+> Gates green: backend ruff/black/mypy + pytest (Phase-3 tests 11/11; suite 95%);
+> Frontend CI (lint · Vitest · build) + Distribute green on `dev`; deploy-prod,
+> deploy-dashboard, deploy-admin green on `prod`. Two runtime smoke-tests (an
+> authenticated export download; opening a real generated poster) are covered by
+> unit tests but worth a manual click when convenient.
 
 **Goal.** Close the smaller merchant-side gaps that don't need the theme work.
 
