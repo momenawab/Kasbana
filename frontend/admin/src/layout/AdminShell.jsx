@@ -12,6 +12,7 @@ import {
   Ticket,
   Users2,
   ScrollText,
+  ShieldAlert,
   Activity,
   LogOut,
   Loader2,
@@ -32,7 +33,8 @@ const NAV = [
   { to: '/announcements', key: 'Announcements', Icon: Megaphone, ready: true },
   { to: '/promotions', key: 'Promotions', Icon: Ticket, ready: true },
   { to: '/team', key: 'Admin Team', Icon: Users2, ready: true },
-  { to: '/audit', key: 'Audit Log', Icon: ScrollText, phase: 13 },
+  { to: '/audit', key: 'Audit Log', Icon: ScrollText, ready: true },
+  { to: '/compliance', key: 'Compliance', Icon: ShieldAlert, ready: true },
   { to: '/ops', key: 'Operations', Icon: Activity, phase: 14 },
 ]
 

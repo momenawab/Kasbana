@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import secrets
 
+from django.db import IntegrityError
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema
 from rest_framework.request import Request
@@ -58,11 +59,12 @@ class AdminListCreateView(AdminAPIView):
         body.is_valid(raise_exception=True)
         email = body.validated_data["email"].strip().lower()
 
+        duplicate = Response(
+            {"error": {"code": "CONFLICT", "message": "An admin with this email exists."}},
+            status=409,
+        )
         if AdminUser.objects.filter(email__iexact=email).exists():
-            return Response(
-                {"error": {"code": "CONFLICT", "message": "An admin with this email exists."}},
-                status=409,
-            )
+            return duplicate
 
         temp_password = secrets.token_urlsafe(12)
         admin = AdminUser(
@@ -72,7 +74,12 @@ class AdminListCreateView(AdminAPIView):
             is_active=True,
         )
         admin.set_password(temp_password)
-        admin.save()
+        try:
+            admin.save()
+        except IntegrityError:
+            # Concurrent invite of the same email won the race between the check
+            # above and this save — the unique constraint fired. Same 409, not a 500.
+            return duplicate
 
         audit.record(
             request,

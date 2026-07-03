@@ -23,7 +23,14 @@ from console.views_announcements import (
     AnnouncementSendView,
     AudiencePreviewView,
 )
+from console.views_audit import AuditLogExportView, AuditLogListView
 from console.views_billing import DunningListView, DunningNotifyView, ReconciliationView
+from console.views_compliance import (
+    MerchantConsentView,
+    MerchantDataExportView,
+    MerchantDeleteView,
+    RetentionPolicyView,
+)
 from console.views_coupons import (
     ApplyCouponView,
     CouponDetailView,
@@ -237,4 +244,23 @@ urlpatterns = [
         name="admin-admin-activity",
     ),
     path("rbac/matrix", RbacMatrixView.as_view(), name="admin-rbac-matrix"),
+    # Audit log viewer & compliance (Phase 13)
+    path("audit", AuditLogListView.as_view(), name="admin-audit"),
+    path("audit/export", AuditLogExportView.as_view(), name="admin-audit-export"),
+    path("compliance/retention", RetentionPolicyView.as_view(), name="admin-compliance-retention"),
+    path(
+        "merchants/<uuid:merchant_id>/export",
+        MerchantDataExportView.as_view(),
+        name="admin-merchant-export",
+    ),
+    path(
+        "merchants/<uuid:merchant_id>/consent",
+        MerchantConsentView.as_view(),
+        name="admin-merchant-consent",
+    ),
+    path(
+        "merchants/<uuid:merchant_id>/erase",
+        MerchantDeleteView.as_view(),
+        name="admin-merchant-erase",
+    ),
 ]

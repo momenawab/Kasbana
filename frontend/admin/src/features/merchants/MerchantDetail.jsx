@@ -12,6 +12,7 @@ import SubscriptionTab from './SubscriptionTab'
 import MerchantBillingTab from './MerchantBillingTab'
 import SupportTab from './SupportTab'
 import ActivityTab from './ActivityTab'
+import MerchantComplianceTab from '../compliance/MerchantComplianceTab'
 
 const TABS = [
   { key: 'overview', label: 'Overview', ready: true },
@@ -19,6 +20,7 @@ const TABS = [
   { key: 'billing', label: 'Billing', ready: true },
   { key: 'support', label: 'Support', ready: true },
   { key: 'activity', label: 'Activity', ready: true },
+  { key: 'compliance', label: 'Compliance', ready: true },
 ]
 
 function Stat({ label, value }) {
@@ -205,6 +207,9 @@ export default function MerchantDetail() {
       {tab === 'billing' && <MerchantBillingTab merchantId={id} />}
       {tab === 'support' && <SupportTab merchantId={id} merchantName={m.name} />}
       {tab === 'activity' && <ActivityTab merchantId={id} />}
+      {tab === 'compliance' && (
+        <MerchantComplianceTab merchantId={id} slug={m.slug} name={m.name} />
+      )}
     </div>
   )
 }

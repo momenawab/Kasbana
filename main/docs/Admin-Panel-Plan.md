@@ -725,8 +725,33 @@ plans; a Read-only admin can't mutate anything; matrix is the single source of t
 
 ---
 
-## Phase 13 — Audit Log Viewer & Compliance (PDPL)
+## Phase 13 — Audit Log Viewer & Compliance (PDPL) — ✅ DONE
 **Goal:** answer "who did what?" and honor data-protection obligations.
+
+**Shipped:** **Audit viewer** over the append-only `AdminAuditLog` spine —
+`GET /audit` (filter by actor email / action / target-type / target-id / date
+range, cursor-paginated) + `GET /audit/export` (filtered CSV). Both are reads,
+so they stay open to any active admin (auditing is precisely Read-only's job) —
+nothing here mutates. **Compliance** tools, all super-admin-only (three new
+matrix keys `COMPLIANCE_EXPORT` / `COMPLIANCE_DELETE` / `RETENTION_MANAGE`, held
+implicitly by super-admin and by no other role): per-merchant **data export**
+(`GET /merchants/{id}/export` — a lossless JSON bundle of every stored record,
+audited because it carries PII); **right-to-be-forgotten** (`DELETE
+/merchants/{id}/erase` — requires typing the exact slug + a reason, snapshots the
+row counts into the audit trail *before* the single `merchant.delete()` that
+cascades to customers/cards/ledger/wallets/invoices, wrapped in a transaction);
+**consent records** (`GET /merchants/{id}/consent` — the customers' PDPL
+`consent_at`, any admin); and a global **retention policy** (`GET` any admin /
+`PATCH` super-admin, audited) — a `RetentionPolicy` singleton storing per-domain
+day windows (0 = keep forever). Automated purging is deferred (declared now,
+enforced later — same pattern as MFA in Phase 12). Frontend: **Audit Log**
+screen (filters, load-more, before/after detail drawer, CSV export), a
+**Compliance** screen (retention policy editor, super-only), and a per-merchant
+**Compliance** tab on the merchant detail (export, consent table, danger-zone
+typed-confirm erase). 17 new backend tests (filters, export, super-only gating,
+typed-confirm + cascade + pre-delete audit snapshot, consent read, retention
+read/write + negative rejection); 422 backend tests green;
+ruff/black/mypy/spectacular clean; admin lint/build clean.
 
 **Backend**
 - Audit **viewer** API: search/filter the `AdminAuditLog` by admin/action/target/

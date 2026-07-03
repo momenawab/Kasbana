@@ -289,3 +289,39 @@ class AdminAuditLog(models.Model):
 
     def __str__(self) -> str:
         return f"{self.actor_email} · {self.action} · {self.created_at:%Y-%m-%d %H:%M}"
+
+
+class RetentionPolicy(UUIDModel, TimeStampedModel):
+    """Platform-wide data-retention policy (Phase 13, PDPL).
+
+    A single global row — read/written through ``current()``. Phase 13 *stores*
+    and surfaces the policy; automatic enforcement (purging data past these
+    windows) is deferred to a later phase — exactly like MFA in Phase 12, which
+    is declared here and enforced later. A window of ``0`` means "keep
+    indefinitely" (no automatic purge), which is the safe default.
+    """
+
+    # Retention windows in days; 0 = keep indefinitely.
+    inactive_customer_days = models.IntegerField(default=0)  # cards with no activity
+    closed_merchant_days = models.IntegerField(default=0)  # churned/closed merchant data
+    audit_log_days = models.IntegerField(default=0)  # admin audit trail
+    notes = models.TextField(blank=True)
+    # Who last saved the policy (denormalised email survives an admin delete).
+    updated_by = models.ForeignKey(
+        AdminUser, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    updated_by_email = models.EmailField(blank=True)
+
+    class Meta:
+        verbose_name_plural = "retention policies"
+
+    @classmethod
+    def current(cls) -> RetentionPolicy:
+        """The one global policy row, created lazily with safe defaults."""
+        return cls.objects.first() or cls.objects.create()
+
+    def __str__(self) -> str:
+        return (
+            f"RetentionPolicy(inactive={self.inactive_customer_days}d, "
+            f"audit={self.audit_log_days}d)"
+        )
