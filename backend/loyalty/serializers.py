@@ -32,6 +32,9 @@ class StampRequestSerializer(serializers.Serializer):
     customer_card_id = serializers.UUIDField()
     # Contract default is 1; reject zero/negative so a stamp only ever adds.
     delta = serializers.IntegerField(required=False, default=1, min_value=1)
+    # Cashier confirmed a repeat stamp within the cooldown window — skip only the
+    # soft per-card cooldown (daily / per-staff limits still apply).
+    force = serializers.BooleanField(required=False, default=False)
 
 
 class StampResponseSerializer(serializers.Serializer):

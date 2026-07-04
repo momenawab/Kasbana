@@ -35,7 +35,7 @@ export function useSaveCard() {
   })
 }
 
-// Editable Apple/Google pass design (notes 2-4).
+// Editable Apple/Google pass design (notes 2-4 + templates).
 export function useWalletDesign(id) {
   return useQuery({
     queryKey: ['cards', id, 'wallet-design'],
@@ -49,5 +49,14 @@ export function useSaveWalletDesign(id) {
   return useMutation({
     mutationFn: async (body) => (await api.patch(`/cards/${id}/wallet-design`, body)).data,
     onSuccess: (data) => qc.setQueryData(['cards', id, 'wallet-design'], data),
+  })
+}
+
+// Layout-locked template catalog (single source of truth with the backend).
+export function useWalletTemplates() {
+  return useQuery({
+    queryKey: ['wallet-templates'],
+    queryFn: async () => (await api.get('/wallet-templates')).data,
+    staleTime: Infinity,
   })
 }

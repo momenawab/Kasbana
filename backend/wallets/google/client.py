@@ -145,11 +145,12 @@ class GoogleWalletBackend:
                 "balance": {"int": customer_card.stamp_count},
             },
         }
-        # Refresh the visual stamp-hero banner on each stamp (new count -> new
+        # Refresh the visual hero banner on each stamp (new count -> new
         # content-addressed URL, so Google re-fetches instead of serving cache).
-        from wallets.google.hero import stamp_hero_url
+        # Template-aware: stamps -> per-count grid, image -> static bottom image.
+        from wallets.google.hero import hero_url_for
 
-        hero = stamp_hero_url(customer_card)
+        hero = hero_url_for(customer_card)
         if hero:
             patch["heroImage"] = {
                 "sourceUri": {"uri": hero},

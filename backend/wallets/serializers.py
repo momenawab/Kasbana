@@ -1,9 +1,14 @@
-"""Wallet card-design serializer (notes 2-4).
+"""Wallet card-design serializer (notes 2-4 + templates).
 
 Validates the editable Apple/Google pass variables. Field slots are
 ``{"label": str, "source": str}`` where ``source`` is a value token
 (``wallets.design.VALUE_TOKENS``) or ``"text:<literal>"``. Per-region caps mirror
 what each platform actually renders so a merchant can't overflow the pass.
+
+When a layout-locked **template** is active (``template_key`` set to a registry
+key), only that template's ``editable`` variables may be written — freeform slot
+fields and the strip/hero toggles are silently dropped (the template locks the
+layout). ``template_key == "custom"`` keeps the freeform editor untouched.
 """
 
 from __future__ import annotations
@@ -12,6 +17,7 @@ from typing import Any
 
 from rest_framework import serializers
 
+from wallets import templates as templates_mod
 from wallets.design import VALUE_TOKENS
 from wallets.models import WalletCardDesign
 
@@ -63,7 +69,30 @@ class WalletCardDesignSerializer(serializers.ModelSerializer):
             "google_subtitle",
             "google_rows",
             "google_stamp_hero",
+            "template_key",
+            "bottom_image_url",
         ]
+
+    def validate_template_key(self, value: Any) -> str:
+        key = str(value or templates_mod.CUSTOM).strip()
+        if not templates_mod.is_template_key(key):
+            raise serializers.ValidationError(f"Unknown template: {key!r}.")
+        return key
+
+    def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
+        """Drop fields the active template doesn't allow (layout is locked)."""
+        key = attrs.get("template_key")
+        if key is None and self.instance is not None:
+            key = self.instance.template_key
+        template = templates_mod.get_template(str(key or templates_mod.CUSTOM))
+        if template is not None:
+            allowed = set(template["editable"])
+            for field in list(attrs.keys()):
+                if field == "template_key":
+                    continue
+                if field not in allowed:
+                    attrs.pop(field, None)
+        return attrs
 
     def validate_apple_header(self, v: Any) -> list[dict[str, str]]:
         return _validate_slots(v, _REGION_CAPS["apple_header"])

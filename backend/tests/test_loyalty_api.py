@@ -80,6 +80,23 @@ def test_stamp_cooldown_returns_429(auth_client, customer_card):
     assert second.json()["error"]["code"] == "COOLDOWN_ACTIVE"
 
 
+def test_stamp_force_bypasses_cooldown(auth_client, customer_card):
+    """A cashier-confirmed repeat stamp (force=true) skips the soft cooldown."""
+    first = auth_client.post(STAMP_URL, {"customer_card_id": str(customer_card.id)}, format="json")
+    assert first.status_code == 200
+    # Unforced retry is blocked...
+    blocked = auth_client.post(
+        STAMP_URL, {"customer_card_id": str(customer_card.id)}, format="json"
+    )
+    assert blocked.status_code == 429
+    # ...but force=true goes through and increments the balance.
+    forced = auth_client.post(
+        STAMP_URL, {"customer_card_id": str(customer_card.id), "force": True}, format="json"
+    )
+    assert forced.status_code == 200
+    assert forced.json()["stamp_count"] == 2
+
+
 def test_stamp_rejects_zero_delta(auth_client, customer_card):
     resp = auth_client.post(
         STAMP_URL, {"customer_card_id": str(customer_card.id), "delta": 0}, format="json"

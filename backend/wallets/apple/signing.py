@@ -131,13 +131,21 @@ def build_pass_images(customer_card: CustomerCard) -> dict[str, bytes]:
     # outlined) — the coffee-card look. Points cards have no grid, so no strip.
     # A merchant can turn the strip off, or supply custom empty/filled stamp
     # icons that get tiled in place of the drawn circles (notes 2-4).
+    #
+    # Templates pin the strip to their ``bottom_visual``: ``stamps`` → the stamp
+    # grid, ``image`` → the uploaded bottom image (letterboxed on the strip band).
     from core.enums import CardType
     from wallets import design as design_mod
 
     design = design_mod.get_design(card)
-    strip_on = card.type == CardType.STAMP and card.stamps_required > 0
-    if design is not None:
-        strip_on = strip_on and design.apple_strip_enabled
+    template = design_mod.template_for(card)
+    if template is not None:
+        bottom_visual = template.get("bottom_visual", "none")
+        strip_on = bottom_visual in ("stamps", "image")
+    else:
+        strip_on = card.type == CardType.STAMP and card.stamps_required > 0
+        if design is not None:
+            strip_on = strip_on and design.apple_strip_enabled
     if strip_on:
         empty_icon = _local_media_bytes(design.strip_empty_url) if design else None
         filled_icon = _local_media_bytes(design.strip_filled_url) if design else None
@@ -148,20 +156,59 @@ def build_pass_images(customer_card: CustomerCard) -> dict[str, bytes]:
             if (design and design.strip_bg_color)
             else _darken(bg)
         )
-        base = _render_stamp_strip(
-            customer_card.stamp_count,
-            card.stamps_required,
-            strip_bg,
-            fg,
-            (1125, 369),
-            empty_icon=empty_icon,
-            filled_icon=filled_icon,
-        )
+        if template is not None and bottom_visual == "image":
+            base = _render_bottom_image_strip(
+                design.bottom_image_url if design else "", strip_bg, (1125, 369)
+            )
+        else:
+            base = _render_stamp_strip(
+                customer_card.stamp_count,
+                card.stamps_required,
+                strip_bg,
+                fg,
+                (1125, 369),
+                empty_icon=empty_icon,
+                filled_icon=filled_icon,
+            )
         images["strip@3x.png"] = _png(base)
         images["strip@2x.png"] = _png(base.resize((750, 246), Image.Resampling.LANCZOS))
         images["strip.png"] = _png(base.resize((375, 123), Image.Resampling.LANCZOS))
 
+    # Platform (Kasbana) logo at the bottom-left of the pass — Apple's native
+    # ``footer`` slot (shown left-aligned just above the barcode). Renders a drawn
+    # PLACEHOLDER until settings.WALLET_PLATFORM_LOGO_URL is set. Best-effort.
+    try:
+        from wallets.platform_logo import render_footer
+
+        images["footer@3x.png"] = _png(render_footer((858, 99), fg))
+        images["footer@2x.png"] = _png(render_footer((572, 66), fg))
+        images["footer.png"] = _png(render_footer((286, 33), fg))
+    except Exception:  # pragma: no cover - never block the pass
+        pass
+
     return images
+
+
+def _render_bottom_image_strip(url: str, bg: _RGB, size: tuple[int, int]):  # type: ignore[no-untyped-def]
+    """Letterbox a merchant's bottom image into the Apple strip band.
+
+    The image is fit (preserving aspect) and centred on the strip background so
+    a missing/odd-aspect image still yields a valid band rather than a crash.
+    """
+    from PIL import Image
+
+    w, h = size
+    canvas = Image.new("RGBA", (w, h), (*bg, 255))
+    data = _local_media_bytes(url)
+    if not data:
+        return canvas
+    try:
+        src = Image.open(io.BytesIO(data)).convert("RGBA")
+    except Exception:  # pragma: no cover - bad image bytes
+        return canvas
+    src.thumbnail((w, h))
+    canvas.paste(src, ((w - src.width) // 2, (h - src.height) // 2), src)
+    return canvas
 
 
 def digest_dict(files: dict[str, bytes]) -> dict[str, str]:

@@ -13,6 +13,7 @@ import { useToast } from '../../hooks/useToast'
 import Button from '../../components/Button'
 import Badge from '../../components/Badge'
 import { Input } from '../../components/Field'
+import { Modal } from '../../components/Modal'
 import { arDigits } from '../../lib/format'
 
 export default function Scan() {
@@ -23,6 +24,7 @@ export default function Scan() {
   const [card, setCard] = useState(null)
   const [manual, setManual] = useState('')
   const [amount, setAmount] = useState(1) // points to add (points cards only)
+  const [confirmStamp, setConfirmStamp] = useState(false) // cooldown confirm popup
   const isPoints = card?.card_type === 'POINTS'
 
   // Unlock audio on the first touch so the scan beep can play (iOS/Chrome rule).
@@ -55,10 +57,11 @@ export default function Scan() {
     if (code) await handleCode(code)
   }
 
-  async function doStamp() {
+  async function doStamp(force = false) {
     const delta = isPoints ? Math.max(1, Number(amount) || 1) : 1
     try {
-      const r = await stamp.mutateAsync({ customerCardId: card.customer_card_id, delta })
+      const r = await stamp.mutateAsync({ customerCardId: card.customer_card_id, delta, force })
+      setConfirmStamp(false)
       setCard((c) => ({
         ...c,
         stamp_count: r.stamp_count,
@@ -68,9 +71,16 @@ export default function Scan() {
       cueSuccess()
       toast.success(t('scan.stamped'))
     } catch (err) {
-      cueError()
       const { code: ec, message } = normalizeError(err)
-      toast.error(ec === 'COOLDOWN_ACTIVE' ? t('scan.cooldown') : message)
+      // A recent stamp isn't an error — ask the cashier to confirm the repeat
+      // instead of blocking (replaces the hard cooldown). Other errors still toast.
+      if (ec === 'COOLDOWN_ACTIVE' && !force) {
+        setConfirmStamp(true)
+        return
+      }
+      cueError()
+      setConfirmStamp(false)
+      toast.error(message)
     }
   }
 
@@ -101,12 +111,7 @@ export default function Scan() {
         <>
           {/* Viewfinder */}
           <div className="relative aspect-square overflow-hidden rounded-card border border-line bg-ink">
-            <video
-              ref={videoRef}
-              className="h-full w-full object-cover"
-              muted
-              playsInline
-            />
+            <video ref={videoRef} className="h-full w-full object-cover" muted playsInline />
             {/* Framing guide */}
             <div className="pointer-events-none absolute inset-8 rounded-xl border-2 border-white/70" />
             {status !== 'scanning' && (
@@ -180,7 +185,9 @@ export default function Scan() {
               </div>
             )}
             <Button size="lg" iconStart={Plus} onClick={doStamp} loading={stamp.isPending}>
-              {isPoints ? t('scan.addPoints', { n: Math.max(1, Number(amount) || 1) }) : t('scan.addStamp')}
+              {isPoints
+                ? t('scan.addPoints', { n: Math.max(1, Number(amount) || 1) })
+                : t('scan.addStamp')}
             </Button>
             <Button
               size="lg"
@@ -200,6 +207,27 @@ export default function Scan() {
           </div>
         </div>
       )}
+
+      {/* Repeat-stamp confirm (replaces the hard cooldown block). */}
+      <Modal
+        open={confirmStamp}
+        onClose={() => setConfirmStamp(false)}
+        title={t('scan.confirmStampTitle')}
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setConfirmStamp(false)}>
+              {t('scan.confirmStampCancel')}
+            </Button>
+            <Button onClick={() => doStamp(true)} loading={stamp.isPending}>
+              {t('scan.confirmStampYes')}
+            </Button>
+          </div>
+        }
+      >
+        <p className="text-sm text-tx-2">
+          {t('scan.confirmStampBody', { name: card?.customer_name || t('scan.noName') })}
+        </p>
+      </Modal>
     </div>
   )
 }
