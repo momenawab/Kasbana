@@ -130,3 +130,24 @@ def test_no_design_keeps_default_pass(customer_card):
     # A card with no design row builds exactly the default pass (no crash).
     payload = build_pass_json(customer_card)
     assert payload["storeCard"]["headerFields"][0]["key"] == "balance"
+
+
+def test_field_keys_are_globally_unique(customer_card):
+    """Apple rejects a pass with duplicate field keys ("Safari cannot download").
+
+    Overriding several regions must not restart keys at f0 in each — regression
+    for the notes 2-4 duplicate-key bug.
+    """
+    card = customer_card.card
+    WalletCardDesign.objects.create(
+        card=card,
+        merchant=card.merchant,
+        apple_header=[{"label": "H", "source": "balance"}],
+        apple_primary=[{"label": "P", "source": "stamps"}],
+        apple_secondary=[{"label": "S1", "source": "remaining"}, {"label": "S2", "source": "goal"}],
+        apple_auxiliary=[{"label": "A", "source": "reward"}],
+        apple_back=[{"label": "B", "source": "text:hi"}],
+    )
+    store = build_pass_json(customer_card)["storeCard"]
+    keys = [f["key"] for region in store.values() for f in region]
+    assert len(keys) == len(set(keys)), f"duplicate field keys: {keys}"

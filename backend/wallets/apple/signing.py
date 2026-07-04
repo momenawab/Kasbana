@@ -209,9 +209,12 @@ def _render_stamp_strip(
         cy = pad_y + r * cell_h + cell_h / 2
         if use_custom:
             icon = icon_filled if i < earned else icon_empty
-            glyph = icon.resize((icon_size, icon_size), Image.Resampling.LANCZOS)
-            canvas.paste(glyph, (int(x0 - icon_size / 2), int(cy - icon_size / 2)), glyph)
-            continue
+            try:
+                glyph = icon.resize((icon_size, icon_size), Image.Resampling.LANCZOS)
+                canvas.paste(glyph, (int(x0 - icon_size / 2), int(cy - icon_size / 2)), glyph)
+                continue
+            except Exception:  # pragma: no cover - fall back to drawn circle
+                use_custom = False
         box = [x0 - radius, cy - radius, x0 + radius, cy + radius]
         if i < earned:
             draw.ellipse(box, fill=(*fg, 255))  # earned = solid
