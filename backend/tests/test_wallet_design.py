@@ -120,9 +120,7 @@ def test_custom_strip_bg_is_applied(customer_card):
     card.stamps_required = 6
     card.color_bg = "#2244AA"
     card.save(update_fields=["stamps_required", "color_bg"])
-    WalletCardDesign.objects.create(
-        card=card, merchant=card.merchant, strip_bg_color="#112233"
-    )
+    WalletCardDesign.objects.create(card=card, merchant=card.merchant, strip_bg_color="#112233")
     from wallets.apple.signing import build_pass_images
 
     imgs = build_pass_images(customer_card)
