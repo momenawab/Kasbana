@@ -42,6 +42,10 @@
     "stamped": "Stamp added.",
     "redeemed": "Reward redeemed.",
     "cooldown": "Too soon — wait a moment before stamping again.",
+    "confirmStampTitle": "Stamp again?",
+    "confirmStampBody": "You just stamped {{name}} a moment ago. Add another stamp?",
+    "confirmStampYes": "Yes, add stamp",
+    "confirmStampCancel": "Cancel",
     "notReady": "Not enough stamps to redeem yet.",
     "status": {
       "starting": "Starting camera…",

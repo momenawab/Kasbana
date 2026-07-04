@@ -42,6 +42,10 @@
     "stamped": "تمت إضافة الختم.",
     "redeemed": "تم صرف المكافأة.",
     "cooldown": "مبكر جدًا — انتظر لحظة قبل إضافة ختم آخر.",
+    "confirmStampTitle": "إضافة ختم آخر؟",
+    "confirmStampBody": "لقد أضفت ختمًا لـ {{name}} منذ لحظات. هل تريد إضافة ختم آخر؟",
+    "confirmStampYes": "نعم، أضف ختمًا",
+    "confirmStampCancel": "إلغاء",
     "notReady": "لا توجد أختام كافية للصرف بعد.",
     "status": {
       "starting": "جارٍ تشغيل الكاميرا…",

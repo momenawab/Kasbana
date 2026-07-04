@@ -117,6 +117,7 @@ class StampView(APIView):
                 staff=staff,
                 location=getattr(staff, "location", None),
                 delta=body.validated_data["delta"],
+                force=body.validated_data["force"],
             )
             # The ledger mutates a row-locked re-fetch, so refresh our instance.
             card.refresh_from_db(fields=["stamp_count", "last_event_at"])

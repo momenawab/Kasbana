@@ -61,14 +61,17 @@ def add_stamp(
     location: object | None = None,
     delta: int = 1,
     note: str = "",
+    force: bool = False,
 ) -> StampLedger:
     """Append a STAMP event, update cached ``stamp_count``, return the row.
 
-    Raises CooldownActive / RateLimited (contract §3.3 / §3.7).
+    Raises CooldownActive / RateLimited (contract §3.3 / §3.7). ``force`` skips
+    only the soft per-card cooldown (cashier-confirmed repeat stamp); the daily
+    and per-staff rate limits still apply.
     """
     with transaction.atomic():
         card = _lock(customer_card)
-        _enforce_stamp_guards(card, staff)
+        _enforce_stamp_guards(card, staff, force=force)
 
         new_balance = card.stamp_count + delta
         entry = _append(
@@ -180,18 +183,25 @@ def _apply_balance(customer_card: CustomerCard, new_balance: int) -> None:
     customer_card.save(update_fields=["stamp_count", "last_event_at", "updated_at"])
 
 
-def _enforce_stamp_guards(customer_card: CustomerCard, staff: StaffUser | None) -> None:
+def _enforce_stamp_guards(
+    customer_card: CustomerCard, staff: StaffUser | None, force: bool = False
+) -> None:
     now = timezone.now()
 
-    last_stamp = (
-        StampLedger.objects.filter(customer_card=customer_card, event_type=LedgerEvent.STAMP)
-        .order_by("-created_at")
-        .first()
-    )
-    if last_stamp is not None:
-        elapsed = (now - last_stamp.created_at).total_seconds()
-        if elapsed < constants.STAMP_COOLDOWN_SECONDS:
-            raise CooldownActive()
+    # The per-card cooldown is a *soft* guard: the till surfaces it as a confirm
+    # ("you stamped this recently — again?") and re-sends with ``force`` when the
+    # cashier confirms, so a legitimate repeat stamp isn't blocked. The daily and
+    # per-staff limits below stay hard anti-fraud and are never forced.
+    if not force:
+        last_stamp = (
+            StampLedger.objects.filter(customer_card=customer_card, event_type=LedgerEvent.STAMP)
+            .order_by("-created_at")
+            .first()
+        )
+        if last_stamp is not None:
+            elapsed = (now - last_stamp.created_at).total_seconds()
+            if elapsed < constants.STAMP_COOLDOWN_SECONDS:
+                raise CooldownActive()
 
     today_count = StampLedger.objects.filter(
         customer_card=customer_card,
