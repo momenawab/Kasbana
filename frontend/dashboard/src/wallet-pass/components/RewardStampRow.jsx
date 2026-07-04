@@ -8,7 +8,9 @@
 // animate in when `animate` is set.
 import { Star, Gift } from 'lucide-react'
 
-const CHIP = { 3: 34, 5: 30, 8: 26, 10: 22, 12: 20 }
+// Circle diameter per stamp count (larger counts pack smaller), tuned so a full
+// row spans the pass width like the reference loyalty cards.
+const CHIP = { 3: 46, 5: 40, 8: 32, 10: 27, 12: 23 }
 
 function chipSize(target) {
   const keys = Object.keys(CHIP).map(Number)
@@ -21,6 +23,8 @@ export default function RewardStampRow({
   target = 5,
   icon: Icon = Star,
   rewardIcon: RewardIcon = Gift,
+  emoji, // optional food/drink emoji per stamp (matches the reference cards)
+  rewardEmoji = '🎁',
   theme,
   animate = true,
 }) {
@@ -32,7 +36,7 @@ export default function RewardStampRow({
   const iconPx = Math.round(size * 0.52)
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5">
+    <div className="flex flex-wrap items-center justify-between gap-1.5">
       {Array.from({ length: total }).map((_, i) => {
         const isReward = i === total - 1
         const filled = i < filledCount
@@ -40,13 +44,15 @@ export default function RewardStampRow({
         const on = filled || rewardLit
         const Glyph = isReward ? RewardIcon : Icon
 
+        // Filled/earned chips sit on the accent color; empty chips are a faint
+        // tinted circle so the row reads as a track (as in the references).
         const style = { width: size, height: size }
         if (on) {
           style.background = theme?.accent
           style.color = theme?.accentFg
           if (rewardLit) style['--pass-reward-glow'] = 'rgba(255,255,255,0.55)'
         } else {
-          style.border = `1.5px ${isReward ? 'dashed' : 'solid'} ${theme?.hairline}`
+          style.background = theme?.hairline
           style.color = theme?.sub
         }
 
@@ -58,7 +64,16 @@ export default function RewardStampRow({
             style={{ ...style, animationDelay: anim ? `${i * 60}ms` : undefined }}
             className={`flex items-center justify-center rounded-full ${anim} ${glow}`}
           >
-            <Glyph size={iconPx} strokeWidth={2.4} fill={on ? 'currentColor' : 'none'} />
+            {emoji ? (
+              <span
+                style={{ fontSize: iconPx, lineHeight: 1 }}
+                className={on ? '' : 'opacity-45 grayscale'}
+              >
+                {isReward ? rewardEmoji : emoji}
+              </span>
+            ) : (
+              <Glyph size={iconPx} strokeWidth={2.4} fill={on ? 'currentColor' : 'none'} />
+            )}
           </span>
         )
       })}

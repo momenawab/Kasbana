@@ -23,6 +23,7 @@ export default function PassCard({
   return (
     <article
       onClick={onClick}
+      dir="ltr"
       style={{ ...surface, boxShadow: SHADOW }}
       className={`relative flex aspect-[0.62] w-full flex-col overflow-hidden rounded-[22px] p-4 transition-transform duration-300 will-change-transform ${
         interactive ? 'hover:scale-[1.02]' : ''
