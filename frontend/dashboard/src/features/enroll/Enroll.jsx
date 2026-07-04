@@ -16,11 +16,12 @@ import Button from '../../components/Button'
 import WalletPreview from '../../components/WalletPreview'
 import Skeleton from '../../components/Skeleton'
 
-// Official wallet badges (self-hosted in public/). Drop Apple's official
-// "Add to Apple Wallet" badge at public/add-to-apple-wallet.png; until then the
-// AppleWalletButton falls back to a styled black badge-button.
+// Official wallet badges (self-hosted in public/). Apple badges are localized:
+// Arabic ships now; drop the US-UK badge at public/add-to-apple-wallet-en.svg
+// for English. AppleWalletButton falls back to a styled button if a badge 404s.
 const GOOGLE_BADGE = '/add-to-google-wallet.png'
-const APPLE_BADGE = '/add-to-apple-wallet.png'
+const APPLE_BADGE_AR = '/add-to-apple-wallet-ar.svg'
+const APPLE_BADGE_EN = '/add-to-apple-wallet-en.svg'
 
 // Build the validation schema from the merchant's field config: phone + consent
 // are always required; name/email/birthday are optional unless shown+required.
@@ -271,13 +272,14 @@ function EnrollForm({ info, token, refId, onEnrolled }) {
 // styled black badge-button. No target="_blank" and same-tab navigation: iOS
 // Safari must intercept the .pkpass response to show the Add-to-Wallet sheet.
 function AppleWalletButton({ url }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [useBadge, setUseBadge] = useState(true)
+  const badge = i18n.language === 'ar' ? APPLE_BADGE_AR : APPLE_BADGE_EN
   return (
     <a href={url} aria-label={t('enroll.addApple')} className="inline-flex">
       {useBadge ? (
         <img
-          src={APPLE_BADGE}
+          src={badge}
           alt={t('enroll.addApple')}
           className="h-12"
           onError={() => setUseBadge(false)}
