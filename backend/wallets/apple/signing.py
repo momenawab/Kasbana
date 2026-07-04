@@ -150,7 +150,13 @@ def _sign_manifest(manifest: bytes, material: SigningMaterial) -> bytes:
     )
     if material.wwdr is not None:
         builder = builder.add_certificate(material.wwdr)
-    options = [pkcs7.PKCS7Options.DetachedSignature, pkcs7.PKCS7Options.NoAttributes]
+    # Apple's reference (signpass = `openssl smime -binary -sign`, WITHOUT
+    # -noattr) signs WITH authenticated attributes — content-type, message-digest
+    # and signing-time. iOS PassKit requires them; a NoAttributes signature still
+    # passes `openssl smime -verify` but iOS rejects the pass ("Safari cannot
+    # download this file"). Binary avoids S/MIME CRLF canonicalisation of the
+    # manifest so the message-digest matches the raw bytes on disk.
+    options = [pkcs7.PKCS7Options.DetachedSignature, pkcs7.PKCS7Options.Binary]
     return builder.sign(Encoding.DER, options)
 
 
