@@ -315,6 +315,26 @@
     "reprovisionWarning": "Editing a published card re-provisions existing holders' passes.",
     "heroImage": "Banner image (Google Wallet)"
   },
+  "templatePicker": {
+    "title": "Choose a template",
+    "subtitle": "Pick a starting design, then add your own details.",
+    "use": "Use this template",
+    "comingSoon": "Coming soon",
+    "previewOnly": "Preview only — can't be published yet",
+    "skip": "Start from scratch",
+    "change": "Change template",
+    "active": "Template",
+    "names": {
+      "loyalty": "Loyalty",
+      "event": "Event",
+      "boarding": "Boarding",
+      "membership": "Membership",
+      "coupon": "Coupon",
+      "giftcard": "Gift card",
+      "invitation": "Invitation",
+      "special": "Special occasion"
+    }
+  },
   "walletDesign": {
     "title": "Wallet pass design",
     "save": "Save pass design",
