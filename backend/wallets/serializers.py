@@ -56,6 +56,7 @@ class WalletCardDesignSerializer(serializers.ModelSerializer):
             "apple_auxiliary",
             "apple_back",
             "apple_strip_enabled",
+            "strip_bg_color",
             "strip_empty_url",
             "strip_filled_url",
             "google_title",

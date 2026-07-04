@@ -35,6 +35,11 @@ def _hex_to_rgb(value: str | None, default: _RGB) -> _RGB:
         return default
 
 
+def _darken(rgb: _RGB, factor: float = 0.82) -> _RGB:
+    """Multiply an RGB toward black so a derived panel reads as a distinct band."""
+    return (int(rgb[0] * factor), int(rgb[1] * factor), int(rgb[2] * factor))
+
+
 def _local_media_bytes(url: str) -> bytes | None:
     """Read an uploaded image from local media by URL (no network / SSRF)."""
     if not url:
@@ -148,10 +153,17 @@ def build_pass_images(customer_card: CustomerCard) -> dict[str, bytes]:
     if strip_on:
         empty_icon = _local_media_bytes(design.strip_empty_url) if design else None
         filled_icon = _local_media_bytes(design.strip_filled_url) if design else None
+        # Give the strip its own band background so the stamps don't blend into
+        # the pass: the merchant's strip color, else a slightly darkened brand bg.
+        strip_bg = (
+            _hex_to_rgb(design.strip_bg_color, bg)
+            if (design and design.strip_bg_color)
+            else _darken(bg)
+        )
         base = _render_stamp_strip(
             customer_card.stamp_count,
             card.stamps_required,
-            bg,
+            strip_bg,
             fg,
             (1125, 369),
             empty_icon=empty_icon,

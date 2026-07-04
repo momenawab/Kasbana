@@ -17,6 +17,18 @@ function slotsOr(designSlots, fallback) {
   return designSlots && designSlots.length ? designSlots : fallback
 }
 
+// Darken a #RRGGBB toward black (mirrors the backend strip default) so the strip
+// band reads as its own row when no explicit strip color is set.
+function darkenHex(hex, factor = 0.82) {
+  const m = (hex || '').match(/^#?([0-9a-f]{6})$/i)
+  if (!m) return hex
+  const n = parseInt(m[1], 16)
+  const r = Math.round(((n >> 16) & 255) * factor)
+  const g = Math.round(((n >> 8) & 255) * factor)
+  const b = Math.round((n & 255) * factor)
+  return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`
+}
+
 function Field({ label, value, fg, labelColor, align = 'start' }) {
   return (
     <div className={`flex min-w-0 flex-col ${align === 'end' ? 'items-end text-right' : ''}`}>
@@ -210,9 +222,12 @@ export default function WalletPreview({
         </div>
       </div>
 
-      {/* Strip (stamp grid) */}
+      {/* Strip (stamp grid) — its own band background so it doesn't blend in */}
       {stripOn && (
-        <div className="mt-3 rounded-lg bg-black/15 p-3">
+        <div
+          className="mt-3 rounded-lg p-3"
+          style={{ background: design?.strip_bg_color || darkenHex(colorBg) }}
+        >
           <StampGrid
             count={stampCount}
             required={goal}
