@@ -32,6 +32,9 @@ class BillingStateSerializer(serializers.Serializer):
     price_egp = serializers.DecimalField(max_digits=10, decimal_places=2)
     usage = UsageSerializer()
     next_renewal = serializers.DateTimeField(allow_null=True)
+    # Set when a merchant-initiated cancel is pending: access continues until
+    # this date, then the plan locks. Null when no cancellation is scheduled.
+    cancels_on = serializers.DateTimeField(allow_null=True, required=False)
     payment_method = PaymentMethodSerializer(allow_null=True)
 
 

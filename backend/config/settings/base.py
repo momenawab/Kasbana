@@ -332,6 +332,13 @@ CELERY_BEAT_SCHEDULE = {
         "task": "billing.tasks.expire_trials",
         "schedule": 3600.0,  # hourly
     },
+    # Lock subs whose period-end cancel has lapsed (note 6 — cancel keeps access
+    # until the period ends). effective_plan already locks lazily; this tidies
+    # the stored status so queries/dashboard reflect the cancellation.
+    "billing-expire-scheduled-cancels": {
+        "task": "billing.tasks.expire_scheduled_cancellations",
+        "schedule": 3600.0,  # hourly
+    },
     # Fire date-driven engage automations (birthday/expiry/winback) (Phase 1.7).
     "messaging-scan-automations": {
         "task": "messaging.tasks.scan_automations",

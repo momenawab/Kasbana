@@ -215,13 +215,48 @@ def test_paymob_webhook_bad_hmac_rejected(settings, merchant):
     assert resp.status_code == 400
 
 
-def test_cancel_locks_subscription(merchant):
+def test_cancel_on_trial_schedules_and_keeps_access(merchant):
+    """A trialing merchant who cancels keeps trial access until it lapses."""
     client, _ = _client_for(Role.OWNER, merchant)
     resp = client.post("/api/v1/billing/cancel", {"reason": "too pricey"}, format="json")
     assert resp.status_code == 200
     assert resp.json()["ok"] is True
+    assert resp.json()["cancels_on"] is not None
     sub = Subscription.objects.get(merchant=merchant)
-    assert sub.status == BillingStatus.CANCELED
+    # Not locked yet — access is retained until the period (trial) ends.
+    assert sub.status == BillingStatus.TRIALING
+    assert sub.cancel_at_period_end is True
+    assert sub.effective_plan() is not None
+
+
+def test_cancel_on_paid_plan_keeps_access_until_period_end(merchant):
+    """A paid merchant keeps their plan until current_period_end, then locks."""
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from billing.services import subscription_for
+
+    sub = subscription_for(merchant)
+    sub.status = BillingStatus.ACTIVE
+    sub.plan = PlanTier.GROWTH
+    sub.current_period_end = timezone.now() + timedelta(days=20)
+    sub.save()
+
+    client, _ = _client_for(Role.OWNER, merchant)
+    resp = client.post("/api/v1/billing/cancel", {"reason": "later"}, format="json")
+    assert resp.status_code == 200
+
+    sub.refresh_from_db()
+    assert sub.status == BillingStatus.ACTIVE  # still active until period end
+    assert sub.cancel_at_period_end is True
+    assert sub.effective_plan() == PlanTier.GROWTH  # access retained now
+
+    # Fast-forward past the period end: access is now locked.
+    sub.current_period_end = timezone.now() - timedelta(minutes=1)
+    sub.save()
+    assert sub.effective_plan() is None
+    assert sub.cancels_on() is None
 
 
 # ── invoices ──────────────────────────────────────────────────────────────────

@@ -73,6 +73,8 @@ def object_state_for(customer_card: CustomerCard) -> str:
 
 
 def build_loyalty_object(customer_card: CustomerCard) -> dict:
+    from wallets.shortcode import code_for
+
     card = customer_card.card
     barcode_value = f"{constants.PASS_BARCODE_PREFIX}{customer_card.id.hex}"
     return {
@@ -92,6 +94,7 @@ def build_loyalty_object(customer_card: CustomerCard) -> dict:
         "barcode": {
             "type": "QR_CODE",
             "value": barcode_value,
-            "alternateText": customer_card.customer_phone,
+            # Short human code under the QR — a cashier can type it on Scan (note 1).
+            "alternateText": code_for(customer_card),
         },
     }

@@ -124,12 +124,15 @@ def build_pass_json(customer_card: CustomerCard) -> dict:
     back_fields.extend(_message_back_fields(customer_card))
     back_fields.append({"key": "merchant", "label": "Merchant", "value": merchant.name})
 
+    from wallets.shortcode import code_for
+
     barcode_message = f"{constants.PASS_BARCODE_PREFIX}{customer_card.id.hex}"
     barcode = {
         "format": "PKBarcodeFormatQR",
         "message": barcode_message,
         "messageEncoding": "iso-8859-1",
-        "altText": customer_card.customer_phone,
+        # Short human code under the QR — a cashier can type it on Scan (note 1).
+        "altText": code_for(customer_card),
     }
 
     payload = {

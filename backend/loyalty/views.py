@@ -21,6 +21,7 @@ from typing import cast
 
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema
+from rest_framework.exceptions import NotFound
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -29,7 +30,7 @@ from common.middleware import resolve_staff
 from common.permissions import IsScannerOrAbove
 from core import ledger
 from core.models import CustomerCard, Reward, StaffUser
-from core.tenancy import get_scoped
+from core.tenancy import get_request_merchant, get_scoped
 from loyalty.idempotency import run_idempotent
 from loyalty.serializers import (
     CardStateSerializer,
@@ -62,6 +63,36 @@ def _card_state(card: CustomerCard) -> dict:
             "card_type": card.card.type,
         }
     ).data
+
+
+def _resolve_scan_code(request: Request, code: str) -> CustomerCard:
+    """Resolve a scanned/typed code to a CustomerCard within the caller's merchant.
+
+    Accepts either the raw wallet QR payload (``{PASS_BARCODE_PREFIX}{id.hex}``,
+    from a scan or HID gun) or the short human code printed under the QR (typed).
+    Cross-tenant or unknown codes are 404 (``get_object_or_404``-style) so the
+    till never leaks another merchant's card. (note 1)
+    """
+    import uuid
+
+    from core import constants
+    from wallets import shortcode
+
+    raw = (code or "").strip()
+    prefix = constants.PASS_BARCODE_PREFIX
+    if raw.upper().startswith(prefix):
+        try:
+            card_id = uuid.UUID(hex=raw[len(prefix) :])
+        except ValueError:
+            raise NotFound("Unrecognized wallet code.")
+        return get_scoped(CustomerCard, request, id=card_id)
+
+    # Otherwise treat it as a short human code (tenant-scoped lookup).
+    merchant = get_request_merchant(request)
+    card = shortcode.resolve(merchant, raw)
+    if card is None:
+        raise NotFound("Unrecognized wallet code.")
+    return card
 
 
 class StampView(APIView):
@@ -178,7 +209,7 @@ class ScanView(APIView):
     def post(self, request: Request) -> Response:
         body = ScanRequestSerializer(data=request.data)
         body.is_valid(raise_exception=True)
-        card = get_scoped(CustomerCard, request, id=body.validated_data["code"])
+        card = _resolve_scan_code(request, body.validated_data["code"])
         return Response(_card_state(card))
 
 

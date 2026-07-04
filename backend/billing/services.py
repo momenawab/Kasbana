@@ -49,6 +49,7 @@ def activate_plan(
     sub = subscription_for(merchant)
     sub.plan = plan
     sub.status = BillingStatus.ACTIVE
+    sub.cancel_at_period_end = False  # a new/renewed subscription clears any pending cancel
     if provider:
         sub.provider = provider
     if gateway_ref:
@@ -85,6 +86,28 @@ def lock(merchant: Merchant, *, status: str = BillingStatus.LOCKED) -> Subscript
     sub = subscription_for(merchant)
     sub.status = status
     sub.save(update_fields=["status", "updated_at"])
+    return sub
+
+
+@transaction.atomic
+def schedule_cancel(merchant: Merchant) -> Subscription:
+    """Merchant-initiated cancel that keeps access until the period ends.
+
+    The sub stays ACTIVE and fully entitled until ``current_period_end``; after
+    that ``Subscription.effective_plan`` locks it (lazy — no cron needed, though
+    ``expire_scheduled_cancellations`` tidies the stored status). If there is no
+    paid period to run out (no ``current_period_end`` on an active plan), there
+    is nothing to wait for, so lock immediately. A trial is left to expire on its
+    own ``trial_ends_at`` — we only flag the intent so it won't be reactivated.
+    """
+    sub = subscription_for(merchant)
+    if sub.status == BillingStatus.ACTIVE and sub.current_period_end is None:
+        sub.status = BillingStatus.CANCELED
+        sub.cancel_at_period_end = False
+        sub.save(update_fields=["status", "cancel_at_period_end", "updated_at"])
+        return sub
+    sub.cancel_at_period_end = True
+    sub.save(update_fields=["cancel_at_period_end", "updated_at"])
     return sub
 
 
