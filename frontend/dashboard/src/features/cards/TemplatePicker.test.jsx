@@ -26,16 +26,16 @@ describe('<TemplatePicker>', () => {
     }
   })
 
-  it('offers loyalty as publishable and marks the other seven preview-only', () => {
+  it('offers all eight templates as publishable', () => {
     render(<TemplatePicker onChoose={() => {}} onSkip={() => {}} />)
-    expect(screen.getAllByText('Use this template')).toHaveLength(1)
-    expect(screen.getAllByText('Coming soon')).toHaveLength(7)
+    expect(screen.getAllByText('Use this template')).toHaveLength(8)
+    expect(screen.queryByText('Coming soon')).toBeNull()
   })
 
-  it('calls onChoose with the loyalty id when its button is clicked', () => {
+  it('calls onChoose with the template id when a card button is clicked', () => {
     const onChoose = vi.fn()
     render(<TemplatePicker onChoose={onChoose} onSkip={() => {}} />)
-    fireEvent.click(screen.getByText('Use this template'))
+    fireEvent.click(screen.getAllByText('Use this template')[0])
     expect(onChoose).toHaveBeenCalledWith('loyalty')
   })
 
