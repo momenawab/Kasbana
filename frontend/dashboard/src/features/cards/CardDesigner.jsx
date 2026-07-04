@@ -13,6 +13,7 @@ import { Toggle } from '../../components/Toggle'
 import ColorPicker from '../../components/ColorPicker'
 import FileUpload from '../../components/FileUpload'
 import WalletPreview from '../../components/WalletPreview'
+import WalletDesignEditor from './WalletDesignEditor'
 import Button from '../../components/Button'
 import Skeleton from '../../components/Skeleton'
 
@@ -200,8 +201,16 @@ export default function CardDesigner() {
           <FileUpload label={t('onboarding.logo')} onUploaded={set('logo_url')} />
           <FileUpload label={t('designer.heroImage')} onUploaded={set('hero_image_url')} />
           <div className="grid grid-cols-2 gap-3">
-            <ColorPicker label={t('onboarding.colorBg')} value={form.color_bg} onChange={set('color_bg')} />
-            <ColorPicker label={t('onboarding.colorFg')} value={form.color_fg} onChange={set('color_fg')} />
+            <ColorPicker
+              label={t('onboarding.colorBg')}
+              value={form.color_bg}
+              onChange={set('color_bg')}
+            />
+            <ColorPicker
+              label={t('onboarding.colorFg')}
+              value={form.color_fg}
+              onChange={set('color_fg')}
+            />
           </div>
           <Toggle
             checked={form.collect_birthday}
@@ -225,7 +234,12 @@ export default function CardDesigner() {
             <p className="mt-1 text-xs text-tx-3">{t('designer.referralHint')}</p>
           </div>
           <div className="flex gap-2 pt-2">
-            <Button variant="ghost" onClick={() => persist('DRAFT')} loading={save.isPending} className="flex-1">
+            <Button
+              variant="ghost"
+              onClick={() => persist('DRAFT')}
+              loading={save.isPending}
+              className="flex-1"
+            >
               {t('designer.saveDraft')}
             </Button>
             <Button onClick={() => persist('ACTIVE')} loading={save.isPending} className="flex-1">
@@ -237,15 +251,24 @@ export default function CardDesigner() {
         {/* Live preview */}
         <div className="flex flex-col items-center gap-3 rounded-card bg-paper p-5">
           <div className="flex gap-2">
-            <Button size="sm" variant={platform === 'APPLE' ? 'primary' : 'ghost'} onClick={() => setPlatform('APPLE')}>
+            <Button
+              size="sm"
+              variant={platform === 'APPLE' ? 'primary' : 'ghost'}
+              onClick={() => setPlatform('APPLE')}
+            >
               Apple
             </Button>
-            <Button size="sm" variant={platform === 'GOOGLE' ? 'primary' : 'ghost'} onClick={() => setPlatform('GOOGLE')}>
+            <Button
+              size="sm"
+              variant={platform === 'GOOGLE' ? 'primary' : 'ghost'}
+              onClick={() => setPlatform('GOOGLE')}
+            >
               Google
             </Button>
           </div>
           <WalletPreview
             platform={platform}
+            cardType={form.type}
             logoUrl={form.logo_url}
             colorBg={form.color_bg}
             colorFg={form.color_fg}
@@ -257,6 +280,15 @@ export default function CardDesigner() {
           />
         </div>
       </div>
+
+      {/* Wallet pass design (notes 2-4) — edit-mode only (needs a saved card). */}
+      {isEdit ? (
+        <WalletDesignEditor cardId={id} card={{ ...form, merchantName: merchant?.name }} />
+      ) : (
+        <p className="mt-6 rounded-card border border-line bg-paper p-4 text-center text-sm text-tx-3">
+          {t('walletDesign.saveFirst')}
+        </p>
+      )}
     </div>
   )
 }

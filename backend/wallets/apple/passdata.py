@@ -61,6 +61,7 @@ def _unit_label(card: Card) -> str:
 
 def build_pass_json(customer_card: CustomerCard) -> dict:
     from core.enums import CardType, CustomerCardStatus
+    from wallets import design as design_mod
 
     card = customer_card.card
     merchant = card.merchant
@@ -72,6 +73,14 @@ def build_pass_json(customer_card: CustomerCard) -> dict:
     goal = card.stamps_required
     remaining = max(0, goal - count) if goal else 0
 
+    # Merchant overrides (notes 2-4): any blank/empty slot keeps the smart default.
+    design = design_mod.get_design(card)
+    ctx = design_mod.field_context(customer_card)
+    label_color = _rgb(design.label_color, "#ffffff") if (design and design.label_color) else fg
+    # The strip carries the stamp grid; when it's off, lead with the balance in
+    # the primary area instead of leaving it clear for the strip.
+    use_strip = is_stamp and (design.apple_strip_enabled if design else True)
+
     # Top-right header: compact progress next to the logo.
     header_fields = [
         {"key": "balance", "label": unit.upper(), "value": f"{count}/{goal}" if goal else count}
@@ -80,7 +89,7 @@ def build_pass_json(customer_card: CustomerCard) -> dict:
     # STAMP cards carry a strip image with the stamp grid, so keep the primary
     # (over-strip) area clear and show progress below in secondary fields — the
     # coffee-card layout. POINTS cards have no strip, so lead with the balance.
-    if is_stamp:
+    if use_strip:
         primary_fields: list[dict] = []
         secondary_fields = [
             {
@@ -99,6 +108,17 @@ def build_pass_json(customer_card: CustomerCard) -> dict:
         if card.reward_title
         else []
     )
+
+    # Apply per-region overrides where the merchant configured slots.
+    if design:
+        if design.apple_header:
+            header_fields = design_mod.render_slots(design.apple_header, ctx)
+        if design.apple_primary:
+            primary_fields = design_mod.render_slots(design.apple_primary, ctx)
+        if design.apple_secondary:
+            secondary_fields = design_mod.render_slots(design.apple_secondary, ctx)
+        if design.apple_auxiliary:
+            auxiliary_fields = design_mod.render_slots(design.apple_auxiliary, ctx)
 
     back_fields: list[dict] = []
     if card.reward_title:
@@ -123,6 +143,8 @@ def build_pass_json(customer_card: CustomerCard) -> dict:
     )
     back_fields.extend(_message_back_fields(customer_card))
     back_fields.append({"key": "merchant", "label": "Merchant", "value": merchant.name})
+    if design and design.apple_back:
+        back_fields.extend(design_mod.render_slots(design.apple_back, ctx))
 
     from wallets.shortcode import code_for
 
@@ -146,7 +168,7 @@ def build_pass_json(customer_card: CustomerCard) -> dict:
         "authenticationToken": customer_card.auth_token,
         "backgroundColor": bg,
         "foregroundColor": fg,
-        "labelColor": fg,
+        "labelColor": label_color,
         "sharingProhibited": True,
         "storeCard": {
             "headerFields": header_fields,
@@ -159,9 +181,12 @@ def build_pass_json(customer_card: CustomerCard) -> dict:
         "barcodes": [barcode],
         "barcode": barcode,
     }
-    # logoText appears beside the logo image; omit it when a branded logo is set
-    # (the wordmark already carries the name) to avoid a duplicate label.
-    if not (card.logo_url or merchant.logo_url):
+    # logoText appears beside the logo image. A merchant override always wins;
+    # otherwise omit it when a branded logo is set (the wordmark already carries
+    # the name) to avoid a duplicate label.
+    if design and design.apple_logo_text:
+        payload["logoText"] = design.apple_logo_text
+    elif not (card.logo_url or merchant.logo_url):
         payload["logoText"] = merchant.name
     # Void a no-longer-active pass (single-use completion / blocked) — iOS greys
     # it out and marks it expired.

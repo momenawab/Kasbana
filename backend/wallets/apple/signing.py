@@ -136,11 +136,26 @@ def build_pass_images(customer_card: CustomerCard) -> dict[str, bytes]:
 
     # STAMP cards get a strip image with a stamp grid (earned filled, remaining
     # outlined) — the coffee-card look. Points cards have no grid, so no strip.
+    # A merchant can turn the strip off, or supply custom empty/filled stamp
+    # icons that get tiled in place of the drawn circles (notes 2-4).
     from core.enums import CardType
+    from wallets import design as design_mod
 
-    if card.type == CardType.STAMP and card.stamps_required > 0:
+    design = design_mod.get_design(card)
+    strip_on = card.type == CardType.STAMP and card.stamps_required > 0
+    if design is not None:
+        strip_on = strip_on and design.apple_strip_enabled
+    if strip_on:
+        empty_icon = _local_media_bytes(design.strip_empty_url) if design else None
+        filled_icon = _local_media_bytes(design.strip_filled_url) if design else None
         base = _render_stamp_strip(
-            customer_card.stamp_count, card.stamps_required, bg, fg, (1125, 369)
+            customer_card.stamp_count,
+            card.stamps_required,
+            bg,
+            fg,
+            (1125, 369),
+            empty_icon=empty_icon,
+            filled_icon=filled_icon,
         )
         images["strip@3x.png"] = _png(base)
         images["strip@2x.png"] = _png(base.resize((750, 246), Image.Resampling.LANCZOS))
@@ -150,9 +165,20 @@ def build_pass_images(customer_card: CustomerCard) -> dict[str, bytes]:
 
 
 def _render_stamp_strip(
-    earned: int, required: int, bg: _RGB, fg: _RGB, size: tuple[int, int]
+    earned: int,
+    required: int,
+    bg: _RGB,
+    fg: _RGB,
+    size: tuple[int, int],
+    empty_icon: bytes | None = None,
+    filled_icon: bytes | None = None,
 ):  # type: ignore[no-untyped-def]
-    """Draw the stamp grid on a brand-color strip (earned filled, remaining outline)."""
+    """Draw the stamp grid on a brand-color strip (earned filled, remaining outline).
+
+    When both ``empty_icon`` and ``filled_icon`` are supplied the cells are tiled
+    from those custom PNGs (filled for earned, empty for remaining) instead of the
+    default drawn circles (notes 2-4).
+    """
     from PIL import Image, ImageDraw
 
     w, h = size
@@ -169,6 +195,11 @@ def _render_stamp_strip(
     radius = int(min(cell_w, cell_h) * 0.34)
     ring = max(4, radius // 7)
 
+    custom = _load_icon(filled_icon), _load_icon(empty_icon)
+    icon_filled, icon_empty = custom
+    use_custom = icon_filled is not None and icon_empty is not None
+    icon_size = int(min(cell_w, cell_h) * 0.82)
+
     for i in range(n):
         r, c = divmod(i, cols)
         # centre the last row if it is short
@@ -176,12 +207,29 @@ def _render_stamp_strip(
         row_w = in_row * cell_w
         x0 = (w - row_w) / 2 + c * cell_w + cell_w / 2
         cy = pad_y + r * cell_h + cell_h / 2
+        if use_custom:
+            icon = icon_filled if i < earned else icon_empty
+            glyph = icon.resize((icon_size, icon_size), Image.Resampling.LANCZOS)
+            canvas.paste(glyph, (int(x0 - icon_size / 2), int(cy - icon_size / 2)), glyph)
+            continue
         box = [x0 - radius, cy - radius, x0 + radius, cy + radius]
         if i < earned:
             draw.ellipse(box, fill=(*fg, 255))  # earned = solid
         else:
             draw.ellipse(box, outline=(*fg, 150), width=ring)  # remaining = ring
     return canvas
+
+
+def _load_icon(data: bytes | None):  # type: ignore[no-untyped-def]
+    """Decode custom stamp-icon bytes to an RGBA image, or None if unusable."""
+    if not data:
+        return None
+    try:
+        from PIL import Image
+
+        return Image.open(io.BytesIO(data)).convert("RGBA")
+    except Exception:  # pragma: no cover - bad image bytes
+        return None
 
 
 def digest_dict(files: dict[str, bytes]) -> dict[str, str]:

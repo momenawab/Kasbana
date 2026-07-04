@@ -27,13 +27,16 @@ def _hex_color(value: str, fallback: str) -> str:
 
 
 def build_loyalty_class(card: Card) -> dict:
+    from wallets import design as design_mod
+
     merchant = card.merchant
+    design = design_mod.get_design(card)
     # Google requires a program logo on every class; fall back to the default.
     program_logo = card.logo_url or merchant.logo_url or settings.WALLET_DEFAULT_LOGO_URL
     payload: dict = {
         "id": class_id_for(card),
         "issuerName": merchant.name,
-        "programName": card.name,
+        "programName": (design.google_title if design and design.google_title else card.name),
         "reviewStatus": "UNDER_REVIEW",
         "hexBackgroundColor": _hex_color(card.color_bg or merchant.color_bg, "#0b7a5b"),
         "countryCode": "EG",
@@ -73,11 +76,12 @@ def object_state_for(customer_card: CustomerCard) -> str:
 
 
 def build_loyalty_object(customer_card: CustomerCard) -> dict:
+    from wallets import design as design_mod
     from wallets.shortcode import code_for
 
     card = customer_card.card
     barcode_value = f"{constants.PASS_BARCODE_PREFIX}{customer_card.id.hex}"
-    return {
+    payload: dict = {
         "id": object_id_for(customer_card),
         "classId": class_id_for(card),
         "state": object_state_for(customer_card),
@@ -98,3 +102,21 @@ def build_loyalty_object(customer_card: CustomerCard) -> dict:
             "alternateText": code_for(customer_card),
         },
     }
+
+    # Merchant module rows + subtitle (notes 2-4). Google renders these as
+    # textModulesData under the balance; blank/empty = none (unchanged default).
+    design = design_mod.get_design(card)
+    if design:
+        modules: list[dict] = []
+        if design.google_subtitle:
+            modules.append({"id": "subtitle", "header": "", "body": design.google_subtitle})
+        if design.google_rows:
+            ctx = design_mod.field_context(customer_card)
+            for slot in design_mod.render_slots(design.google_rows, ctx):
+                modules.append(
+                    {"id": slot["key"], "header": slot["label"], "body": str(slot["value"])}
+                )
+        if modules:
+            payload["textModulesData"] = modules
+
+    return payload

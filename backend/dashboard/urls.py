@@ -30,6 +30,7 @@ from dashboard.views_announcements import (
 from dashboard.views_announcements import (
     AnnouncementReadView,
 )
+from wallets.views import CardWalletDesignView
 
 urlpatterns = [
     # Cards
@@ -37,6 +38,12 @@ urlpatterns = [
     path("cards/<uuid:card_id>", CardDetailView.as_view(), name="card-detail"),
     path("cards/<uuid:card_id>/stats", CardStatsView.as_view(), name="card-stats"),
     path("cards/<uuid:card_id>/qr", CardQRView.as_view(), name="card-qr"),
+    # Wallet pass design (Apple/Google editable variables — notes 2-4)
+    path(
+        "cards/<uuid:card_id>/wallet-design",
+        CardWalletDesignView.as_view(),
+        name="card-wallet-design",
+    ),
     # Uploads
     path("uploads", UploadView.as_view(), name="upload"),
     # Customers

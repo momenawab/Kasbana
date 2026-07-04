@@ -10,10 +10,15 @@ but we record every send for both platforms for history/debugging.
 
 from __future__ import annotations
 
+from django.core.validators import RegexValidator
 from django.db import models
 
 from core.enums import WalletPlatform
-from core.models import CustomerCard, Merchant, TimeStampedModel, UUIDModel
+from core.models import Card, CustomerCard, Merchant, TimeStampedModel, UUIDModel
+from core.tenancy import TenantManager
+
+# Matches the ``#RRGGBB`` shape used by ``core.Merchant``/``Card`` colors.
+hex_color = RegexValidator(r"^#(?:[0-9a-fA-F]{6})$", "Enter a hex color like #1A2B3C.")
 
 
 class WalletMessage(UUIDModel, TimeStampedModel):
@@ -96,3 +101,49 @@ class WalletSyncFailure(UUIDModel, TimeStampedModel):
 
     def __str__(self) -> str:
         return f"{self.operation} {self.platform} · {self.customer_card_id} · {self.error[:40]}"
+
+
+class WalletCardDesign(UUIDModel, TimeStampedModel):
+    """Merchant-editable Apple/Google pass design for one card (notes 2-4).
+
+    Owned by ``wallets/`` so the frozen ``core.Card`` schema is untouched. Every
+    field defaults to blank/empty, meaning "use the built-in smart default the
+    pass builders already compute" — so a card with no design row behaves exactly
+    as before. A stored value overrides that default.
+
+    Apple field slots are JSON lists of ``{"label": str, "source": str}`` where
+    ``source`` is a value token (see ``wallets.design.VALUE_TOKENS``) or
+    ``"text:<literal>"`` for static text. Google is more constrained (title +
+    subtitle + a couple of module rows), mirroring what each platform renders.
+    """
+
+    card = models.OneToOneField(Card, on_delete=models.CASCADE, related_name="wallet_design")
+    merchant = models.ForeignKey(Merchant, on_delete=models.CASCADE, related_name="wallet_designs")
+
+    # ── Shared ──────────────────────────────────────────────────────────────
+    # bg/fg live on core.Card (color_bg/color_fg); this is the field-label tint.
+    label_color = models.CharField(max_length=7, blank=True, validators=[hex_color])
+
+    # ── Apple (the flexible platform) ───────────────────────────────────────
+    apple_logo_text = models.CharField(max_length=40, blank=True)  # blank = merchant name
+    apple_header = models.JSONField(default=list, blank=True)  # <=3 slots
+    apple_primary = models.JSONField(default=list, blank=True)  # <=1 slot
+    apple_secondary = models.JSONField(default=list, blank=True)  # <=4 slots
+    apple_auxiliary = models.JSONField(default=list, blank=True)  # <=4 slots
+    apple_back = models.JSONField(default=list, blank=True)  # extra back fields
+    apple_strip_enabled = models.BooleanField(default=True)  # show the stamp grid strip
+    # Custom stamp icons (uploaded via /uploads). When both are set the strip is
+    # tiled from them (empty for remaining, filled for earned) instead of the
+    # drawn circles. Apple/stamp cards only.
+    strip_empty_url = models.URLField(blank=True)
+    strip_filled_url = models.URLField(blank=True)
+
+    # ── Google (constrained) ────────────────────────────────────────────────
+    google_title = models.CharField(max_length=40, blank=True)  # blank = merchant name
+    google_subtitle = models.CharField(max_length=60, blank=True)  # blank = program name
+    google_rows = models.JSONField(default=list, blank=True)  # module rows <=3 slots
+
+    objects = TenantManager()
+
+    def __str__(self) -> str:
+        return f"design({self.card_id})"
