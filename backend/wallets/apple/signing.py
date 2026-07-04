@@ -126,13 +126,62 @@ def build_pass_images(customer_card: CustomerCard) -> dict[str, bytes]:
         draw.text((0, (h - (bottom - top)) / 2 - top), text, font=font, fill=(*fg, 255))
         return _png(canvas)
 
-    return {
+    images: dict[str, bytes] = {
         "icon.png": _icon(29),
         "icon@2x.png": _icon(58),
         "icon@3x.png": _icon(87),
         "logo.png": _logo(160, 50),
         "logo@2x.png": _logo(320, 100),
     }
+
+    # STAMP cards get a strip image with a stamp grid (earned filled, remaining
+    # outlined) — the coffee-card look. Points cards have no grid, so no strip.
+    from core.enums import CardType
+
+    if card.type == CardType.STAMP and card.stamps_required > 0:
+        base = _render_stamp_strip(
+            customer_card.stamp_count, card.stamps_required, bg, fg, (1125, 369)
+        )
+        images["strip@3x.png"] = _png(base)
+        images["strip@2x.png"] = _png(base.resize((750, 246), Image.Resampling.LANCZOS))
+        images["strip.png"] = _png(base.resize((375, 123), Image.Resampling.LANCZOS))
+
+    return images
+
+
+def _render_stamp_strip(
+    earned: int, required: int, bg: _RGB, fg: _RGB, size: tuple[int, int]
+):  # type: ignore[no-untyped-def]
+    """Draw the stamp grid on a brand-color strip (earned filled, remaining outline)."""
+    from PIL import Image, ImageDraw
+
+    w, h = size
+    canvas = Image.new("RGBA", (w, h), (*bg, 255))
+    draw = ImageDraw.Draw(canvas)
+
+    n = max(1, min(required, 15))  # cap so a big card doesn't render dust
+    earned = max(0, min(earned, n))
+    rows = 1 if n <= 5 else 2
+    cols = (n + rows - 1) // rows
+    pad_x, pad_y = int(w * 0.06), int(h * 0.14)
+    cell_w = (w - 2 * pad_x) / cols
+    cell_h = (h - 2 * pad_y) / rows
+    radius = int(min(cell_w, cell_h) * 0.34)
+    ring = max(4, radius // 7)
+
+    for i in range(n):
+        r, c = divmod(i, cols)
+        # centre the last row if it is short
+        in_row = cols if r < rows - 1 else n - cols * (rows - 1)
+        row_w = in_row * cell_w
+        x0 = (w - row_w) / 2 + c * cell_w + cell_w / 2
+        cy = pad_y + r * cell_h + cell_h / 2
+        box = [x0 - radius, cy - radius, x0 + radius, cy + radius]
+        if i < earned:
+            draw.ellipse(box, fill=(*fg, 255))  # earned = solid
+        else:
+            draw.ellipse(box, outline=(*fg, 150), width=ring)  # remaining = ring
+    return canvas
 
 
 def digest_dict(files: dict[str, bytes]) -> dict[str, str]:
