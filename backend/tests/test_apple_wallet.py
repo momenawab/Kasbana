@@ -78,12 +78,16 @@ def test_pass_json_has_required_fields(customer_card):
     assert p["teamIdentifier"] == "TEAM123456"
     assert p["authenticationToken"] == customer_card.auth_token
     assert p["webServiceURL"] == "https://api.stampn.net/api/v1/wallet/apple"
-    assert p["storeCard"]["primaryFields"][0]["value"] == 2
+    # STAMP card: current count lives in the header balance ("count/goal").
+    assert p["storeCard"]["headerFields"][0]["value"].split("/")[0] == "2"
 
 
 def test_pass_json_has_no_message_field_without_a_message(customer_card):
     p = passdata.build_pass_json(customer_card)
-    assert p["storeCard"]["backFields"] == []
+    back = p["storeCard"]["backFields"]
+    # Back fields now include reward/how-it-works/merchant, but none is a wallet
+    # message (a message field is the one carrying changeMessage "%@").
+    assert all(f.get("changeMessage") != "%@" for f in back)
 
 
 def test_active_pass_is_not_voided(customer_card):
@@ -105,12 +109,11 @@ def test_pass_json_surfaces_latest_message_with_change_message(customer_card):
     WalletMessage.objects.create(customer_card=customer_card, title="Promo", body="Free coffee!")
 
     back = passdata.build_pass_json(customer_card)["storeCard"]["backFields"]
-    assert len(back) == 1
-    field = back[0]
-    assert field["value"] == "Free coffee!"  # newest wins
-    assert field["label"] == "Promo"
-    # changeMessage is what makes iOS show a lock-screen notification on change.
-    assert field["changeMessage"] == "%@"
+    # The message field is the one carrying changeMessage "%@".
+    msg = [f for f in back if f.get("changeMessage") == "%@"]
+    assert len(msg) == 1
+    assert msg[0]["value"] == "Free coffee!"  # newest wins
+    assert msg[0]["label"] == "Promo"
 
 
 def test_build_pkpass_is_valid_zip_with_matching_manifest(customer_card):

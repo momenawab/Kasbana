@@ -60,13 +60,77 @@ def _unit_label(card: Card) -> str:
 
 
 def build_pass_json(customer_card: CustomerCard) -> dict:
-    from core.enums import CustomerCardStatus
+    from core.enums import CardType, CustomerCardStatus
 
     card = customer_card.card
     merchant = card.merchant
     unit = _unit_label(card)
     bg = _rgb(card.color_bg or merchant.color_bg, "#0b7a5b")
     fg = _rgb(card.color_fg or merchant.color_fg, "#ffffff")
+    is_stamp = card.type == CardType.STAMP
+    count = customer_card.stamp_count
+    goal = card.stamps_required
+    remaining = max(0, goal - count) if goal else 0
+
+    # Top-right header: compact progress next to the logo.
+    header_fields = [
+        {"key": "balance", "label": unit.upper(), "value": f"{count}/{goal}" if goal else count}
+    ]
+
+    # STAMP cards carry a strip image with the stamp grid, so keep the primary
+    # (over-strip) area clear and show progress below in secondary fields — the
+    # coffee-card layout. POINTS cards have no strip, so lead with the balance.
+    if is_stamp:
+        primary_fields: list[dict] = []
+        secondary_fields = [
+            {
+                "key": "remaining",
+                "label": "STAMPS UNTIL NEXT REWARD" if remaining else "REWARD READY 🎉",
+                "value": remaining,
+                "changeMessage": "%@ stamps until your next reward",
+            }
+        ]
+    else:
+        primary_fields = [{"key": "stamps", "label": unit, "value": count}]
+        secondary_fields = [{"key": "goal", "label": "Goal", "value": goal}]
+
+    auxiliary_fields = (
+        [{"key": "reward", "label": "REWARD", "value": card.reward_title}]
+        if card.reward_title
+        else []
+    )
+
+    back_fields: list[dict] = []
+    if card.reward_title:
+        back_fields.append(
+            {"key": "reward_back", "label": "Your reward", "value": card.reward_title}
+        )
+    if card.reward_description:
+        back_fields.append(
+            {"key": "reward_desc", "label": "Details", "value": card.reward_description}
+        )
+    back_fields.append(
+        {
+            "key": "howto",
+            "label": "How it works",
+            "value": (
+                f"Collect {goal} {unit.lower()} to earn your reward. "
+                "Show this pass at checkout to get stamped."
+                if is_stamp
+                else "Earn points on every visit. Show this pass at checkout."
+            ),
+        }
+    )
+    back_fields.extend(_message_back_fields(customer_card))
+    back_fields.append({"key": "merchant", "label": "Merchant", "value": merchant.name})
+
+    barcode_message = f"{constants.PASS_BARCODE_PREFIX}{customer_card.id.hex}"
+    barcode = {
+        "format": "PKBarcodeFormatQR",
+        "message": barcode_message,
+        "messageEncoding": "iso-8859-1",
+        "altText": customer_card.customer_phone,
+    }
 
     payload = {
         "formatVersion": 1,
@@ -79,26 +143,23 @@ def build_pass_json(customer_card: CustomerCard) -> dict:
         "authenticationToken": customer_card.auth_token,
         "backgroundColor": bg,
         "foregroundColor": fg,
-        "logoText": merchant.name,
+        "labelColor": fg,
+        "sharingProhibited": True,
         "storeCard": {
-            "primaryFields": [{"key": "stamps", "label": unit, "value": customer_card.stamp_count}],
-            "secondaryFields": [{"key": "goal", "label": "Goal", "value": card.stamps_required}],
-            "auxiliaryFields": (
-                [{"key": "reward", "label": "Reward", "value": card.reward_title}]
-                if card.reward_title
-                else []
-            ),
-            "backFields": _message_back_fields(customer_card),
+            "headerFields": header_fields,
+            "primaryFields": primary_fields,
+            "secondaryFields": secondary_fields,
+            "auxiliaryFields": auxiliary_fields,
+            "backFields": back_fields,
         },
-        "barcodes": [
-            {
-                "format": "PKBarcodeFormatQR",
-                "message": f"{constants.PASS_BARCODE_PREFIX}{customer_card.id.hex}",
-                "messageEncoding": "iso-8859-1",
-                "altText": customer_card.customer_phone,
-            }
-        ],
+        # Modern (iOS 9+) array + legacy singular for older clients.
+        "barcodes": [barcode],
+        "barcode": barcode,
     }
+    # logoText appears beside the logo image; omit it when a branded logo is set
+    # (the wordmark already carries the name) to avoid a duplicate label.
+    if not (card.logo_url or merchant.logo_url):
+        payload["logoText"] = merchant.name
     # Void a no-longer-active pass (single-use completion / blocked) — iOS greys
     # it out and marks it expired.
     if customer_card.status != CustomerCardStatus.ACTIVE:
