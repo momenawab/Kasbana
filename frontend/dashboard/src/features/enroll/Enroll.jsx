@@ -113,10 +113,11 @@ export default function Enroll() {
                   Apple's official "Add to Apple Wallet" badge PNG in public/ when
                   available, mirroring the Google badge. */}
               {result.apple_pass_url && (
+                // No target="_blank": a .pkpass must open in the SAME tab so iOS
+                // Safari intercepts it and shows the Add-to-Apple-Wallet sheet. A
+                // new tab just opens+closes without adding the pass.
                 <a
                   href={result.apple_pass_url}
-                  target="_blank"
-                  rel="noreferrer"
                   aria-label={t('enroll.addApple')}
                   className="inline-flex items-center gap-2 rounded-lg bg-black px-5 py-2.5 text-white"
                 >
