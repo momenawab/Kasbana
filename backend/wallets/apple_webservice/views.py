@@ -144,20 +144,22 @@ def log(request):
 @csrf_exempt
 def download_pass(request, customer_card_id):
     """Initial .pkpass download for the enrollment page (capability = UUID)."""
-    if request.method != "GET":
-        return HttpResponseNotAllowed(["GET"])
+    if request.method not in ("GET", "HEAD"):
+        return HttpResponseNotAllowed(["GET", "HEAD"])
     if not is_configured():
         return HttpResponse(status=503)
     cc = CustomerCard.objects.filter(id=customer_card_id).first()
     if cc is None:
         return HttpResponse(status=404)
+    # HEAD: some Safari download flows preflight; answer headers without building.
+    if request.method == "HEAD":
+        return HttpResponse(content_type="application/vnd.apple.pkpass")
     try:
         pkpass = build_pkpass(cc)
     except AppleSigningError:
         return HttpResponse(status=503)
-    resp = HttpResponse(pkpass, content_type="application/vnd.apple.pkpass")
-    # inline (NOT attachment): iOS Safari routes an `attachment` pkpass to its
-    # file downloader ("Safari cannot download this file") instead of handing it
-    # to Wallet. inline lets iOS recognise the MIME and show the Add sheet.
-    resp["Content-Disposition"] = f'inline; filename="stampn-{cc.id}.pkpass"'
-    return resp
+    # NO Content-Disposition: iOS Safari routes a pkpass carrying ANY disposition
+    # (attachment or inline) to its file downloader ("Safari cannot download this
+    # file"). With only the pkpass Content-Type, WebKit hands it straight to
+    # Wallet and shows the Add sheet (matches Apple's web-service spec).
+    return HttpResponse(pkpass, content_type="application/vnd.apple.pkpass")
