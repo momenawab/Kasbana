@@ -37,6 +37,32 @@ class WalletMessage(UUIDModel, TimeStampedModel):
         return f"{self.customer_card_id}: {self.body[:32]}"
 
 
+class CardShortCode(UUIDModel, TimeStampedModel):
+    """A short, human-typeable code for one customer's pass (note 1).
+
+    The wallet QR carries the opaque ``WLA<uuid-hex>`` payload, but the barcode
+    ``altText`` printed under it is this short code — so a cashier can *type* it
+    on the Scan screen instead of scanning. Generated lazily the first time a
+    pass is built (see ``wallets.shortcode.code_for``); resolved back to the card
+    (tenant-scoped) by the Scan endpoint. ``core.CustomerCard`` is a frozen
+    contract model, so this lives here rather than as a field on it.
+    """
+
+    customer_card = models.OneToOneField(
+        CustomerCard, on_delete=models.CASCADE, related_name="short_code"
+    )
+    merchant = models.ForeignKey(
+        Merchant, on_delete=models.CASCADE, related_name="card_short_codes"
+    )
+    code = models.CharField(max_length=12, unique=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["merchant", "code"])]
+
+    def __str__(self) -> str:
+        return self.code
+
+
 class WalletSyncFailure(UUIDModel, TimeStampedModel):
     """A failed wallet provisioning/push operation (Phase 14 ops log).
 

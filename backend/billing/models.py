@@ -106,6 +106,11 @@ class Subscription(UUIDModel, TimeStampedModel):
     # The plan a pending checkout will convert to, recorded at ``subscribe`` time
     # so the webhook (which only carries a gateway ref) knows what to activate.
     pending_plan = models.CharField(max_length=16, choices=PlanTier.choices, blank=True)
+    # Merchant-initiated cancellation that keeps access until the paid period
+    # ends (contract "cancel = retain until period end"). While True the sub
+    # stays ACTIVE and fully entitled until ``current_period_end``; after that
+    # ``effective_plan`` locks it. Cleared on any re-subscribe (``activate_plan``).
+    cancel_at_period_end = models.BooleanField(default=False)
 
     # ── Admin manual-control fields (Phase 4) ───────────────────────────────
     # ``comp``: free access granted by an admin — access resolves at ``plan``
@@ -136,6 +141,20 @@ class Subscription(UUIDModel, TimeStampedModel):
             self.override_expires_at is None or self.override_expires_at > now
         )
 
+    def cancels_on(self, now: datetime | None = None) -> datetime | None:
+        """The date a scheduled cancellation takes effect, or ``None``.
+
+        Set only while a merchant-initiated period-end cancel is pending and the
+        period hasn't lapsed yet — drives the "cancels on <date>" UI. Once the
+        date passes, ``effective_plan`` locks the sub and this returns ``None``.
+        A paid sub runs out at ``current_period_end``; a trial at ``trial_ends_at``.
+        """
+        now = now or timezone.now()
+        if not self.cancel_at_period_end:
+            return None
+        end = self.current_period_end if self.status == BillingStatus.ACTIVE else self.trial_ends_at
+        return end if end is not None and end > now else None
+
     def effective_plan(self, now: datetime | None = None) -> str | None:
         """The plan whose limits apply right now, or ``None`` when locked.
 
@@ -143,7 +162,8 @@ class Subscription(UUIDModel, TimeStampedModel):
         - ``comp`` -> the stored ``plan``, regardless of status;
         - TRIALING + not expired -> ``TRIAL_PLAN`` (full Growth-level access);
         - TRIALING + expired      -> locked (``None``) — trial ended unconverted;
-        - ACTIVE                  -> the paid ``plan``;
+        - ACTIVE                  -> the paid ``plan`` (until a scheduled
+          period-end cancel lapses, then locked — access retained meanwhile);
         - PAST_DUE / CANCELED / LOCKED -> locked (``None``), data retained.
         """
         now = now or timezone.now()
@@ -154,6 +174,13 @@ class Subscription(UUIDModel, TimeStampedModel):
         if self.status == BillingStatus.TRIALING:
             return TRIAL_PLAN if self.trial_active(now) else None
         if self.status == BillingStatus.ACTIVE:
+            # A period-end cancel keeps access until the period lapses, then locks.
+            if (
+                self.cancel_at_period_end
+                and self.current_period_end is not None
+                and now >= self.current_period_end
+            ):
+                return None
             return self.plan
         return None
 

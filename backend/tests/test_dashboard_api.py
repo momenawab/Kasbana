@@ -66,6 +66,11 @@ def test_create_card_sets_merchant_and_syncs_google(auth_client, merchant, googl
     assert card.merchant_id == merchant.id
     # Google class re-provision was enqueued for the new card.
     assert google_sync_calls == [str(card.id)]
+    # A primary Reward row is created so the redeem flow works (note 7).
+    reward = card.rewards.get()
+    assert reward.title == "Free latte"
+    assert reward.threshold == 8
+    assert reward.is_active is True
 
 
 def test_patch_card_updates_and_syncs(auth_client, merchant, google_sync_calls):
@@ -76,6 +81,8 @@ def test_patch_card_updates_and_syncs(auth_client, merchant, google_sync_calls):
     card.refresh_from_db()
     assert card.reward_title == "New"
     assert google_sync_calls == [str(card.id)]
+    # The primary Reward row tracks the card's reward title (note 7).
+    assert card.rewards.get().title == "New"
 
 
 def test_patch_other_merchant_card_is_404(auth_client):

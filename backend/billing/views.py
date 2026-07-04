@@ -66,6 +66,7 @@ class BillingStateView(APIView):
             "price_egp": plan_price(plan),
             "usage": entitlements.usage(merchant),
             "next_renewal": sub.current_period_end,
+            "cancels_on": sub.cancels_on(),
             "payment_method": payment_method,
         }
         return Response(BillingStateSerializer(payload).data)
@@ -153,13 +154,14 @@ class CancelView(APIView):
         body = CancelRequestSerializer(data=request.data)
         body.is_valid(raise_exception=True)
         merchant = get_request_merchant(request)
-        services.lock(merchant, status=BillingStatus.CANCELED)
+        sub = services.schedule_cancel(merchant)
         logger.info(
-            "Subscription canceled for %s (reason=%s)",
+            "Subscription cancel requested for %s (reason=%s, effective=%s)",
             merchant.id,
             body.validated_data.get("reason", ""),
+            sub.cancels_on() or "immediately",
         )
-        return Response({"ok": True})
+        return Response({"ok": True, "cancels_on": sub.cancels_on()})
 
 
 class _WebhookView(APIView):

@@ -1,7 +1,7 @@
 // Billing (spec §14) — current plan + trial countdown, plan matrix, subscribe →
 // checkout_url redirect, usage bars vs limits, invoices, cancel. All 1.7 backend
 // (graceful: falls back to /me entitlements for plan/usage until promotion).
-import { useQuery, useMutation } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import api, { normalizeError } from '../../lib/api'
 import { useAuth } from '../../hooks/useAuth'
@@ -10,7 +10,7 @@ import { useToast } from '../../hooks/useToast'
 import Button from '../../components/Button'
 import Badge from '../../components/Badge'
 import Table from '../../components/Table'
-import { arDigits, daysUntil, money } from '../../lib/format'
+import { arDigits, daysUntil, fmtDate, money } from '../../lib/format'
 
 const PLANS = ['starter', 'growth', 'chain']
 
@@ -37,6 +37,7 @@ export default function Billing() {
   const { merchant } = useAuth()
   const { entitlements } = usePlan()
   const toast = useToast()
+  const qc = useQueryClient()
 
   const { data: billing } = useQuery({
     queryKey: ['billing'],
@@ -61,6 +62,7 @@ export default function Billing() {
 
   const plan = billing?.plan || merchant?.plan || entitlements?.plan
   const trialEnds = billing?.trial_ends_at || merchant?.trial_ends_at
+  const cancelsOn = billing?.cancels_on
   const usage = billing?.usage || entitlements?.usage || {}
   const limits = entitlements?.limits || {}
 
@@ -74,7 +76,15 @@ export default function Billing() {
 
   const cancel = useMutation({
     mutationFn: async (reason) => (await api.post('/billing/cancel', { reason })).data,
-    onSuccess: () => toast.success(t('billing.canceled')),
+    onSuccess: (data) => {
+      toast.success(
+        data?.cancels_on
+          ? t('billing.canceledUntil', { date: fmtDate(data.cancels_on, lang) })
+          : t('billing.canceled')
+      )
+      qc.invalidateQueries({ queryKey: ['billing'] })
+      qc.invalidateQueries({ queryKey: ['me'] })
+    },
     onError: (err) => toast.error(normalizeError(err).message),
   })
 
@@ -99,8 +109,13 @@ export default function Billing() {
               {t('billing.trialLeft', { count: arDigits(daysUntil(trialEnds), lang) })}
             </p>
           )}
+          {cancelsOn && (
+            <p className="mt-1 text-sm text-amber-d">
+              {t('billing.cancelsOn', { date: fmtDate(cancelsOn, lang) })}
+            </p>
+          )}
         </div>
-        {plan !== 'chain' && (
+        {plan !== 'chain' && !cancelsOn && (
           <Button variant="ghost" onClick={doCancel} loading={cancel.isPending}>
             {t('billing.cancel')}
           </Button>
@@ -109,16 +124,39 @@ export default function Billing() {
 
       {/* Usage bars */}
       <div className="grid gap-4 rounded-card border border-line bg-white p-5 sm:grid-cols-2">
-        <UsageBar label={t('overview.enrollments')} used={usage.customers ?? 0} max={limits.max_customers} lang={lang} />
-        <UsageBar label={t('nav.cards')} used={usage.cards ?? 0} max={limits.max_cards} lang={lang} />
-        <UsageBar label={t('nav.locations')} used={usage.locations ?? 0} max={limits.max_locations} lang={lang} />
-        <UsageBar label={t('nav.team')} used={usage.staff ?? 0} max={limits.max_staff} lang={lang} />
+        <UsageBar
+          label={t('overview.enrollments')}
+          used={usage.customers ?? 0}
+          max={limits.max_customers}
+          lang={lang}
+        />
+        <UsageBar
+          label={t('nav.cards')}
+          used={usage.cards ?? 0}
+          max={limits.max_cards}
+          lang={lang}
+        />
+        <UsageBar
+          label={t('nav.locations')}
+          used={usage.locations ?? 0}
+          max={limits.max_locations}
+          lang={lang}
+        />
+        <UsageBar
+          label={t('nav.team')}
+          used={usage.staff ?? 0}
+          max={limits.max_staff}
+          lang={lang}
+        />
       </div>
 
       {/* Plan matrix */}
       <div className="grid gap-4 sm:grid-cols-3">
         {PLANS.map((p) => (
-          <div key={p} className={`rounded-card border p-5 ${plan === p ? 'border-amber bg-amber-bg' : 'border-line bg-white'}`}>
+          <div
+            key={p}
+            className={`rounded-card border p-5 ${plan === p ? 'border-amber bg-amber-bg' : 'border-line bg-white'}`}
+          >
             <h3 className="font-head text-lg font-bold text-ink">{t(`billing.plan.${p}`)}</h3>
             <Button
               className="mt-4 w-full"
@@ -139,12 +177,35 @@ export default function Billing() {
         <Table
           columns={[
             { key: 'date', label: t('billing.date') },
-            { key: 'amount_egp', label: t('billing.amount'), render: (r) => money(r.amount_egp, lang) },
-            { key: 'status', label: t('billing.statusCol'), render: (r) => <Badge tone={r.status === 'paid' ? 'success' : 'amber'}>{r.status}</Badge> },
-            { key: 'pdf_url', label: '', render: (r) => (r.pdf_url ? <a href={r.pdf_url} className="text-amber-d" target="_blank" rel="noreferrer">PDF</a> : null) },
+            {
+              key: 'amount_egp',
+              label: t('billing.amount'),
+              render: (r) => money(r.amount_egp, lang),
+            },
+            {
+              key: 'status',
+              label: t('billing.statusCol'),
+              render: (r) => (
+                <Badge tone={r.status === 'paid' ? 'success' : 'amber'}>{r.status}</Badge>
+              ),
+            },
+            {
+              key: 'pdf_url',
+              label: '',
+              render: (r) =>
+                r.pdf_url ? (
+                  <a href={r.pdf_url} className="text-amber-d" target="_blank" rel="noreferrer">
+                    PDF
+                  </a>
+                ) : null,
+            },
           ]}
           rows={invoices}
-          emptyState={<div className="rounded-card border border-line bg-white p-6 text-center text-tx-3">{t('billing.noInvoices')}</div>}
+          emptyState={
+            <div className="rounded-card border border-line bg-white p-6 text-center text-tx-3">
+              {t('billing.noInvoices')}
+            </div>
+          }
         />
       </div>
     </div>

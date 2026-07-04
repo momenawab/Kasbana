@@ -47,6 +47,7 @@ from core.models import (
     CustomerCard,
     Location,
     Redemption,
+    Reward,
     StaffUser,
     StampLedger,
     WalletRegistration,
@@ -80,6 +81,36 @@ def _enqueue_google_sync(card: Card) -> None:
     from wallets.tasks import sync_google_class
 
     sync_google_class.delay(str(card.id))
+
+
+def _sync_primary_reward(card: Card) -> None:
+    """Mirror the card's reward fields into a ``Reward`` row so redeem works.
+
+    The single-reward card flow stores its reward on the ``Card`` itself, but the
+    ledger records a ``Redemption`` against a ``Reward`` *row* and the till gates
+    the redeem button on ``reward_id`` (from those rows). Without this sync no row
+    ever exists → ``reward_id`` is null → "Give reward" stays disabled even when
+    the card is full. Keep exactly one active primary reward at
+    ``threshold = stamps_required`` (matches ``ledger.is_reward_ready``).
+    """
+    if not card.reward_title:
+        card.rewards.update(is_active=False)  # reward cleared — nothing to redeem
+        return
+    reward = card.rewards.order_by("threshold", "created_at").first()
+    if reward is None:
+        Reward.objects.create(
+            card=card,
+            title=card.reward_title,
+            description=card.reward_description,
+            threshold=card.stamps_required,
+            is_active=True,
+        )
+    else:
+        reward.title = card.reward_title
+        reward.description = card.reward_description
+        reward.threshold = card.stamps_required
+        reward.is_active = True
+        reward.save(update_fields=["title", "description", "threshold", "is_active"])
 
 
 _SPECIALIZED_ROLES = {Role.MARKETING, Role.DESIGNER}
@@ -123,6 +154,7 @@ class CardListCreateView(generics.ListCreateAPIView):
         merchant = get_request_merchant(self.request)
         entitlements.enforce(merchant, "max_cards")
         card = serializer.save(merchant=merchant)
+        _sync_primary_reward(card)
         _enqueue_google_sync(card)
 
 
@@ -139,6 +171,7 @@ class CardDetailView(generics.RetrieveUpdateAPIView):
 
     def perform_update(self, serializer: BaseSerializer) -> None:
         card = serializer.save()
+        _sync_primary_reward(card)
         _enqueue_google_sync(card)
 
 
