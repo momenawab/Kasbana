@@ -62,6 +62,7 @@ class WalletCardDesignSerializer(serializers.ModelSerializer):
             "google_title",
             "google_subtitle",
             "google_rows",
+            "google_stamp_hero",
         ]
 
     def validate_apple_header(self, v: Any) -> list[dict[str, str]]:

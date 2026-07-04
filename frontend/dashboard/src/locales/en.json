@@ -350,6 +350,8 @@
     "stripHint": "Upload an empty and a filled icon to build the stamp strip from your own artwork.",
     "googleTitle": "Card title",
     "googleSubtitle": "Subtitle",
+    "googleStampHero": "Visual stamp counter on Google",
+    "googleStampHeroHint": "Show the stamp grid in the Google banner and refresh it on every stamp (Google has no strip like Apple).",
     "label": "Label",
     "value": "Value",
     "customText": "Text",
