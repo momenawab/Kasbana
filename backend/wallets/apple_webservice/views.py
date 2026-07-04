@@ -156,5 +156,8 @@ def download_pass(request, customer_card_id):
     except AppleSigningError:
         return HttpResponse(status=503)
     resp = HttpResponse(pkpass, content_type="application/vnd.apple.pkpass")
-    resp["Content-Disposition"] = f'attachment; filename="stampn-{cc.id}.pkpass"'
+    # inline (NOT attachment): iOS Safari routes an `attachment` pkpass to its
+    # file downloader ("Safari cannot download this file") instead of handing it
+    # to Wallet. inline lets iOS recognise the MIME and show the Add sheet.
+    resp["Content-Disposition"] = f'inline; filename="stampn-{cc.id}.pkpass"'
     return resp
