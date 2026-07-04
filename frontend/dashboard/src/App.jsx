@@ -27,12 +27,14 @@ import Team from './features/team/Team'
 import Billing from './features/billing/Billing'
 import Settings from './features/settings/Settings'
 import Gallery from './routes/Gallery'
+import { PassGallery } from './wallet-pass'
 
 export default function App() {
   return (
     <Routes>
       {/* Public */}
       <Route path="/__gallery" element={<Gallery />} />
+      <Route path="/__passes" element={<PassGallery />} />
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
       <Route path="/forgot" element={<Forgot />} />

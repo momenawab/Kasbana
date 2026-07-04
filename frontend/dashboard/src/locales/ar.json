@@ -319,6 +319,26 @@
     "reprovisionWarning": "تعديل كارت منشور بيعيد توفير كروت الحاملين الحاليين.",
     "heroImage": "صورة البانر (Google Wallet)"
   },
+  "templatePicker": {
+    "title": "اختر قالبًا",
+    "subtitle": "اختر تصميمًا مبدئيًا ثم أضف بياناتك.",
+    "use": "استخدم هذا القالب",
+    "comingSoon": "قريبًا",
+    "previewOnly": "معاينة فقط — لا يمكن نشره بعد",
+    "skip": "ابدأ من الصفر",
+    "change": "تغيير القالب",
+    "active": "القالب",
+    "names": {
+      "loyalty": "الولاء",
+      "event": "فعالية",
+      "boarding": "بطاقة صعود",
+      "membership": "عضوية",
+      "coupon": "قسيمة",
+      "giftcard": "بطاقة هدايا",
+      "invitation": "دعوة",
+      "special": "مناسبة خاصة"
+    }
+  },
   "walletDesign": {
     "title": "تصميم بطاقة المحفظة",
     "save": "حفظ التصميم",

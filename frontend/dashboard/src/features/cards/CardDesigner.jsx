@@ -14,6 +14,8 @@ import ColorPicker from '../../components/ColorPicker'
 import FileUpload from '../../components/FileUpload'
 import WalletPreview from '../../components/WalletPreview'
 import WalletDesignEditor from './WalletDesignEditor'
+import TemplatePicker from './TemplatePicker'
+import { TEMPLATE_SEED } from './templateSeeds'
 import Button from '../../components/Button'
 import Skeleton from '../../components/Skeleton'
 
@@ -46,12 +48,18 @@ export default function CardDesigner() {
   const [dirty, setDirty] = useState(false)
   const [platform, setPlatform] = useState('APPLE')
   const [errors, setErrors] = useState({})
+  // New-card template picker: pickerDone gates the picker → form transition
+  // (edit mode skips it entirely). templateId records the chosen starting design.
+  const [templateId, setTemplateId] = useState(null)
+  const [pickerDone, setPickerDone] = useState(isEdit)
 
   // Seed defaults from the merchant brand (create) or the loaded card (edit).
   useEffect(() => {
     if (isEdit && existing) {
       setForm({ ...EMPTY, ...existing })
-    } else if (!isEdit) {
+    } else if (!isEdit && !templateId) {
+      // Seed the merchant's brand colors only until a template is chosen — the
+      // template's own seed (applied in chooseTemplate) takes precedence after.
       setForm((f) => ({
         ...f,
         color_bg: merchant?.color_bg || f.color_bg,
@@ -59,7 +67,7 @@ export default function CardDesigner() {
         logo_url: merchant?.logo_url || '',
       }))
     }
-  }, [isEdit, existing, merchant])
+  }, [isEdit, existing, merchant, templateId])
 
   // Warn on browser-level navigation away with unsaved edits.
   useEffect(() => {
@@ -77,6 +85,14 @@ export default function CardDesigner() {
     setDirty(true)
   }
   const setEvt = (key) => (e) => set(key)(e.target.value)
+
+  // Apply a chosen template's seed over the current form, then reveal the form.
+  function chooseTemplate(id) {
+    const seed = TEMPLATE_SEED[id] || {}
+    setForm((f) => ({ ...f, logo_url: merchant?.logo_url || f.logo_url, ...seed }))
+    setTemplateId(id)
+    setPickerDone(true)
+  }
 
   function validate() {
     const errs = {}
@@ -126,15 +142,27 @@ export default function CardDesigner() {
     return <Skeleton h={400} rounded="card" />
   }
 
+  // New-card flow starts on the template picker until one is chosen or skipped.
+  if (!isEdit && !pickerDone) {
+    return <TemplatePicker onChoose={chooseTemplate} onSkip={() => setPickerDone(true)} />
+  }
+
   return (
     <div>
       <div className="mb-5 flex items-center justify-between">
         <h1 className="font-head text-2xl font-bold text-ink">
           {isEdit ? t('designer.editTitle') : t('designer.newTitle')}
         </h1>
-        <Button variant="ghost" onClick={guardedBack}>
-          {t('onboarding.back')}
-        </Button>
+        <div className="flex items-center gap-2">
+          {!isEdit && templateId && (
+            <Button variant="ghost" onClick={() => setPickerDone(false)}>
+              {t('templatePicker.change')}
+            </Button>
+          )}
+          <Button variant="ghost" onClick={guardedBack}>
+            {t('onboarding.back')}
+          </Button>
+        </div>
       </div>
 
       {isEdit && existing?.status === 'ACTIVE' && (
