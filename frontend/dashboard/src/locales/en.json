@@ -438,7 +438,8 @@
     "referBody": "Share your link — you both get a bonus stamp when they join.",
     "referShare": "Share my link",
     "terms": "Terms & Conditions",
-    "privacy": "Privacy Policy"
+    "privacy": "Privacy Policy",
+    "addApple": "Add to Apple Wallet"
   },
   "validation": {
     "required": "This field is required.",
