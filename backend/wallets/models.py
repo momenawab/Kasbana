@@ -145,6 +145,9 @@ class WalletCardDesign(UUIDModel, TimeStampedModel):
     google_title = models.CharField(max_length=40, blank=True)  # blank = merchant name
     google_subtitle = models.CharField(max_length=60, blank=True)  # blank = program name
     google_rows = models.JSONField(default=list, blank=True)  # module rows <=3 slots
+    # Render the stamp grid into the Google hero banner and refresh it on every
+    # stamp (Google has no Apple-style strip). Uses the same strip colors/icons.
+    google_stamp_hero = models.BooleanField(default=False)
 
     objects = TenantManager()
 

@@ -151,6 +151,35 @@ def test_google_object_reflects_rows(customer_card):
     assert any(m["header"] == "Reward" for m in mods)
 
 
+def test_google_stamp_hero_renders_and_updates_url(customer_card, settings):
+    """Enabling the stamp hero puts a rendered banner on the object; the URL is
+    content-addressed so a new stamp count yields a fresh URL (Google re-fetches)."""
+    settings.BASE_URL = "https://api.stampn.net"
+    card = customer_card.card
+    card.stamps_required = 6
+    card.save(update_fields=["stamps_required"])
+    WalletCardDesign.objects.create(card=card, merchant=card.merchant, google_stamp_hero=True)
+
+    customer_card.stamp_count = 2
+    customer_card.save(update_fields=["stamp_count"])
+    obj = build_loyalty_object(customer_card)
+    assert "heroImage" in obj
+    url_2 = obj["heroImage"]["sourceUri"]["uri"]
+    assert url_2.startswith("https://api.stampn.net/media/google-hero/")
+
+    # A different count produces a different (cache-busting) URL.
+    customer_card.stamp_count = 3
+    customer_card.save(update_fields=["stamp_count"])
+    url_3 = build_loyalty_object(customer_card)["heroImage"]["sourceUri"]["uri"]
+    assert url_3 != url_2
+
+
+def test_google_hero_off_by_default(customer_card):
+    # Without the toggle, no per-object hero is added (class hero still applies).
+    WalletCardDesign.objects.create(card=customer_card.card, merchant=customer_card.merchant)
+    assert "heroImage" not in build_loyalty_object(customer_card)
+
+
 def test_no_design_keeps_default_pass(customer_card):
     # A card with no design row builds exactly the default pass (no crash).
     payload = build_pass_json(customer_card)

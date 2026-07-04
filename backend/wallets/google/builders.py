@@ -119,4 +119,17 @@ def build_loyalty_object(customer_card: CustomerCard) -> dict:
         if modules:
             payload["textModulesData"] = modules
 
+    # Visual stamp counter: render the grid into the object hero and refresh it
+    # on each stamp (Google has no Apple-style strip). Overrides the class hero.
+    from wallets.google.hero import stamp_hero_url
+
+    hero = stamp_hero_url(customer_card)
+    if hero:
+        payload["heroImage"] = {
+            "sourceUri": {"uri": hero},
+            "contentDescription": {
+                "defaultValue": {"language": "en", "value": f"{card.name} stamps"}
+            },
+        }
+
     return payload

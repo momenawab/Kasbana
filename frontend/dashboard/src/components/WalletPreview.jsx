@@ -158,6 +158,21 @@ export default function WalletPreview({
             <div className="truncate text-xs opacity-80">{subtitle}</div>
           </div>
         </div>
+        {/* Visual stamp counter rendered into the hero banner (updates per stamp) */}
+        {isStamp && design?.google_stamp_hero && (
+          <div
+            className="px-4 py-3"
+            style={{ background: design?.strip_bg_color || darkenHex(colorBg) }}
+          >
+            <StampGrid
+              count={stampCount}
+              required={goal}
+              fg={colorFg}
+              emptyUrl={design?.strip_empty_url}
+              filledUrl={design?.strip_filled_url}
+            />
+          </div>
+        )}
         <div className="p-4">
           <div className="text-[10px] uppercase tracking-wide text-tx-3">{unit}</div>
           <div className="font-mono text-3xl tabular-nums text-ink">{ctx.balance}</div>

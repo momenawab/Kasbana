@@ -350,6 +350,8 @@
     "stripHint": "ارفع أيقونة فارغة وأخرى ممتلئة لبناء شريط الأختام بتصميمك الخاص.",
     "googleTitle": "عنوان البطاقة",
     "googleSubtitle": "العنوان الفرعي",
+    "googleStampHero": "عداد أختام مرئي على Google",
+    "googleStampHeroHint": "اعرض شبكة الأختام في بانر Google وحدّثها مع كل ختم (Google لا يوفّر شريطًا مثل Apple).",
     "label": "العنوان",
     "value": "القيمة",
     "customText": "نص",

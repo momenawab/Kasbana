@@ -46,6 +46,7 @@ const DEFAULTS = {
   google_title: '',
   google_subtitle: '',
   google_rows: [],
+  google_stamp_hero: false,
 }
 
 const TEXT = '__text__'
@@ -359,6 +360,16 @@ export default function WalletDesignEditor({ cardId, card }) {
               disabled={!branded}
               t={t}
             />
+            {isStamp && (
+              <div className="flex flex-col gap-1 border-t border-line pt-3">
+                <Toggle
+                  checked={design.google_stamp_hero}
+                  onChange={set('google_stamp_hero')}
+                  label={t('walletDesign.googleStampHero')}
+                />
+                <p className="text-xs text-tx-3">{t('walletDesign.googleStampHeroHint')}</p>
+              </div>
+            )}
           </div>
         </fieldset>
 

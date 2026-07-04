@@ -145,6 +145,21 @@ class GoogleWalletBackend:
                 "balance": {"int": customer_card.stamp_count},
             },
         }
+        # Refresh the visual stamp-hero banner on each stamp (new count -> new
+        # content-addressed URL, so Google re-fetches instead of serving cache).
+        from wallets.google.hero import stamp_hero_url
+
+        hero = stamp_hero_url(customer_card)
+        if hero:
+            patch["heroImage"] = {
+                "sourceUri": {"uri": hero},
+                "contentDescription": {
+                    "defaultValue": {
+                        "language": "en",
+                        "value": f"{customer_card.card.name} stamps",
+                    }
+                },
+            }
         with client:
             resp = client.patch(f"/loyaltyObject/{oid}", json=patch)
             if resp.status_code == 404:
