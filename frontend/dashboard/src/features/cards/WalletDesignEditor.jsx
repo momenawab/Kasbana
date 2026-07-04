@@ -1,16 +1,15 @@
-// WalletDesignEditor (notes 2-4) — edit the Apple/Google pass variables for one
-// card with a faithful dual live preview. Rich controls are gated behind
+// WalletDesignEditor (notes 2-4 + templates) — pick a layout-locked template
+// (or use the freeform "Custom" editor) and edit the Apple/Google pass variables
+// for one card with a faithful dual live preview. Rich controls are gated behind
 // custom_branding (free plans keep the smart defaults). Edit-mode only: the
 // wallet-design endpoint is per-card, so the card must exist first.
 //
-// Apple fixes the layout: fields live in four regions (header/primary/secondary/
-// auxiliary) and, within a region, render LEFT→RIGHT in list order. So position
-// = region + order; there is no free placement. The editor labels each region
-// with its on-pass position, lets you reorder within it, and warns before a
-// region overflows (Apple truncates silently otherwise).
+// A template locks every field position; the merchant may then edit only that
+// template's `editable` variables (colors, stamp icons, a bottom image, logo).
+// "Custom (advanced)" reveals the original freeform slot editor unchanged.
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useWalletDesign, useSaveWalletDesign } from './api'
+import { useWalletDesign, useSaveWalletDesign, useWalletTemplates } from './api'
 import { usePlan } from '../../hooks/usePlan'
 import { useToast } from '../../hooks/useToast'
 import { normalizeError } from '../../lib/api'
@@ -47,6 +46,8 @@ const DEFAULTS = {
   google_subtitle: '',
   google_rows: [],
   google_stamp_hero: false,
+  template_key: 'custom',
+  bottom_image_url: '',
 }
 
 const TEXT = '__text__'
@@ -145,7 +146,8 @@ function SlotEditor({ regionKey, slots, onChange, tokenOpts, disabled, t }) {
     const j = i + dir
     if (j < 0 || j >= slots.length) return
     const next = slots.slice()
-    ;[next[i], next[j]] = [next[j], next[i]]
+    next[i] = slots[j]
+    next[j] = slots[i]
     onChange(next)
   }
   return (
@@ -182,13 +184,51 @@ function SlotEditor({ regionKey, slots, onChange, tokenOpts, disabled, t }) {
   )
 }
 
+// A compact gallery thumbnail for one template — a tiny pass mock showing its
+// bottom-visual placement (stamps grid / image / none).
+function TemplateThumb({ tpl, colorBg, colorFg }) {
+  const isImage = tpl.bottom_visual === 'image'
+  const isStamps = tpl.bottom_visual === 'stamps'
+  return (
+    <div
+      className="flex h-20 w-full flex-col justify-between rounded-md p-1.5"
+      style={{ background: colorBg, color: colorFg }}
+    >
+      <div className="flex items-center justify-between">
+        <span className="h-3 w-3 rounded-sm bg-white/40" />
+        <span className="h-1.5 w-8 rounded-full bg-white/40" />
+      </div>
+      {isStamps && (
+        <div className="flex gap-0.5">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <span
+              key={i}
+              className="h-2 w-2 rounded-full"
+              style={{
+                background: i < 2 ? colorFg : 'transparent',
+                border: `1px solid ${colorFg}`,
+              }}
+            />
+          ))}
+        </div>
+      )}
+      {isImage && <div className="h-5 w-full rounded-sm bg-white/25" />}
+      <div className="h-2.5 w-full self-center rounded-sm bg-white/80" />
+    </div>
+  )
+}
+
 export default function WalletDesignEditor({ cardId, card }) {
   const { t } = useTranslation()
   const toast = useToast()
   const { can, requireFeature } = usePlan()
   const branded = can('custom_branding')
   const { data: loaded } = useWalletDesign(cardId)
+  const { data: tplData } = useWalletTemplates()
   const save = useSaveWalletDesign(cardId)
+
+  const templates = useMemo(() => tplData?.templates || [], [tplData])
+  const platformLogoUrl = tplData?.platform_logo_url || ''
 
   const [design, setDesign] = useState(DEFAULTS)
   const [dirty, setDirty] = useState(false)
@@ -203,13 +243,23 @@ export default function WalletDesignEditor({ cardId, card }) {
     setDirty(true)
   }
 
-  const isStamp = (card?.type ?? 'STAMP') !== 'POINTS'
+  const cardType = card?.type ?? 'STAMP'
+  const isStamp = cardType !== 'POINTS'
   const tokenOpts = useMemo(() => {
     const base = isStamp
       ? ['balance', 'stamps', 'goal', 'remaining', 'reward', 'merchant', 'program']
       : ['balance', 'points', 'goal', 'reward', 'merchant', 'program']
     return base.map((v) => ({ value: v, label: t(`walletDesign.tok_${v}`) }))
   }, [isStamp, t])
+
+  const availableTemplates = useMemo(
+    () => templates.filter((tpl) => (tpl.card_types || []).includes(cardType)),
+    [templates, cardType]
+  )
+  const selectedTemplate =
+    design.template_key && design.template_key !== 'custom'
+      ? templates.find((tpl) => tpl.key === design.template_key)
+      : null
 
   const onSave = () => {
     if (!requireFeature('custom_branding')) return
@@ -227,6 +277,8 @@ export default function WalletDesignEditor({ cardId, card }) {
 
   const previewProps = {
     design,
+    template: selectedTemplate,
+    platformLogoUrl,
     logoUrl: card?.logo_url,
     colorBg: card?.color_bg,
     colorFg: card?.color_fg,
@@ -245,6 +297,8 @@ export default function WalletDesignEditor({ cardId, card }) {
     'apple_auxiliary',
     'apple_back',
   ]
+
+  const editable = (field) => Boolean(selectedTemplate?.editable?.includes(field))
 
   return (
     <div className="mt-6 rounded-card border border-line bg-white p-5">
@@ -265,112 +319,203 @@ export default function WalletDesignEditor({ cardId, card }) {
         </button>
       )}
 
-      <p className="mb-4 rounded-ctl bg-paper px-3 py-2 text-xs text-tx-3">
-        {t('walletDesign.layoutNote')}
-      </p>
+      {/* Template gallery */}
+      <div className="mb-5">
+        <h3 className="mb-2 text-sm font-semibold text-tx">{t('walletTemplates.choose')}</h3>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+          {availableTemplates.map((tpl) => (
+            <button
+              key={tpl.key}
+              type="button"
+              disabled={!branded}
+              onClick={() => set('template_key')(tpl.key)}
+              className={`flex flex-col gap-1 rounded-ctl border p-2 text-left transition disabled:opacity-50 ${
+                design.template_key === tpl.key
+                  ? 'border-primary ring-1 ring-primary'
+                  : 'border-line hover:border-tx-3'
+              }`}
+            >
+              <TemplateThumb
+                tpl={tpl}
+                colorBg={card?.color_bg || '#0E1B2A'}
+                colorFg={card?.color_fg || '#FFFFFF'}
+              />
+              <span className="truncate text-xs font-semibold text-tx">{tpl.name}</span>
+              <span className="text-[10px] text-tx-3">
+                {t(`walletTemplates.visual_${tpl.bottom_visual}`)}
+              </span>
+            </button>
+          ))}
+          <button
+            type="button"
+            disabled={!branded}
+            onClick={() => set('template_key')('custom')}
+            className={`flex flex-col justify-center gap-1 rounded-ctl border p-2 text-left transition disabled:opacity-50 ${
+              !selectedTemplate
+                ? 'border-primary ring-1 ring-primary'
+                : 'border-line hover:border-tx-3'
+            }`}
+          >
+            <span className="text-sm font-semibold text-tx">{t('walletTemplates.custom')}</span>
+            <span className="text-[10px] text-tx-3">{t('walletTemplates.customHint')}</span>
+          </button>
+        </div>
+        {selectedTemplate && (
+          <p className="mt-2 rounded-ctl bg-paper px-3 py-2 text-xs text-tx-3">
+            {t('walletTemplates.lockedNote')}
+          </p>
+        )}
+      </div>
 
       <div className="grid gap-6 md:grid-cols-2">
         {/* Controls */}
         <fieldset disabled={!branded} className="flex flex-col gap-5 disabled:opacity-60">
-          <div className="grid grid-cols-2 gap-3">
-            <Input
-              label={t('walletDesign.logoText')}
-              value={design.apple_logo_text}
-              onChange={(e) => set('apple_logo_text')(e.target.value)}
-              placeholder={card?.merchantName}
-            />
-            <ColorPicker
-              label={t('walletDesign.labelColor')}
-              value={design.label_color || card?.color_fg || '#FFFFFF'}
-              onChange={set('label_color')}
-            />
-          </div>
-
-          {/* Apple */}
-          <div className="flex flex-col gap-4 rounded-ctl border border-line p-4">
-            <span className="text-xs font-bold uppercase tracking-wide text-tx-3">
-              {t('walletDesign.appleSection')}
-            </span>
-            {appleRegions.map((key) => (
-              <SlotEditor
-                key={key}
-                regionKey={key}
-                slots={design[key]}
-                tokenOpts={tokenOpts}
-                onChange={set(key)}
-                disabled={!branded}
-                t={t}
-              />
-            ))}
-            {isStamp && (
-              <div className="flex flex-col gap-3 border-t border-line pt-3">
-                <Toggle
-                  checked={design.apple_strip_enabled}
-                  onChange={set('apple_strip_enabled')}
-                  label={t('walletDesign.strip')}
+          {selectedTemplate ? (
+            /* Restricted template editor — only the template's editable vars */
+            <div className="flex flex-col gap-4">
+              <div className="grid grid-cols-2 gap-3">
+                <ColorPicker
+                  label={t('walletDesign.labelColor')}
+                  value={design.label_color || card?.color_fg || '#FFFFFF'}
+                  onChange={set('label_color')}
                 />
-                {design.apple_strip_enabled && (
-                  <>
-                    <ColorPicker
-                      label={t('walletDesign.stripBg')}
-                      value={design.strip_bg_color || card?.color_bg || '#0E1B2A'}
-                      onChange={set('strip_bg_color')}
+              </div>
+              {editable('strip_bg_color') && (
+                <ColorPicker
+                  label={t('walletDesign.stripBg')}
+                  value={design.strip_bg_color || card?.color_bg || '#0E1B2A'}
+                  onChange={set('strip_bg_color')}
+                />
+              )}
+              {editable('strip_empty_url') && (
+                <div className="grid grid-cols-2 gap-3">
+                  <FileUpload
+                    label={t('walletDesign.stripEmpty')}
+                    onUploaded={set('strip_empty_url')}
+                  />
+                  <FileUpload
+                    label={t('walletDesign.stripFilled')}
+                    onUploaded={set('strip_filled_url')}
+                  />
+                </div>
+              )}
+              {editable('bottom_image_url') && (
+                <div>
+                  <FileUpload
+                    label={t('walletTemplates.bottomImage')}
+                    onUploaded={set('bottom_image_url')}
+                  />
+                  <p className="mt-1 text-xs text-tx-3">{t('walletTemplates.bottomImageHint')}</p>
+                </div>
+              )}
+              <p className="rounded-ctl bg-paper px-3 py-2 text-xs text-tx-3">
+                {t('walletDesign.layoutNote')}
+              </p>
+            </div>
+          ) : (
+            /* Freeform editor (Custom) — unchanged */
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <Input
+                  label={t('walletDesign.logoText')}
+                  value={design.apple_logo_text}
+                  onChange={(e) => set('apple_logo_text')(e.target.value)}
+                  placeholder={card?.merchantName}
+                />
+                <ColorPicker
+                  label={t('walletDesign.labelColor')}
+                  value={design.label_color || card?.color_fg || '#FFFFFF'}
+                  onChange={set('label_color')}
+                />
+              </div>
+
+              {/* Apple */}
+              <div className="flex flex-col gap-4 rounded-ctl border border-line p-4">
+                <span className="text-xs font-bold uppercase tracking-wide text-tx-3">
+                  {t('walletDesign.appleSection')}
+                </span>
+                {appleRegions.map((key) => (
+                  <SlotEditor
+                    key={key}
+                    regionKey={key}
+                    slots={design[key]}
+                    tokenOpts={tokenOpts}
+                    onChange={set(key)}
+                    disabled={!branded}
+                    t={t}
+                  />
+                ))}
+                {isStamp && (
+                  <div className="flex flex-col gap-3 border-t border-line pt-3">
+                    <Toggle
+                      checked={design.apple_strip_enabled}
+                      onChange={set('apple_strip_enabled')}
+                      label={t('walletDesign.strip')}
                     />
-                    <div className="grid grid-cols-2 gap-3">
-                      <FileUpload
-                        label={t('walletDesign.stripEmpty')}
-                        onUploaded={set('strip_empty_url')}
-                      />
-                      <FileUpload
-                        label={t('walletDesign.stripFilled')}
-                        onUploaded={set('strip_filled_url')}
-                      />
-                    </div>
-                    <p className="text-xs text-tx-3">{t('walletDesign.stripHint')}</p>
-                  </>
+                    {design.apple_strip_enabled && (
+                      <>
+                        <ColorPicker
+                          label={t('walletDesign.stripBg')}
+                          value={design.strip_bg_color || card?.color_bg || '#0E1B2A'}
+                          onChange={set('strip_bg_color')}
+                        />
+                        <div className="grid grid-cols-2 gap-3">
+                          <FileUpload
+                            label={t('walletDesign.stripEmpty')}
+                            onUploaded={set('strip_empty_url')}
+                          />
+                          <FileUpload
+                            label={t('walletDesign.stripFilled')}
+                            onUploaded={set('strip_filled_url')}
+                          />
+                        </div>
+                        <p className="text-xs text-tx-3">{t('walletDesign.stripHint')}</p>
+                      </>
+                    )}
+                  </div>
                 )}
               </div>
-            )}
-          </div>
 
-          {/* Google */}
-          <div className="flex flex-col gap-4 rounded-ctl border border-line p-4">
-            <span className="text-xs font-bold uppercase tracking-wide text-tx-3">
-              {t('walletDesign.googleSection')}
-            </span>
-            <div className="grid grid-cols-2 gap-3">
-              <Input
-                label={t('walletDesign.googleTitle')}
-                value={design.google_title}
-                onChange={(e) => set('google_title')(e.target.value)}
-                placeholder={card?.merchantName}
-              />
-              <Input
-                label={t('walletDesign.googleSubtitle')}
-                value={design.google_subtitle}
-                onChange={(e) => set('google_subtitle')(e.target.value)}
-                placeholder={card?.name}
-              />
-            </div>
-            <SlotEditor
-              regionKey="google_rows"
-              slots={design.google_rows}
-              tokenOpts={tokenOpts}
-              onChange={set('google_rows')}
-              disabled={!branded}
-              t={t}
-            />
-            {isStamp && (
-              <div className="flex flex-col gap-1 border-t border-line pt-3">
-                <Toggle
-                  checked={design.google_stamp_hero}
-                  onChange={set('google_stamp_hero')}
-                  label={t('walletDesign.googleStampHero')}
+              {/* Google */}
+              <div className="flex flex-col gap-4 rounded-ctl border border-line p-4">
+                <span className="text-xs font-bold uppercase tracking-wide text-tx-3">
+                  {t('walletDesign.googleSection')}
+                </span>
+                <div className="grid grid-cols-2 gap-3">
+                  <Input
+                    label={t('walletDesign.googleTitle')}
+                    value={design.google_title}
+                    onChange={(e) => set('google_title')(e.target.value)}
+                    placeholder={card?.merchantName}
+                  />
+                  <Input
+                    label={t('walletDesign.googleSubtitle')}
+                    value={design.google_subtitle}
+                    onChange={(e) => set('google_subtitle')(e.target.value)}
+                    placeholder={card?.name}
+                  />
+                </div>
+                <SlotEditor
+                  regionKey="google_rows"
+                  slots={design.google_rows}
+                  tokenOpts={tokenOpts}
+                  onChange={set('google_rows')}
+                  disabled={!branded}
+                  t={t}
                 />
-                <p className="text-xs text-tx-3">{t('walletDesign.googleStampHeroHint')}</p>
+                {isStamp && (
+                  <div className="flex flex-col gap-1 border-t border-line pt-3">
+                    <Toggle
+                      checked={design.google_stamp_hero}
+                      onChange={set('google_stamp_hero')}
+                      label={t('walletDesign.googleStampHero')}
+                    />
+                    <p className="text-xs text-tx-3">{t('walletDesign.googleStampHeroHint')}</p>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            </>
+          )}
         </fieldset>
 
         {/* Live preview */}

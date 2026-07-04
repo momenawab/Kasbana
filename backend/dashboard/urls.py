@@ -30,7 +30,7 @@ from dashboard.views_announcements import (
 from dashboard.views_announcements import (
     AnnouncementReadView,
 )
-from wallets.views import CardWalletDesignView
+from wallets.views import CardWalletDesignView, WalletTemplateListView
 
 urlpatterns = [
     # Cards
@@ -46,6 +46,8 @@ urlpatterns = [
     ),
     # Uploads
     path("uploads", UploadView.as_view(), name="upload"),
+    # Wallet pass templates (layout-locked catalog — single source of truth)
+    path("wallet-templates", WalletTemplateListView.as_view(), name="wallet-templates"),
     # Customers
     path("customers", CustomerListView.as_view(), name="customer-list"),
     # Static segment before the <uuid> detail route so it can never be shadowed.

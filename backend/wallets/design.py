@@ -9,6 +9,10 @@ A slot is ``{"label": str, "source": str}`` where ``source`` is one of
 :data:`VALUE_TOKENS` or ``"text:<literal>"`` for static text. Blank/empty design
 lists mean "keep the built-in default", so a card without a design row is
 unchanged.
+
+When a layout-locked **template** is active (``template_key`` set to a registry
+key), the freeform slots are ignored and the template's fixed per-platform
+layout is rendered via :func:`template_for` / :func:`render_template_fields`.
 """
 
 from __future__ import annotations
@@ -71,6 +75,47 @@ def render_value(source: str, ctx: dict[str, Any]) -> Any:
     if source in ctx:
         return ctx[source]
     return source
+
+
+def template_for(card: Card) -> Any | None:
+    """Return the active template dict for ``card``, or ``None`` (freeform).
+
+    ``None`` means: render exactly as today (freeform slots) — either there is no
+    design row, the key is ``custom``, or the key is unknown (safe fallback).
+    """
+    from wallets import templates as templates_mod
+
+    design = get_design(card)
+    return templates_mod.get_template(design.template_key if design else None)
+
+
+def render_template_fields(
+    slots: list[dict[str, Any]] | None, ctx: dict[str, Any], prefix: str
+) -> list[dict[str, Any]]:
+    """Turn a template's fixed field slots into pass field dicts.
+
+    Like :func:`render_slots`, but also interpolates ``{token}`` placeholders in
+    each ``label`` against ``ctx`` (e.g. ``"{goal} FOR A REWARD"``). The same
+    per-region ``prefix`` namespaces the generated ``key`` so field keys stay
+    globally unique across the pass (Apple rejects duplicates).
+    """
+    from wallets import templates as templates_mod
+
+    out: list[dict[str, Any]] = []
+    for i, slot in enumerate(slots or []):
+        if not isinstance(slot, dict):
+            continue
+        source = str(slot.get("source", "")).strip()
+        if not source:
+            continue
+        out.append(
+            {
+                "key": f"{prefix}{i}",
+                "label": templates_mod.interpolate(str(slot.get("label", "")), ctx),
+                "value": render_value(source, ctx),
+            }
+        )
+    return out
 
 
 def render_slots(

@@ -105,9 +105,20 @@ def build_loyalty_object(customer_card: CustomerCard) -> dict:
 
     # Merchant module rows + subtitle (notes 2-4). Google renders these as
     # textModulesData under the balance; blank/empty = none (unchanged default).
+    # A layout-locked template fixes these rows (its google layout) instead of
+    # the freeform ones.
     design = design_mod.get_design(card)
-    if design:
-        modules: list[dict] = []
+    template = design_mod.template_for(card)
+    modules: list[dict] = []
+    if template is not None:
+        ctx = design_mod.field_context(customer_card)
+        google = template.get("google", {})
+        if google.get("subtitle"):
+            body = str(design_mod.render_value(google["subtitle"], ctx))
+            modules.append({"id": "subtitle", "header": "", "body": body})
+        for slot in design_mod.render_template_fields(google.get("rows", []), ctx, "g"):
+            modules.append({"id": slot["key"], "header": slot["label"], "body": str(slot["value"])})
+    elif design:
         if design.google_subtitle:
             modules.append({"id": "subtitle", "header": "", "body": design.google_subtitle})
         if design.google_rows:
@@ -116,14 +127,16 @@ def build_loyalty_object(customer_card: CustomerCard) -> dict:
                 modules.append(
                     {"id": slot["key"], "header": slot["label"], "body": str(slot["value"])}
                 )
-        if modules:
-            payload["textModulesData"] = modules
+    if modules:
+        payload["textModulesData"] = modules
 
-    # Visual stamp counter: render the grid into the object hero and refresh it
-    # on each stamp (Google has no Apple-style strip). Overrides the class hero.
-    from wallets.google.hero import stamp_hero_url
+    # Visual stamp counter / bottom image: render it into the object hero and
+    # refresh it on each stamp (Google has no Apple-style strip). Template-aware:
+    # stamps → per-count grid, image → static bottom image, none → no hero.
+    # Overrides the class hero.
+    from wallets.google.hero import hero_url_for
 
-    hero = stamp_hero_url(customer_card)
+    hero = hero_url_for(customer_card)
     if hero:
         payload["heroImage"] = {
             "sourceUri": {"uri": hero},

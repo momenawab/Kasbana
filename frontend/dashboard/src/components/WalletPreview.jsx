@@ -1,8 +1,11 @@
 // WalletPreview — faithful Apple storeCard + Google loyalty previews that mirror
 // the official PassKit / Google Wallet templates and reflect the merchant's
-// editable pass design (notes 2-4). `design` is the wallet-design object; when a
-// region's slot list is empty the built-in smart default is shown, matching the
-// backend builders. Pure/presentational — updates as props change.
+// editable pass design (notes 2-4 + templates). When a layout-locked `template`
+// is active its fixed per-platform layout is rendered (positions locked); the
+// Apple-vs-Google bottom-visual rule applies (stamps/image sit in the Apple
+// strip at the TOP, in the Google hero under the header). A platform (Kasbana)
+// logo placeholder is shown at the bottom-left of both passes — wired and ready
+// to swap for the real asset. Pure/presentational — updates as props change.
 import { useTranslation } from 'react-i18next'
 import { arDigits } from '../lib/format'
 
@@ -11,6 +14,12 @@ function resolveValue(source, ctx) {
   if (!source) return ''
   if (source.startsWith('text:')) return source.slice(5)
   return source in ctx ? ctx[source] : source
+}
+
+// Replace {token} placeholders in a label (mirrors templates.interpolate).
+function interpolate(label, ctx) {
+  if (!label || label.indexOf('{') === -1) return label
+  return label.replace(/\{(\w+)\}/g, (_, k) => (k in ctx ? String(ctx[k]) : ''))
 }
 
 function slotsOr(designSlots, fallback) {
@@ -99,9 +108,30 @@ function Barcode({ fg, altText }) {
   )
 }
 
+// Platform (Kasbana) logo at the bottom-left of the pass. `url` is the real
+// asset when configured; otherwise a drawn PLACEHOLDER badge (the slot is wired).
+function PlatformLogo({ url, fg }) {
+  return (
+    <div className="pointer-events-none absolute bottom-1.5 left-2">
+      {url ? (
+        <img src={url} alt="" className="h-4 max-w-[64px] object-contain opacity-80" />
+      ) : (
+        <span
+          className="rounded-[3px] px-1 py-px text-[7px] font-bold uppercase tracking-wide"
+          style={{ color: fg, border: `1px solid ${fg}`, opacity: 0.4 }}
+        >
+          Logo
+        </span>
+      )}
+    </div>
+  )
+}
+
 export default function WalletPreview({
   platform = 'APPLE',
   design = null,
+  template = null,
+  platformLogoUrl = '',
   logoUrl,
   colorBg = '#0E1B2A',
   colorFg = '#FFFFFF',
@@ -120,6 +150,7 @@ export default function WalletPreview({
   const goal = stampsRequired
   const remaining = Math.max(0, goal - stampCount)
   const labelColor = design?.label_color || colorFg
+  const bottomImage = design?.bottom_image_url || ''
 
   const ctx = {
     balance: `${arDigits(stampCount, lang)}/${arDigits(goal, lang)}`,
@@ -133,15 +164,28 @@ export default function WalletPreview({
   }
   const render = (slots) =>
     slots.map((s) => ({ label: s.label, value: resolveValue(s.source, ctx) }))
+  const tplRender = (slots) =>
+    (slots || []).map((s) => ({
+      label: interpolate(s.label, ctx),
+      value: resolveValue(s.source, ctx),
+    }))
   const logoText = design?.apple_logo_text || (logoUrl ? '' : merchantName)
-  const stripOn = isStamp && (design ? design.apple_strip_enabled : true)
+
+  // Template mode locks the layout: regions come from the template, and the
+  // strip/hero behaviour is pinned to its bottom_visual.
+  const tpl = template && template.key && template.key !== 'custom' ? template : null
+  const bottomVisual = tpl?.bottom_visual || 'none'
+  const hasBottom = tpl ? ['stamps', 'image'].includes(bottomVisual) : false
 
   if (platform === 'GOOGLE') {
-    const title = design?.google_title || merchantName
-    const subtitle = design?.google_subtitle || programName
-    const rows = render(design?.google_rows || [])
+    const title = tpl ? resolveValue(tpl.google?.title, ctx) : design?.google_title || merchantName
+    const subtitle = tpl
+      ? resolveValue(tpl.google?.subtitle, ctx)
+      : design?.google_subtitle || programName
+    const rows = tpl ? tplRender(tpl.google?.rows) : render(design?.google_rows || [])
+    const showHero = tpl ? hasBottom : isStamp && design?.google_stamp_hero
     return (
-      <div className="w-[320px] overflow-hidden rounded-2xl border border-line bg-white shadow-bold">
+      <div className="relative w-[320px] overflow-hidden rounded-2xl border border-line bg-white shadow-bold">
         <div
           className="flex items-center gap-2 p-4"
           style={{ background: colorBg, color: colorFg }}
@@ -158,19 +202,25 @@ export default function WalletPreview({
             <div className="truncate text-xs opacity-80">{subtitle}</div>
           </div>
         </div>
-        {/* Visual stamp counter rendered into the hero banner (updates per stamp) */}
-        {isStamp && design?.google_stamp_hero && (
+        {/* Bottom visual (stamp counter or photo) in the hero banner */}
+        {showHero && (
           <div
             className="px-4 py-3"
             style={{ background: design?.strip_bg_color || darkenHex(colorBg) }}
           >
-            <StampGrid
-              count={stampCount}
-              required={goal}
-              fg={colorFg}
-              emptyUrl={design?.strip_empty_url}
-              filledUrl={design?.strip_filled_url}
-            />
+            {tpl && bottomVisual === 'image' ? (
+              bottomImage ? (
+                <img src={bottomImage} alt="" className="max-h-20 w-full object-contain" />
+              ) : null
+            ) : (
+              <StampGrid
+                count={stampCount}
+                required={goal}
+                fg={colorFg}
+                emptyUrl={design?.strip_empty_url}
+                filledUrl={design?.strip_filled_url}
+              />
+            )}
           </div>
         )}
         <div className="p-4">
@@ -190,25 +240,41 @@ export default function WalletPreview({
         <div className="border-t border-line p-4">
           <Barcode fg="#111" altText={shortCode} />
         </div>
+        <PlatformLogo url={platformLogoUrl} fg="#555" />
       </div>
     )
   }
 
   // ── Apple storeCard ─────────────────────────────────────────────────────────
-  const header = render(slotsOr(design?.apple_header, [{ label: unit, source: 'balance' }]))
-  const primaryDefault = stripOn ? [] : [{ label: unit, source: isStamp ? 'stamps' : 'points' }]
-  const primary = render(slotsOr(design?.apple_primary, primaryDefault))
-  const secondaryDefault = stripOn
-    ? [{ label: remaining ? 'Stamps left' : 'Reward ready', source: 'remaining' }]
-    : [{ label: 'Goal', source: 'goal' }]
-  const secondary = render(slotsOr(design?.apple_secondary, secondaryDefault))
-  const auxiliary = render(
-    slotsOr(design?.apple_auxiliary, rewardTitle ? [{ label: 'Reward', source: 'reward' }] : [])
-  )
+  let header, primary, secondary, auxiliary, stripOn, stripIsImage
+  if (tpl) {
+    header = tplRender(tpl.apple?.header)
+    primary = tplRender(tpl.apple?.primary)
+    secondary = tplRender(tpl.apple?.secondary)
+    auxiliary = tplRender(tpl.apple?.auxiliary)
+    stripOn = hasBottom
+    stripIsImage = bottomVisual === 'image'
+  } else {
+    const stripOnFree = isStamp && (design ? design.apple_strip_enabled : true)
+    header = render(slotsOr(design?.apple_header, [{ label: unit, source: 'balance' }]))
+    const primaryDefault = stripOnFree
+      ? []
+      : [{ label: unit, source: isStamp ? 'stamps' : 'points' }]
+    primary = render(slotsOr(design?.apple_primary, primaryDefault))
+    const secondaryDefault = stripOnFree
+      ? [{ label: remaining ? 'Stamps left' : 'Reward ready', source: 'remaining' }]
+      : [{ label: 'Goal', source: 'goal' }]
+    secondary = render(slotsOr(design?.apple_secondary, secondaryDefault))
+    auxiliary = render(
+      slotsOr(design?.apple_auxiliary, rewardTitle ? [{ label: 'Reward', source: 'reward' }] : [])
+    )
+    stripOn = stripOnFree
+    stripIsImage = false
+  }
 
   return (
     <div
-      className="w-[320px] rounded-2xl p-4 shadow-bold"
+      className="relative w-[320px] rounded-2xl p-4 shadow-bold"
       style={{ background: colorBg, color: colorFg }}
     >
       {/* Logo + logo text + header fields */}
@@ -237,19 +303,27 @@ export default function WalletPreview({
         </div>
       </div>
 
-      {/* Strip (stamp grid) — its own band background so it doesn't blend in */}
+      {/* Strip — the bottom visual: stamp grid (stamps) or full-width image
+          (image), on its own band so it doesn't blend in. On Apple this lives
+          at the TOP (Apple pins the barcode to the very bottom). */}
       {stripOn && (
         <div
           className="mt-3 rounded-lg p-3"
           style={{ background: design?.strip_bg_color || darkenHex(colorBg) }}
         >
-          <StampGrid
-            count={stampCount}
-            required={goal}
-            fg={colorFg}
-            emptyUrl={design?.strip_empty_url}
-            filledUrl={design?.strip_filled_url}
-          />
+          {stripIsImage ? (
+            bottomImage ? (
+              <img src={bottomImage} alt="" className="max-h-24 w-full object-contain" />
+            ) : null
+          ) : (
+            <StampGrid
+              count={stampCount}
+              required={goal}
+              fg={colorFg}
+              emptyUrl={design?.strip_empty_url}
+              filledUrl={design?.strip_filled_url}
+            />
+          )}
         </div>
       )}
 
@@ -297,6 +371,7 @@ export default function WalletPreview({
       <div className="mt-4 border-t border-white/15 pt-3">
         <Barcode fg={colorFg} altText={shortCode} />
       </div>
+      <PlatformLogo url={platformLogoUrl} fg={colorFg} />
     </div>
   )
 }

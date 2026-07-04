@@ -149,6 +149,14 @@ class WalletCardDesign(UUIDModel, TimeStampedModel):
     # stamp (Google has no Apple-style strip). Uses the same strip colors/icons.
     google_stamp_hero = models.BooleanField(default=False)
 
+    # ── Templates (layout-locked, merchant-customizable) ────────────────────
+    # "custom" keeps the freeform editor above unchanged. Any other value is a
+    # key in ``wallets.templates.TEMPLATES`` and locks the field positions; the
+    # merchant may then edit only that template's ``editable`` variables.
+    template_key = models.CharField(max_length=40, default="custom")
+    # Full-width bottom image for image-style templates (uploaded via /uploads).
+    bottom_image_url = models.URLField(blank=True)
+
     objects = TenantManager()
 
     def __str__(self) -> str:

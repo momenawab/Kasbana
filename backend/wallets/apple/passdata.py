@@ -77,50 +77,63 @@ def build_pass_json(customer_card: CustomerCard) -> dict:
     design = design_mod.get_design(card)
     ctx = design_mod.field_context(customer_card)
     label_color = _rgb(design.label_color, "#ffffff") if (design and design.label_color) else fg
-    # The strip carries the stamp grid; when it's off, lead with the balance in
-    # the primary area instead of leaving it clear for the strip.
-    use_strip = is_stamp and (design.apple_strip_enabled if design else True)
-
-    # Top-right header: compact progress next to the logo.
-    header_fields = [
-        {"key": "balance", "label": unit.upper(), "value": f"{count}/{goal}" if goal else count}
-    ]
-
-    # STAMP cards carry a strip image with the stamp grid, so keep the primary
-    # (over-strip) area clear and show progress below in secondary fields — the
-    # coffee-card layout. POINTS cards have no strip, so lead with the balance.
-    if use_strip:
-        primary_fields: list[dict] = []
-        secondary_fields = [
-            {
-                "key": "remaining",
-                "label": "STAMPS UNTIL NEXT REWARD" if remaining else "REWARD READY 🎉",
-                "value": remaining,
-                "changeMessage": "%@ stamps until your next reward",
-            }
-        ]
+    # A layout-locked template overrides the freeform regions entirely (its
+    # positions are fixed) and pins the strip behaviour to its bottom_visual.
+    template = design_mod.template_for(card)
+    if template is not None:
+        bottom_visual = template.get("bottom_visual", "none")
+        use_strip = bottom_visual in ("stamps", "image")
+        apple = template.get("apple", {})
+        header_fields = design_mod.render_template_fields(apple.get("header", []), ctx, "h")
+        primary_fields = design_mod.render_template_fields(apple.get("primary", []), ctx, "p")
+        secondary_fields = design_mod.render_template_fields(apple.get("secondary", []), ctx, "s")
+        auxiliary_fields = design_mod.render_template_fields(apple.get("auxiliary", []), ctx, "x")
     else:
-        primary_fields = [{"key": "stamps", "label": unit, "value": count}]
-        secondary_fields = [{"key": "goal", "label": "Goal", "value": goal}]
+        # The strip carries the stamp grid; when it's off, lead with the balance
+        # in the primary area instead of leaving it clear for the strip.
+        use_strip = is_stamp and (design.apple_strip_enabled if design else True)
 
-    auxiliary_fields = (
-        [{"key": "reward", "label": "REWARD", "value": card.reward_title}]
-        if card.reward_title
-        else []
-    )
+        # Top-right header: compact progress next to the logo.
+        header_fields = [
+            {"key": "balance", "label": unit.upper(), "value": f"{count}/{goal}" if goal else count}
+        ]
 
-    # Apply per-region overrides where the merchant configured slots. Each region
-    # gets a distinct key prefix so field keys stay unique across the whole pass
-    # (Apple rejects a pass with duplicate field keys — "Safari cannot download").
-    if design:
-        if design.apple_header:
-            header_fields = design_mod.render_slots(design.apple_header, ctx, "h")
-        if design.apple_primary:
-            primary_fields = design_mod.render_slots(design.apple_primary, ctx, "p")
-        if design.apple_secondary:
-            secondary_fields = design_mod.render_slots(design.apple_secondary, ctx, "s")
-        if design.apple_auxiliary:
-            auxiliary_fields = design_mod.render_slots(design.apple_auxiliary, ctx, "x")
+        # STAMP cards carry a strip image with the stamp grid, so keep the primary
+        # (over-strip) area clear and show progress below in secondary fields — the
+        # coffee-card layout. POINTS cards have no strip, so lead with the balance.
+        if use_strip:
+            primary_fields = []
+            secondary_fields = [
+                {
+                    "key": "remaining",
+                    "label": "STAMPS UNTIL NEXT REWARD" if remaining else "REWARD READY 🎉",
+                    "value": remaining,
+                    "changeMessage": "%@ stamps until your next reward",
+                }
+            ]
+        else:
+            primary_fields = [{"key": "stamps", "label": unit, "value": count}]
+            secondary_fields = [{"key": "goal", "label": "Goal", "value": goal}]
+
+        auxiliary_fields = (
+            [{"key": "reward", "label": "REWARD", "value": card.reward_title}]
+            if card.reward_title
+            else []
+        )
+
+        # Apply per-region overrides where the merchant configured slots. Each
+        # region gets a distinct key prefix so field keys stay unique across the
+        # whole pass (Apple rejects a pass with duplicate field keys — "Safari
+        # cannot download").
+        if design:
+            if design.apple_header:
+                header_fields = design_mod.render_slots(design.apple_header, ctx, "h")
+            if design.apple_primary:
+                primary_fields = design_mod.render_slots(design.apple_primary, ctx, "p")
+            if design.apple_secondary:
+                secondary_fields = design_mod.render_slots(design.apple_secondary, ctx, "s")
+            if design.apple_auxiliary:
+                auxiliary_fields = design_mod.render_slots(design.apple_auxiliary, ctx, "x")
 
     back_fields: list[dict] = []
     if card.reward_title:

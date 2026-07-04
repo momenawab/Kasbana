@@ -371,6 +371,18 @@
     "tok_program": "Program name",
     "tok_text": "Custom text"
   },
+  "walletTemplates": {
+    "choose": "Choose a template",
+    "custom": "Custom (advanced)",
+    "customHint": "Design every field freely",
+    "lockedNote": "This template locks the field layout. You can edit only colors, the stamp icons (or bottom image), and text — positions stay fixed.",
+    "bottomImage": "Bottom image",
+    "bottomImageHint": "Full-width image shown in the strip (Apple) / hero (Google).",
+    "visual_stamps": "Stamp counter",
+    "visual_image": "Photo",
+    "visual_none": "Plain",
+    "logoSlot": "Powered-by logo"
+  },
   "detail": {
     "edit": "Edit",
     "qr": "QR",

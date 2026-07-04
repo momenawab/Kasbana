@@ -302,6 +302,12 @@ MESSAGING = {
 # reachable over HTTPS for Google to fetch it.
 WALLET_DEFAULT_LOGO_URL = env("WALLET_DEFAULT_LOGO_URL", "") or f"{BASE_URL}/static/wallet/logo.png"
 
+# Platform (Kasbana) watermark/logo rendered at the bottom-left of every wallet
+# pass — the "Powered by" branding slot. Leave blank to render a drawn
+# PLACEHOLDER badge (the slot is wired and ready; drop the real asset in here).
+# Must be a local /uploads URL (read via _local_media_bytes — no SSRF).
+WALLET_PLATFORM_LOGO_URL = env("WALLET_PLATFORM_LOGO_URL", "")
+
 # Mirror selected contract constants into settings for callers that read them
 # from settings (contract §3.10).
 STAMP_COOLDOWN_SECONDS = constants.STAMP_COOLDOWN_SECONDS
