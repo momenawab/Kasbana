@@ -7,25 +7,132 @@ made with the Apple pass-signing certificate + the WWDR intermediate).
 
 from __future__ import annotations
 
-import base64
 import hashlib
 import io
 import json
 import zipfile
 
+from django.conf import settings
+
 from core.models import CustomerCard
 from wallets.apple.config import SigningMaterial, load_signing_material
 from wallets.apple.passdata import build_pass_json
 
-# Minimal 1x1 PNG used as a placeholder icon/logo so the bundle is structurally
-# complete. Replace with branded assets (e.g. from logo_url) in production.
-_PLACEHOLDER_PNG = base64.b64decode(
-    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGNgYGAAAAAEAAH2FzhVAAAAAElFTkSuQmCC"
-)
+_RGB = tuple[int, int, int]
 
 
 class AppleSigningError(RuntimeError):
     pass
+
+
+def _hex_to_rgb(value: str | None, default: _RGB) -> _RGB:
+    text = (value or "").lstrip("#")
+    if len(text) != 6:
+        return default
+    try:
+        return (int(text[0:2], 16), int(text[2:4], 16), int(text[4:6], 16))
+    except ValueError:
+        return default
+
+
+def _local_media_bytes(url: str) -> bytes | None:
+    """Read an uploaded image from local media by URL (no network / SSRF)."""
+    if not url:
+        return None
+    key = "/" + str(settings.MEDIA_URL).strip("/") + "/"
+    if key not in url:
+        return None
+    path = url.split(key, 1)[1]
+    try:
+        from django.core.files.storage import default_storage
+
+        if default_storage.exists(path):
+            with default_storage.open(path, "rb") as fh:
+                return fh.read()
+    except Exception:  # pragma: no cover - defensive
+        return None
+    return None
+
+
+def _font(size: int):  # type: ignore[no-untyped-def]
+    from PIL import ImageFont
+
+    try:
+        return ImageFont.load_default(size=size)
+    except TypeError:  # pragma: no cover - very old Pillow
+        return ImageFont.load_default()
+
+
+def build_pass_images(customer_card: CustomerCard) -> dict[str, bytes]:
+    """Render the pkpass image assets at Apple's required sizes.
+
+    iOS rejects a pass whose ``icon.png`` is not a real image (a 1x1 placeholder
+    makes Safari say "cannot download this file"). Uses the merchant/card logo
+    when it is a local upload; otherwise a branded fallback (brand color + the
+    merchant's initial for the icon, merchant name for the logo).
+    """
+    from PIL import Image, ImageDraw
+
+    card = customer_card.card
+    merchant = card.merchant
+    name = (merchant.name or "").strip()
+    bg = _hex_to_rgb(card.color_bg or merchant.color_bg, (11, 122, 91))
+    fg = _hex_to_rgb(card.color_fg or merchant.color_fg, (255, 255, 255))
+    logo_bytes = _local_media_bytes(card.logo_url or merchant.logo_url)
+
+    def _png(img: Image.Image) -> bytes:
+        out = io.BytesIO()
+        img.save(out, format="PNG")
+        return out.getvalue()
+
+    def _from_logo(w: int, h: int) -> bytes | None:
+        if not logo_bytes:
+            return None
+        try:
+            src = Image.open(io.BytesIO(logo_bytes)).convert("RGBA")
+            src.thumbnail((w, h))
+            canvas = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+            canvas.paste(src, ((w - src.width) // 2, (h - src.height) // 2), src)
+            return _png(canvas)
+        except Exception:  # pragma: no cover - bad image bytes
+            return None
+
+    def _icon(size: int) -> bytes:
+        from_logo = _from_logo(size, size)
+        if from_logo is not None:
+            return from_logo
+        canvas = Image.new("RGBA", (size, size), (*bg, 255))
+        draw = ImageDraw.Draw(canvas)
+        letter = (name[:1] or "•").upper()
+        font = _font(int(size * 0.6))
+        left, top, right, bottom = draw.textbbox((0, 0), letter, font=font)
+        draw.text(
+            ((size - (right - left)) / 2 - left, (size - (bottom - top)) / 2 - top),
+            letter,
+            font=font,
+            fill=(*fg, 255),
+        )
+        return _png(canvas)
+
+    def _logo(w: int, h: int) -> bytes:
+        from_logo = _from_logo(w, h)
+        if from_logo is not None:
+            return from_logo
+        canvas = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(canvas)
+        text = (name[:18] or "Loyalty").strip()
+        font = _font(int(h * 0.6))
+        left, top, right, bottom = draw.textbbox((0, 0), text, font=font)
+        draw.text((0, (h - (bottom - top)) / 2 - top), text, font=font, fill=(*fg, 255))
+        return _png(canvas)
+
+    return {
+        "icon.png": _icon(29),
+        "icon@2x.png": _icon(58),
+        "icon@3x.png": _icon(87),
+        "logo.png": _logo(160, 50),
+        "logo@2x.png": _logo(320, 100),
+    }
 
 
 def digest_dict(files: dict[str, bytes]) -> dict[str, str]:
@@ -55,12 +162,7 @@ def build_pkpass(customer_card: CustomerCard, material: SigningMaterial | None =
 
     pass_json = json.dumps(build_pass_json(customer_card), separators=(",", ":")).encode()
 
-    files: dict[str, bytes] = {
-        "pass.json": pass_json,
-        "icon.png": _PLACEHOLDER_PNG,
-        "icon@2x.png": _PLACEHOLDER_PNG,
-        "logo.png": _PLACEHOLDER_PNG,
-    }
+    files: dict[str, bytes] = {"pass.json": pass_json, **build_pass_images(customer_card)}
     manifest = json.dumps(digest_dict(files), separators=(",", ":")).encode()
     signature = _sign_manifest(manifest, material)
 
