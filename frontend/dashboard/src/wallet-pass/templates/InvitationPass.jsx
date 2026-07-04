@@ -24,6 +24,7 @@ export default function InvitationPass({
   code,
   barcodeFormat = 'code128',
   heroImage,
+  heroPlaceholder,
   ...rest
 }) {
   const t = resolveTheme(theme)
@@ -51,7 +52,7 @@ export default function InvitationPass({
         <PassBarcode format={barcodeFormat} value={barcodeValue} code={code} theme={t} />
       </div>
       <div className="flex-1" />
-      <FooterImage src={heroImage} position="bottom" />
+      <FooterImage src={heroImage} placeholder={heroPlaceholder} position="bottom" />
     </PassCard>
   )
 }

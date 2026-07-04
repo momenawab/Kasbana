@@ -3,10 +3,13 @@
 import BrandLogo from './BrandLogo'
 import StatusBadge from './StatusBadge'
 
-export default function PassHeader({ logo, brand, badge, badgeTone, theme }) {
+export default function PassHeader({ logo, brand, badge, badgeTone, theme, divider = true }) {
   if (!brand && !logo && !badge) return null
   return (
-    <div className="flex items-center justify-between gap-2">
+    <div
+      className={`flex items-center justify-between gap-2 ${divider ? 'pb-2' : ''}`}
+      style={divider ? { borderBottom: `1px solid ${theme?.hairline}` } : undefined}
+    >
       <div className="flex min-w-0 items-center gap-2">
         <BrandLogo src={logo} name={brand} theme={theme} />
         {brand && (

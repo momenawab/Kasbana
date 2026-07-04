@@ -4,7 +4,7 @@
 // whole system can be reviewed at a glance. Cards are capped to a phone-like
 // width and laid out responsively.
 import { useState } from 'react'
-import { TEMPLATES } from './registry'
+import { GALLERY_CARDS } from './registry'
 import { THEME_SWATCHES } from './components'
 
 export default function PassGallery() {
@@ -67,8 +67,8 @@ export default function PassGallery() {
         </div>
 
         <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-6">
-          {TEMPLATES.map(({ id, name, component: Pass, theme: def, sample }) => (
-            <div key={id} className="flex flex-col items-center gap-3">
+          {GALLERY_CARDS.map(({ key, name, component: Pass, theme: def, sample }) => (
+            <div key={key} className="flex flex-col items-center gap-3">
               <div className="w-full max-w-[280px]">
                 <Pass {...sample} theme={theme || def} />
               </div>

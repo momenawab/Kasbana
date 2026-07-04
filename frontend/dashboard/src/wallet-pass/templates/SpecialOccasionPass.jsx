@@ -21,33 +21,35 @@ export default function SpecialOccasionPass({
   validOn,
   validAt,
   expiration,
+  info, // optional explicit [{label,value}] row; overrides valid-on/valid-at
   qr,
   code,
   barcodeFormat = 'qr',
   artwork,
+  artworkPlaceholder,
   artworkMode = 'footer', // 'footer' image band | 'background' full-bleed
   ...rest
 }) {
   const t = resolveTheme(theme)
   const background = artworkMode === 'background' ? artwork : undefined
+  const infoItems = info || [
+    { label: 'Valid on', value: validOn || expiration },
+    { label: 'Valid at', value: validAt },
+  ]
   return (
     <PassCard theme={t} backgroundImage={background} {...rest}>
       <PassHeader logo={logo} brand={brand} theme={t} />
       <PassTitle label={holidayTitle} theme={t} size="xl">
         {offer}
       </PassTitle>
-      <PassInfoRow
-        theme={t}
-        items={[
-          { label: 'Valid on', value: validOn || expiration },
-          { label: 'Valid at', value: validAt },
-        ]}
-      />
+      <PassInfoRow theme={t} items={infoItems} />
       <div className="flex items-center justify-center py-1">
         <PassBarcode format={barcodeFormat} value={qr} code={code} theme={t} />
       </div>
       <div className="flex-1" />
-      {artworkMode === 'footer' && <FooterImage src={artwork} position="bottom" />}
+      {artworkMode === 'footer' && (
+        <FooterImage src={artwork} placeholder={artworkPlaceholder} position="bottom" />
+      )}
     </PassCard>
   )
 }

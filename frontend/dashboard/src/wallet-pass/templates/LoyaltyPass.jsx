@@ -27,6 +27,8 @@ export default function LoyaltyPass({
   rewardProgress = 0,
   rewardTarget = 5,
   rewardIcon,
+  stampEmoji, // food/drink emoji shown in each stamp (e.g. 🍔 / 🍩 / ☕)
+  rewardEmoji,
   ...rest
 }) {
   const t = resolveTheme(theme)
@@ -52,6 +54,8 @@ export default function LoyaltyPass({
         progress={rewardProgress}
         target={rewardTarget}
         rewardIcon={rewardIcon}
+        emoji={stampEmoji}
+        rewardEmoji={rewardEmoji}
       />
     </PassCard>
   )
