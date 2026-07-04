@@ -226,6 +226,22 @@ def test_download_pass(client, customer_card):
     assert resp["Content-Type"] == "application/vnd.apple.pkpass"
 
 
+def test_pkpass_icons_are_real_images(customer_card):
+    """iOS rejects a 1x1 icon ("Safari cannot download this file"); guard sizes."""
+    import io
+
+    from PIL import Image
+
+    from wallets.apple.signing import build_pass_images
+
+    imgs = build_pass_images(customer_card)
+    assert {"icon.png", "icon@2x.png", "logo.png"} <= set(imgs)
+    icon = Image.open(io.BytesIO(imgs["icon.png"]))
+    icon2x = Image.open(io.BytesIO(imgs["icon@2x.png"]))
+    assert icon.size == (29, 29)
+    assert icon2x.size == (58, 58)
+
+
 def test_download_pass_503_without_certs(client, settings):
     settings.WALLET = {
         **settings.WALLET,
