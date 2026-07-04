@@ -132,6 +132,9 @@ class WalletCardDesign(UUIDModel, TimeStampedModel):
     apple_auxiliary = models.JSONField(default=list, blank=True)  # <=4 slots
     apple_back = models.JSONField(default=list, blank=True)  # extra back fields
     apple_strip_enabled = models.BooleanField(default=True)  # show the stamp grid strip
+    # Background of the stamp strip band. Blank = auto (a slightly darkened brand
+    # bg) so the strip reads as its own row instead of blending into the pass.
+    strip_bg_color = models.CharField(max_length=7, blank=True, validators=[hex_color])
     # Custom stamp icons (uploaded via /uploads). When both are set the strip is
     # tiled from them (empty for remaining, filled for earned) instead of the
     # drawn circles. Apple/stamp cards only.

@@ -2,6 +2,12 @@
 // card with a faithful dual live preview. Rich controls are gated behind
 // custom_branding (free plans keep the smart defaults). Edit-mode only: the
 // wallet-design endpoint is per-card, so the card must exist first.
+//
+// Apple fixes the layout: fields live in four regions (header/primary/secondary/
+// auxiliary) and, within a region, render LEFT→RIGHT in list order. So position
+// = region + order; there is no free placement. The editor labels each region
+// with its on-pass position, lets you reorder within it, and warns before a
+// region overflows (Apple truncates silently otherwise).
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useWalletDesign, useSaveWalletDesign } from './api'
@@ -15,13 +21,14 @@ import FileUpload from '../../components/FileUpload'
 import WalletPreview from '../../components/WalletPreview'
 import Button from '../../components/Button'
 
+// Hard cap (Apple's limit) + "comfortable" count above which we warn of overflow.
 const REGIONS = {
-  apple_header: 3,
-  apple_primary: 1,
-  apple_secondary: 4,
-  apple_auxiliary: 4,
-  apple_back: 6,
-  google_rows: 3,
+  apple_header: { cap: 3, safe: 2, pos: 'header' },
+  apple_primary: { cap: 1, safe: 1, pos: 'primary' },
+  apple_secondary: { cap: 4, safe: 3, pos: 'secondary' },
+  apple_auxiliary: { cap: 4, safe: 3, pos: 'auxiliary' },
+  apple_back: { cap: 6, safe: 6, pos: 'back' },
+  google_rows: { cap: 3, safe: 3, pos: 'googleRows' },
 }
 
 const DEFAULTS = {
@@ -33,6 +40,7 @@ const DEFAULTS = {
   apple_auxiliary: [],
   apple_back: [],
   apple_strip_enabled: true,
+  strip_bg_color: '',
   strip_empty_url: '',
   strip_filled_url: '',
   google_title: '',
@@ -42,12 +50,57 @@ const DEFAULTS = {
 
 const TEXT = '__text__'
 
-// One editable {label, source} row. Custom text is stored as `text:<value>`.
-function SlotRow({ slot, onChange, onRemove, tokenOpts, t }) {
+// Rough on-pass character budget per field before Apple truncates. Header fields
+// are the narrowest; back fields wrap so they're effectively unlimited.
+const VALUE_BUDGET = {
+  apple_header: 12,
+  apple_primary: 16,
+  apple_secondary: 14,
+  apple_auxiliary: 12,
+}
+
+function slotText(slot) {
+  return slot.source.startsWith('text:') ? slot.source.slice(5) : ''
+}
+
+// Returns a warning string when a region is likely to overflow, else null.
+function regionWarning(slots, key, t) {
+  const cfg = REGIONS[key]
+  if (slots.length > cfg.safe) return t('walletDesign.warnCount', { max: cfg.safe })
+  const budget = VALUE_BUDGET[key]
+  if (budget) {
+    const long = slots.some((s) => slotText(s).length > budget || s.label.length > budget)
+    if (long) return t('walletDesign.warnLong')
+  }
+  return null
+}
+
+// One editable {label, source} row with reorder + remove. Custom text -> `text:`.
+function SlotRow({ slot, index, count, onChange, onRemove, onMove, tokenOpts, t }) {
   const isText = slot.source.startsWith('text:')
   const sel = isText ? TEXT : slot.source
   return (
     <div className="flex items-end gap-2">
+      <div className="flex flex-col">
+        <button
+          type="button"
+          onClick={() => onMove(index, -1)}
+          disabled={index === 0}
+          className="px-1 text-tx-3 disabled:opacity-30"
+          aria-label={t('walletDesign.moveUp')}
+        >
+          ↑
+        </button>
+        <button
+          type="button"
+          onClick={() => onMove(index, 1)}
+          disabled={index === count - 1}
+          className="px-1 text-tx-3 disabled:opacity-30"
+          aria-label={t('walletDesign.moveDown')}
+        >
+          ↓
+        </button>
+      </div>
       <div className="flex-1">
         <Input
           label={t('walletDesign.label')}
@@ -81,15 +134,27 @@ function SlotRow({ slot, onChange, onRemove, tokenOpts, t }) {
   )
 }
 
-function SlotEditor({ title, slots, cap, onChange, tokenOpts, disabled, t }) {
+function SlotEditor({ regionKey, slots, onChange, tokenOpts, disabled, t }) {
+  const cfg = REGIONS[regionKey]
+  const warning = regionWarning(slots, regionKey, t)
   const add = () => onChange([...slots, { label: '', source: tokenOpts[0].value }])
   const update = (i, next) => onChange(slots.map((s, j) => (j === i ? next : s)))
   const remove = (i) => onChange(slots.filter((_, j) => j !== i))
+  const move = (i, dir) => {
+    const j = i + dir
+    if (j < 0 || j >= slots.length) return
+    const next = slots.slice()
+    ;[next[i], next[j]] = [next[j], next[i]]
+    onChange(next)
+  }
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
-        <span className="text-sm font-semibold text-tx">{title}</span>
-        {slots.length < cap && (
+        <div>
+          <span className="text-sm font-semibold text-tx">{t(`walletDesign.${cfg.pos}`)}</span>
+          <span className="ml-2 text-xs text-tx-3">{t(`walletDesign.pos_${cfg.pos}`)}</span>
+        </div>
+        {slots.length < cfg.cap && (
           <Button variant="ghost" size="sm" onClick={add} disabled={disabled}>
             + {t('walletDesign.addField')}
           </Button>
@@ -100,12 +165,18 @@ function SlotEditor({ title, slots, cap, onChange, tokenOpts, disabled, t }) {
         <SlotRow
           key={i}
           slot={s}
+          index={i}
+          count={slots.length}
           tokenOpts={tokenOpts}
           t={t}
           onChange={(next) => update(i, next)}
           onRemove={() => remove(i)}
+          onMove={move}
         />
       ))}
+      {warning && (
+        <p className="rounded-ctl bg-amber-bg px-2 py-1 text-xs text-amber-d">⚠ {warning}</p>
+      )}
     </div>
   )
 }
@@ -166,6 +237,14 @@ export default function WalletDesignEditor({ cardId, card }) {
     cardType: card?.type,
   }
 
+  const appleRegions = [
+    'apple_header',
+    'apple_primary',
+    'apple_secondary',
+    'apple_auxiliary',
+    'apple_back',
+  ]
+
   return (
     <div className="mt-6 rounded-card border border-line bg-white p-5">
       <div className="mb-4 flex items-center justify-between">
@@ -184,6 +263,10 @@ export default function WalletDesignEditor({ cardId, card }) {
           {t('walletDesign.upgradeNudge')}
         </button>
       )}
+
+      <p className="mb-4 rounded-ctl bg-paper px-3 py-2 text-xs text-tx-3">
+        {t('walletDesign.layoutNote')}
+      </p>
 
       <div className="grid gap-6 md:grid-cols-2">
         {/* Controls */}
@@ -207,51 +290,17 @@ export default function WalletDesignEditor({ cardId, card }) {
             <span className="text-xs font-bold uppercase tracking-wide text-tx-3">
               {t('walletDesign.appleSection')}
             </span>
-            <SlotEditor
-              title={t('walletDesign.header')}
-              slots={design.apple_header}
-              cap={REGIONS.apple_header}
-              tokenOpts={tokenOpts}
-              onChange={set('apple_header')}
-              disabled={!branded}
-              t={t}
-            />
-            <SlotEditor
-              title={t('walletDesign.primary')}
-              slots={design.apple_primary}
-              cap={REGIONS.apple_primary}
-              tokenOpts={tokenOpts}
-              onChange={set('apple_primary')}
-              disabled={!branded}
-              t={t}
-            />
-            <SlotEditor
-              title={t('walletDesign.secondary')}
-              slots={design.apple_secondary}
-              cap={REGIONS.apple_secondary}
-              tokenOpts={tokenOpts}
-              onChange={set('apple_secondary')}
-              disabled={!branded}
-              t={t}
-            />
-            <SlotEditor
-              title={t('walletDesign.auxiliary')}
-              slots={design.apple_auxiliary}
-              cap={REGIONS.apple_auxiliary}
-              tokenOpts={tokenOpts}
-              onChange={set('apple_auxiliary')}
-              disabled={!branded}
-              t={t}
-            />
-            <SlotEditor
-              title={t('walletDesign.back')}
-              slots={design.apple_back}
-              cap={REGIONS.apple_back}
-              tokenOpts={tokenOpts}
-              onChange={set('apple_back')}
-              disabled={!branded}
-              t={t}
-            />
+            {appleRegions.map((key) => (
+              <SlotEditor
+                key={key}
+                regionKey={key}
+                slots={design[key]}
+                tokenOpts={tokenOpts}
+                onChange={set(key)}
+                disabled={!branded}
+                t={t}
+              />
+            ))}
             {isStamp && (
               <div className="flex flex-col gap-3 border-t border-line pt-3">
                 <Toggle
@@ -260,18 +309,25 @@ export default function WalletDesignEditor({ cardId, card }) {
                   label={t('walletDesign.strip')}
                 />
                 {design.apple_strip_enabled && (
-                  <div className="grid grid-cols-2 gap-3">
-                    <FileUpload
-                      label={t('walletDesign.stripEmpty')}
-                      onUploaded={set('strip_empty_url')}
+                  <>
+                    <ColorPicker
+                      label={t('walletDesign.stripBg')}
+                      value={design.strip_bg_color || card?.color_bg || '#0E1B2A'}
+                      onChange={set('strip_bg_color')}
                     />
-                    <FileUpload
-                      label={t('walletDesign.stripFilled')}
-                      onUploaded={set('strip_filled_url')}
-                    />
-                  </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <FileUpload
+                        label={t('walletDesign.stripEmpty')}
+                        onUploaded={set('strip_empty_url')}
+                      />
+                      <FileUpload
+                        label={t('walletDesign.stripFilled')}
+                        onUploaded={set('strip_filled_url')}
+                      />
+                    </div>
+                    <p className="text-xs text-tx-3">{t('walletDesign.stripHint')}</p>
+                  </>
                 )}
-                <p className="text-xs text-tx-3">{t('walletDesign.stripHint')}</p>
               </div>
             )}
           </div>
@@ -296,9 +352,8 @@ export default function WalletDesignEditor({ cardId, card }) {
               />
             </div>
             <SlotEditor
-              title={t('walletDesign.googleRows')}
+              regionKey="google_rows"
               slots={design.google_rows}
-              cap={REGIONS.google_rows}
               tokenOpts={tokenOpts}
               onChange={set('google_rows')}
               disabled={!branded}

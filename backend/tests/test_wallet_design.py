@@ -112,6 +112,31 @@ def test_strip_disabled_leads_with_primary(customer_card):
     assert payload["storeCard"]["primaryFields"] != []
 
 
+def test_custom_strip_bg_is_applied(customer_card):
+    """The strip band uses the merchant's strip color when set (else darkened bg)."""
+    from wallets.apple.signing import _render_stamp_strip
+
+    card = customer_card.card
+    card.stamps_required = 6
+    card.color_bg = "#2244AA"
+    card.save(update_fields=["stamps_required", "color_bg"])
+    WalletCardDesign.objects.create(card=card, merchant=card.merchant, strip_bg_color="#112233")
+    from wallets.apple.signing import build_pass_images
+
+    imgs = build_pass_images(customer_card)
+    assert "strip@3x.png" in imgs  # strip rendered
+    # A directly-rendered strip with the custom color has that pixel at (0,0).
+    from io import BytesIO
+
+    from PIL import Image
+
+    strip = Image.open(BytesIO(imgs["strip@3x.png"])).convert("RGB")
+    assert strip.getpixel((0, 0)) == (0x11, 0x22, 0x33)
+    # The helper is symmetric for any bg tuple.
+    canvas = _render_stamp_strip(1, 3, (10, 20, 30), (255, 255, 255), (60, 20))
+    assert canvas.convert("RGB").getpixel((0, 0)) == (10, 20, 30)
+
+
 def test_google_object_reflects_rows(customer_card):
     card = customer_card.card
     WalletCardDesign.objects.create(
