@@ -127,6 +127,16 @@ def test_build_pkpass_is_valid_zip_with_matching_manifest(customer_card):
     assert len(zf.read("signature")) > 0
 
 
+def test_signature_carries_authenticated_attributes(customer_card):
+    """iOS requires the signing-time / content-type / message-digest attrs; a
+    NoAttributes signature verifies in openssl but iOS rejects the pass."""
+    raw = build_pkpass(customer_card)
+    signature = zipfile.ZipFile(io.BytesIO(raw)).read("signature").hex()
+    assert "2a864886f70d010905" in signature  # signing-time  (OID 1.2.840.113549.1.9.5)
+    assert "2a864886f70d010903" in signature  # content-type  (OID 1.2.840.113549.1.9.3)
+    assert "2a864886f70d010904" in signature  # message-digest (OID 1.2.840.113549.1.9.4)
+
+
 # ── web service ──────────────────────────────────────────────────────────────
 def _auth(cc):
     return {"HTTP_AUTHORIZATION": f"ApplePass {cc.auth_token}"}
