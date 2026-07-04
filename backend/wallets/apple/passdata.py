@@ -109,16 +109,18 @@ def build_pass_json(customer_card: CustomerCard) -> dict:
         else []
     )
 
-    # Apply per-region overrides where the merchant configured slots.
+    # Apply per-region overrides where the merchant configured slots. Each region
+    # gets a distinct key prefix so field keys stay unique across the whole pass
+    # (Apple rejects a pass with duplicate field keys — "Safari cannot download").
     if design:
         if design.apple_header:
-            header_fields = design_mod.render_slots(design.apple_header, ctx)
+            header_fields = design_mod.render_slots(design.apple_header, ctx, "h")
         if design.apple_primary:
-            primary_fields = design_mod.render_slots(design.apple_primary, ctx)
+            primary_fields = design_mod.render_slots(design.apple_primary, ctx, "p")
         if design.apple_secondary:
-            secondary_fields = design_mod.render_slots(design.apple_secondary, ctx)
+            secondary_fields = design_mod.render_slots(design.apple_secondary, ctx, "s")
         if design.apple_auxiliary:
-            auxiliary_fields = design_mod.render_slots(design.apple_auxiliary, ctx)
+            auxiliary_fields = design_mod.render_slots(design.apple_auxiliary, ctx, "x")
 
     back_fields: list[dict] = []
     if card.reward_title:
@@ -144,7 +146,7 @@ def build_pass_json(customer_card: CustomerCard) -> dict:
     back_fields.extend(_message_back_fields(customer_card))
     back_fields.append({"key": "merchant", "label": "Merchant", "value": merchant.name})
     if design and design.apple_back:
-        back_fields.extend(design_mod.render_slots(design.apple_back, ctx))
+        back_fields.extend(design_mod.render_slots(design.apple_back, ctx, "b"))
 
     from wallets.shortcode import code_for
 

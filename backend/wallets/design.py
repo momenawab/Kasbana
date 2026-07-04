@@ -73,10 +73,16 @@ def render_value(source: str, ctx: dict[str, Any]) -> Any:
     return source
 
 
-def render_slots(slots: list[dict[str, Any]], ctx: dict[str, Any]) -> list[dict[str, Any]]:
+def render_slots(
+    slots: list[dict[str, Any]], ctx: dict[str, Any], prefix: str = "f"
+) -> list[dict[str, Any]]:
     """Turn stored slots into pass field dicts (``key``/``label``/``value``).
 
-    Skips malformed slots defensively so one bad row can't break the whole pass.
+    ``prefix`` namespaces the generated ``key`` per region — Apple requires every
+    field ``key`` to be unique across the *whole* pass, so header/primary/
+    secondary/... must not all start at ``f0`` (a collision makes iOS reject the
+    pass: "Safari cannot download this file"). Skips malformed slots defensively
+    so one bad row can't break the whole pass.
     """
     out: list[dict[str, Any]] = []
     for i, slot in enumerate(slots or []):
@@ -87,7 +93,7 @@ def render_slots(slots: list[dict[str, Any]], ctx: dict[str, Any]) -> list[dict[
             continue
         out.append(
             {
-                "key": f"f{i}",
+                "key": f"{prefix}{i}",
                 "label": str(slot.get("label", "")),
                 "value": render_value(source, ctx),
             }
