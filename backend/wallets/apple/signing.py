@@ -174,17 +174,10 @@ def build_pass_images(customer_card: CustomerCard) -> dict[str, bytes]:
         images["strip@2x.png"] = _png(base.resize((750, 246), Image.Resampling.LANCZOS))
         images["strip.png"] = _png(base.resize((375, 123), Image.Resampling.LANCZOS))
 
-    # Platform (Kasbana) logo at the bottom-left of the pass — Apple's native
-    # ``footer`` slot (shown left-aligned just above the barcode). Renders a drawn
-    # PLACEHOLDER until settings.WALLET_PLATFORM_LOGO_URL is set. Best-effort.
-    try:
-        from wallets.platform_logo import render_footer
-
-        images["footer@3x.png"] = _png(render_footer((858, 99), fg))
-        images["footer@2x.png"] = _png(render_footer((572, 66), fg))
-        images["footer.png"] = _png(render_footer((286, 33), fg))
-    except Exception:  # pragma: no cover - never block the pass
-        pass
+    # The platform ("Powered by") branding is rendered as Apple ``logoText`` beside
+    # the top-left brand logo (see wallets.apple.passdata) — Apple store cards have
+    # no right-side image slot, and nothing may sit below the barcode, so there is
+    # no footer.png image here.
 
     return images
 

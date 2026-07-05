@@ -196,13 +196,18 @@ def build_pass_json(customer_card: CustomerCard) -> dict:
         "barcodes": [barcode],
         "barcode": barcode,
     }
-    # logoText appears beside the logo image. A merchant override always wins;
-    # otherwise omit it when a branded logo is set (the wordmark already carries
-    # the name) to avoid a duplicate label.
+    # logoText renders as a small label beside the top-left logo. Apple has no
+    # right-side image slot on a storeCard, so the platform ("Powered by") logo
+    # lives here as text next to the brand: "[BrandLogo] Stampn". A merchant
+    # override always wins; otherwise show the platform label. The brand itself is
+    # always the logo.png slot (the merchant logo image, or the merchant-name
+    # wordmark signing._logo draws when no logo is set) — so the name is never lost.
     if design and design.apple_logo_text:
         payload["logoText"] = design.apple_logo_text
-    elif not (card.logo_url or merchant.logo_url):
-        payload["logoText"] = merchant.name
+    else:
+        platform_label = str(getattr(settings, "WALLET_PLATFORM_LABEL", "") or "").strip()
+        if platform_label:
+            payload["logoText"] = platform_label
     # Void a no-longer-active pass (single-use completion / blocked) — iOS greys
     # it out and marks it expired.
     if customer_card.status != CustomerCardStatus.ACTIVE:

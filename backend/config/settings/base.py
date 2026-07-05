@@ -308,6 +308,11 @@ WALLET_DEFAULT_LOGO_URL = env("WALLET_DEFAULT_LOGO_URL", "") or f"{BASE_URL}/sta
 # Must be a local /uploads URL (read via _local_media_bytes — no SSRF).
 WALLET_PLATFORM_LOGO_URL = env("WALLET_PLATFORM_LOGO_URL", "")
 
+# Platform label shown as Apple ``logoText`` beside the top-left brand logo
+# ("[BrandLogo] Stampn"). Apple store cards have no right-side image slot, so the
+# platform attribution rides here as text. Blank → no platform label.
+WALLET_PLATFORM_LABEL = env("WALLET_PLATFORM_LABEL", "Stampn")
+
 # Mirror selected contract constants into settings for callers that read them
 # from settings (contract §3.10).
 STAMP_COOLDOWN_SECONDS = constants.STAMP_COOLDOWN_SECONDS

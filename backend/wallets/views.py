@@ -71,5 +71,7 @@ class WalletTemplateListView(APIView):
             {
                 "templates": templates_mod.template_choices(),
                 "platform_logo_url": getattr(settings, "WALLET_PLATFORM_LOGO_URL", ""),
+                # Platform brand shown as Apple logoText beside the top-left logo.
+                "platform_label": getattr(settings, "WALLET_PLATFORM_LABEL", ""),
             }
         )

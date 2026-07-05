@@ -77,16 +77,18 @@ def render_value(source: str, ctx: dict[str, Any]) -> Any:
     return source
 
 
-def template_for(card: Card) -> Any | None:
-    """Return the active template dict for ``card``, or ``None`` (freeform).
+def template_for(card: Card) -> Any:
+    """Return the active layout-locked template dict for ``card`` (never ``None``).
 
-    ``None`` means: render exactly as today (freeform slots) — either there is no
-    design row, the key is ``custom``, or the key is unknown (safe fallback).
+    Templates-only: every card renders through a locked template so field
+    positions are always fixed. A card with no design row, or a legacy
+    ``custom``/unknown key, falls back to the card type's default template
+    instead of the old freeform layout.
     """
     from wallets import templates as templates_mod
 
     design = get_design(card)
-    return templates_mod.get_template(design.template_key if design else None)
+    return templates_mod.resolve_template(card.type, design.template_key if design else None)
 
 
 def render_template_fields(

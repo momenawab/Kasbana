@@ -1,4 +1,11 @@
-"""Tests for the merchant-editable Apple/Google pass design (notes 2-4)."""
+"""Tests for the merchant-editable Apple/Google pass design (templates-only).
+
+Every card renders through a layout-locked template (a card with no design row,
+or a legacy ``custom``/unknown key, falls back to its type's default template).
+The merchant edits colors/text/data — never field positions. These cover the
+per-card design endpoint (auth/gating/validation/tenancy) and the builder
+behaviours that still apply under a locked template (label color, appended back
+fields, strip color, globally-unique field keys)."""
 
 from __future__ import annotations
 
@@ -82,33 +89,37 @@ def test_design_is_tenant_scoped(api_client, card):
     assert resp.status_code == 404
 
 
-# ── Builders honour the design (blank = smart default) ────────────────────────
-def test_passdata_reflects_overrides(customer_card):
+# ── Builders honour the design under a locked template ────────────────────────
+def test_passdata_overrides_apply_under_template(customer_card):
+    """Under a locked template the label color, the explicit logoText override,
+    and appended back fields still apply — but field *positions* (here the
+    secondary label) come from the template, not a freeform override."""
     card = customer_card.card
     WalletCardDesign.objects.create(
         card=card,
         merchant=card.merchant,
+        template_key="loyalty_stamps",
         apple_logo_text="MyLogo",
         label_color="#AABBCC",
-        apple_secondary=[{"label": "STAMPS LEFT", "source": "remaining"}],
+        apple_secondary=[{"label": "STAMPS LEFT", "source": "remaining"}],  # locked out
         apple_back=[{"label": "Hours", "source": "text:9-5 daily"}],
     )
     payload = build_pass_json(customer_card)
-    assert payload["logoText"] == "MyLogo"
+    assert payload["logoText"] == "MyLogo"  # explicit override wins over platform label
     assert payload["labelColor"] == "rgb(170, 187, 204)"
-    sec = payload["storeCard"]["secondaryFields"]
-    assert sec[0]["label"] == "STAMPS LEFT"
-    # Custom back field appended after the computed ones.
+    # Secondary label is the template's locked one — the freeform override is ignored.
+    assert payload["storeCard"]["secondaryFields"][0]["label"] == "5 FOR A REWARD"
+    # Custom back field is still appended after the computed ones.
     assert any(f["value"] == "9-5 daily" for f in payload["storeCard"]["backFields"])
 
 
-def test_strip_disabled_leads_with_primary(customer_card):
+def test_points_default_template_leads_with_primary(customer_card):
+    """A POINTS card with no design row renders its default template
+    (points_reward, no strip) which leads with the balance in the primary area."""
     card = customer_card.card
-    card.stamps_required = 8
-    card.save(update_fields=["stamps_required"])
-    WalletCardDesign.objects.create(card=card, merchant=card.merchant, apple_strip_enabled=False)
+    card.type = "POINTS"
+    card.save(update_fields=["type"])
     payload = build_pass_json(customer_card)
-    # With no strip, the primary area shows the balance instead of being clear.
     assert payload["storeCard"]["primaryFields"] != []
 
 
@@ -137,17 +148,13 @@ def test_custom_strip_bg_is_applied(customer_card):
     assert canvas.convert("RGB").getpixel((0, 0)) == (10, 20, 30)
 
 
-def test_google_object_reflects_rows(customer_card):
-    card = customer_card.card
+def test_google_template_rows_render(customer_card):
+    # Templates-only: the Google text modules come from the locked template's
+    # google layout (loyalty_stamps → subtitle=program + a "Reward" row).
     WalletCardDesign.objects.create(
-        card=card,
-        merchant=card.merchant,
-        google_subtitle="Members club",
-        google_rows=[{"label": "Reward", "source": "reward"}],
+        card=customer_card.card, merchant=customer_card.merchant, template_key="loyalty_stamps"
     )
-    obj = build_loyalty_object(customer_card)
-    mods = obj["textModulesData"]
-    assert any(m["body"] == "Members club" for m in mods)
+    mods = build_loyalty_object(customer_card)["textModulesData"]
     assert any(m["header"] == "Reward" for m in mods)
 
 
@@ -174,16 +181,11 @@ def test_google_stamp_hero_renders_and_updates_url(customer_card, settings):
     assert url_3 != url_2
 
 
-def test_google_hero_off_by_default(customer_card):
-    # Without the toggle, no per-object hero is added (class hero still applies).
-    WalletCardDesign.objects.create(card=customer_card.card, merchant=customer_card.merchant)
-    assert "heroImage" not in build_loyalty_object(customer_card)
-
-
-def test_no_design_keeps_default_pass(customer_card):
-    # A card with no design row builds exactly the default pass (no crash).
+def test_no_design_uses_default_locked_template(customer_card):
+    # Templates-only: a card with no design row renders its type's default locked
+    # template (STAMP → loyalty_stamps), not a freeform layout — no crash.
     payload = build_pass_json(customer_card)
-    assert payload["storeCard"]["headerFields"][0]["key"] == "balance"
+    assert payload["storeCard"]["headerFields"][0]["label"] == "STAMPS"
 
 
 def test_field_keys_are_globally_unique(customer_card):
