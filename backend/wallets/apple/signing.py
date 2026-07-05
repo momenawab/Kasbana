@@ -147,8 +147,15 @@ def build_pass_images(customer_card: CustomerCard) -> dict[str, bytes]:
         if design is not None:
             strip_on = strip_on and design.apple_strip_enabled
     if strip_on:
+        from wallets import stamp_icons
+
         empty_icon = _local_media_bytes(design.strip_empty_url) if design else None
         filled_icon = _local_media_bytes(design.strip_filled_url) if design else None
+        # A built-in stamp icon (tinted with stamp_color) fills in when no custom
+        # pair is uploaded; stamp_color also recolors the drawn circles/fg.
+        fg, empty_icon, filled_icon = stamp_icons.resolve_stamp_render(
+            design, fg, empty_icon, filled_icon
+        )
         # Give the strip its own band background so the stamps don't blend into
         # the pass: the merchant's strip color, else a slightly darkened brand bg.
         strip_bg = (

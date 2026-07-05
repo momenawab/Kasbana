@@ -9,6 +9,8 @@
 // Pure/presentational — updates as props change.
 import { useTranslation } from 'react-i18next'
 import { arDigits } from '../lib/format'
+import { isStampIcon } from './stampIcons'
+import StampGlyph from './StampGlyph'
 
 // Resolve a slot `source` token to a preview value (mirrors wallets/design.py).
 function resolveValue(source, ctx) {
@@ -55,9 +57,14 @@ function Field({ label, value, fg, labelColor, align = 'start' }) {
   )
 }
 
-function StampGrid({ count, required, fg, emptyUrl, filledUrl }) {
+// Stamp strip preview. Priority mirrors the backend (wallets.stamp_icons):
+// uploaded custom images win; else a built-in icon tinted with `stampColor`;
+// else the drawn circles. `stampColor` (when set) also recolors the circles.
+function StampGrid({ count, required, fg, emptyUrl, filledUrl, stampIcon, stampColor }) {
   const n = Math.max(1, Math.min(required, 15))
   const custom = emptyUrl && filledUrl
+  const builtIn = !custom && isStampIcon(stampIcon)
+  const tint = stampColor || fg
   return (
     <div className="flex flex-wrap gap-1.5">
       {Array.from({ length: n }).map((_, i) => {
@@ -72,13 +79,25 @@ function StampGrid({ count, required, fg, emptyUrl, filledUrl }) {
             />
           )
         }
+        if (builtIn) {
+          return (
+            <StampGlyph
+              key={i}
+              icon={stampIcon}
+              filled={earned}
+              faded={!earned}
+              color={tint}
+              size={20}
+            />
+          )
+        }
         return (
           <span
             key={i}
             className="h-4 w-4 rounded-full border"
             style={{
-              borderColor: fg,
-              background: earned ? fg : 'transparent',
+              borderColor: tint,
+              background: earned ? tint : 'transparent',
               opacity: earned ? 1 : 0.45,
             }}
           />
@@ -223,6 +242,8 @@ export default function WalletPreview({
                 fg={colorFg}
                 emptyUrl={design?.strip_empty_url}
                 filledUrl={design?.strip_filled_url}
+                stampIcon={design?.stamp_icon}
+                stampColor={design?.stamp_color}
               />
             )}
           </div>
@@ -326,6 +347,8 @@ export default function WalletPreview({
               fg={colorFg}
               emptyUrl={design?.strip_empty_url}
               filledUrl={design?.strip_filled_url}
+              stampIcon={design?.stamp_icon}
+              stampColor={design?.stamp_color}
             />
           )}
         </div>
