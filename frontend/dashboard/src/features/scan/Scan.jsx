@@ -184,7 +184,7 @@ export default function Scan() {
                 />
               </div>
             )}
-            <Button size="lg" iconStart={Plus} onClick={doStamp} loading={stamp.isPending}>
+            <Button size="lg" iconStart={Plus} onClick={() => doStamp()} loading={stamp.isPending}>
               {isPoints
                 ? t('scan.addPoints', { n: Math.max(1, Number(amount) || 1) })
                 : t('scan.addStamp')}
