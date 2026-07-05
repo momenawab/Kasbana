@@ -17,6 +17,7 @@ from typing import Any
 
 from rest_framework import serializers
 
+from wallets import stamp_icons as stamp_icons_mod
 from wallets import templates as templates_mod
 from wallets.design import VALUE_TOKENS
 from wallets.models import WalletCardDesign
@@ -65,6 +66,8 @@ class WalletCardDesignSerializer(serializers.ModelSerializer):
             "strip_bg_color",
             "strip_empty_url",
             "strip_filled_url",
+            "stamp_icon",
+            "stamp_color",
             "google_title",
             "google_subtitle",
             "google_rows",
@@ -72,6 +75,12 @@ class WalletCardDesignSerializer(serializers.ModelSerializer):
             "template_key",
             "bottom_image_url",
         ]
+
+    def validate_stamp_icon(self, value: Any) -> str:
+        key = str(value or "").strip()
+        if key and not stamp_icons_mod.is_valid(key):
+            raise serializers.ValidationError(f"Unknown stamp icon: {key!r}.")
+        return key
 
     def validate_template_key(self, value: Any) -> str:
         key = str(value or templates_mod.CUSTOM).strip()

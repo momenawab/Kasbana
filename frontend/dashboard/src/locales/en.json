@@ -317,7 +317,14 @@
     "published": "Card published.",
     "unsaved": "You have unsaved changes. Leave anyway?",
     "reprovisionWarning": "Editing a published card re-provisions existing holders' passes.",
-    "heroImage": "Banner image (Google Wallet)"
+    "heroImage": "Banner image (Google Wallet)",
+    "stampStyle": "Stamp style",
+    "premium": "Premium",
+    "stampIcon": "Stamp icon",
+    "stampNone": "None (circles)",
+    "stampColor": "Stamp fill color",
+    "stampUploadHint": "Or upload your own empty + filled stamp images.",
+    "stampSaveFailed": "Card saved, but the stamp style couldn't be applied."
   },
   "templatePicker": {
     "title": "Choose a template",
