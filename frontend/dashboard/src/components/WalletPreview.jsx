@@ -3,9 +3,10 @@
 // editable pass design (notes 2-4 + templates). When a layout-locked `template`
 // is active its fixed per-platform layout is rendered (positions locked); the
 // Apple-vs-Google bottom-visual rule applies (stamps/image sit in the Apple
-// strip at the TOP, in the Google hero under the header). A platform (Kasbana)
-// logo placeholder is shown at the bottom-left of both passes — wired and ready
-// to swap for the real asset. Pure/presentational — updates as props change.
+// strip at the TOP, in the Google hero under the header). The platform (Kasbana)
+// brand rides as Apple `logoText` beside the top-left brand logo (Apple has no
+// right-side image slot), and as a bottom-left watermark on the Google hero.
+// Pure/presentational — updates as props change.
 import { useTranslation } from 'react-i18next'
 import { arDigits } from '../lib/format'
 
@@ -132,6 +133,7 @@ export default function WalletPreview({
   design = null,
   template = null,
   platformLogoUrl = '',
+  platformLabel = 'Stampn',
   logoUrl,
   colorBg = '#0E1B2A',
   colorFg = '#FFFFFF',
@@ -169,7 +171,9 @@ export default function WalletPreview({
       label: interpolate(s.label, ctx),
       value: resolveValue(s.source, ctx),
     }))
-  const logoText = design?.apple_logo_text || (logoUrl ? '' : merchantName)
+  // Platform brand rides beside the top-left logo as Apple logoText (mirrors
+  // wallets.apple.passdata). A merchant override wins; otherwise the platform label.
+  const logoText = design?.apple_logo_text || platformLabel
 
   // Template mode locks the layout: regions come from the template, and the
   // strip/hero behaviour is pinned to its bottom_visual.
@@ -367,11 +371,11 @@ export default function WalletPreview({
         </div>
       )}
 
-      {/* Barcode */}
+      {/* Barcode — Apple pins it to the very bottom; nothing sits below it, and
+          the platform brand is in logoText above, so there's no footer here. */}
       <div className="mt-4 border-t border-white/15 pt-3">
         <Barcode fg={colorFg} altText={shortCode} />
       </div>
-      <PlatformLogo url={platformLogoUrl} fg={colorFg} />
     </div>
   )
 }

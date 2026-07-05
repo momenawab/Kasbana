@@ -1,10 +1,12 @@
 """Tests for layout-locked wallet pass templates + the platform logo slot.
 
-Covers: template selection drives the Apple/Google layout; the Apple-vs-Google
-bottom-visual rule (stamps → Apple strip + per-count Google hero; image → Apple
-strip + static Google hero); non-editable variables are dropped when a template
-is active; the platform footer (bottom-left logo placeholder) renders on Apple;
-template_key validation; and the ``GET /wallet-templates`` catalog endpoint.
+Covers: every card renders through a layout-locked template (``custom``/unknown
+falls back to the type's default); template selection drives the Apple/Google
+layout; the Apple-vs-Google bottom-visual rule (stamps → Apple strip + per-count
+Google hero; image → Apple strip + static Google hero); non-editable variables
+are dropped when a template is active; the platform brand renders as Apple
+``logoText`` (no footer image); template_key validation; and the
+``GET /wallet-templates`` catalog endpoint.
 """
 
 from __future__ import annotations
@@ -46,8 +48,9 @@ def test_stamp_template_drives_apple_fields(customer_card):
     assert store["secondaryFields"][0]["label"] == "5 FOR A REWARD"
 
 
-def test_custom_template_keeps_freeform(customer_card):
-    """``custom`` renders exactly the freeform editor (unchanged)."""
+def test_custom_falls_back_to_default_template(customer_card):
+    """Templates-only: a legacy ``custom`` key renders the card type's default
+    locked template, and any stored freeform slots are ignored."""
     card = customer_card.card
     WalletCardDesign.objects.create(
         card=card,
@@ -55,15 +58,15 @@ def test_custom_template_keeps_freeform(customer_card):
         template_key="custom",
         apple_header=[{"label": "MYHDR", "source": "balance"}],
     )
-    assert build_pass_json(customer_card)["storeCard"]["headerFields"][0]["label"] == "MYHDR"
+    # Freeform header ignored; the default STAMP template (loyalty_stamps) drives it.
+    assert build_pass_json(customer_card)["storeCard"]["headerFields"][0]["label"] == "STAMPS"
 
 
-def test_unknown_template_falls_back_to_freeform(customer_card):
-    """An unknown key is treated as freeform (safe — never breaks the pass)."""
+def test_unknown_template_falls_back_to_default(customer_card):
+    """An unknown key renders the default locked template (never freeform, never breaks)."""
     card = customer_card.card
     WalletCardDesign.objects.create(card=card, merchant=card.merchant, template_key="ghost")
-    # No crash; header still resolves to the smart default.
-    assert build_pass_json(customer_card)["storeCard"]["headerFields"][0]["key"] == "balance"
+    assert build_pass_json(customer_card)["storeCard"]["headerFields"][0]["label"] == "STAMPS"
 
 
 def test_template_field_keys_are_unique(customer_card):
@@ -76,8 +79,8 @@ def test_template_field_keys_are_unique(customer_card):
     assert len(keys) == len(set(keys)), f"duplicate field keys: {keys}"
 
 
-# ── Apple strip: stamps grid / bottom image + platform footer ─────────────────
-def test_stamp_template_renders_strip_and_footer(customer_card):
+# ── Apple strip: stamps grid / bottom image + platform logoText ───────────────
+def test_stamp_template_renders_strip_no_footer(customer_card):
     card = customer_card.card
     card.stamps_required = 6
     card.save(update_fields=["stamps_required"])
@@ -86,7 +89,28 @@ def test_stamp_template_renders_strip_and_footer(customer_card):
     )
     imgs = build_pass_images(customer_card)
     assert "strip@3x.png" in imgs  # stamp grid in the strip (top)
-    assert "footer.png" in imgs  # platform logo (bottom-left placeholder)
+    # Platform branding moved to Apple logoText — there is no footer.png image slot.
+    assert not any(k.startswith("footer") for k in imgs)
+
+
+def test_platform_label_renders_as_logotext(customer_card, settings):
+    """The platform ('Powered by') brand rides in Apple logoText, beside the logo."""
+    settings.WALLET_PLATFORM_LABEL = "Stampn"
+    WalletCardDesign.objects.create(
+        card=customer_card.card, merchant=customer_card.merchant, template_key="loyalty_stamps"
+    )
+    assert build_pass_json(customer_card)["logoText"] == "Stampn"
+
+
+def test_merchant_logo_text_overrides_platform_label(customer_card, settings):
+    settings.WALLET_PLATFORM_LABEL = "Stampn"
+    WalletCardDesign.objects.create(
+        card=customer_card.card,
+        merchant=customer_card.merchant,
+        template_key="loyalty_stamps",
+        apple_logo_text="ACME",
+    )
+    assert build_pass_json(customer_card)["logoText"] == "ACME"
 
 
 def test_image_template_uses_bottom_image_strip(customer_card, monkeypatch):

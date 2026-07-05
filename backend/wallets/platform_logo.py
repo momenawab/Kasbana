@@ -1,11 +1,10 @@
-"""Platform (Kasbana) watermark/logo — the bottom-left "Powered by" slot.
+"""Platform (Kasbana) watermark — the "Powered by" branding on a pass.
 
-Every wallet pass carries a small platform logo at the bottom-left:
-
-* **Apple** → rendered into ``footer.png`` (Apple's native bottom-of-pass slot,
-  shown left-aligned just above the barcode).
+* **Apple** → the platform brand rides as ``logoText`` beside the top-left logo
+  (see ``wallets.apple.passdata``); Apple store cards have no right-side image
+  slot and nothing may sit below the barcode, so there is no footer image.
 * **Google** → composited into the bottom-left corner of the hero banner when a
-  hero is generated (Google has no footer slot).
+  hero is generated (Google has no footer slot). ``apply_watermark`` below.
 
 The real asset is configured via ``settings.WALLET_PLATFORM_LOGO_URL`` (a local
 ``/uploads`` URL — read with no SSRF). Until the real logo exists this renders a
@@ -87,28 +86,6 @@ def _placeholder(size: tuple[int, int], fg: _RGB, label: str = "LOGO"):  # type:
         font=font,
         fill=(*fg, 220),
     )
-    return canvas
-
-
-def render_footer(size: tuple[int, int], fg: _RGB):  # type: ignore[no-untyped-def]
-    """Apple ``footer.png`` image: the platform logo at the bottom-left.
-
-    A transparent canvas with the logo (or placeholder) left-aligned and
-    vertically centred. ``None`` only if PIL is unavailable (caller falls back
-    to no footer).
-    """
-    from PIL import Image
-
-    w, h = size
-    canvas = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-    target_h = int(h * 0.82)
-    logo = _decode(platform_logo_bytes())
-    if logo is None:
-        # Placeholder keeps aspect ~3:1 so the "LOGO" reads.
-        logo = _placeholder((max(target_h * 2, target_h + 24), target_h), fg)
-    else:
-        logo.thumbnail((w, target_h))
-    canvas.paste(logo, (0, (h - logo.height) // 2), logo)
     return canvas
 
 

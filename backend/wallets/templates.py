@@ -149,6 +149,31 @@ def get_template(key: str | None) -> dict[str, Any] | None:
     return TEMPLATES.get(key)
 
 
+# Templates-only: every card renders through a layout-locked template so field
+# positions are always fixed (the merchant edits colors/text/data, never
+# positions). When a card has no template (legacy ``custom``/unknown/missing key)
+# we fall back to a sensible default for its type instead of the old freeform
+# layout. Keep in sync with the frontend picker's default.
+_DEFAULT_BY_TYPE: dict[Any, str] = {
+    CardType.STAMP: "loyalty_stamps",
+    CardType.POINTS: "points_reward",
+}
+
+
+def default_key_for(card_type: str | None) -> str:
+    """The default locked-template key for a card type (STAMP/POINTS)."""
+    return _DEFAULT_BY_TYPE.get(card_type, "minimal")
+
+
+def resolve_template(card_type: str | None, key: str | None) -> dict[str, Any]:
+    """Return the active template — never ``None`` (templates-only).
+
+    A known registry ``key`` wins; ``custom``/unknown/missing falls back to the
+    card type's default template so positions are always locked.
+    """
+    return get_template(key) or TEMPLATES[default_key_for(card_type)]
+
+
 def is_template_key(key: str | None) -> bool:
     """True if ``key`` is ``custom`` or a known registry key (a valid choice)."""
     return key == CUSTOM or key in TEMPLATES
