@@ -319,6 +319,16 @@ STAMP_COOLDOWN_SECONDS = constants.STAMP_COOLDOWN_SECONDS
 
 # ── Celery (contract §3.9) ────────────────────────────────────────────────────
 CELERY_BROKER_URL = env("CELERY_BROKER_URL") or env("REDIS_URL", "redis://localhost:6379/0")
+# Fail fast when the broker is unreachable so a best-effort enqueue (e.g. the
+# live wallet-pass update on a till stamp) can never hang the web request or its
+# open DB transaction until gunicorn times out (which surfaced as a browser
+# "network error"). ``wallets.service._enqueue`` catches the resulting error.
+CELERY_BROKER_TRANSPORT_OPTIONS = {"socket_timeout": 2, "socket_connect_timeout": 2}
+CELERY_BROKER_CONNECTION_TIMEOUT = 2
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = False
+# Don't retry a publish when the broker is down — fail fast so the caller's
+# best-effort enqueue returns immediately instead of retrying for seconds.
+CELERY_TASK_PUBLISH_RETRY = False
 # Results land in Postgres (django_celery_results) so the Phase 14 ops task monitor
 # can query/retry them; nothing reads results synchronously, so this is safe.
 # RESULT_EXTENDED stores the task name + args, which the retry action re-enqueues.
