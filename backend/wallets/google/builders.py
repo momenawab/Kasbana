@@ -127,8 +127,17 @@ def build_loyalty_object(customer_card: CustomerCard) -> dict:
                 modules.append(
                     {"id": slot["key"], "header": slot["label"], "body": str(slot["value"])}
                 )
+    # Merchant contact + social links (Facebook/Instagram/WhatsApp/TikTok/Terms +
+    # phone) as tappable link chips, and branches free text as a module. Only the
+    # fields the merchant filled in appear; "Powered by Stampn" is always last.
+    from wallets import contact as contact_mod
+
+    branch_text = contact_mod.google_branch_text(card.merchant)
+    if branch_text:
+        modules.append({"id": "branches", "header": "Branches", "body": branch_text})
     if modules:
         payload["textModulesData"] = modules
+    payload["linksModuleData"] = {"uris": contact_mod.google_links(card.merchant)}
 
     # Visual stamp counter / bottom image: render it into the object hero and
     # refresh it on each stamp (Google has no Apple-style strip). Template-aware:

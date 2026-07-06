@@ -76,6 +76,14 @@ class MerchantSettings(UUIDModel, TimeStampedModel):
     contact_phone = models.CharField(max_length=20, blank=True)
     contact_email = models.EmailField(blank=True)
     address = models.CharField(max_length=255, blank=True)
+    # Pass-back contact + social links — each optional; only the ones the merchant
+    # fills in appear on the wallet pass back (Apple backFields / Google links).
+    facebook_url = models.URLField(blank=True)
+    instagram_url = models.URLField(blank=True)
+    tiktok_url = models.URLField(blank=True)
+    whatsapp = models.CharField(max_length=32, blank=True)  # number -> wa.me link
+    terms_url = models.URLField(blank=True)
+    branches = models.TextField(blank=True)  # optional free text (one branch per line)
     language = models.CharField(max_length=2, choices=[("ar", "ar"), ("en", "en")], default="ar")
     notif_email = models.BooleanField(default=True)
     notif_whatsapp = models.BooleanField(default=False)

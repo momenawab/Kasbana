@@ -171,6 +171,14 @@ def build_pass_json(customer_card: CustomerCard) -> dict:
     if design and design.apple_back:
         back_fields.extend(design_mod.render_slots(design.apple_back, ctx, "b"))
 
+    # Merchant contact + social links (phone, branches, Facebook/Instagram/
+    # WhatsApp/TikTok, Terms) — each only when the merchant filled it in — then
+    # "Powered by Stampn" always dead last with Stampn hyperlinked.
+    from wallets import contact as contact_mod
+
+    back_fields.extend(contact_mod.apple_back_fields(merchant))
+    back_fields.append(contact_mod.apple_powered_by())
+
     from wallets.shortcode import code_for
 
     barcode_message = f"{constants.PASS_BARCODE_PREFIX}{customer_card.id.hex}"

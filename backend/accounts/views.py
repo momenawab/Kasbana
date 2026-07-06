@@ -199,6 +199,18 @@ class SettingsBusinessView(APIView):
             s.contact_email = data["contact"].get("email", s.contact_email)
         if "address" in data:
             s.address = data["address"]
+        # Pass-back contact + social links — set only the ones sent.
+        link_fields = (
+            "facebook_url",
+            "instagram_url",
+            "tiktok_url",
+            "whatsapp",
+            "terms_url",
+            "branches",
+        )
+        for field in link_fields:
+            if field in data:
+                setattr(s, field, data[field])
 
         # Branded enrollment copy is a paid feature — enforce the capability only
         # when the merchant actually sends it (leaves other settings ungated).

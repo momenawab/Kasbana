@@ -95,6 +95,37 @@ def test_active_pass_is_not_voided(customer_card):
     assert "voided" not in passdata.build_pass_json(customer_card)
 
 
+def test_pass_back_has_contact_links_and_powered_by(customer_card):
+    """Merchant contact/social links render on the back (Facebook as a link, phone
+    as plain text) and "Powered by Stampn" is always the last back field."""
+    from accounts.models import MerchantSettings
+
+    MerchantSettings.objects.update_or_create(
+        merchant=customer_card.card.merchant,
+        defaults={
+            "contact_phone": "+201234567890",
+            "facebook_url": "https://facebook.com/acme",
+            "terms_url": "https://acme.test/terms",
+            "branches": "Maadi\nZamalek",
+        },
+    )
+    back = passdata.build_pass_json(customer_card)["storeCard"]["backFields"]
+    by_key = {f["key"]: f for f in back}
+    assert by_key["phone"]["value"] == "+201234567890"
+    assert 'href="https://facebook.com/acme"' in by_key["facebook"]["attributedValue"]
+    assert "branches" in by_key
+    assert "terms" in by_key
+    # Powered by Stampn is dead last, with only "Stampn" hyperlinked.
+    assert back[-1]["key"] == "powered"
+    assert 'href="https://stampn.net"' in back[-1]["attributedValue"]
+
+
+def test_pass_back_powered_by_present_without_contact(customer_card):
+    """With no contact settings, only the Powered by Stampn footer is appended."""
+    back = passdata.build_pass_json(customer_card)["storeCard"]["backFields"]
+    assert back[-1]["key"] == "powered"
+
+
 def test_completed_pass_is_voided(customer_card):
     from core.enums import CustomerCardStatus
 
