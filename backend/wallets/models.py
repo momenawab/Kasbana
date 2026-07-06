@@ -140,6 +140,13 @@ class WalletCardDesign(UUIDModel, TimeStampedModel):
     # drawn circles. Apple/stamp cards only.
     strip_empty_url = models.URLField(blank=True)
     strip_filled_url = models.URLField(blank=True)
+    # Built-in stamp icon picked at design time (a key in
+    # ``wallets.stamp_icons.ICON_KEYS``, e.g. "coffee"). Blank = default drawn
+    # circles. Ignored when a custom ``strip_*_url`` pair is uploaded (that wins).
+    stamp_icon = models.CharField(max_length=20, blank=True)
+    # Fill color for the stamps (both the built-in icon and the drawn circles).
+    # Blank = the card foreground color. Apple/stamp cards only.
+    stamp_color = models.CharField(max_length=7, blank=True, validators=[hex_color])
 
     # ── Google (constrained) ────────────────────────────────────────────────
     google_title = models.CharField(max_length=40, blank=True)  # blank = merchant name

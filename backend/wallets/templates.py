@@ -43,6 +43,8 @@ TEMPLATES: dict[str, dict[str, Any]] = {
             "strip_bg_color",
             "strip_empty_url",
             "strip_filled_url",
+            "stamp_icon",
+            "stamp_color",
             "logo",
         ],
         "apple": {
@@ -68,6 +70,8 @@ TEMPLATES: dict[str, dict[str, Any]] = {
             "strip_bg_color",
             "strip_empty_url",
             "strip_filled_url",
+            "stamp_icon",
+            "stamp_color",
             "logo",
         ],
         "apple": {

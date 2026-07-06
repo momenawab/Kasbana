@@ -6,13 +6,16 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useCard, useSaveCard } from './api'
 import { useAuth } from '../../hooks/useAuth'
+import { usePlan } from '../../hooks/usePlan'
 import { useToast } from '../../hooks/useToast'
-import { normalizeError } from '../../lib/api'
+import api, { normalizeError } from '../../lib/api'
 import { Input, Textarea, Select } from '../../components/Field'
 import { Toggle } from '../../components/Toggle'
 import ColorPicker from '../../components/ColorPicker'
 import FileUpload from '../../components/FileUpload'
 import WalletPreview from '../../components/WalletPreview'
+import { STAMP_ICONS } from '../../components/stampIcons'
+import StampGlyph from '../../components/StampGlyph'
 import WalletDesignEditor from './WalletDesignEditor'
 import TemplatePicker from './TemplatePicker'
 import { TEMPLATE_SEED } from './templateSeeds'
@@ -34,17 +37,28 @@ const EMPTY = {
   collect_birthday: false,
 }
 
+// Create-time stamp styling — persisted to the card's wallet design after the
+// card is created (edit mode uses the full WalletDesignEditor instead).
+const EMPTY_STAMP = { stamp_icon: '', stamp_color: '', strip_empty_url: '', strip_filled_url: '' }
+
+// The default locked template per card type (matches the backend + the design
+// editor) so the stamp fields land in an editable template on the stored design.
+const DEFAULT_TEMPLATE_KEY = { STAMP: 'loyalty_stamps', POINTS: 'points_reward' }
+
 export default function CardDesigner() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { id } = useParams()
   const isEdit = Boolean(id)
   const { merchant } = useAuth()
+  const { can, requireFeature } = usePlan()
+  const branded = can('custom_branding')
   const toast = useToast()
   const save = useSaveCard()
 
   const { data: existing, isLoading } = useCard(id)
   const [form, setForm] = useState(EMPTY)
+  const [stamp, setStamp] = useState(EMPTY_STAMP)
   const [dirty, setDirty] = useState(false)
   const [platform, setPlatform] = useState('APPLE')
   const [errors, setErrors] = useState({})
@@ -85,6 +99,16 @@ export default function CardDesigner() {
     setDirty(true)
   }
   const setEvt = (key) => (e) => set(key)(e.target.value)
+  const setStampField = (key) => (value) => {
+    setStamp((s) => ({ ...s, [key]: value }))
+    setDirty(true)
+  }
+
+  // The stamp design is worth persisting only when the merchant actually picked
+  // an icon/color or uploaded a custom pair (blank = the default drawn circles).
+  const hasStampDesign =
+    Boolean(stamp.stamp_icon || stamp.stamp_color) ||
+    Boolean(stamp.strip_empty_url && stamp.strip_filled_url)
 
   // Apply a chosen template's seed over the current form, then reveal the form.
   function chooseTemplate(id) {
@@ -123,6 +147,22 @@ export default function CardDesigner() {
         status,
       }
       const card = await save.mutateAsync(payload)
+      // On create, persist the chosen stamp style onto the new card's wallet
+      // design (premium only — the endpoint enforces custom_branding). Best-effort:
+      // a design failure shouldn't lose the saved card, so surface it and go on.
+      if (!isEdit && branded && form.type === 'STAMP' && hasStampDesign) {
+        try {
+          await api.patch(`/cards/${card.id}/wallet-design`, {
+            template_key: DEFAULT_TEMPLATE_KEY.STAMP,
+            stamp_icon: stamp.stamp_icon,
+            stamp_color: stamp.stamp_color,
+            strip_empty_url: stamp.strip_empty_url,
+            strip_filled_url: stamp.strip_filled_url,
+          })
+        } catch {
+          toast.error(t('designer.stampSaveFailed'))
+        }
+      }
       setDirty(false)
       toast.success(status === 'ACTIVE' ? t('designer.published') : t('designer.savedDraft'))
       navigate(`/cards/${card.id}`)
@@ -240,6 +280,86 @@ export default function CardDesigner() {
               onChange={set('color_fg')}
             />
           </div>
+
+          {/* Stamp style — pick a built-in icon + fill color (or upload your own).
+              Create-mode + STAMP only; edit mode uses the full design editor
+              below. Premium (custom_branding); free plans keep drawn circles. */}
+          {!isEdit && form.type === 'STAMP' && (
+            <div className="rounded-ctl border border-line p-3">
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-sm font-semibold text-tx">{t('designer.stampStyle')}</span>
+                {!branded && (
+                  <button
+                    type="button"
+                    onClick={() => requireFeature('custom_branding')}
+                    className="rounded-full bg-amber-bg px-2 py-0.5 text-xs text-amber-d"
+                  >
+                    {t('designer.premium')}
+                  </button>
+                )}
+              </div>
+              <fieldset disabled={!branded} className="flex flex-col gap-3 disabled:opacity-60">
+                <div>
+                  <label className="mb-1 block text-sm text-tx-2">{t('designer.stampIcon')}</label>
+                  <div className="flex flex-wrap gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setStampField('stamp_icon')('')}
+                      className={`flex h-9 items-center rounded-ctl border px-2 text-xs ${
+                        stamp.stamp_icon
+                          ? 'border-line text-tx-3 hover:border-tx-3'
+                          : 'border-primary text-primary ring-1 ring-primary'
+                      }`}
+                    >
+                      {t('designer.stampNone')}
+                    </button>
+                    {STAMP_ICONS.map(([key, label]) => (
+                      <button
+                        key={key}
+                        type="button"
+                        title={label}
+                        aria-pressed={stamp.stamp_icon === key}
+                        onClick={() => setStampField('stamp_icon')(key)}
+                        className={`flex h-9 w-9 items-center justify-center rounded-ctl border transition ${
+                          stamp.stamp_icon === key
+                            ? 'border-primary ring-1 ring-primary'
+                            : 'border-line hover:border-tx-3'
+                        }`}
+                      >
+                        <StampGlyph
+                          icon={key}
+                          filled
+                          color={stamp.stamp_color || form.color_fg}
+                          size={20}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <ColorPicker
+                  label={t('designer.stampColor')}
+                  value={stamp.stamp_color || form.color_fg}
+                  onChange={setStampField('stamp_color')}
+                />
+                <div>
+                  <span className="mb-1 block text-xs text-tx-3">
+                    {t('designer.stampUploadHint')}
+                  </span>
+                  <div className="grid grid-cols-2 gap-3">
+                    <FileUpload
+                      label={t('walletDesign.stripEmpty')}
+                      onUploaded={setStampField('strip_empty_url')}
+                    />
+                    <FileUpload
+                      label={t('walletDesign.stripFilled')}
+                      onUploaded={setStampField('strip_filled_url')}
+                    />
+                  </div>
+                </div>
+              </fieldset>
+            </div>
+          )}
+
           <Toggle
             checked={form.collect_birthday}
             onChange={set('collect_birthday')}
@@ -296,6 +416,11 @@ export default function CardDesigner() {
           </div>
           <WalletPreview
             platform={platform}
+            design={
+              !isEdit && form.type === 'STAMP' && hasStampDesign
+                ? { ...stamp, apple_strip_enabled: true, google_stamp_hero: true }
+                : null
+            }
             cardType={form.type}
             logoUrl={form.logo_url}
             colorBg={form.color_bg}

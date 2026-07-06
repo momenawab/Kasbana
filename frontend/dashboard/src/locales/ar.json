@@ -317,7 +317,14 @@
     "published": "تم نشر الكارت.",
     "unsaved": "عندك تعديلات مش محفوظة. تخرج برضه؟",
     "reprovisionWarning": "تعديل كارت منشور بيعيد توفير كروت الحاملين الحاليين.",
-    "heroImage": "صورة البانر (Google Wallet)"
+    "heroImage": "صورة البانر (Google Wallet)",
+    "stampStyle": "شكل الختم",
+    "premium": "مميّز",
+    "stampIcon": "أيقونة الختم",
+    "stampNone": "بدون (دوائر)",
+    "stampColor": "لون الختم",
+    "stampUploadHint": "أو ارفع صور الختم الفارغ والممتلئ بتاعتك.",
+    "stampSaveFailed": "تم حفظ الكارت، لكن تعذّر تطبيق شكل الختم."
   },
   "templatePicker": {
     "title": "اختر قالبًا",

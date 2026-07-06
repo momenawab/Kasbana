@@ -78,8 +78,9 @@ def test_pass_json_has_required_fields(customer_card):
     assert p["teamIdentifier"] == "TEAM123456"
     assert p["authenticationToken"] == customer_card.auth_token
     assert p["webServiceURL"] == "https://api.stampn.net/api/v1/wallet/apple"
-    # STAMP card: current count lives in the header balance ("count/goal").
-    assert p["storeCard"]["headerFields"][0]["value"].split("/")[0] == "2"
+    # The top-right header carries the platform brand; the stamp count is shown by
+    # the cup strip + the "N for a reward" secondary field, not a header balance.
+    assert p["storeCard"]["headerFields"][0]["value"] == "Stampn"
 
 
 def test_pass_json_has_no_message_field_without_a_message(customer_card):

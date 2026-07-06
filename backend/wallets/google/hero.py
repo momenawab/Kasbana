@@ -118,10 +118,19 @@ def stamp_hero_url(customer_card: CustomerCard, *, force: bool = False) -> str |
         return None
     design = design_mod.get_design(card)
     try:
+        from wallets import stamp_icons
+
         bg, fg = _stamp_colors(card, design)
         empty_icon = _local_media_bytes(design.strip_empty_url) if design else None
         filled_icon = _local_media_bytes(design.strip_filled_url) if design else None
+        # Built-in stamp icon (tinted with stamp_color) fills in when no custom
+        # pair is uploaded; stamp_color also recolors the drawn circles/fg.
+        fg, empty_icon, filled_icon = stamp_icons.resolve_stamp_render(
+            design, fg, empty_icon, filled_icon
+        )
 
+        # Content-address on everything that changes the pixels so a new icon,
+        # color, or count produces a fresh URL Google will re-fetch.
         fingerprint = "|".join(
             [
                 str(customer_card.stamp_count),
@@ -130,6 +139,8 @@ def stamp_hero_url(customer_card: CustomerCard, *, force: bool = False) -> str |
                 str(fg),
                 design.strip_empty_url if design else "",
                 design.strip_filled_url if design else "",
+                design.stamp_icon if design else "",
+                design.stamp_color if design else "",
             ]
         )
         digest = hashlib.sha1(fingerprint.encode("utf-8")).hexdigest()[:16]

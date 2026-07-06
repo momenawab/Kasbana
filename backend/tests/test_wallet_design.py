@@ -183,9 +183,10 @@ def test_google_stamp_hero_renders_and_updates_url(customer_card, settings):
 
 def test_no_design_uses_default_locked_template(customer_card):
     # Templates-only: a card with no design row renders its type's default locked
-    # template (STAMP → loyalty_stamps), not a freeform layout — no crash.
+    # template (STAMP → loyalty_stamps), not a freeform layout — no crash. Proven
+    # by the template's locked secondary label (the header is now the brand).
     payload = build_pass_json(customer_card)
-    assert payload["storeCard"]["headerFields"][0]["label"] == "STAMPS"
+    assert payload["storeCard"]["secondaryFields"][0]["label"] == "5 FOR A REWARD"
 
 
 def test_field_keys_are_globally_unique(customer_card):

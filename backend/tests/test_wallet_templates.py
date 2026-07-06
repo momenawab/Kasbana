@@ -43,7 +43,8 @@ def test_stamp_template_drives_apple_fields(customer_card):
         card=card, merchant=card.merchant, template_key="loyalty_stamps"
     )
     store = build_pass_json(customer_card)["storeCard"]
-    assert store["headerFields"][0]["label"] == "STAMPS"
+    # The top-right header now carries the platform brand, not the balance count.
+    assert store["headerFields"][0]["value"] == "Stampn"
     # Label interpolation: "{goal} FOR A REWARD" -> "5 FOR A REWARD".
     assert store["secondaryFields"][0]["label"] == "5 FOR A REWARD"
 
@@ -58,15 +59,22 @@ def test_custom_falls_back_to_default_template(customer_card):
         template_key="custom",
         apple_header=[{"label": "MYHDR", "source": "balance"}],
     )
-    # Freeform header ignored; the default STAMP template (loyalty_stamps) drives it.
-    assert build_pass_json(customer_card)["storeCard"]["headerFields"][0]["label"] == "STAMPS"
+    # Freeform header ignored; the default STAMP template (loyalty_stamps) drives
+    # the layout — proven by its locked secondary label (the header is now the brand).
+    assert (
+        build_pass_json(customer_card)["storeCard"]["secondaryFields"][0]["label"]
+        == "5 FOR A REWARD"
+    )
 
 
 def test_unknown_template_falls_back_to_default(customer_card):
     """An unknown key renders the default locked template (never freeform, never breaks)."""
     card = customer_card.card
     WalletCardDesign.objects.create(card=card, merchant=card.merchant, template_key="ghost")
-    assert build_pass_json(customer_card)["storeCard"]["headerFields"][0]["label"] == "STAMPS"
+    assert (
+        build_pass_json(customer_card)["storeCard"]["secondaryFields"][0]["label"]
+        == "5 FOR A REWARD"
+    )
 
 
 def test_template_field_keys_are_unique(customer_card):
@@ -93,13 +101,16 @@ def test_stamp_template_renders_strip_no_footer(customer_card):
     assert not any(k.startswith("footer") for k in imgs)
 
 
-def test_platform_label_renders_as_logotext(customer_card, settings):
-    """The platform ('Powered by') brand rides in Apple logoText, beside the logo."""
+def test_branding_split_merchant_left_platform_right(customer_card, settings):
+    """The merchant's business name rides in logoText (right of the logo); the
+    platform brand rides in the top-right header field."""
     settings.WALLET_PLATFORM_LABEL = "Stampn"
     WalletCardDesign.objects.create(
         card=customer_card.card, merchant=customer_card.merchant, template_key="loyalty_stamps"
     )
-    assert build_pass_json(customer_card)["logoText"] == "Stampn"
+    payload = build_pass_json(customer_card)
+    assert payload["logoText"] == customer_card.merchant.name
+    assert payload["storeCard"]["headerFields"][0]["value"] == "Stampn"
 
 
 def test_merchant_logo_text_overrides_platform_label(customer_card, settings):
