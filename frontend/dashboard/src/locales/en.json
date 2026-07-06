@@ -449,7 +449,16 @@
     "editTitle": "Edit location",
     "save": "Save",
     "emptyTitle": "No locations yet",
-    "emptyBody": "Add your first branch to track per-location stats."
+    "emptyBody": "Add your first branch to track per-location stats.",
+    "search": "Search",
+    "searchPlaceholder": "Search your business or address…",
+    "useMyLocation": "My location",
+    "mapHint": "Search, tap the map, or drag the pin to set this branch's location.",
+    "noResults": "No matches found. Try a more specific address.",
+    "geoError": "Couldn't get your location. Allow location access or set it on the map.",
+    "mapStreet": "Street",
+    "mapSatellite": "Satellite",
+    "mapKeyMissing": "Map unavailable — set VITE_MAPTILER_KEY to enable location search."
   },
   "team": {
     "title": "Team",

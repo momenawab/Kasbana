@@ -26,6 +26,9 @@ export default defineConfig({
         // Never let the SPA fallback swallow API or wallet backend calls.
         navigateFallbackDenylist: [/^\/api/, /^\/media/],
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        // MapLibre GL (~2.5 MB, Locations map) is lazy-loaded and network-only —
+        // keep it out of the precache so it doesn't bloat first paint / the SW.
+        globIgnores: ['**/maplibre-*.js', '**/maplibre-*.css'],
       },
       manifest: {
         name: 'Stampn — لوحة التحكم',
@@ -53,4 +56,15 @@ export default defineConfig({
     }),
   ],
   server: { port: 5174 },
+  build: {
+    rollupOptions: {
+      output: {
+        // Isolate the map stack into a predictable, on-demand chunk so it stays
+        // out of the main bundle (and the precache — see globIgnores above).
+        manualChunks(id) {
+          if (id.includes('@maptiler') || id.includes('maplibre-gl')) return 'maplibre'
+        },
+      },
+    },
+  },
 })

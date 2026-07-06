@@ -15,6 +15,8 @@ name: Deploy Client Dashboard (app.stampn.net)
 # Build-time env bakes into the bundle:
 #   VITE_USE_MOCKS=0                       -> hit the real backend, not MSW
 #   VITE_API_URL=https://api.stampn.net   -> API base = + "/api/v1"
+#   VITE_MAPTILER_KEY=<secrets.MAPTILER_KEY> -> Locations map/geocoding (client
+#     key; domain-restrict it to app.stampn.net in the MapTiler dashboard)
 # The backend must allow CORS from https://app.stampn.net.
 #
 # Uses GITHUB_TOKEN, so the publish push does not re-trigger this workflow.
@@ -51,6 +53,7 @@ jobs:
         env:
           VITE_USE_MOCKS: '0'
           VITE_API_URL: https://api.stampn.net
+          VITE_MAPTILER_KEY: ${{ secrets.MAPTILER_KEY }}
         run: |
           npm ci
           npm run build

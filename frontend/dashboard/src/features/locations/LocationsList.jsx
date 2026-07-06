@@ -1,5 +1,5 @@
 // Locations (spec §14) — table + add/edit modal. "Add" gated at max_locations.
-import { useState } from 'react'
+import { useState, lazy, Suspense } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Plus, MapPin } from 'lucide-react'
 import { useLocations, useSaveLocation } from './api'
@@ -11,6 +11,8 @@ import Button from '../../components/Button'
 import EmptyState from '../../components/EmptyState'
 import { Modal } from '../../components/Modal'
 import { Input } from '../../components/Field'
+// Lazy: MapLibre GL is heavy (~2.5 MB), so it only loads when the modal opens.
+const MapPicker = lazy(() => import('../../components/MapPicker'))
 
 const EMPTY = { name: '', address: '', lat: '', lng: '' }
 
@@ -100,10 +102,19 @@ export default function LocationsList() {
         <div className="flex flex-col gap-3">
           <Input name="name" label={t('locations.name')} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           <Input name="address" label={t('locations.address')} value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
-          <div className="grid grid-cols-2 gap-3">
-            <Input name="lat" label="Lat" type="number" value={form.lat} onChange={(e) => setForm({ ...form, lat: e.target.value })} />
-            <Input name="lng" label="Lng" type="number" value={form.lng} onChange={(e) => setForm({ ...form, lng: e.target.value })} />
-          </div>
+          {/* Map picker fills lat/lng (and address when a search result is chosen)
+              so merchants never hand-enter coordinates. */}
+          <Suspense
+            fallback={<div className="h-56 w-full animate-pulse rounded-ctl bg-paper" />}
+          >
+            <MapPicker
+              lat={form.lat}
+              lng={form.lng}
+              onPick={({ lat, lng, address }) =>
+                setForm((f) => ({ ...f, lat, lng, ...(address ? { address } : {}) }))
+              }
+            />
+          </Suspense>
         </div>
       </Modal>
     </div>
