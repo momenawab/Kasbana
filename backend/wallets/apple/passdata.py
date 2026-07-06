@@ -135,6 +135,16 @@ def build_pass_json(customer_card: CustomerCard) -> dict:
             if design.apple_auxiliary:
                 auxiliary_fields = design_mod.render_slots(design.apple_auxiliary, ctx, "x")
 
+    # Top-row branding: the merchant's brand owns the left (logo image + business
+    # name in logoText), and the platform attribution owns the only top-right slot
+    # Apple's storeCard offers — a header field. This "Stampn" header replaces the
+    # numeric balance that templates put in the header: the strip's cup grid and
+    # the "N for a reward" secondary field already convey progress, so the count is
+    # redundant up top. Falls back to the template header only if no label is set.
+    platform_label = str(getattr(settings, "WALLET_PLATFORM_LABEL", "") or "").strip()
+    if platform_label:
+        header_fields = [{"key": "brand", "value": platform_label}]
+
     back_fields: list[dict] = []
     if card.reward_title:
         back_fields.append(
@@ -196,18 +206,16 @@ def build_pass_json(customer_card: CustomerCard) -> dict:
         "barcodes": [barcode],
         "barcode": barcode,
     }
-    # logoText renders as a small label beside the top-left logo. Apple has no
-    # right-side image slot on a storeCard, so the platform ("Powered by") logo
-    # lives here as text next to the brand: "[BrandLogo] Stampn". A merchant
-    # override always wins; otherwise show the platform label. The brand itself is
-    # always the logo.png slot (the merchant logo image, or the merchant-name
-    # wordmark signing._logo draws when no logo is set) — so the name is never lost.
+    # logoText renders immediately to the right of the top-left logo image, so it
+    # carries the merchant's *business name* — the brand the customer recognises.
+    # A branded merchant may override the exact wording (design.apple_logo_text);
+    # otherwise use the merchant name. Platform attribution ("Stampn") lives in the
+    # top-right header field instead (see header_fields above), keeping the whole
+    # left side the merchant's own brand: "[BrandLogo] Momen ...... Stampn".
     if design and design.apple_logo_text:
         payload["logoText"] = design.apple_logo_text
-    else:
-        platform_label = str(getattr(settings, "WALLET_PLATFORM_LABEL", "") or "").strip()
-        if platform_label:
-            payload["logoText"] = platform_label
+    elif merchant.name:
+        payload["logoText"] = merchant.name
     # Void a no-longer-active pass (single-use completion / blocked) — iOS greys
     # it out and marks it expired.
     if customer_card.status != CustomerCardStatus.ACTIVE:

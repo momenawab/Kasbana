@@ -3,9 +3,10 @@
 // editable pass design (notes 2-4 + templates). When a layout-locked `template`
 // is active its fixed per-platform layout is rendered (positions locked); the
 // Apple-vs-Google bottom-visual rule applies (stamps/image sit in the Apple
-// strip at the TOP, in the Google hero under the header). The platform (Kasbana)
-// brand rides as Apple `logoText` beside the top-left brand logo (Apple has no
-// right-side image slot), and as a bottom-left watermark on the Google hero.
+// strip at the TOP, in the Google hero under the header). The merchant's business
+// name rides as Apple `logoText` beside the top-left brand logo; the platform
+// (Kasbana) brand rides in the top-right header field (Apple has no right-side
+// image slot), and as a bottom-left watermark on the Google hero.
 // Pure/presentational — updates as props change.
 import { useTranslation } from 'react-i18next'
 import { arDigits } from '../lib/format'
@@ -190,9 +191,11 @@ export default function WalletPreview({
       label: interpolate(s.label, ctx),
       value: resolveValue(s.source, ctx),
     }))
-  // Platform brand rides beside the top-left logo as Apple logoText (mirrors
-  // wallets.apple.passdata). A merchant override wins; otherwise the platform label.
-  const logoText = design?.apple_logo_text || platformLabel
+  // logoText rides beside the top-left logo → the merchant's business name (the
+  // brand customers recognise), mirroring wallets.apple.passdata. A branded
+  // merchant may override the wording; the platform brand lives in the top-right
+  // header field instead (see below).
+  const logoText = design?.apple_logo_text || merchantName
 
   // Template mode locks the layout: regions come from the template, and the
   // strip/hero behaviour is pinned to its bottom_visual.
@@ -296,6 +299,11 @@ export default function WalletPreview({
     stripOn = stripOnFree
     stripIsImage = false
   }
+
+  // Platform attribution owns the only top-right slot Apple's storeCard offers —
+  // a header field — replacing the numeric balance (the strip + secondary already
+  // convey progress). Mirrors wallets.apple.passdata's header override.
+  if (platformLabel) header = [{ label: '', value: platformLabel }]
 
   return (
     <div
