@@ -83,6 +83,14 @@ class BusinessSettingsSerializer(serializers.Serializer):
     color_fg = serializers.CharField(max_length=7, required=False, allow_blank=True)
     contact = ContactSerializer(required=False)
     address = serializers.CharField(max_length=255, required=False, allow_blank=True)
+    # Pass-back contact + social links (each optional — shown on the wallet pass
+    # back only when filled in).
+    facebook_url = serializers.URLField(required=False, allow_blank=True)
+    instagram_url = serializers.URLField(required=False, allow_blank=True)
+    tiktok_url = serializers.URLField(required=False, allow_blank=True)
+    whatsapp = serializers.CharField(max_length=32, required=False, allow_blank=True)
+    terms_url = serializers.URLField(required=False, allow_blank=True)
+    branches = serializers.CharField(required=False, allow_blank=True)
     # Branded enrollment copy (custom_branding plans only — enforced in the view).
     enroll_headline = serializers.CharField(max_length=80, required=False, allow_blank=True)
     enroll_tagline = serializers.CharField(max_length=160, required=False, allow_blank=True)
@@ -127,6 +135,13 @@ class MerchantOutSerializer(serializers.Serializer):
     color_fg = serializers.CharField(allow_blank=True)
     enroll_headline = serializers.CharField(allow_blank=True)
     enroll_tagline = serializers.CharField(allow_blank=True)
+    phone = serializers.CharField(allow_blank=True)
+    facebook_url = serializers.CharField(allow_blank=True)
+    instagram_url = serializers.CharField(allow_blank=True)
+    tiktok_url = serializers.CharField(allow_blank=True)
+    whatsapp = serializers.CharField(allow_blank=True)
+    terms_url = serializers.CharField(allow_blank=True)
+    branches = serializers.CharField(allow_blank=True)
 
 
 class EntitlementsOutSerializer(serializers.Serializer):

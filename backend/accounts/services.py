@@ -44,4 +44,11 @@ def merchant_payload(merchant: Merchant) -> dict[str, Any]:
         "color_fg": merchant.color_fg,
         "enroll_headline": s.enroll_headline,
         "enroll_tagline": s.enroll_tagline,
+        "phone": s.contact_phone,
+        "facebook_url": s.facebook_url,
+        "instagram_url": s.instagram_url,
+        "tiktok_url": s.tiktok_url,
+        "whatsapp": s.whatsapp,
+        "terms_url": s.terms_url,
+        "branches": s.branches,
     }
