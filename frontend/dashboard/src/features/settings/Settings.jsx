@@ -8,7 +8,7 @@ import { setLang } from '../../lib/i18n'
 import { useToast } from '../../hooks/useToast'
 import { usePlan } from '../../hooks/usePlan'
 import Tabs from '../../components/Tabs'
-import { Input } from '../../components/Field'
+import { Input, Textarea } from '../../components/Field'
 import { Toggle } from '../../components/Toggle'
 import ColorPicker from '../../components/ColorPicker'
 import FileUpload from '../../components/FileUpload'
@@ -35,11 +35,22 @@ function BusinessTab() {
         color_fg: data.color_fg || '#FFFFFF',
         enroll_headline: data.enroll_headline || '',
         enroll_tagline: data.enroll_tagline || '',
+        phone: data.phone || '',
+        facebook_url: data.facebook_url || '',
+        instagram_url: data.instagram_url || '',
+        whatsapp: data.whatsapp || '',
+        tiktok_url: data.tiktok_url || '',
+        terms_url: data.terms_url || '',
+        branches: data.branches || '',
       })
   }, [data])
 
   const save = useMutation({
-    mutationFn: async () => (await api.patch('/settings/business', form)).data,
+    mutationFn: async () => {
+      // The API takes phone nested under `contact`; everything else is top-level.
+      const { phone, ...rest } = form
+      return (await api.patch('/settings/business', { ...rest, contact: { phone } })).data
+    },
     onSuccess: () => {
       toast.success(t('settings.saved'))
       qc.invalidateQueries({ queryKey: ['me'] })
@@ -103,6 +114,64 @@ function BusinessTab() {
             onChange={(e) => setForm({ ...form, enroll_tagline: e.target.value })}
           />
           {branded && <p className="text-xs text-tx-3">{t('settings.brandedEnrollHint')}</p>}
+        </div>
+      </div>
+
+      {/* Contact & social links — shown on the wallet pass back. Each optional;
+          only filled-in fields appear on the pass. */}
+      <div className="rounded-ctl border border-line p-3">
+        <div className="mb-2 text-sm font-semibold text-ink">{t('settings.passLinks')}</div>
+        <p className="mb-3 text-xs text-tx-3">{t('settings.passLinksHint')}</p>
+        <div className="flex flex-col gap-3">
+          <Input
+            name="phone"
+            label={t('settings.phone')}
+            value={form.phone}
+            onChange={(e) => setForm({ ...form, phone: e.target.value })}
+          />
+          <Input
+            name="facebook_url"
+            label={t('settings.facebook')}
+            placeholder="https://facebook.com/..."
+            value={form.facebook_url}
+            onChange={(e) => setForm({ ...form, facebook_url: e.target.value })}
+          />
+          <Input
+            name="instagram_url"
+            label={t('settings.instagram')}
+            placeholder="https://instagram.com/..."
+            value={form.instagram_url}
+            onChange={(e) => setForm({ ...form, instagram_url: e.target.value })}
+          />
+          <Input
+            name="whatsapp"
+            label={t('settings.whatsapp')}
+            placeholder="+20 1x xxxx xxxx"
+            value={form.whatsapp}
+            onChange={(e) => setForm({ ...form, whatsapp: e.target.value })}
+          />
+          <Input
+            name="tiktok_url"
+            label={t('settings.tiktok')}
+            placeholder="https://tiktok.com/@..."
+            value={form.tiktok_url}
+            onChange={(e) => setForm({ ...form, tiktok_url: e.target.value })}
+          />
+          <Input
+            name="terms_url"
+            label={t('settings.terms')}
+            placeholder="https://..."
+            value={form.terms_url}
+            onChange={(e) => setForm({ ...form, terms_url: e.target.value })}
+          />
+          <Textarea
+            name="branches"
+            label={t('settings.branches')}
+            hint={t('settings.branchesHint')}
+            rows={3}
+            value={form.branches}
+            onChange={(e) => setForm({ ...form, branches: e.target.value })}
+          />
         </div>
       </div>
 
