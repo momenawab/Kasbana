@@ -90,11 +90,16 @@ def build_pass_images(customer_card: CustomerCard) -> dict[str, bytes]:
             if bbox:
                 src = src.crop(bbox)
             src.thumbnail((w, h))
-            canvas = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-            # Logo hugs the left edge (Apple renders the whole slot left-aligned);
-            # the square icon stays centred.
-            x = 0 if align == "left" else (w - src.width) // 2
-            canvas.paste(src, (x, (h - src.height) // 2), src)
+            if align == "left":
+                # Size the canvas to the mark's real width (not the full 160px
+                # slot) so Apple renders logoText immediately after it — otherwise
+                # the business name is pushed to the middle by the empty canvas.
+                canvas = Image.new("RGBA", (src.width or 1, h), (0, 0, 0, 0))
+                canvas.paste(src, (0, (h - src.height) // 2), src)
+            else:
+                # Square icon: keep the mark centred in the full slot.
+                canvas = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+                canvas.paste(src, ((w - src.width) // 2, (h - src.height) // 2), src)
             return _png(canvas)
         except Exception:  # pragma: no cover - bad image bytes
             return None
