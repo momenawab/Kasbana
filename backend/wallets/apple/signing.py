@@ -78,14 +78,23 @@ def build_pass_images(customer_card: CustomerCard) -> dict[str, bytes]:
         img.save(out, format="PNG")
         return out.getvalue()
 
-    def _from_logo(w: int, h: int) -> bytes | None:
+    def _from_logo(w: int, h: int, align: str = "center") -> bytes | None:
         if not logo_bytes:
             return None
         try:
             src = Image.open(io.BytesIO(logo_bytes)).convert("RGBA")
+            # Trim fully-transparent padding baked into the source PNG so the mark
+            # sits flush against the edge instead of floating inside its own
+            # whitespace (this is what made the logo look indented on the pass).
+            bbox = src.getbbox()
+            if bbox:
+                src = src.crop(bbox)
             src.thumbnail((w, h))
             canvas = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-            canvas.paste(src, ((w - src.width) // 2, (h - src.height) // 2), src)
+            # Logo hugs the left edge (Apple renders the whole slot left-aligned);
+            # the square icon stays centred.
+            x = 0 if align == "left" else (w - src.width) // 2
+            canvas.paste(src, (x, (h - src.height) // 2), src)
             return _png(canvas)
         except Exception:  # pragma: no cover - bad image bytes
             return None
@@ -108,7 +117,7 @@ def build_pass_images(customer_card: CustomerCard) -> dict[str, bytes]:
         return _png(canvas)
 
     def _logo(w: int, h: int) -> bytes:
-        from_logo = _from_logo(w, h)
+        from_logo = _from_logo(w, h, align="left")
         if from_logo is not None:
             return from_logo
         canvas = Image.new("RGBA", (w, h), (0, 0, 0, 0))
