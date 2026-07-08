@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { BRAND_NAME, BRAND_NAME_AR, CONTACT_EMAIL } from '../config.js'
+import { BRAND_NAME, CONTACT_EMAIL } from '../config.js'
 import { useLang, PAGE_PATHS } from '../i18n/index.js'
 
 export default function Footer() {
@@ -11,10 +11,11 @@ export default function Footer() {
     <footer className="site-footer">
       <div className="container footer-inner">
         <div className="footer-brand">
-          <span className="footer-name">{BRAND_NAME}</span>
-          <span className="footer-name-ar" dir="rtl" lang="ar">
-            {BRAND_NAME_AR}
+          <span className="footer-lockup">
+            <img src="/logo.svg" alt="" className="footer-logo" />
+            <span className="footer-name">{BRAND_NAME}</span>
           </span>
+          <p className="footer-tagline">{t.footer.tagline}</p>
         </div>
 
         <nav className="footer-links" aria-label="Footer">

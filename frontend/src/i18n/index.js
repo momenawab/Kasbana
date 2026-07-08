@@ -29,27 +29,51 @@ export const translations = {
     switchTo: 'ar',
     home: {
       pill: 'Coming soon',
-      title: "Loyalty that lives in your customers' wallet.",
-      lead: ONE_LINER,
+      title: 'Turn every purchase into',
+      titleAccent: 'lasting loyalty.',
+      lead: "Create beautiful, interactive digital loyalty cards that live directly inside your customers' Apple Wallet and Google Wallet — no app download required.",
+      ctaPrimary: 'Get started free',
       contactCta: 'Contact us',
       privacyCta: 'Privacy',
+      socialProof:
+        'Launching soon for cafés, restaurants, salons & shops across Egypt.',
       sectionTitle: "What we're building",
       sectionSub:
         'A digital loyalty and rewards platform that businesses set up in minutes — and customers never have to download.',
       features: [
         {
+          icon: 'wallet',
           title: 'In your wallet, no app',
           body: 'Cards live in Apple Wallet and Google Wallet. Nothing to download, nothing to install — customers just tap “Add”.',
         },
         {
+          icon: 'loyalty',
           title: 'Stamps & rewards',
-          body: 'Run stamp cards and points programs, hand out rewards, and send automatic updates straight to the phone.',
+          body: 'Run stamp cards and points programs, hand out rewards straight from the dashboard.',
         },
         {
+          icon: 'bolt',
+          title: 'Instant updates',
+          body: 'Push changes to a card the moment a customer earns a stamp — right on their lock screen.',
+        },
+        {
+          icon: 'public',
           title: 'Arabic-first, built for Egypt',
           body: 'Designed Arabic-first for cafés, restaurants, salons, gyms, and shops across Egypt and the region.',
         },
       ],
+      // Labels for the illustrative product preview beside the hero (decorative).
+      preview: {
+        liveLabel: 'Preview',
+        cardName: 'Bloom Café',
+        cardTier: 'Loyalty card',
+        stampsLabel: 'Rewards progress',
+        stampsCount: '9 / 10 stamps',
+        rewardUnlocked: 'Reward unlocked',
+        rewardItem: 'Free artisan coffee',
+        activityName: 'Sarah',
+        activity: 'just earned a stamp',
+      },
     },
     support: {
       title: 'Support',
@@ -99,6 +123,7 @@ export const translations = {
     },
     footer: {
       rights: 'All rights reserved.',
+      tagline: 'Built for the future of loyalty.',
     },
     notFound: {
       title: '404',
@@ -135,27 +160,51 @@ export const translations = {
     switchTo: 'en',
     home: {
       pill: 'قريبًا',
-      title: 'الولاء اللي بيعيش في محفظة عملائك.',
-      lead: ONE_LINER_AR,
+      title: 'حوّل كل عملية شراء إلى',
+      titleAccent: 'ولاء دايم.',
+      lead: 'اعمل كروت ولاء رقمية تفاعلية وشيك بتعيش جوّه Apple Wallet و Google Wallet عند عملائك — من غير ما حد يحمّل أي تطبيق.',
+      ctaPrimary: 'ابدأ مجانًا',
       contactCta: 'تواصل معنا',
       privacyCta: 'الخصوصية',
+      socialProof:
+        'بنطلق قريبًا للكافيهات والمطاعم والصالونات والمحلات في مصر.',
       sectionTitle: 'اللي بنبنيه',
       sectionSub:
         'منصّة ولاء ومكافآت رقمية بتتظبط في دقايق — والعميل مش محتاج يحمّل أي حاجة.',
       features: [
         {
+          icon: 'wallet',
           title: 'في محفظتك، من غير تطبيق',
           body: 'الكروت بتعيش في Apple Wallet و Google Wallet. مفيش حاجة تتحمّل ولا تتثبّت — العميل بيضغط «إضافة» وبس.',
         },
         {
+          icon: 'loyalty',
           title: 'أختام ومكافآت',
-          body: 'اعمل كروت أختام وبرامج نقاط، وزّع مكافآت، وابعت تحديثات تلقائية على تليفون العميل على طول.',
+          body: 'اعمل كروت أختام وبرامج نقاط، ووزّع مكافآت على طول من لوحة التحكم.',
         },
         {
+          icon: 'bolt',
+          title: 'تحديثات فورية',
+          body: 'التغييرات بتوصل للكارت في نفس اللحظة اللي العميل بياخد فيها ختم — على شاشة القفل مباشرة.',
+        },
+        {
+          icon: 'public',
           title: 'بالعربي الأول، اتعمل لمصر',
           body: 'مصمّم بالعربي الأول للكافيهات والمطاعم والصالونات والجيمات والمحلات في مصر والمنطقة.',
         },
       ],
+      // نصوص المعاينة التوضيحية جنب الهيرو (زخرفية).
+      preview: {
+        liveLabel: 'معاينة',
+        cardName: 'كافيه بلوم',
+        cardTier: 'كارت ولاء',
+        stampsLabel: 'تقدّم المكافآت',
+        stampsCount: '٩ / ١٠ أختام',
+        rewardUnlocked: 'مكافأة اتفتحت',
+        rewardItem: 'قهوة مجانية',
+        activityName: 'سارة',
+        activity: 'أخدت ختم دلوقتي',
+      },
     },
     support: {
       title: 'الدعم',
@@ -203,6 +252,7 @@ export const translations = {
     },
     footer: {
       rights: 'كل الحقوق محفوظة.',
+      tagline: 'اتعمل لمستقبل الولاء.',
     },
     notFound: {
       title: '٤٠٤',

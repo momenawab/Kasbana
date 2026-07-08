@@ -1,5 +1,5 @@
 import { Link, NavLink, useLocation } from 'react-router-dom'
-import { BRAND_NAME, BRAND_NAME_AR, DASHBOARD_LOGIN_URL, DASHBOARD_SIGNUP_URL } from '../config.js'
+import { BRAND_NAME, DASHBOARD_LOGIN_URL, DASHBOARD_SIGNUP_URL } from '../config.js'
 import { useLang, localizePath, PAGE_PATHS } from '../i18n/index.js'
 
 export default function Header() {
@@ -13,25 +13,23 @@ export default function Header() {
     <header className="site-header">
       <div className="container header-inner">
         <Link to={p('home')} className="wordmark" aria-label={`${BRAND_NAME} home`}>
-          <span className="wordmark-latin">{BRAND_NAME}</span>
-          <span className="wordmark-ar" dir="rtl" lang="ar">
-            {BRAND_NAME_AR}
-          </span>
+          <img src="/logo.svg" alt="" className="wordmark-logo" />
+          <span className="wordmark-text">{BRAND_NAME}</span>
         </Link>
 
-        <div className="header-right">
-          <nav className="site-nav" aria-label="Primary">
-            <NavLink to={p('home')} end className="nav-link">
-              {t.nav.home}
-            </NavLink>
-            <NavLink to={p('support')} className="nav-link">
-              {t.nav.support}
-            </NavLink>
-            <NavLink to={p('privacy')} className="nav-link">
-              {t.nav.privacy}
-            </NavLink>
-          </nav>
+        <nav className="site-nav" aria-label="Primary">
+          <NavLink to={p('home')} end className="nav-link">
+            {t.nav.home}
+          </NavLink>
+          <NavLink to={p('support')} className="nav-link">
+            {t.nav.support}
+          </NavLink>
+          <NavLink to={p('privacy')} className="nav-link">
+            {t.nav.privacy}
+          </NavLink>
+        </nav>
 
+        <div className="header-right">
           {/* Language switcher → equivalent page in the other language */}
           <Link to={switchHref} className="lang-switch" hrefLang={t.switchTo}>
             {t.switchLabel}
@@ -41,7 +39,7 @@ export default function Header() {
           <a href={DASHBOARD_LOGIN_URL} className="nav-link header-login">
             {t.nav.login}
           </a>
-          <a href={DASHBOARD_SIGNUP_URL} className="btn btn-primary header-cta">
+          <a href={DASHBOARD_SIGNUP_URL} className="btn btn-launch header-cta">
             {t.nav.getStarted}
           </a>
         </div>

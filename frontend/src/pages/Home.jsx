@@ -3,9 +3,23 @@ import Seo from '../components/Seo.jsx'
 import { useLang, PAGE_PATHS } from '../i18n/index.js'
 import { DASHBOARD_SIGNUP_URL } from '../config.js'
 
+// Material Symbols icon. Decorative by default — callers that convey meaning
+// with an icon alone should pass a label instead.
+function Icon({ name, className = '' }) {
+  return (
+    <span className={`ms ${className}`} aria-hidden="true">
+      {name}
+    </span>
+  )
+}
+
 export default function Home() {
   const { lang, t } = useLang()
   const h = t.home
+  const pv = h.preview
+
+  // Bento layout: large, small, small, large.
+  const featureSpan = ['feature-lg', 'feature-sm', 'feature-sm', 'feature-lg']
 
   return (
     <>
@@ -13,41 +27,128 @@ export default function Home() {
 
       {/* Hero */}
       <section className="hero">
-        <div className="hero-glow" aria-hidden="true" />
-        <div className="container hero-inner">
-          <span className="pill">{h.pill}</span>
+        <div className="hero-aurora" aria-hidden="true" />
+        <div className="ambient-orb orb-purple" aria-hidden="true" />
+        <div className="ambient-orb orb-cyan" aria-hidden="true" />
 
-          <h1 className="hero-title">{h.title}</h1>
+        <div className="container hero-grid">
+          {/* Left: content */}
+          <div className="hero-content">
+            <span className="pill">
+              <Icon name="stars" className="pill-icon" />
+              {h.pill}
+            </span>
 
-          <p className="hero-lead">{h.lead}</p>
+            <h1 className="hero-title">
+              {h.title} <span className="text-gradient">{h.titleAccent}</span>
+            </h1>
 
-          <div className="hero-actions">
-            <a href={DASHBOARD_SIGNUP_URL} className="btn btn-primary">
-              {t.nav.getStarted}
-            </a>
-            <Link to={PAGE_PATHS.support[lang]} className="btn btn-ghost">
-              {h.contactCta}
-            </Link>
+            <p className="hero-lead">{h.lead}</p>
+
+            <div className="hero-actions">
+              <a href={DASHBOARD_SIGNUP_URL} className="btn btn-primary">
+                {h.ctaPrimary}
+                <Icon name="arrow_forward" />
+              </a>
+              <Link to={PAGE_PATHS.support[lang]} className="btn btn-glass">
+                <Icon name="play_circle" />
+                {h.contactCta}
+              </Link>
+            </div>
+
+            <div className="social-proof">
+              <span className="proof-dots" aria-hidden="true">
+                <span className="proof-dot" />
+                <span className="proof-dot" />
+                <span className="proof-dot" />
+              </span>
+              <span>{h.socialProof}</span>
+            </div>
           </div>
 
-          {/* Decorative amber ring / seal motif */}
-          <div className="seal" aria-hidden="true">
-            <span className="seal-ring seal-ring-1" />
-            <span className="seal-ring seal-ring-2" />
-            <span className="seal-star" />
+          {/* Right: illustrative product preview (decorative) */}
+          <div className="hero-visual" aria-hidden="true">
+            <div className="visual-orb visual-orb-1" />
+            <div className="visual-orb visual-orb-2" />
+            <div className="visual-orb visual-orb-3" />
+
+            <Icon name="loyalty" className="float-icon float-icon-1" />
+            <Icon name="qr_code_2" className="float-icon float-icon-2" />
+            <Icon name="card_giftcard" className="float-icon float-icon-3" />
+
+            {/* Sample loyalty card */}
+            <div className="wallet-card">
+              <div className="wallet-card-top">
+                <div>
+                  <div className="wallet-card-tier">{pv.cardTier}</div>
+                  <div className="wallet-card-name">{pv.cardName}</div>
+                </div>
+                <span className="wallet-card-logo ms">loyalty</span>
+              </div>
+
+              <div className="wallet-card-stamps-label">{pv.stampsLabel}</div>
+              <div className="wallet-card-stamps">
+                {Array.from({ length: 10 }).map((_, i) => (
+                  <span
+                    key={i}
+                    className={`stamp ${i < 9 ? 'stamp-filled' : ''}`}
+                  >
+                    {i < 9 ? <span className="ms">check</span> : i + 1}
+                  </span>
+                ))}
+              </div>
+
+              <div className="wallet-card-qr">
+                <span className="ms">qr_code_2</span>
+                <span>{pv.stampsCount}</span>
+              </div>
+            </div>
+
+            {/* Live preview badge */}
+            <div className="glass-chip chip-live">
+              <span className="live-dot" />
+              <span>{pv.liveLabel}</span>
+            </div>
+
+            {/* Reward unlocked chip */}
+            <div className="glass-chip chip-reward">
+              <span className="chip-ic chip-ic-cyan ms">redeem</span>
+              <div>
+                <div className="chip-title">{pv.rewardUnlocked}</div>
+                <div className="chip-sub">{pv.rewardItem}</div>
+              </div>
+            </div>
+
+            {/* Activity chip */}
+            <div className="glass-chip chip-activity">
+              <span className="chip-ic chip-ic-purple ms">star</span>
+              <div>
+                <div className="chip-title">{pv.activityName}</div>
+                <div className="chip-sub">{pv.activity}</div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* What we're building */}
+      {/* What we're building — bento grid */}
       <section className="section">
         <div className="container">
-          <h2 className="section-title">{h.sectionTitle}</h2>
-          <p className="section-sub">{h.sectionSub}</p>
+          <div className="section-head">
+            <h2 className="section-title">{h.sectionTitle}</h2>
+            <p className="section-sub">{h.sectionSub}</p>
+          </div>
 
-          <div className="feature-grid">
-            {h.features.map((f) => (
-              <article className="feature-card" key={f.title}>
+          <div className="bento-grid">
+            {h.features.map((f, i) => (
+              <article
+                className={`glass-panel feature-card ${featureSpan[i]}`}
+                key={f.title}
+              >
+                <div className="feature-glow" aria-hidden="true" />
+                <div className="feature-icon-wrapper">
+                  <Icon name={f.icon} />
+                </div>
                 <h3 className="feature-title">{f.title}</h3>
                 <p className="feature-body">{f.body}</p>
               </article>
