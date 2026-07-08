@@ -17,4 +17,9 @@ export const handlers = [
       staff: db.staff,
     })
   ),
+  // Shell renders <AnnouncementBanner> on every authenticated page; it expects an
+  // array and does `.filter`, so an unmocked (bypassed) response crashes the app.
+  http.get(`${BASE}/announcements`, () => HttpResponse.json([])),
+  // Locations table (paginated shape: { results }).
+  http.get(`${BASE}/locations`, () => HttpResponse.json({ results: [] })),
 ]

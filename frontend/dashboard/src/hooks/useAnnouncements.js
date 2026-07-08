@@ -8,7 +8,15 @@ import { hasSession } from '../lib/auth'
 export function useAnnouncements() {
   return useQuery({
     queryKey: ['announcements'],
-    queryFn: async () => (await api.get('/announcements')).data,
+    // Always resolve to an array: the endpoint may return a bare array or a
+    // paginated { results } envelope, and a non-array (error body, HTML) must
+    // never reach the banner — it does `.filter` and would crash the Shell.
+    queryFn: async () => {
+      const { data } = await api.get('/announcements')
+      if (Array.isArray(data)) return data
+      if (Array.isArray(data?.results)) return data.results
+      return []
+    },
     enabled: hasSession(),
   })
 }
