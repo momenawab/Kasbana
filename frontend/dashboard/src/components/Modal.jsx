@@ -16,7 +16,7 @@ export function Modal({ open, onClose, title, children, footer }) {
   if (!open) return null
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-ink/40" onClick={onClose} aria-hidden="true" />
+      <div className="absolute inset-0 bg-slate/40" onClick={onClose} aria-hidden="true" />
       <div
         role="dialog"
         aria-modal="true"
@@ -24,7 +24,7 @@ export function Modal({ open, onClose, title, children, footer }) {
         className="relative w-full max-w-md rounded-card bg-white shadow-bold"
       >
         <header className="flex items-center justify-between border-b border-line px-5 py-3">
-          <h2 className="font-head text-lg font-semibold text-ink">{title}</h2>
+          <h2 className="font-head text-lg font-semibold text-slate">{title}</h2>
           <button onClick={onClose} aria-label="Close" className="text-tx-3 hover:text-tx">
             <X size={20} />
           </button>
@@ -41,7 +41,7 @@ export function Drawer({ open, onClose, title, children, footer }) {
   if (!open) return null
   return (
     <div className="fixed inset-0 z-50">
-      <div className="absolute inset-0 bg-ink/40" onClick={onClose} aria-hidden="true" />
+      <div className="absolute inset-0 bg-slate/40" onClick={onClose} aria-hidden="true" />
       <div
         role="dialog"
         aria-modal="true"
@@ -49,7 +49,7 @@ export function Drawer({ open, onClose, title, children, footer }) {
         className="absolute inset-y-0 end-0 flex w-full max-w-md flex-col bg-white shadow-bold"
       >
         <header className="flex items-center justify-between border-b border-line px-5 py-3">
-          <h2 className="font-head text-lg font-semibold text-ink">{title}</h2>
+          <h2 className="font-head text-lg font-semibold text-slate">{title}</h2>
           <button onClick={onClose} aria-label="Close" className="text-tx-3 hover:text-tx">
             <X size={20} />
           </button>

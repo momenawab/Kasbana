@@ -12,7 +12,7 @@ import Button from '../../components/Button'
 import Skeleton from '../../components/Skeleton'
 import EmptyState from '../../components/EmptyState'
 
-const STATUS_TONE = { ACTIVE: 'teal', DRAFT: 'amber', ARCHIVED: 'neutral' }
+const STATUS_TONE = { ACTIVE: 'teal', DRAFT: 'violet', ARCHIVED: 'neutral' }
 
 export default function CardsList() {
   const { t } = useTranslation()
@@ -29,7 +29,7 @@ export default function CardsList() {
   return (
     <div>
       <div className="mb-5 flex items-center justify-between">
-        <h1 className="font-head text-2xl font-bold text-ink">{t('cards.title')}</h1>
+        <h1 className="font-head text-2xl font-bold text-slate">{t('cards.title')}</h1>
         <Button iconStart={Plus} onClick={newCard} disabled={atLimit('max_cards')}>
           {t('cards.new')}
         </Button>
@@ -74,7 +74,7 @@ export default function CardsList() {
                 />
               </div>
               <div className="flex w-full items-center justify-between">
-                <span className="font-head font-semibold text-ink">{card.name}</span>
+                <span className="font-head font-semibold text-slate">{card.name}</span>
                 <Badge tone={STATUS_TONE[card.status] || 'neutral'}>
                   {t(`cards.status.${card.status}`)}
                 </Badge>

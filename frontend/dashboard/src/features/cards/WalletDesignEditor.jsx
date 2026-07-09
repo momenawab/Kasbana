@@ -166,7 +166,7 @@ export default function WalletDesignEditor({ cardId, card }) {
   return (
     <div className="mt-6 rounded-card border border-line bg-white p-5">
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="font-head text-lg font-bold text-ink">{t('walletDesign.title')}</h2>
+        <h2 className="font-head text-lg font-bold text-slate">{t('walletDesign.title')}</h2>
         <Button onClick={onSave} loading={save.isPending} disabled={!dirty}>
           {t('walletDesign.save')}
         </Button>
@@ -176,7 +176,7 @@ export default function WalletDesignEditor({ cardId, card }) {
         <button
           type="button"
           onClick={() => requireFeature('custom_branding')}
-          className="mb-4 w-full rounded-ctl bg-amber-bg px-4 py-2 text-left text-sm text-amber-d"
+          className="mb-4 w-full rounded-ctl bg-violet-bg px-4 py-2 text-left text-sm text-violet-d"
         >
           {t('walletDesign.upgradeNudge')}
         </button>

@@ -35,7 +35,7 @@ function LockedCard({ title }) {
       className="flex h-[260px] flex-col items-center justify-center gap-2 rounded-card border border-dashed border-line bg-white text-tx-3"
     >
       <Lock size={22} />
-      <span className="font-head font-semibold text-ink">{title}</span>
+      <span className="font-head font-semibold text-slate">{title}</span>
       <span className="text-xs">{t('analytics.locked')}</span>
     </button>
   )
@@ -44,7 +44,7 @@ function LockedCard({ title }) {
 function Panel({ title, children }) {
   return (
     <div className="rounded-card border border-line bg-white p-4">
-      <h3 className="mb-2 font-head font-semibold text-ink">{title}</h3>
+      <h3 className="mb-2 font-head font-semibold text-slate">{title}</h3>
       {children}
     </div>
   )
@@ -67,19 +67,19 @@ export default function Analytics() {
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="font-head text-2xl font-bold text-ink">{t('analytics.title')}</h1>
+        <h1 className="font-head text-2xl font-bold text-slate">{t('analytics.title')}</h1>
         <DateRange value={range} onChange={setRange} />
       </div>
 
       {/* Summary KPIs (all plans) */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiTile label={t('overview.enrollments')} value={summary?.enrollments ?? 0} tone="amber" />
+        <KpiTile label={t('overview.enrollments')} value={summary?.enrollments ?? 0} tone="violet" />
         <KpiTile label={t('overview.activeCards')} value={summary?.active_cards ?? 0} tone="teal" />
-        <KpiTile label={t('overview.redemptions')} value={summary?.redemptions ?? 0} tone="clay" />
+        <KpiTile label={t('overview.redemptions')} value={summary?.redemptions ?? 0} tone="fuchsia" />
         <KpiTile
           label={t('overview.repeatRate')}
           value={`${Math.round((summary?.repeat_rate ?? 0) * 100)}%`}
-          tone="ink"
+          tone="slate"
         />
       </div>
 

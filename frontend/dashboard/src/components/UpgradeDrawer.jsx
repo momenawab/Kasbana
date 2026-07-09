@@ -17,7 +17,7 @@ export default function UpgradeDrawer() {
   return (
     <Drawer open={snap.open} onClose={gating.close} title={t('upgrade.title', 'Upgrade your plan')}>
       <div className="flex flex-col items-center gap-4 py-4 text-center">
-        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-amber-bg text-amber-d">
+        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-violet-bg text-violet-d">
           <Lock size={22} />
         </span>
         <p className="text-tx-2">

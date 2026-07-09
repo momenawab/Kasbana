@@ -34,7 +34,7 @@ export default function CampaignsList() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="font-head text-2xl font-bold text-ink">{t('campaigns.title')}</h1>
+        <h1 className="font-head text-2xl font-bold text-slate">{t('campaigns.title')}</h1>
         <Button iconStart={Plus} onClick={() => navigate('/campaigns/new')}>
           {t('campaigns.new')}
         </Button>

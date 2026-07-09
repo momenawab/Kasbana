@@ -68,7 +68,7 @@ export default function LocationsList() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="font-head text-2xl font-bold text-ink">{t('locations.title')}</h1>
+        <h1 className="font-head text-2xl font-bold text-slate">{t('locations.title')}</h1>
         <Button iconStart={Plus} onClick={openNew} disabled={atLimit('max_locations')}>
           {t('locations.add')}
         </Button>

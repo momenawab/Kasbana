@@ -190,7 +190,7 @@ export default function CardDesigner() {
   return (
     <div>
       <div className="mb-5 flex items-center justify-between">
-        <h1 className="font-head text-2xl font-bold text-ink">
+        <h1 className="font-head text-2xl font-bold text-slate">
           {isEdit ? t('designer.editTitle') : t('designer.newTitle')}
         </h1>
         <div className="flex items-center gap-2">
@@ -206,7 +206,7 @@ export default function CardDesigner() {
       </div>
 
       {isEdit && existing?.status === 'ACTIVE' && (
-        <div className="mb-4 rounded-ctl bg-amber-bg px-4 py-2 text-sm text-amber-d">
+        <div className="mb-4 rounded-ctl bg-violet-bg px-4 py-2 text-sm text-violet-d">
           {t('designer.reprovisionWarning')}
         </div>
       )}
@@ -239,7 +239,7 @@ export default function CardDesigner() {
                 max={30}
                 value={form.stamps_required}
                 onChange={setEvt('stamps_required')}
-                className="flex-1 accent-amber"
+                className="flex-1 accent-violet"
               />
               <input
                 type="number"
@@ -292,7 +292,7 @@ export default function CardDesigner() {
                   <button
                     type="button"
                     onClick={() => requireFeature('custom_branding')}
-                    className="rounded-full bg-amber-bg px-2 py-0.5 text-xs text-amber-d"
+                    className="rounded-full bg-violet-bg px-2 py-0.5 text-xs text-violet-d"
                   >
                     {t('designer.premium')}
                   </button>

@@ -1,11 +1,11 @@
 // Badge (spec §10) — tone maps to Direction-C palette.
 const TONES = {
   neutral: 'bg-paper text-tx-2 border border-line',
-  amber: 'bg-amber-bg text-amber-d',
+  violet: 'bg-violet-bg text-violet-d',
   teal: 'bg-teal-bg text-teal',
-  clay: 'bg-clay-bg text-clay',
+  fuchsia: 'bg-fuchsia-bg text-fuchsia-d',
   success: 'bg-teal-bg text-success',
-  danger: 'bg-clay-bg text-danger',
+  danger: 'bg-fuchsia-bg text-danger',
 }
 
 export default function Badge({ tone = 'neutral', children }) {

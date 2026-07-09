@@ -39,3 +39,27 @@
     print-color-adjust: exact;
   }
 }
+
+/* Dark auth screens — scoped overrides so the shared (light) form components
+   read correctly on the dark AuthLayout. Higher specificity beats the
+   Tailwind utility classes baked into Field.jsx / Toggle.jsx. */
+.auth-dark span.text-tx,
+.auth-dark span.text-tx-2 {
+  color: rgba(255, 255, 255, 0.82);
+}
+.auth-dark span.text-tx-3 {
+  color: rgba(255, 255, 255, 0.5);
+}
+.auth-dark .text-violet-d {
+  color: #b9a3f5;
+}
+.auth-dark input:not([type='checkbox']),
+.auth-dark textarea,
+.auth-dark select {
+  background-color: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+.auth-dark input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}

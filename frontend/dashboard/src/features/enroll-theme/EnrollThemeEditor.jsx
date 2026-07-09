@@ -75,7 +75,7 @@ function Section({ title, action, children }) {
   return (
     <div className="rounded-ctl border border-line p-4">
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-ink">{title}</h3>
+        <h3 className="text-sm font-semibold text-slate">{title}</h3>
         {action}
       </div>
       <div className="flex flex-col gap-3">{children}</div>
@@ -184,7 +184,7 @@ export default function EnrollThemeEditor({ cardId }) {
           title={t('enrollTheme.sectionLook')}
           action={
             !branded && (
-              <button type="button" onClick={unlock} className="text-xs text-amber-d underline">
+              <button type="button" onClick={unlock} className="text-xs text-violet-d underline">
                 {t('settings.upgradeToUnlock')}
               </button>
             )

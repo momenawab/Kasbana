@@ -253,13 +253,13 @@ export default function WalletPreview({
         )}
         <div className="p-4">
           <div className="text-[10px] uppercase tracking-wide text-tx-3">{unit}</div>
-          <div className="font-mono text-3xl tabular-nums text-ink">{ctx.balance}</div>
+          <div className="font-mono text-3xl tabular-nums text-slate">{ctx.balance}</div>
           {rows.length > 0 && (
             <div className="mt-3 flex flex-col gap-2 border-t border-line pt-3">
               {rows.map((r, i) => (
                 <div key={i}>
                   <div className="text-[10px] uppercase tracking-wide text-tx-3">{r.label}</div>
-                  <div className="text-sm text-ink">{r.value}</div>
+                  <div className="text-sm text-slate">{r.value}</div>
                 </div>
               ))}
             </div>

@@ -75,7 +75,7 @@ export default function CustomerProfile() {
       <div className="flex flex-wrap items-start justify-between gap-3 rounded-card border border-line bg-white p-5">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="font-head text-2xl font-bold text-ink">{c.customer_name || t('customers.noName')}</h1>
+            <h1 className="font-head text-2xl font-bold text-slate">{c.customer_name || t('customers.noName')}</h1>
             {c.wallet_platform && <Badge tone="neutral">{c.wallet_platform}</Badge>}
             {ready && <Badge tone="success">{t('profile.rewardReady')}</Badge>}
           </div>
@@ -86,7 +86,7 @@ export default function CustomerProfile() {
           </p>
         </div>
         <div className="text-end">
-          <div className="font-num text-3xl text-ink">
+          <div className="font-num text-3xl text-slate">
             {arDigits(`${c.stamp_count}/${c.stamps_required}`, lang)}
           </div>
           <div className="mt-2 flex gap-2">
@@ -108,7 +108,7 @@ export default function CustomerProfile() {
 
       {/* Timeline */}
       <div className="rounded-card border border-line bg-white p-5">
-        <h2 className="mb-3 font-head font-semibold text-ink">{t('profile.timeline')}</h2>
+        <h2 className="mb-3 font-head font-semibold text-slate">{t('profile.timeline')}</h2>
         {timeline.length ? (
           <ul className="flex flex-col gap-3">
             {timeline.map((e, i) => (

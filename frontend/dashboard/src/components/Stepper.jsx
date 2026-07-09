@@ -14,13 +14,13 @@ export default function Stepper({ steps, current }) {
                 done
                   ? 'bg-teal text-white'
                   : active
-                    ? 'bg-amber text-ink'
+                    ? 'bg-violet text-white'
                     : 'bg-paper text-tx-3 border border-line'
               }`}
             >
               {done ? <Check size={14} /> : i + 1}
             </span>
-            <span className={`text-sm ${active ? 'text-ink font-medium' : 'text-tx-2'}`}>
+            <span className={`text-sm ${active ? 'text-slate font-medium' : 'text-tx-2'}`}>
               {label}
             </span>
             {i < steps.length - 1 && <span className="h-px flex-1 bg-line" />}

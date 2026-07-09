@@ -30,7 +30,7 @@ export function ToastProvider({ children }) {
             key={t.id}
             className={
               'rounded-ctl px-4 py-2 text-sm text-white shadow-bold ' +
-              (t.tone === 'danger' ? 'bg-danger' : t.tone === 'success' ? 'bg-success' : 'bg-ink')
+              (t.tone === 'danger' ? 'bg-danger' : t.tone === 'success' ? 'bg-success' : 'bg-slate')
             }
             role="status"
           >

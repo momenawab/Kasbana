@@ -48,7 +48,7 @@ export default function CampaignCompose() {
       </Button>
 
       <div className="flex flex-col gap-4 rounded-card border border-line bg-white p-5">
-        <h1 className="font-head text-2xl font-bold text-ink">{t('compose.title')}</h1>
+        <h1 className="font-head text-2xl font-bold text-slate">{t('compose.title')}</h1>
 
         <Select
           name="audience"
