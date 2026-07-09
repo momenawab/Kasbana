@@ -37,6 +37,13 @@ class ContactMessageSerializer(serializers.ModelSerializer):
             "message",
             "status",
             "read_at",
+            "replied_at",
             "created_at",
         ]
         read_only_fields = fields
+
+
+class ContactReplySerializer(serializers.Serializer):
+    """Admin reply body — the free-text message emailed back to the customer."""
+
+    message = serializers.CharField(min_length=1, trim_whitespace=True)

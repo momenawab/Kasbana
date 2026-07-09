@@ -66,6 +66,22 @@ ENROLL_BASE_URL = env("ENROLL_BASE_URL", "https://app.stampn.net")
 # Phase 6) point here.
 DASHBOARD_BASE_URL = env("DASHBOARD_BASE_URL", "https://app.stampn.net")
 
+# ── Email (SMTP) ──────────────────────────────────────────────────────────────
+# Outbound mail: password-reset / invite links and admin replies to contact
+# messages. All values are env-driven (see .env.example). The default backend is
+# the console backend, which prints emails to stdout and never sends or fails —
+# safe for local dev and CI. Production overrides EMAIL_BACKEND to real SMTP in
+# prod.py; set EMAIL_HOST_PASSWORD as a secret on the server (never commit it).
+EMAIL_BACKEND = env("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
+EMAIL_HOST = env("EMAIL_HOST", "smtp.hostinger.com")
+EMAIL_PORT = int(env("EMAIL_PORT", "465") or "465")
+EMAIL_USE_SSL = env_bool("EMAIL_USE_SSL", True)
+EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", False)
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", "contact@stampn.net")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", "")
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", "Stampn Support <contact@stampn.net>")
+EMAIL_TIMEOUT = int(env("EMAIL_TIMEOUT", "20") or "20")
+
 # ── Applications ──────────────────────────────────────────────────────────────
 DJANGO_APPS = [
     "django.contrib.admin",

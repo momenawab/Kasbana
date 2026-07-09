@@ -92,3 +92,36 @@ def test_delete_message(super_admin):
     assert res.status_code == 204
     assert ContactMessage.objects.count() == 0
     assert AdminAuditLog.objects.filter(action="contact_message.delete").exists()
+
+
+# ── Reply ───────────────────────────────────────────────────────────────────
+def test_reply_sends_email_marks_replied_and_audits(super_admin, settings, mailoutbox):
+    settings.EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
+    msg = ContactMessage.objects.create(**VALID)
+    res = _admin(super_admin).post(
+        f"{ADMIN}/{msg.id}/reply",
+        {"message": "The Growth plan is 499 EGP/mo.\nHappy to help further!"},
+        format="json",
+    )
+    assert res.status_code == 200
+    msg.refresh_from_db()
+    assert msg.status == ContactMessage.Status.REPLIED
+    assert msg.replied_at is not None
+    assert AdminAuditLog.objects.filter(action="contact_message.reply").exists()
+
+    assert len(mailoutbox) == 1
+    sent = mailoutbox[0]
+    assert sent.to == ["ali@bloomcafe.com"]
+    assert sent.subject == "Re: Pricing question"
+    assert "Ali Hassan" in sent.body  # plain-text greeting
+    assert "The Growth plan is 499 EGP/mo." in sent.body
+    html = sent.alternatives[0][0]
+    assert "Stampn" in html and "The Growth plan is 499 EGP/mo." in html
+
+
+def test_reply_requires_message_body(super_admin):
+    msg = ContactMessage.objects.create(**VALID)
+    res = _admin(super_admin).post(f"{ADMIN}/{msg.id}/reply", {"message": ""}, format="json")
+    assert res.status_code == 400
+    msg.refresh_from_db()
+    assert msg.status == ContactMessage.Status.NEW

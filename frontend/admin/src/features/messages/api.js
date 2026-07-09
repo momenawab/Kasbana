@@ -23,3 +23,12 @@ export function useDeleteMessage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['messages'] }),
   })
 }
+
+export function useReplyMessage() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, message }) =>
+      (await api.post(`/messages/${id}/reply`, { message })).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['messages'] }),
+  })
+}
