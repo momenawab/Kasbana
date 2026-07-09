@@ -50,7 +50,7 @@ export default function EnrollQr() {
       </Button>
 
       <div className="flex flex-col items-center gap-5 rounded-card border border-line bg-white p-6">
-        <h1 className="font-head text-2xl font-bold text-slate">{t('qr.title')}</h1>
+        <h1 className="font-head text-2xl font-bold text-tx">{t('qr.title')}</h1>
 
         {isLoading ? (
           <Skeleton h={240} w={240} rounded="card" />

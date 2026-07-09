@@ -107,7 +107,7 @@ export default function Enroll() {
         <div className="flex flex-col items-center gap-5 text-center">
           {preview}
           <div>
-            <h2 className="font-head text-xl font-bold text-slate">{t('enroll.successTitle')}</h2>
+            <h2 className="font-head text-xl font-bold text-tx">{t('enroll.successTitle')}</h2>
             <p className="mt-1 text-sm text-tx-2">{t('enroll.successBody')}</p>
           </div>
           {result.apple_pass_url || result.google_save_url ? (
@@ -148,7 +148,7 @@ export default function Enroll() {
         />
       )}
       <div className="mb-5 flex justify-center">{preview}</div>
-      <h1 className="text-center font-head text-2xl font-bold text-slate">
+      <h1 className="text-center font-head text-2xl font-bold text-tx">
         {info.headline || t('enroll.title', { merchant: info.merchant_name })}
       </h1>
       <p className="mb-4 text-center text-sm text-tx-2">
@@ -300,7 +300,7 @@ function Centered({ children, bg }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-paper p-4">
       <div
-        className="w-full max-w-sm rounded-card bg-white p-6 shadow-bold"
+        className="w-full max-w-sm rounded-card bg-surface p-6 shadow-bold"
         style={bg ? { background: bg } : undefined}
       >
         {children}
@@ -327,7 +327,7 @@ function ReferShare({ url }) {
   }
   return (
     <div className="mt-2 w-full rounded-ctl border border-line bg-paper p-3 text-center">
-      <p className="mb-2 text-sm font-semibold text-slate">{t('enroll.referTitle')}</p>
+      <p className="mb-2 text-sm font-semibold text-tx">{t('enroll.referTitle')}</p>
       <p className="mb-3 text-xs text-tx-2">{t('enroll.referBody')}</p>
       <Button size="sm" onClick={share} className="w-full">
         {copied ? t('qr.copied') : t('enroll.referShare')}

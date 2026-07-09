@@ -21,10 +21,10 @@ export function Modal({ open, onClose, title, children, footer }) {
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="relative w-full max-w-md rounded-card bg-white shadow-bold"
+        className="relative w-full max-w-md rounded-card bg-surface shadow-bold"
       >
         <header className="flex items-center justify-between border-b border-line px-5 py-3">
-          <h2 className="font-head text-lg font-semibold text-slate">{title}</h2>
+          <h2 className="font-head text-lg font-semibold text-tx">{title}</h2>
           <button onClick={onClose} aria-label="Close" className="text-tx-3 hover:text-tx">
             <X size={20} />
           </button>
@@ -46,10 +46,10 @@ export function Drawer({ open, onClose, title, children, footer }) {
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="absolute inset-y-0 end-0 flex w-full max-w-md flex-col bg-white shadow-bold"
+        className="absolute inset-y-0 end-0 flex w-full max-w-md flex-col bg-surface shadow-bold"
       >
         <header className="flex items-center justify-between border-b border-line px-5 py-3">
-          <h2 className="font-head text-lg font-semibold text-slate">{title}</h2>
+          <h2 className="font-head text-lg font-semibold text-tx">{title}</h2>
           <button onClick={onClose} aria-label="Close" className="text-tx-3 hover:text-tx">
             <X size={20} />
           </button>

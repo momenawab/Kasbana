@@ -12,8 +12,8 @@ export default function Tabs({ tabs, active, onChange }) {
             onClick={() => onChange(tab.key)}
             className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium transition ${
               selected
-                ? 'border-violet text-slate'
-                : 'border-transparent text-tx-2 hover:text-slate'
+                ? 'border-violet text-tx'
+                : 'border-transparent text-tx-2 hover:text-tx'
             }`}
           >
             {tab.label}

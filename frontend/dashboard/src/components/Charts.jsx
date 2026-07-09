@@ -20,7 +20,9 @@ const VIOLET = '#845AEA'
 const SLATE = '#1E1B2E'
 const TEAL = '#1C7C73'
 const FUCHSIA = '#D43DCF'
-const LINE = '#E9E6F2'
+// Neutral translucent grid + axis so charts read on light surfaces, dark
+// surfaces, and the always-dark trend card alike.
+const GRID = 'rgba(148,143,163,0.22)'
 const AXIS = '#8B8798'
 
 // Line/area chart — violet line + area gradient.
@@ -34,7 +36,7 @@ export function ChartLine({ data, xKey = 'date', yKey = 'value', height = 240, c
             <stop offset="100%" stopColor={color} stopOpacity={0} />
           </linearGradient>
         </defs>
-        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
+        <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
         <XAxis dataKey={xKey} tick={{ fontSize: 11, fill: AXIS }} />
         <YAxis tick={{ fontSize: 11, fill: AXIS }} />
         <Tooltip />
@@ -48,7 +50,7 @@ export function ChartBar({ data, xKey = 'date', yKey = 'value', height = 240, co
   return (
     <ResponsiveContainer width="100%" height={height}>
       <BarChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke={LINE} />
+        <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
         <XAxis dataKey={xKey} tick={{ fontSize: 11, fill: AXIS }} />
         <YAxis tick={{ fontSize: 11, fill: AXIS }} />
         <Tooltip />

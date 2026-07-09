@@ -33,7 +33,7 @@ export default function Shell() {
   if (status === 'suspended') {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-paper p-6 text-center">
-        <h1 className="font-head text-2xl font-bold text-slate">{t('suspended.title')}</h1>
+        <h1 className="font-head text-2xl font-bold text-tx">{t('suspended.title')}</h1>
         <p className="max-w-md text-tx-2">{t('suspended.body')}</p>
       </div>
     )
@@ -80,8 +80,10 @@ export default function Shell() {
           </div>
         )}
 
-        <main className="relative flex-1 p-4 pb-20 md:pb-4">
-          <Outlet />
+        <main className="theme-t relative flex-1 p-4 pb-24 sm:p-6 lg:p-8 md:pb-8">
+          <div className="mx-auto w-full max-w-[1400px]">
+            <Outlet />
+          </div>
 
           {softLocked && (
             <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 bg-paper/80 backdrop-blur-sm">

@@ -164,9 +164,9 @@ export default function WalletDesignEditor({ cardId, card }) {
   const editable = (field) => Boolean(selectedTemplate?.editable?.includes(field))
 
   return (
-    <div className="mt-6 rounded-card border border-line bg-white p-5">
+    <div className="mt-6 rounded-card border border-line bg-surface p-5">
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="font-head text-lg font-bold text-slate">{t('walletDesign.title')}</h2>
+        <h2 className="font-head text-lg font-bold text-tx">{t('walletDesign.title')}</h2>
         <Button onClick={onSave} loading={save.isPending} disabled={!dirty}>
           {t('walletDesign.save')}
         </Button>

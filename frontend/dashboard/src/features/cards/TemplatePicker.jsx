@@ -16,7 +16,7 @@ export default function TemplatePicker({ onChoose, onSkip }) {
     <div>
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="font-head text-2xl font-bold text-slate">{t('templatePicker.title')}</h1>
+          <h1 className="font-head text-2xl font-bold text-tx">{t('templatePicker.title')}</h1>
           <p className="mt-1 text-sm text-tx-3">{t('templatePicker.subtitle')}</p>
         </div>
         <Button variant="ghost" onClick={onSkip}>

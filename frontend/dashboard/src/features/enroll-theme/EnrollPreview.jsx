@@ -57,12 +57,12 @@ export default function EnrollPreview({
               </span>
             )}
             <div className="min-w-0">
-              <div className="truncate text-sm font-semibold text-slate">{merchantName}</div>
+              <div className="truncate text-sm font-semibold text-tx">{merchantName}</div>
               <div className="truncate text-xs text-tx-3">{programName}</div>
             </div>
           </div>
 
-          <h3 className="font-head text-lg font-bold text-slate">
+          <h3 className="font-head text-lg font-bold text-tx">
             {t('enroll.title', { merchant: merchantName })}
           </h3>
           <p className="mb-4 mt-1 text-xs text-tx-2">
