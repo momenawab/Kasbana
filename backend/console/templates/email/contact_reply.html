@@ -1,0 +1,65 @@
+{% autoescape on %}<!doctype html>
+<html>
+<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1.0" /></head>
+<body style="margin:0;padding:0;background-color:#131022;">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;">Thanks for reaching out to Stampn — here's our reply.</div>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#131022;margin:0;padding:24px 0;font-family:Arial,Helvetica,sans-serif;">
+  <tr>
+    <td align="center">
+
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background-color:#1E1B2E;border:1px solid #322D45;border-radius:16px;overflow:hidden;">
+
+        <!-- Header -->
+        <tr>
+          <td style="padding:24px 32px 16px 32px;" align="left">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td style="vertical-align:middle;padding-right:12px;">
+                  <img src="https://app.stampn.net/logo.png" width="52" alt="Stampn" style="display:block;border:0;width:52px;height:auto;" />
+                </td>
+                <td style="vertical-align:middle;">
+                  <span style="font-family:'Segoe UI',Arial,sans-serif;font-size:26px;font-weight:bold;color:#ffffff;letter-spacing:-0.5px;">Stampn</span>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- Gradient accent rule -->
+        <tr>
+          <td style="padding:0 32px;">
+            <div style="height:4px;line-height:4px;font-size:0;background-color:#845AEA;background-image:linear-gradient(90deg,#845AEA,#D43DCF);border-radius:4px;">&nbsp;</div>
+          </td>
+        </tr>
+
+        <!-- Body -->
+        <tr>
+          <td style="padding:28px 32px 12px 32px;font-family:Arial,Helvetica,sans-serif;color:#E7E4F0;font-size:16px;line-height:1.6;">
+            <p style="margin:0 0 16px 0;color:#ffffff;">Hi <strong>{{ customer_name }}</strong>,</p>
+            <p style="margin:0 0 16px 0;color:#A8A2BC;">Thank you for getting in touch with Stampn. Here's our reply:</p>
+            <div style="margin:0 0 8px 0;color:#E7E4F0;">{{ body|linebreaksbr }}</div>
+            <p style="margin:20px 0 4px 0;color:#E7E4F0;">Warm regards,</p>
+            <p style="margin:0 0 4px 0;color:#ffffff;"><strong>The Stampn Team</strong></p>
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td style="padding:20px 32px 28px 32px;border-top:1px solid #322D45;font-family:Arial,Helvetica,sans-serif;">
+            <p style="margin:0 0 6px 0;font-size:13px;color:#8B8798;">
+              <a href="https://stampn.net" target="_blank" style="color:#B9A3F5;text-decoration:none;font-weight:bold;">stampn.net</a>
+              &nbsp;·&nbsp;
+              <a href="mailto:contact@stampn.net" style="color:#B9A3F5;text-decoration:none;">contact@stampn.net</a>
+            </p>
+            <p style="margin:0;font-size:12px;color:#6B6680;">© 2026 Stampn — Loyalty that keeps your customers coming back.</p>
+          </td>
+        </tr>
+
+      </table>
+
+    </td>
+  </tr>
+</table>
+</body>
+</html>{% endautoescape %}

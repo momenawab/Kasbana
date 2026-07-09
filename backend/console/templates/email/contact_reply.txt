@@ -1,0 +1,11 @@
+Hi {{ customer_name }},
+
+Thank you for getting in touch with Stampn. Here's our reply:
+
+{{ body }}
+
+Warm regards,
+The Stampn Team
+
+stampn.net · contact@stampn.net
+© 2026 Stampn — Loyalty that keeps your customers coming back.

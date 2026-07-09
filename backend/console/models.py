@@ -454,6 +454,7 @@ class ContactMessage(UUIDModel, TimeStampedModel):
     class Status(models.TextChoices):
         NEW = "new", "New"
         READ = "read", "Read"
+        REPLIED = "replied", "Replied"
 
     name = models.CharField(max_length=120)
     email = models.EmailField()
@@ -461,6 +462,7 @@ class ContactMessage(UUIDModel, TimeStampedModel):
     message = models.TextField()
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.NEW)
     read_at = models.DateTimeField(null=True, blank=True)
+    replied_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["-created_at"]

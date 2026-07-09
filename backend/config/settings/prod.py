@@ -8,9 +8,13 @@ Wallet web service requires it).
 from __future__ import annotations
 
 from .base import *  # noqa: F401,F403
-from .base import env_bool
+from .base import env, env_bool
 
 DEBUG = False
+
+# Real SMTP in production (Hostinger). Host/port/user default from base.py; the
+# password MUST be provided via the EMAIL_HOST_PASSWORD env var / server secret.
+EMAIL_BACKEND = env("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
 
 SECURE_CONTENT_TYPE_NOSNIFF = True
 
