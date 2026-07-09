@@ -33,7 +33,7 @@ export const translations = {
       title: 'Turn every purchase into',
       titleAccent: 'lasting loyalty.',
       lead: "Create beautiful, interactive digital loyalty cards that live directly inside your customers' Apple Wallet and Google Wallet — no app download required.",
-      ctaPrimary: 'Get started free',
+      ctaPrimary: 'Get started',
       contactCta: 'Contact us',
       privacyCta: 'Privacy',
       socialProof:
