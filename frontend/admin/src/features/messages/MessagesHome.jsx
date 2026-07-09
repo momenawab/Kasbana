@@ -273,7 +273,7 @@ function MessageRow({ m }) {
       {open && (
         <div className="mt-3 border-t border-line pt-3">
           <label className="mb-1 block text-xs font-semibold text-tx-3">
-            Reply to {m.name} — they'll receive the branded Stampn email.
+            Reply to {m.name} — they&apos;ll receive the branded Stampn email.
           </label>
           <textarea
             value={text}
