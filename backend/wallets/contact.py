@@ -98,9 +98,7 @@ def google_links(merchant: Merchant) -> list[dict]:
             uris.append(
                 {"id": "phone", "uri": f"tel:{_digits(e['value'])}", "description": "Phone"}
             )
-    uris.append(
-        {"id": "powered", "uri": STAMPN_URL, "description": f"Powered by {STAMPN_LABEL}"}
-    )
+    uris.append({"id": "powered", "uri": STAMPN_URL, "description": f"Powered by {STAMPN_LABEL}"})
     return uris
 
 
