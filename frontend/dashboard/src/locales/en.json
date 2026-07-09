@@ -1,6 +1,7 @@
 {
   "app": {
-    "name": "Stampn"
+    "name": "Stampn",
+    "title": "Stampn — Dashboard"
   },
   "auth": {
     "tagline": "Loyalty that keeps your customers coming back.",

@@ -1,6 +1,7 @@
 {
   "app": {
-    "name": "Stampn"
+    "name": "Stampn",
+    "title": "Stampn — لوحة التحكم"
   },
   "auth": {
     "tagline": "برنامج ولاء يخلّي عملاءك يرجعوا تاني.",
