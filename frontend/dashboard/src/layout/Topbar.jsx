@@ -17,13 +17,13 @@ export default function Topbar() {
 
   return (
     <header className="flex items-center justify-between border-b border-line bg-white px-4 py-3">
-      <div className="font-head font-semibold text-ink">{merchant?.name || t('app.name')}</div>
+      <div className="font-head font-semibold text-slate">{merchant?.name || t('app.name')}</div>
 
       <div className="flex items-center gap-3">
         {trialing && (
           <button
             onClick={() => navigate('/billing')}
-            className="rounded-full bg-amber-bg text-amber-d px-3 py-1 text-xs font-semibold font-num"
+            className="rounded-full bg-violet-bg text-violet-d px-3 py-1 text-xs font-semibold font-num"
           >
             {t('trial.chip', { count: arDigits(daysLeft, lang) })}
           </button>

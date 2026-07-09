@@ -2,6 +2,24 @@
   "app": {
     "name": "Stampn"
   },
+  "auth": {
+    "tagline": "Loyalty that keeps your customers coming back.",
+    "description": "Stampn turns one-time buyers into regulars with digital stamp cards, automated rewards, and smart campaigns — all from one simple dashboard.",
+    "feature1": "Digital stamp cards in Apple & Google Wallet",
+    "feature2": "Track customers, rewards, and campaigns in one place",
+    "feature3": "Send targeted offers that bring people back",
+    "feature4": "Launch in minutes — no app for customers to download",
+    "stat1Value": "2,000+",
+    "stat1Label": "Businesses",
+    "stat2Value": "1M+",
+    "stat2Label": "Stamps issued",
+    "stat3Value": "4.9★",
+    "stat3Label": "Merchant rating",
+    "cardName": "Stampn Rewards",
+    "cardMeta": "Buy 9, get the 10th free",
+    "noCard": "No credit card required",
+    "secure": "Encrypted & PDPL-compliant"
+  },
   "nav": {
     "overview": "Overview",
     "scan": "Scan",

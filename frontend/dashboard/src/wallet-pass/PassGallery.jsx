@@ -14,7 +14,7 @@ export default function PassGallery() {
   return (
     <div
       className={`min-h-screen px-6 py-8 transition-colors ${
-        dark ? 'bg-[#0B1220] text-white' : 'bg-paper text-ink'
+        dark ? 'bg-[#0B1220] text-white' : 'bg-paper text-slate'
       }`}
     >
       <div className="mx-auto max-w-6xl">
@@ -43,7 +43,7 @@ export default function PassGallery() {
             onClick={() => setTheme(null)}
             className={`rounded-full border px-3 py-1 text-xs font-semibold ${
               theme === null
-                ? 'border-amber bg-amber text-white'
+                ? 'border-violet bg-violet text-white'
                 : dark
                   ? 'border-white/20'
                   : 'border-line'
@@ -60,7 +60,7 @@ export default function PassGallery() {
               title={sw.key}
               style={{ background: sw.bg }}
               className={`h-7 w-7 rounded-full ring-2 ring-offset-2 ${
-                theme === sw.key ? 'ring-amber' : 'ring-transparent'
+                theme === sw.key ? 'ring-violet' : 'ring-transparent'
               } ${dark ? 'ring-offset-[#0B1220]' : 'ring-offset-paper'}`}
             />
           ))}

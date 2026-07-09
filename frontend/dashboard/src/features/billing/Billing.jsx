@@ -25,7 +25,7 @@ function UsageBar({ label, used, max, lang }) {
         </span>
       </div>
       <div className="h-2 overflow-hidden rounded-full bg-paper">
-        <div className="h-full bg-amber" style={{ width: `${pct}%` }} />
+        <div className="h-full bg-violet" style={{ width: `${pct}%` }} />
       </div>
     </div>
   )
@@ -95,14 +95,14 @@ export default function Billing() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="font-head text-2xl font-bold text-ink">{t('billing.title')}</h1>
+      <h1 className="font-head text-2xl font-bold text-slate">{t('billing.title')}</h1>
 
       {/* Current plan + trial */}
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-line bg-white p-5">
         <div>
           <div className="flex items-center gap-2">
             <span className="text-tx-2">{t('billing.currentPlan')}:</span>
-            <Badge tone="amber">{t(`billing.plan.${plan}`, plan)}</Badge>
+            <Badge tone="violet">{t(`billing.plan.${plan}`, plan)}</Badge>
           </div>
           {plan === 'trial' && trialEnds && (
             <p className="mt-1 text-sm text-tx-3">
@@ -110,7 +110,7 @@ export default function Billing() {
             </p>
           )}
           {cancelsOn && (
-            <p className="mt-1 text-sm text-amber-d">
+            <p className="mt-1 text-sm text-violet-d">
               {t('billing.cancelsOn', { date: fmtDate(cancelsOn, lang) })}
             </p>
           )}
@@ -155,9 +155,9 @@ export default function Billing() {
         {PLANS.map((p) => (
           <div
             key={p}
-            className={`rounded-card border p-5 ${plan === p ? 'border-amber bg-amber-bg' : 'border-line bg-white'}`}
+            className={`rounded-card border p-5 ${plan === p ? 'border-violet bg-violet-bg' : 'border-line bg-white'}`}
           >
-            <h3 className="font-head text-lg font-bold text-ink">{t(`billing.plan.${p}`)}</h3>
+            <h3 className="font-head text-lg font-bold text-slate">{t(`billing.plan.${p}`)}</h3>
             <Button
               className="mt-4 w-full"
               variant={plan === p ? 'ghost' : 'primary'}
@@ -173,7 +173,7 @@ export default function Billing() {
 
       {/* Invoices */}
       <div>
-        <h2 className="mb-3 font-head font-semibold text-ink">{t('billing.invoices')}</h2>
+        <h2 className="mb-3 font-head font-semibold text-slate">{t('billing.invoices')}</h2>
         <Table
           columns={[
             { key: 'date', label: t('billing.date') },
@@ -186,7 +186,7 @@ export default function Billing() {
               key: 'status',
               label: t('billing.statusCol'),
               render: (r) => (
-                <Badge tone={r.status === 'paid' ? 'success' : 'amber'}>{r.status}</Badge>
+                <Badge tone={r.status === 'paid' ? 'success' : 'violet'}>{r.status}</Badge>
               ),
             },
             {
@@ -194,7 +194,7 @@ export default function Billing() {
               label: '',
               render: (r) =>
                 r.pdf_url ? (
-                  <a href={r.pdf_url} className="text-amber-d" target="_blank" rel="noreferrer">
+                  <a href={r.pdf_url} className="text-violet-d" target="_blank" rel="noreferrer">
                     PDF
                   </a>
                 ) : null,

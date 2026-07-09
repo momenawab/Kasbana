@@ -64,7 +64,7 @@ export default function Overview() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="font-head text-2xl font-bold text-ink">
+      <h1 className="font-head text-2xl font-bold text-slate">
         {t('overview.greeting', { name: merchant?.name || '' })}
       </h1>
 
@@ -77,14 +77,14 @@ export default function Overview() {
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <KpiTile label={t('overview.enrollments')} value={summary?.enrollments ?? 0} icon={Users} tone="amber" />
+          <KpiTile label={t('overview.enrollments')} value={summary?.enrollments ?? 0} icon={Users} tone="violet" />
           <KpiTile label={t('overview.activeCards')} value={summary?.active_cards ?? 0} icon={Stamp} tone="teal" />
-          <KpiTile label={t('overview.redemptions')} value={summary?.redemptions ?? 0} icon={Gift} tone="clay" />
+          <KpiTile label={t('overview.redemptions')} value={summary?.redemptions ?? 0} icon={Gift} tone="fuchsia" />
           <KpiTile
             label={t('overview.repeatRate')}
             value={`${Math.round((summary?.repeat_rate ?? 0) * 100)}%`}
             icon={UserPlus}
-            tone="ink"
+            tone="slate"
           />
         </div>
       )}
@@ -99,7 +99,7 @@ export default function Overview() {
       ) : (
         <div className="grid gap-6 lg:grid-cols-3">
           {/* Dark chart card (Direction C) */}
-          <div className="relative overflow-hidden rounded-card bg-ink p-5 text-white shadow-bold lg:col-span-2">
+          <div className="relative overflow-hidden rounded-card bg-slate p-5 text-white shadow-bold lg:col-span-2">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="font-head font-semibold">{t('overview.trend')}</h2>
               <div className="flex gap-1">
@@ -108,7 +108,7 @@ export default function Overview() {
                     key={m}
                     onClick={() => setMetric(m)}
                     className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                      metric === m ? 'bg-amber text-ink' : 'bg-white/10 text-white/70'
+                      metric === m ? 'bg-violet text-white' : 'bg-white/10 text-white/70'
                     }`}
                   >
                     {t(`overview.metric.${m}`)}
@@ -125,7 +125,7 @@ export default function Overview() {
 
           {/* Activity feed */}
           <div className="rounded-card border border-line bg-white p-5">
-            <h2 className="mb-3 font-head font-semibold text-ink">{t('overview.activity')}</h2>
+            <h2 className="mb-3 font-head font-semibold text-slate">{t('overview.activity')}</h2>
             {activity.length ? (
               <ul className="flex flex-col gap-3">
                 {activity.map((a, i) => (
@@ -147,16 +147,16 @@ export default function Overview() {
 
       {/* Quick actions */}
       <div className="grid gap-4 sm:grid-cols-3">
-        <button onClick={() => navigate('/cards')} className="flex items-center gap-3 rounded-card bg-ink-2 p-4 text-white hover:bg-ink-3">
-          <QrCode size={20} className="text-amber" />
+        <button onClick={() => navigate('/cards')} className="flex items-center gap-3 rounded-card bg-slate-2 p-4 text-white hover:bg-slate-3">
+          <QrCode size={20} className="text-violet" />
           {t('overview.qaShareQr')}
         </button>
-        <button onClick={() => navigate('/campaigns/new')} className="flex items-center gap-3 rounded-card bg-ink-2 p-4 text-white hover:bg-ink-3">
-          <MessageSquare size={20} className="text-amber" />
+        <button onClick={() => navigate('/campaigns/new')} className="flex items-center gap-3 rounded-card bg-slate-2 p-4 text-white hover:bg-slate-3">
+          <MessageSquare size={20} className="text-violet" />
           {t('overview.qaCampaign')}
         </button>
-        <button onClick={() => navigate('/customers')} className="flex items-center gap-3 rounded-card bg-ink-2 p-4 text-white hover:bg-ink-3">
-          <Users size={20} className="text-amber" />
+        <button onClick={() => navigate('/customers')} className="flex items-center gap-3 rounded-card bg-slate-2 p-4 text-white hover:bg-slate-3">
+          <Users size={20} className="text-violet" />
           {t('overview.qaCustomers')}
         </button>
       </div>

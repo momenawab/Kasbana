@@ -103,19 +103,19 @@ export default function Scan() {
   return (
     <div className="mx-auto flex max-w-md flex-col gap-5">
       <div>
-        <h1 className="font-head text-2xl font-bold text-ink">{t('scan.title')}</h1>
+        <h1 className="font-head text-2xl font-bold text-slate">{t('scan.title')}</h1>
         <p className="mt-1 text-sm text-tx-3">{t('scan.subtitle')}</p>
       </div>
 
       {scanning ? (
         <>
           {/* Viewfinder */}
-          <div className="relative aspect-square overflow-hidden rounded-card border border-line bg-ink">
+          <div className="relative aspect-square overflow-hidden rounded-card border border-line bg-slate">
             <video ref={videoRef} className="h-full w-full object-cover" muted playsInline />
             {/* Framing guide */}
             <div className="pointer-events-none absolute inset-8 rounded-xl border-2 border-white/70" />
             {status !== 'scanning' && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-ink/80 p-6 text-center text-white">
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-slate/80 p-6 text-center text-white">
                 {status === 'starting' && <ScanLine className="animate-pulse" />}
                 {(status === 'denied' || status === 'unsupported' || status === 'error') && (
                   <CameraOff />
@@ -124,7 +124,7 @@ export default function Scan() {
               </div>
             )}
             {resolve.isPending && (
-              <div className="absolute inset-0 flex items-center justify-center bg-ink/70 text-white">
+              <div className="absolute inset-0 flex items-center justify-center bg-slate/70 text-white">
                 <span className="text-sm">{t('scan.looking')}</span>
               </div>
             )}
@@ -152,7 +152,7 @@ export default function Scan() {
         /* Result */
         <div className="flex flex-col gap-5 rounded-card border border-line bg-white p-6">
           <div className="text-center">
-            <h2 className="font-head text-2xl font-bold text-ink">
+            <h2 className="font-head text-2xl font-bold text-slate">
               {card.customer_name || t('scan.noName')}
             </h2>
             {card.reward_ready && (
@@ -163,7 +163,7 @@ export default function Scan() {
           </div>
 
           <div className="text-center">
-            <div className="font-num text-5xl text-ink">
+            <div className="font-num text-5xl text-slate">
               {arDigits(`${card.stamp_count}/${card.stamps_required}`, lang)}
             </div>
             <div className="mt-1 text-sm text-tx-3">

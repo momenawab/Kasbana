@@ -15,14 +15,16 @@ import {
   YAxis,
 } from 'recharts'
 
-const AMBER = '#E0A23B'
-const INK = '#0E1B2A'
+// Brand chart palette — matches the Stampn logo tokens (see tailwind.config.js).
+const VIOLET = '#845AEA'
+const SLATE = '#1E1B2E'
 const TEAL = '#1C7C73'
-const CLAY = '#C75D43'
-const LINE = '#E7E1D6'
+const FUCHSIA = '#D43DCF'
+const LINE = '#E9E6F2'
+const AXIS = '#8B8798'
 
-// Line/area chart — dark Direction-C card uses amber line + area gradient.
-export function ChartLine({ data, xKey = 'date', yKey = 'value', height = 240, color = AMBER }) {
+// Line/area chart — violet line + area gradient.
+export function ChartLine({ data, xKey = 'date', yKey = 'value', height = 240, color = VIOLET }) {
   return (
     <ResponsiveContainer width="100%" height={height}>
       <AreaChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
@@ -33,8 +35,8 @@ export function ChartLine({ data, xKey = 'date', yKey = 'value', height = 240, c
           </linearGradient>
         </defs>
         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
-        <XAxis dataKey={xKey} tick={{ fontSize: 11, fill: '#8A949C' }} />
-        <YAxis tick={{ fontSize: 11, fill: '#8A949C' }} />
+        <XAxis dataKey={xKey} tick={{ fontSize: 11, fill: AXIS }} />
+        <YAxis tick={{ fontSize: 11, fill: AXIS }} />
         <Tooltip />
         <Area type="monotone" dataKey={yKey} stroke={color} strokeWidth={2} fill="url(#kc-area)" />
       </AreaChart>
@@ -47,8 +49,8 @@ export function ChartBar({ data, xKey = 'date', yKey = 'value', height = 240, co
     <ResponsiveContainer width="100%" height={height}>
       <BarChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
         <CartesianGrid strokeDasharray="3 3" stroke={LINE} />
-        <XAxis dataKey={xKey} tick={{ fontSize: 11, fill: '#8A949C' }} />
-        <YAxis tick={{ fontSize: 11, fill: '#8A949C' }} />
+        <XAxis dataKey={xKey} tick={{ fontSize: 11, fill: AXIS }} />
+        <YAxis tick={{ fontSize: 11, fill: AXIS }} />
         <Tooltip />
         <Bar dataKey={yKey} fill={color} radius={[4, 4, 0, 0]} />
       </BarChart>
@@ -57,7 +59,7 @@ export function ChartBar({ data, xKey = 'date', yKey = 'value', height = 240, co
 }
 
 export function ChartDonut({ data, height = 240 }) {
-  const colors = [INK, AMBER, TEAL, CLAY]
+  const colors = [VIOLET, FUCHSIA, TEAL, SLATE]
   return (
     <ResponsiveContainer width="100%" height={height}>
       <PieChart>

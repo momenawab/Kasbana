@@ -87,7 +87,7 @@ export default function CustomersList() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="font-head text-2xl font-bold text-ink">{t('customers.title')}</h1>
+        <h1 className="font-head text-2xl font-bold text-slate">{t('customers.title')}</h1>
         <Button
           variant="ghost"
           iconStart={Download}
@@ -113,7 +113,7 @@ export default function CustomersList() {
               key={s || 'all'}
               onClick={() => setSegment(s)}
               className={`rounded-full px-3 py-1.5 text-sm ${
-                segment === s ? 'bg-amber text-ink font-semibold' : 'bg-paper text-tx-2'
+                segment === s ? 'bg-violet text-white font-semibold' : 'bg-paper text-tx-2'
               }`}
             >
               {t(`customers.segment.${s || 'all'}`)}

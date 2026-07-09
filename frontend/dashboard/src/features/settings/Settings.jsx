@@ -87,12 +87,12 @@ function BusinessTab() {
       {/* Branded enrollment page — custom_branding plans (Growth+). */}
       <div className="rounded-ctl border border-line p-3">
         <div className="mb-2 flex items-center justify-between">
-          <span className="text-sm font-semibold text-ink">{t('settings.brandedEnroll')}</span>
+          <span className="text-sm font-semibold text-slate">{t('settings.brandedEnroll')}</span>
           {!branded && (
             <button
               type="button"
               onClick={() => requireFeature('custom_branding')}
-              className="text-xs text-amber-d underline"
+              className="text-xs text-violet-d underline"
             >
               {t('settings.upgradeToUnlock')}
             </button>
@@ -120,7 +120,7 @@ function BusinessTab() {
       {/* Contact & social links — shown on the wallet pass back. Each optional;
           only filled-in fields appear on the pass. */}
       <div className="rounded-ctl border border-line p-3">
-        <div className="mb-2 text-sm font-semibold text-ink">{t('settings.passLinks')}</div>
+        <div className="mb-2 text-sm font-semibold text-slate">{t('settings.passLinks')}</div>
         <p className="mb-3 text-xs text-tx-3">{t('settings.passLinksHint')}</p>
         <div className="flex flex-col gap-3">
           <Input
@@ -215,7 +215,7 @@ function AccountTab() {
           <button
             key={l}
             onClick={() => setForm({ ...form, language: l })}
-            className={`rounded-ctl border px-4 py-2 ${form.language === l ? 'border-amber bg-amber-bg text-amber-d' : 'border-line'}`}
+            className={`rounded-ctl border px-4 py-2 ${form.language === l ? 'border-violet bg-violet-bg text-violet-d' : 'border-line'}`}
           >
             {l === 'ar' ? 'العربية' : 'English'}
           </button>
@@ -295,7 +295,7 @@ export default function Settings() {
   ]
   return (
     <div className="flex flex-col gap-5">
-      <h1 className="font-head text-2xl font-bold text-ink">{t('settings.title')}</h1>
+      <h1 className="font-head text-2xl font-bold text-slate">{t('settings.title')}</h1>
       <Tabs tabs={tabs} active={tab} onChange={setTab} />
       <div className="rounded-card border border-line bg-white p-5">
         {tab === 'business' && <BusinessTab />}

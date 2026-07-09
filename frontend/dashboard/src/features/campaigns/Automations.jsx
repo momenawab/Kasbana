@@ -50,7 +50,7 @@ export default function Automations() {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="font-head text-2xl font-bold text-ink">{t('automations.title')}</h1>
+      <h1 className="font-head text-2xl font-bold text-slate">{t('automations.title')}</h1>
       <p className="text-sm text-tx-2">{t('automations.subtitle')}</p>
 
       <div className="flex flex-col gap-3">
@@ -59,11 +59,11 @@ export default function Automations() {
           return (
             <div key={key} className="flex items-center justify-between rounded-card border border-line bg-white p-4">
               <div className="flex items-center gap-3">
-                <span className="flex h-9 w-9 items-center justify-center rounded-ctl bg-amber-bg text-amber-d">
+                <span className="flex h-9 w-9 items-center justify-center rounded-ctl bg-violet-bg text-violet-d">
                   <Zap size={18} />
                 </span>
                 <div>
-                  <div className="font-head font-semibold text-ink">{t(`automations.key.${key}`)}</div>
+                  <div className="font-head font-semibold text-slate">{t(`automations.key.${key}`)}</div>
                   <div className="text-xs text-tx-3">{t(`automations.desc.${key}`)}</div>
                 </div>
               </div>
