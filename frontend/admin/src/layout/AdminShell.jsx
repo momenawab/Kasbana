@@ -1,6 +1,7 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import {
   LayoutDashboard,
+  UserPlus,
   Building2,
   CreditCard,
   Receipt,
@@ -24,6 +25,7 @@ import { useAuth } from '../hooks/useAuth'
 // Overview; the rest are placeholders so the map of the console is visible.
 const NAV = [
   { to: '/', key: 'Overview', Icon: LayoutDashboard, end: true, ready: true },
+  { to: '/leads', key: 'Leads', Icon: UserPlus, ready: true },
   { to: '/merchants', key: 'Merchants', Icon: Building2, ready: true },
   { to: '/plans', key: 'Plans', Icon: CreditCard, ready: true },
   { to: '/billing', key: 'Billing', Icon: Receipt, ready: true },

@@ -2,9 +2,13 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!-- Favicon / tab + Google icon: the Stampn card mark. SVG for modern
+         browsers, PNG fallback + Apple touch icon for the rest. -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/logo.png" />
+    <link rel="apple-touch-icon" href="/logo.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#0E1B2A" />
+    <meta name="theme-color" content="#09090B" />
 
     <!-- Default SEO fallback (per-route/-language values are set with react-helmet-async).
          English lives at "/", Arabic at "/ar". -->
@@ -23,13 +27,44 @@
       content="Digital loyalty cards that live in your customers' phone wallet — no app needed."
     />
     <meta property="og:url" content="https://stampn.net" />
+    <meta property="og:image" content="https://stampn.net/logo.png" />
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="https://stampn.net/logo.png" />
 
-    <!-- Google Fonts: Space Grotesk (headings), Inter (body), Cairo (Arabic) -->
+    <!-- Structured data for Google (Organization + WebSite). Static so it is
+         crawlable without JS; per-route title/description/canonical are still
+         set client-side with react-helmet-async. -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://stampn.net/#organization",
+            "name": "Stampn",
+            "url": "https://stampn.net/",
+            "logo": "https://stampn.net/logo.png",
+            "email": "contact@stampn.net",
+            "description": "Digital loyalty and rewards platform. Customers add stamp and points cards to Apple Wallet and Google Wallet — no app needed. Built Arabic-first for Egypt.",
+            "areaServed": "EG"
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://stampn.net/#website",
+            "url": "https://stampn.net/",
+            "name": "Stampn",
+            "inLanguage": ["en", "ar"],
+            "publisher": { "@id": "https://stampn.net/#organization" }
+          }
+        ]
+      }
+    </script>
+
+    <!-- Google Fonts: Manrope (Latin UI), Cairo (Arabic), Material Symbols (icons) -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap"
       rel="stylesheet"
     />
   </head>

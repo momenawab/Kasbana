@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import Seo from '../components/Seo.jsx'
-import { CONTACT_EMAIL } from '../config.js'
+import { LEADS_ENDPOINT } from '../config.js'
 import { useLang, PAGE_PATHS } from '../i18n/index.js'
 
 // Material Symbols icon (decorative by default).
@@ -14,17 +14,16 @@ function Icon({ name, className = '' }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Web3Forms: sign up (free) at https://web3forms.com, paste your access key
-// below. The destination email is the address you register there — that's where
-// every submission from this form is delivered. No backend server required.
+// "Join the waitlist" experience. Collects name / email / phone / business and
+// POSTs to the backend (/api/v1/leads). On success the card celebrates the
+// visitor's reserved spot; the lead shows up in the Admin console (Leads).
 // ─────────────────────────────────────────────────────────────────────────────
-const WEB3FORMS_ACCESS_KEY = 'YOUR_WEB3FORMS_ACCESS_KEY'
 
-const EMPTY = { name: '', email: '', subject: '', message: '', botcheck: '' }
+const EMPTY = { name: '', email: '', phone: '', business_name: '', botcheck: '' }
 
-export default function Support() {
+export default function GetStarted() {
   const { lang, t } = useLang()
-  const s = t.support
+  const g = t.getStarted
 
   const [form, setForm] = useState(EMPTY)
   const [errors, setErrors] = useState({})
@@ -39,14 +38,14 @@ export default function Support() {
 
   function validate() {
     const next = {}
-    if (!form.name.trim()) next.name = s.errors.name
+    if (!form.name.trim()) next.name = g.errors.name
     if (!form.email.trim()) {
-      next.email = s.errors.email
+      next.email = g.errors.email
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
-      next.email = s.errors.emailInvalid
+      next.email = g.errors.emailInvalid
     }
-    if (!form.subject.trim()) next.subject = s.errors.subject
-    if (!form.message.trim()) next.message = s.errors.message
+    if (!form.phone.trim()) next.phone = g.errors.phone
+    if (!form.business_name.trim()) next.business_name = g.errors.business
     return next
   }
 
@@ -65,48 +64,44 @@ export default function Support() {
     setErrors(nextErrors)
     if (Object.keys(nextErrors).length > 0) {
       setStatus('error')
-      setFeedback(s.errors.fix)
+      setFeedback(g.errors.fix)
       return
     }
 
     setStatus('submitting')
 
     try {
-      const res = await fetch('https://api.web3forms.com/submit', {
+      const res = await fetch(LEADS_ENDPOINT, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Accept: 'application/json',
         },
         body: JSON.stringify({
-          access_key: WEB3FORMS_ACCESS_KEY,
           name: form.name,
           email: form.email,
-          subject: form.subject,
-          message: form.message,
+          phone: form.phone,
+          business_name: form.business_name,
           botcheck: form.botcheck,
-          from_name: 'Stampn Support Form',
         }),
       })
 
-      const data = await res.json()
-
-      if (data.success) {
+      if (res.ok) {
         setStatus('success')
         setForm(EMPTY)
       } else {
         setStatus('error')
-        setFeedback(data.message || s.errors.generic)
+        setFeedback(g.errors.generic)
       }
     } catch (err) {
       setStatus('error')
-      setFeedback(s.errors.network)
+      setFeedback(g.errors.network)
     }
   }
 
   return (
     <>
-      <Seo page="support" />
+      <Seo page="getStarted" />
 
       <section className="waitlist">
         <div className="hero-aurora" aria-hidden="true" />
@@ -117,50 +112,59 @@ export default function Support() {
           {/* Left: the pitch */}
           <div className="waitlist-pitch">
             <span className="pill">
-              <Icon name="chat_bubble" className="pill-icon" />
-              {s.pill}
+              <Icon name="bolt" className="pill-icon" />
+              {g.pill}
             </span>
 
             <h1 className="waitlist-title">
-              {s.title} <span className="text-gradient">{s.titleAccent}</span>
+              {g.title} <span className="text-gradient">{g.titleAccent}</span>
             </h1>
 
-            <p className="waitlist-lead">{s.lead}</p>
+            <p className="waitlist-lead">{g.lead}</p>
 
             <ul className="waitlist-benefits">
-              {s.points.map((pt) => (
-                <li className="waitlist-benefit" key={pt.text}>
-                  <Icon name={pt.icon} />
-                  <span>{pt.text}</span>
+              {g.benefits.map((b) => (
+                <li className="waitlist-benefit" key={b}>
+                  <Icon name="check_circle" />
+                  <span>{b}</span>
                 </li>
               ))}
             </ul>
 
-            <p className="waitlist-email">
-              {s.emailLabel}{' '}
-              <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>
-            </p>
+            <div className="social-proof">
+              <span className="proof-dots" aria-hidden="true">
+                <span className="proof-dot" />
+                <span className="proof-dot" />
+                <span className="proof-dot" />
+              </span>
+              <span>{g.socialProof}</span>
+            </div>
           </div>
 
-          {/* Right: the contact card (form → confirmation on success) */}
+          {/* Right: the waitlist card (form → celebration on success) */}
           <div className="glass-panel waitlist-card">
             {status === 'success' ? (
               <div className="waitlist-success" role="status" aria-live="polite">
                 <div className="success-badge">
                   <Icon name="check" />
                 </div>
-                <h2 className="success-title">{s.success.title}</h2>
-                <p className="success-body">{s.success.body}</p>
-                <p className="success-note">{s.success.note}</p>
+                <h2 className="success-title">{g.success.title}</h2>
+                <p className="success-body">{g.success.body}</p>
+                <span className="proof-dots" aria-hidden="true">
+                  <span className="proof-dot" />
+                  <span className="proof-dot" />
+                  <span className="proof-dot" />
+                </span>
+                <p className="success-note">{g.success.note}</p>
                 <Link to={PAGE_PATHS.home[lang]} className="btn btn-glass">
-                  {s.success.back}
+                  {g.success.back}
                 </Link>
               </div>
             ) : (
               <>
                 <div className="waitlist-card-head">
-                  <h2 className="waitlist-card-title">{s.cardTitle}</h2>
-                  <p className="waitlist-card-sub">{s.cardSub}</p>
+                  <h2 className="waitlist-card-title">{g.cardTitle}</h2>
+                  <p className="waitlist-card-sub">{g.cardSub}</p>
                 </div>
 
                 <form className="form" onSubmit={handleSubmit} noValidate>
@@ -177,7 +181,7 @@ export default function Support() {
                   />
 
                   <div className="field">
-                    <label htmlFor="name">{s.labels.name}</label>
+                    <label htmlFor="name">{g.labels.name}</label>
                     <input
                       id="name"
                       name="name"
@@ -197,7 +201,7 @@ export default function Support() {
                   </div>
 
                   <div className="field">
-                    <label htmlFor="email">{s.labels.email}</label>
+                    <label htmlFor="email">{g.labels.email}</label>
                     <input
                       id="email"
                       name="email"
@@ -217,39 +221,43 @@ export default function Support() {
                   </div>
 
                   <div className="field">
-                    <label htmlFor="subject">{s.labels.subject}</label>
+                    <label htmlFor="phone">{g.labels.phone}</label>
                     <input
-                      id="subject"
-                      name="subject"
-                      type="text"
-                      value={form.subject}
+                      id="phone"
+                      name="phone"
+                      type="tel"
+                      value={form.phone}
                       onChange={handleChange}
+                      autoComplete="tel"
                       required
-                      aria-invalid={errors.subject ? 'true' : 'false'}
-                      aria-describedby={errors.subject ? 'subject-error' : undefined}
+                      aria-invalid={errors.phone ? 'true' : 'false'}
+                      aria-describedby={errors.phone ? 'phone-error' : undefined}
                     />
-                    {errors.subject && (
-                      <span className="field-error" id="subject-error">
-                        {errors.subject}
+                    {errors.phone && (
+                      <span className="field-error" id="phone-error">
+                        {errors.phone}
                       </span>
                     )}
                   </div>
 
                   <div className="field">
-                    <label htmlFor="message">{s.labels.message}</label>
-                    <textarea
-                      id="message"
-                      name="message"
-                      rows="5"
-                      value={form.message}
+                    <label htmlFor="business_name">{g.labels.business}</label>
+                    <input
+                      id="business_name"
+                      name="business_name"
+                      type="text"
+                      value={form.business_name}
                       onChange={handleChange}
+                      autoComplete="organization"
                       required
-                      aria-invalid={errors.message ? 'true' : 'false'}
-                      aria-describedby={errors.message ? 'message-error' : undefined}
+                      aria-invalid={errors.business_name ? 'true' : 'false'}
+                      aria-describedby={
+                        errors.business_name ? 'business_name-error' : undefined
+                      }
                     />
-                    {errors.message && (
-                      <span className="field-error" id="message-error">
-                        {errors.message}
+                    {errors.business_name && (
+                      <span className="field-error" id="business_name-error">
+                        {errors.business_name}
                       </span>
                     )}
                   </div>
@@ -259,9 +267,11 @@ export default function Support() {
                     className="btn btn-primary btn-block"
                     disabled={status === 'submitting'}
                   >
-                    {status === 'submitting' ? s.submitting : s.submit}
-                    {status !== 'submitting' && <Icon name="send" />}
+                    {status === 'submitting' ? g.submitting : g.submit}
+                    {status !== 'submitting' && <Icon name="arrow_forward" />}
                   </button>
+
+                  <p className="form-note">{g.note}</p>
 
                   {/* Inline error — polite live region, no alert(), no reload. */}
                   <div className="form-status" role="status" aria-live="polite">

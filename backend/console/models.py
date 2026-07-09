@@ -415,3 +415,29 @@ class PlatformSetting(UUIDModel, TimeStampedModel):
 
     def __str__(self) -> str:
         return f"setting({self.key})"
+
+
+class Lead(UUIDModel, TimeStampedModel):
+    """An inbound "Get started" lead from the public marketing site.
+
+    The marketing site's Get-started form (name / email / phone / business)
+    POSTs here anonymously; the sales team then works the list from the admin
+    console (Leads section). No merchant linkage — a lead exists *before* signup.
+    """
+
+    class Status(models.TextChoices):
+        NEW = "new", "New"
+        CONTACTED = "contacted", "Contacted"
+
+    name = models.CharField(max_length=120)
+    email = models.EmailField()
+    phone = models.CharField(max_length=40)
+    business_name = models.CharField(max_length=160)
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.NEW)
+    contacted_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return f"lead({self.business_name} · {self.email})"
