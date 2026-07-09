@@ -1150,6 +1150,11 @@ img {
   .site-nav {
     display: none;
   }
+  /* Nav is hidden here, so its margin-inline-end:auto no longer pushes the CTA
+     over — push the CTA group to the far end (right in LTR, left in RTL). */
+  .header-right {
+    margin-inline-start: auto;
+  }
 }
 
 @media (max-width: 540px) {

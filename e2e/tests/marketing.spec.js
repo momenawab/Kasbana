@@ -9,9 +9,25 @@ test.describe('marketing site', () => {
     await expect(page.getByText('Stampn').first()).toBeVisible()
   })
 
-  test('exposes a link to the dashboard login', async ({ page }) => {
+  test('exposes a Get started link to the waitlist', async ({ page }) => {
+    // The dashboard isn't enabled yet, so the header Log in link was removed;
+    // the primary CTA now points at the waitlist form (/get-started).
     await page.goto(BASE)
-    const loginLink = page.locator('a[href*="/login"]').first()
-    await expect(loginLink).toBeVisible()
+    const cta = page.locator('a[href*="/get-started"]').first()
+    await expect(cta).toBeVisible()
+  })
+
+  test('submitting the waitlist form shows a confirmation', async ({ page }) => {
+    // Intercept the lead POST so the test never hits the real backend.
+    await page.route('**/api/v1/leads', (route) =>
+      route.fulfill({ status: 201, contentType: 'application/json', body: '{}' })
+    )
+    await page.goto(`${BASE}/get-started`)
+    await page.fill('#name', 'Test Owner')
+    await page.fill('#email', 'owner@example.com')
+    await page.fill('#phone', '01000000000')
+    await page.fill('#business_name', 'Test Café')
+    await page.getByRole('button', { name: /join the waitlist/i }).click()
+    await expect(page.getByRole('heading', { name: /on the list/i })).toBeVisible()
   })
 })
