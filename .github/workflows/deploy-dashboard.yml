@@ -64,6 +64,10 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_branch: deployment-dashboard
           publish_dir: ./frontend/dashboard/dist
-          force_orphan: true
+          # Do NOT set force_orphan: true. Hostinger serves this branch via a cached
+          # shallow git clone; an orphan force-push rewrites all history and
+          # invalidates Hostinger's .git/shallow, failing every pull with
+          # "fatal: shallow file has changed since we read it". Regular commits keep
+          # a continuous history Hostinger can fetch incrementally.
           enable_jekyll: true
-          commit_message: "deploy: dashboard build from FE-Dash"
+          commit_message: "deploy: dashboard build from prod"
