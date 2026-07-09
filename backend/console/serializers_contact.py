@@ -47,3 +47,13 @@ class ContactReplySerializer(serializers.Serializer):
     """Admin reply body — the free-text message emailed back to the customer."""
 
     message = serializers.CharField(min_length=1, trim_whitespace=True)
+
+
+class AdminContactMessageCreateSerializer(serializers.ModelSerializer):
+    """Admin-created contact message — lets the admin compose a message entry
+    with a specific recipient so it can then be replied to via the existing flow."""
+
+    class Meta:
+        model = ContactMessage
+        fields = ["name", "email", "subject", "message"]
+
