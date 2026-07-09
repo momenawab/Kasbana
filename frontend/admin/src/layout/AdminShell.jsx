@@ -2,6 +2,7 @@ import { NavLink, Outlet } from 'react-router-dom'
 import {
   LayoutDashboard,
   UserPlus,
+  MessageSquare,
   Building2,
   CreditCard,
   Receipt,
@@ -26,6 +27,7 @@ import { useAuth } from '../hooks/useAuth'
 const NAV = [
   { to: '/', key: 'Overview', Icon: LayoutDashboard, end: true, ready: true },
   { to: '/leads', key: 'Leads', Icon: UserPlus, ready: true },
+  { to: '/messages', key: 'Messages', Icon: MessageSquare, ready: true },
   { to: '/merchants', key: 'Merchants', Icon: Building2, ready: true },
   { to: '/plans', key: 'Plans', Icon: CreditCard, ready: true },
   { to: '/billing', key: 'Billing', Icon: Receipt, ready: true },

@@ -4,6 +4,7 @@ import AdminShell from './layout/AdminShell'
 import Login from './features/auth/Login'
 import Home from './features/home/Home'
 import LeadsHome from './features/leads/LeadsHome'
+import MessagesHome from './features/messages/MessagesHome'
 import MerchantsList from './features/merchants/MerchantsList'
 import MerchantDetail from './features/merchants/MerchantDetail'
 import PlansList from './features/plans/PlansList'
@@ -32,6 +33,7 @@ export default function App() {
       >
         <Route path="/" element={<Home />} />
         <Route path="/leads" element={<LeadsHome />} />
+        <Route path="/messages" element={<MessagesHome />} />
         <Route path="/merchants" element={<MerchantsList />} />
         <Route path="/merchants/:id" element={<MerchantDetail />} />
         <Route path="/plans" element={<PlansList />} />
