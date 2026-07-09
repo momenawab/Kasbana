@@ -32,3 +32,11 @@ export function useReplyMessage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['messages'] }),
   })
 }
+
+export function useCreateMessage() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (payload) => (await api.post('/messages', payload)).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['messages'] }),
+  })
+}

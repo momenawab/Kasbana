@@ -18,15 +18,34 @@ from rest_framework.response import Response
 from console import audit
 from console.models import ContactMessage
 from console.permissions import AdminAPIView
-from console.serializers_contact import ContactMessageSerializer, ContactReplySerializer
+from console.serializers_contact import (
+    AdminContactMessageCreateSerializer,
+    ContactMessageSerializer,
+    ContactReplySerializer,
+)
 
 
 class ContactMessageListView(AdminAPIView):
-    """GET /messages — every inbound contact message, newest first."""
+    """GET /messages — list · POST /messages — admin-created message."""
 
     @extend_schema(responses=ContactMessageSerializer(many=True))
     def get(self, request: Request) -> Response:
         return Response(ContactMessageSerializer(ContactMessage.objects.all(), many=True).data)
+
+    @extend_schema(request=AdminContactMessageCreateSerializer, responses=ContactMessageSerializer)
+    def post(self, request: Request) -> Response:
+        """Create a contact message manually so the admin can then reply to it."""
+        serializer = AdminContactMessageCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        message = serializer.save()
+        audit.record(
+            request,
+            "contact_message.create",
+            target_type="contact_message",
+            target_id=str(message.id),
+            metadata={"email": message.email, "subject": message.subject},
+        )
+        return Response(ContactMessageSerializer(message).data, status=201)
 
 
 class ContactMessageDetailView(AdminAPIView):
