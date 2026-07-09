@@ -192,7 +192,7 @@ export default function MapPicker({ lat, lng, onPick }) {
           </button>
 
           {results.length > 0 && (
-            <ul className="absolute z-[5] mt-1 max-h-52 w-full overflow-auto rounded-ctl border border-line bg-white shadow-bold">
+            <ul className="absolute z-[5] mt-1 max-h-52 w-full overflow-auto rounded-ctl border border-line bg-surface shadow-bold">
               {results.map((f) => (
                 <li key={f.id}>
                   <button

@@ -87,7 +87,7 @@ export default function CustomersList() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="font-head text-2xl font-bold text-slate">{t('customers.title')}</h1>
+        <h1 className="font-head text-2xl font-bold text-tx">{t('customers.title')}</h1>
         <Button
           variant="ghost"
           iconStart={Download}

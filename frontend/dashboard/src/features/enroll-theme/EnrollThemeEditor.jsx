@@ -75,7 +75,7 @@ function Section({ title, action, children }) {
   return (
     <div className="rounded-ctl border border-line p-4">
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-slate">{title}</h3>
+        <h3 className="text-sm font-semibold text-tx">{title}</h3>
         {action}
       </div>
       <div className="flex flex-col gap-3">{children}</div>

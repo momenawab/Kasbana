@@ -13,7 +13,7 @@ export function Toggle({ checked, onChange, label, disabled = false }) {
         }`}
       >
         <span
-          className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all ${
+          className={`absolute top-0.5 h-5 w-5 rounded-full bg-surface transition-all ${
             checked ? 'start-[22px]' : 'start-0.5'
           }`}
         />

@@ -33,7 +33,7 @@ export default function FileUpload({ accept = 'image/*', onUploaded, label }) {
   return (
     <div>
       {label && <span className="mb-1 block text-sm text-tx-2">{label}</span>}
-      <label className="flex cursor-pointer items-center gap-3 rounded-ctl border border-dashed border-line bg-white p-3 hover:border-violet">
+      <label className="flex cursor-pointer items-center gap-3 rounded-ctl border border-dashed border-line bg-surface p-3 hover:border-violet">
         {preview ? (
           <img src={preview} alt="" className="h-12 w-12 rounded-ctl object-cover" />
         ) : (

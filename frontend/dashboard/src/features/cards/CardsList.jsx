@@ -29,7 +29,7 @@ export default function CardsList() {
   return (
     <div>
       <div className="mb-5 flex items-center justify-between">
-        <h1 className="font-head text-2xl font-bold text-slate">{t('cards.title')}</h1>
+        <h1 className="font-head text-2xl font-bold text-tx">{t('cards.title')}</h1>
         <Button iconStart={Plus} onClick={newCard} disabled={atLimit('max_cards')}>
           {t('cards.new')}
         </Button>
@@ -58,7 +58,7 @@ export default function CardsList() {
             <button
               key={card.id}
               onClick={() => navigate(`/cards/${card.id}`)}
-              className="flex flex-col items-center gap-3 rounded-card border border-line bg-white p-4 text-start transition hover:shadow-bold"
+              className="flex flex-col items-center gap-3 rounded-card border border-line bg-surface p-4 text-start transition hover:shadow-bold"
             >
               <div className="scale-90">
                 <WalletPreview
@@ -74,7 +74,7 @@ export default function CardsList() {
                 />
               </div>
               <div className="flex w-full items-center justify-between">
-                <span className="font-head font-semibold text-slate">{card.name}</span>
+                <span className="font-head font-semibold text-tx">{card.name}</span>
                 <Badge tone={STATUS_TONE[card.status] || 'neutral'}>
                   {t(`cards.status.${card.status}`)}
                 </Badge>

@@ -3,7 +3,7 @@ export default function Skeleton({ w = '100%', h = 16, rounded = 'ctl', classNam
   const radius = rounded === 'full' ? '9999px' : rounded === 'card' ? '16px' : '10px'
   return (
     <span
-      className={`block animate-pulse bg-line/70 ${className}`}
+      className={`block animate-pulse bg-tx/10 ${className}`}
       style={{ width: w, height: h, borderRadius: radius }}
       aria-hidden="true"
     />

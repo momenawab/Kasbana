@@ -14,7 +14,7 @@ export default function PassGallery() {
   return (
     <div
       className={`min-h-screen px-6 py-8 transition-colors ${
-        dark ? 'bg-[#0B1220] text-white' : 'bg-paper text-slate'
+        dark ? 'bg-[#0B1220] text-white' : 'bg-paper text-tx'
       }`}
     >
       <div className="mx-auto max-w-6xl">

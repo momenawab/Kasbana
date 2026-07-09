@@ -103,7 +103,7 @@ export default function Scan() {
   return (
     <div className="mx-auto flex max-w-md flex-col gap-5">
       <div>
-        <h1 className="font-head text-2xl font-bold text-slate">{t('scan.title')}</h1>
+        <h1 className="font-head text-2xl font-bold text-tx">{t('scan.title')}</h1>
         <p className="mt-1 text-sm text-tx-3">{t('scan.subtitle')}</p>
       </div>
 
@@ -150,9 +150,9 @@ export default function Scan() {
         </>
       ) : (
         /* Result */
-        <div className="flex flex-col gap-5 rounded-card border border-line bg-white p-6">
+        <div className="flex flex-col gap-5 rounded-card border border-line bg-surface p-6">
           <div className="text-center">
-            <h2 className="font-head text-2xl font-bold text-slate">
+            <h2 className="font-head text-2xl font-bold text-tx">
               {card.customer_name || t('scan.noName')}
             </h2>
             {card.reward_ready && (
@@ -163,7 +163,7 @@ export default function Scan() {
           </div>
 
           <div className="text-center">
-            <div className="font-num text-5xl text-slate">
+            <div className="font-num text-5xl text-tx">
               {arDigits(`${card.stamp_count}/${card.stamps_required}`, lang)}
             </div>
             <div className="mt-1 text-sm text-tx-3">

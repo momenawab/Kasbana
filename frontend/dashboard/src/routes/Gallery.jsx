@@ -24,8 +24,8 @@ import { gating } from '../lib/gating'
 function Section({ title, children }) {
   return (
     <section className="mb-8">
-      <h2 className="mb-3 font-head text-lg font-bold text-slate">{title}</h2>
-      <div className="flex flex-wrap items-start gap-4 rounded-card border border-line bg-white p-4">
+      <h2 className="mb-3 font-head text-lg font-bold text-tx">{title}</h2>
+      <div className="flex flex-wrap items-start gap-4 rounded-card border border-line bg-surface p-4">
         {children}
       </div>
     </section>
@@ -56,7 +56,7 @@ export default function Gallery() {
 
   return (
     <div className="mx-auto max-w-4xl p-4">
-      <h1 className="mb-6 font-head text-2xl font-bold text-slate">Component Gallery</h1>
+      <h1 className="mb-6 font-head text-2xl font-bold text-tx">Component Gallery</h1>
 
       <Section title="Buttons">
         <Button>Primary</Button>

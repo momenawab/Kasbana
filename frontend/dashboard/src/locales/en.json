@@ -199,7 +199,8 @@
     "shareQr": "View cards",
     "qaShareQr": "Share QR",
     "qaCampaign": "New campaign",
-    "qaCustomers": "View customers"
+    "qaCustomers": "View customers",
+    "subtitle": "Here's how your loyalty program is performing."
   },
   "cards": {
     "title": "Cards",
@@ -629,5 +630,18 @@
     "frame_none": "None",
     "frame_scan_to_join": "Scan to join",
     "frame_collect_stamps": "Collect stamps"
+  },
+  "navSection": {
+    "operate": "Operate",
+    "grow": "Grow",
+    "business": "Business",
+    "general": "General"
+  },
+  "theme": {
+    "label": "Theme",
+    "light": "Light",
+    "dark": "Dark",
+    "toLight": "Switch to light mode",
+    "toDark": "Switch to dark mode"
   }
 }

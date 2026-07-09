@@ -12,7 +12,7 @@ export default function Table({
 }) {
   if (loading) {
     return (
-      <div className="overflow-hidden rounded-card border border-line bg-white">
+      <div className="overflow-hidden rounded-card border border-line bg-surface">
         {Array.from({ length: 5 }).map((_, i) => (
           <div key={i} className="flex gap-4 border-b border-line p-3 last:border-0">
             {columns.map((c) => (
@@ -31,7 +31,7 @@ export default function Table({
   return (
     <div>
       {/* Desktop table */}
-      <div className="hidden overflow-x-auto rounded-card border border-line bg-white md:block">
+      <div className="hidden overflow-x-auto rounded-card border border-line bg-surface md:block">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-line text-start text-tx-2">
@@ -68,7 +68,7 @@ export default function Table({
           <div
             key={row.id ?? ri}
             onClick={() => onRowClick?.(row)}
-            className={`rounded-card border border-line bg-white p-3 ${
+            className={`rounded-card border border-line bg-surface p-3 ${
               onRowClick ? 'cursor-pointer' : ''
             }`}
           >

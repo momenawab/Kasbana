@@ -190,7 +190,7 @@ export default function CardDesigner() {
   return (
     <div>
       <div className="mb-5 flex items-center justify-between">
-        <h1 className="font-head text-2xl font-bold text-slate">
+        <h1 className="font-head text-2xl font-bold text-tx">
           {isEdit ? t('designer.editTitle') : t('designer.newTitle')}
         </h1>
         <div className="flex items-center gap-2">
@@ -213,7 +213,7 @@ export default function CardDesigner() {
 
       <div className="grid gap-6 md:grid-cols-2">
         {/* Form */}
-        <div className="flex flex-col gap-4 rounded-card border border-line bg-white p-5">
+        <div className="flex flex-col gap-4 rounded-card border border-line bg-surface p-5">
           <Select
             name="type"
             label={t('designer.cardType')}

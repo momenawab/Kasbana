@@ -87,7 +87,7 @@ function BusinessTab() {
       {/* Branded enrollment page — custom_branding plans (Growth+). */}
       <div className="rounded-ctl border border-line p-3">
         <div className="mb-2 flex items-center justify-between">
-          <span className="text-sm font-semibold text-slate">{t('settings.brandedEnroll')}</span>
+          <span className="text-sm font-semibold text-tx">{t('settings.brandedEnroll')}</span>
           {!branded && (
             <button
               type="button"
@@ -120,7 +120,7 @@ function BusinessTab() {
       {/* Contact & social links — shown on the wallet pass back. Each optional;
           only filled-in fields appear on the pass. */}
       <div className="rounded-ctl border border-line p-3">
-        <div className="mb-2 text-sm font-semibold text-slate">{t('settings.passLinks')}</div>
+        <div className="mb-2 text-sm font-semibold text-tx">{t('settings.passLinks')}</div>
         <p className="mb-3 text-xs text-tx-3">{t('settings.passLinksHint')}</p>
         <div className="flex flex-col gap-3">
           <Input
@@ -295,9 +295,9 @@ export default function Settings() {
   ]
   return (
     <div className="flex flex-col gap-5">
-      <h1 className="font-head text-2xl font-bold text-slate">{t('settings.title')}</h1>
+      <h1 className="font-head text-2xl font-bold text-tx">{t('settings.title')}</h1>
       <Tabs tabs={tabs} active={tab} onChange={setTab} />
-      <div className="rounded-card border border-line bg-white p-5">
+      <div className="rounded-card border border-line bg-surface p-5">
         {tab === 'business' && <BusinessTab />}
         {tab === 'enroll' && <EnrollThemeEditor />}
         {tab === 'account' && <AccountTab />}

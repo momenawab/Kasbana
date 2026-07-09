@@ -20,7 +20,7 @@ export default function Stepper({ steps, current }) {
             >
               {done ? <Check size={14} /> : i + 1}
             </span>
-            <span className={`text-sm ${active ? 'text-slate font-medium' : 'text-tx-2'}`}>
+            <span className={`text-sm ${active ? 'text-tx font-medium' : 'text-tx-2'}`}>
               {label}
             </span>
             {i < steps.length - 1 && <span className="h-px flex-1 bg-line" />}

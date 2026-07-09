@@ -6,7 +6,20 @@
     <!-- Fallback title; overridden per selected language by src/lib/i18n.js -->
     <title>Stampn — Dashboard</title>
     <!-- PWA: installable + theme -->
-    <meta name="theme-color" content="#1E1B2E" />
+    <meta name="theme-color" content="#F5F4FA" />
+    <!-- Apply the saved light/dark theme before the bundle paints (no flash). -->
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem('stampn_theme')
+          if (t === 'dark') {
+            document.documentElement.classList.add('dark')
+            var m = document.querySelector('meta[name="theme-color"]')
+            if (m) m.setAttribute('content', '#0F0D18')
+          }
+        } catch (e) {}
+      })()
+    </script>
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Stampn" />

@@ -32,7 +32,7 @@ export default function CardDetail() {
     <div>
       <div className="mb-5 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <h1 className="font-head text-2xl font-bold text-slate">{card.name}</h1>
+          <h1 className="font-head text-2xl font-bold text-tx">{card.name}</h1>
           <Badge tone={STATUS_TONE[card.status] || 'neutral'}>
             {t(`cards.status.${card.status}`)}
           </Badge>
@@ -71,8 +71,8 @@ export default function CardDetail() {
           </div>
 
           {(stats?.apple_count != null || stats?.google_count != null) && (
-            <div className="mt-4 rounded-card border border-line bg-white p-4">
-              <h3 className="mb-2 font-head font-semibold text-slate">{t('detail.walletSplit')}</h3>
+            <div className="mt-4 rounded-card border border-line bg-surface p-4">
+              <h3 className="mb-2 font-head font-semibold text-tx">{t('detail.walletSplit')}</h3>
               <ChartDonut
                 data={[
                   { name: 'Apple', value: stats?.apple_count ?? 0 },

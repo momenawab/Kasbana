@@ -32,7 +32,7 @@ export default function EnrollThemePage() {
       </Button>
 
       <div className="mb-4 flex items-center justify-between gap-3">
-        <h1 className="font-head text-2xl font-bold text-slate">{t('enrollTheme.cardTitle')}</h1>
+        <h1 className="font-head text-2xl font-bold text-tx">{t('enrollTheme.cardTitle')}</h1>
         {overridden && (
           <Button variant="ghost" size="sm" onClick={revert} loading={clear.isPending}>
             {t('enrollTheme.revertDefault')}

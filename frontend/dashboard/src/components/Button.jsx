@@ -2,7 +2,7 @@ import { Loader2 } from 'lucide-react'
 
 const VARIANTS = {
   primary: 'bg-violet text-white hover:bg-violet-d',
-  secondary: 'bg-slate text-white hover:bg-slate-2',
+  secondary: 'bg-tx text-paper hover:opacity-90',
   ghost: 'bg-transparent text-tx hover:bg-paper border border-line',
   danger: 'bg-danger text-white hover:opacity-90',
 }

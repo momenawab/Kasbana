@@ -2,6 +2,38 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Theme tokens ────────────────────────────────────────────────────────
+   Neutral scales are CSS variables (space-separated RGB channels so Tailwind's
+   `<alpha-value>` works, e.g. text-tx/70). :root is the light theme; .dark on
+   <html> swaps the whole app. Brand hues live in tailwind.config.js. */
+:root {
+  --paper: 245 244 250; /* app canvas          #F5F4FA */
+  --surface: 255 255 255; /* cards / panels     #FFFFFF */
+  --surface-2: 246 245 251; /* raised / hover   #F6F5FB */
+  --line: 232 229 242; /* borders              #E8E5F2 */
+  --tx: 33 31 43; /* primary text             #211F2B */
+  --tx-2: 91 87 102; /* secondary text         #5B5766 */
+  --tx-3: 139 135 152; /* muted text           #8B8798 */
+  --violet-bg: 239 234 252; /* violet tint chip #EFEAFC */
+  --fuchsia-bg: 251 234 250; /* fuchsia tint    #FBEAFA */
+  --teal-bg: 225 240 238; /* teal tint         #E1F0EE */
+  color-scheme: light;
+}
+
+.dark {
+  --paper: 15 13 24; /* deep violet-black      #0F0D18 */
+  --surface: 30 27 46; /* elevated panel        #1E1B2E */
+  --surface-2: 38 34 56; /* raised / hover       #262238 */
+  --line: 47 42 66; /* hairline borders        #2F2A42 */
+  --tx: 237 235 245; /* primary text            #EDEBF5 */
+  --tx-2: 169 163 190; /* secondary text        #A9A3BE */
+  --tx-3: 124 120 145; /* muted text            #7C7891 */
+  --violet-bg: 45 36 74; /* deep violet chip     #2D244A */
+  --fuchsia-bg: 58 32 66; /* deep fuchsia chip   #3A2042 */
+  --teal-bg: 22 51 51; /* deep teal chip        #163333 */
+  color-scheme: dark;
+}
+
 @layer base {
   html {
     font-family: theme('fontFamily.body');
@@ -12,12 +44,24 @@
   body {
     @apply bg-paper text-tx;
   }
+  /* Smooth the flip between themes (but not on layout, to avoid jank). */
+  body,
+  .theme-t {
+    transition:
+      background-color 0.2s ease,
+      border-color 0.2s ease,
+      color 0.2s ease;
+  }
   /* Arabic headings reset letter-spacing (Direction-C rule). */
   html[lang='ar'] :is(h1, h2, h3, h4) {
     letter-spacing: 0;
   }
   .font-num {
     @apply font-mono tabular-nums;
+  }
+  /* Themed scrollbar so dark mode doesn't show a bright track. */
+  * {
+    scrollbar-color: rgb(var(--tx-3) / 0.4) transparent;
   }
 }
 
@@ -41,8 +85,8 @@
 }
 
 /* Dark auth screens — scoped overrides so the shared (light) form components
-   read correctly on the dark AuthLayout. Higher specificity beats the
-   Tailwind utility classes baked into Field.jsx / Toggle.jsx. */
+   read correctly on the dark AuthLayout regardless of the app theme. Higher
+   specificity beats the Tailwind utility classes baked into Field.jsx. */
 .auth-dark span.text-tx,
 .auth-dark span.text-tx-2 {
   color: rgba(255, 255, 255, 0.82);
@@ -62,4 +106,22 @@
 }
 .auth-dark input::placeholder {
   color: rgba(255, 255, 255, 0.4);
+}
+
+/* Dark-theme brand text: the mid/dark brand hues (used on tint chips, badges,
+   accents, and inline error text) are too dark to read on the deep dark tints,
+   so lighten them app-wide when the .dark theme is active. Light mode keeps the
+   richer, higher-contrast `-d` shades. */
+.dark .text-violet-d {
+  color: #b9a3f5;
+}
+.dark .text-fuchsia-d {
+  color: #ec8ee8;
+}
+.dark .text-teal,
+.dark .text-success {
+  color: #4db6a8;
+}
+.dark .text-danger {
+  color: #e5776b;
 }

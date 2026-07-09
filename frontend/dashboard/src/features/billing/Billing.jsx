@@ -95,10 +95,10 @@ export default function Billing() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="font-head text-2xl font-bold text-slate">{t('billing.title')}</h1>
+      <h1 className="font-head text-2xl font-bold text-tx">{t('billing.title')}</h1>
 
       {/* Current plan + trial */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-line bg-white p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-line bg-surface p-5">
         <div>
           <div className="flex items-center gap-2">
             <span className="text-tx-2">{t('billing.currentPlan')}:</span>
@@ -123,7 +123,7 @@ export default function Billing() {
       </div>
 
       {/* Usage bars */}
-      <div className="grid gap-4 rounded-card border border-line bg-white p-5 sm:grid-cols-2">
+      <div className="grid gap-4 rounded-card border border-line bg-surface p-5 sm:grid-cols-2">
         <UsageBar
           label={t('overview.enrollments')}
           used={usage.customers ?? 0}
@@ -155,9 +155,9 @@ export default function Billing() {
         {PLANS.map((p) => (
           <div
             key={p}
-            className={`rounded-card border p-5 ${plan === p ? 'border-violet bg-violet-bg' : 'border-line bg-white'}`}
+            className={`rounded-card border p-5 ${plan === p ? 'border-violet bg-violet-bg' : 'border-line bg-surface'}`}
           >
-            <h3 className="font-head text-lg font-bold text-slate">{t(`billing.plan.${p}`)}</h3>
+            <h3 className="font-head text-lg font-bold text-tx">{t(`billing.plan.${p}`)}</h3>
             <Button
               className="mt-4 w-full"
               variant={plan === p ? 'ghost' : 'primary'}
@@ -173,7 +173,7 @@ export default function Billing() {
 
       {/* Invoices */}
       <div>
-        <h2 className="mb-3 font-head font-semibold text-slate">{t('billing.invoices')}</h2>
+        <h2 className="mb-3 font-head font-semibold text-tx">{t('billing.invoices')}</h2>
         <Table
           columns={[
             { key: 'date', label: t('billing.date') },
@@ -202,7 +202,7 @@ export default function Billing() {
           ]}
           rows={invoices}
           emptyState={
-            <div className="rounded-card border border-line bg-white p-6 text-center text-tx-3">
+            <div className="rounded-card border border-line bg-surface p-6 text-center text-tx-3">
               {t('billing.noInvoices')}
             </div>
           }
