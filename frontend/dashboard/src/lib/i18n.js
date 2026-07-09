@@ -17,10 +17,11 @@ i18n.use(initReactI18next).init({
   interpolation: { escapeValue: false },
 })
 
-/** Apply <html lang/dir> for the given language. */
+/** Apply <html lang/dir> and the document title for the given language. */
 export function applyDir(lang) {
   document.documentElement.lang = lang
   document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr'
+  document.title = i18n.t('app.title')
 }
 
 /** Switch language: persist, update i18next, flip dir. */
