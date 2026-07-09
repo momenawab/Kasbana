@@ -1,12 +1,10 @@
-import { Link, NavLink, useLocation } from 'react-router-dom'
-import { BRAND_NAME, DASHBOARD_LOGIN_URL, DASHBOARD_SIGNUP_URL } from '../config.js'
-import { useLang, localizePath, PAGE_PATHS } from '../i18n/index.js'
+import { Link, NavLink } from 'react-router-dom'
+import { BRAND_NAME } from '../config.js'
+import { useLang, PAGE_PATHS } from '../i18n/index.js'
 
 export default function Header() {
   const { lang, t } = useLang()
-  const { pathname } = useLocation()
 
-  const switchHref = localizePath(pathname, t.switchTo)
   const p = (page) => PAGE_PATHS[page][lang]
 
   return (
@@ -30,18 +28,17 @@ export default function Header() {
         </nav>
 
         <div className="header-right">
-          {/* Language switcher → equivalent page in the other language */}
-          <Link to={switchHref} className="lang-switch" hrefLang={t.switchTo}>
-            {t.switchLabel}
-          </Link>
+          {/*
+            Log-in is intentionally NOT shown in the header — the Client
+            Dashboard isn't enabled yet. The link still lives in the codebase
+            (DASHBOARD_LOGIN_URL in config.js); re-add the <a> here to restore it.
+            The language switcher now lives in the footer.
+          */}
 
-          {/* Auth entry points → the Client Dashboard (separate subdomain) */}
-          <a href={DASHBOARD_LOGIN_URL} className="nav-link header-login">
-            {t.nav.login}
-          </a>
-          <a href={DASHBOARD_SIGNUP_URL} className="btn btn-launch header-cta">
+          {/* Get started → the lead form (name / email / phone / business). */}
+          <Link to={p('getStarted')} className="btn btn-launch header-cta">
             {t.nav.getStarted}
-          </a>
+          </Link>
         </div>
       </div>
     </header>

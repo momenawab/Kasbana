@@ -54,6 +54,7 @@ from console.views_invoices import (
     InvoiceRetryView,
     MerchantInvoiceCreateView,
 )
+from console.views_leads import LeadDetailView, LeadListView
 from console.views_lifecycle import (
     AtRiskView,
     ModerationQueueView,
@@ -258,6 +259,9 @@ urlpatterns = [
         AnnouncementScheduleView.as_view(),
         name="admin-announcement-schedule",
     ),
+    # Inbound "Get started" leads from the marketing site
+    path("leads", LeadListView.as_view(), name="admin-leads"),
+    path("leads/<uuid:lead_id>", LeadDetailView.as_view(), name="admin-lead-detail"),
     # Coupons, discounts & promotions (Phase 11)
     path("coupons", CouponListView.as_view(), name="admin-coupons"),
     path("coupons/<str:code>", CouponDetailView.as_view(), name="admin-coupon-detail"),

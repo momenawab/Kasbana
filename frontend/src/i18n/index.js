@@ -13,6 +13,7 @@ export const PAGE_PATHS = {
   home: { en: '/', ar: '/ar' },
   support: { en: '/support', ar: '/ar/support' },
   privacy: { en: '/privacy', ar: '/ar/privacy' },
+  getStarted: { en: '/get-started', ar: '/ar/get-started' },
 }
 
 export const translations = {
@@ -76,9 +77,17 @@ export const translations = {
       },
     },
     support: {
-      title: 'Support',
-      lead: "Questions? Send us a message and we'll reply by email.",
-      meta: 'Prefer email? Reach us directly at',
+      pill: "We're here to help",
+      title: "Let's",
+      titleAccent: 'talk.',
+      lead: "Questions about setup, pricing, or anything else? Send us a message and we'll get back to you by email.",
+      points: [
+        { icon: 'schedule', text: 'We reply by email, usually within a day' },
+        { icon: 'support_agent', text: 'Real people — ask us anything about Stampn' },
+      ],
+      emailLabel: 'Prefer email? Reach us at',
+      cardTitle: 'Send a message',
+      cardSub: "We'll reply to your email as soon as we can.",
       labels: {
         name: 'Name',
         email: 'Email',
@@ -98,7 +107,52 @@ export const translations = {
           'We could not reach the server. Check your connection and try again.',
         generic: 'Something went wrong sending your message. Please try again.',
       },
-      success: "Thanks! Your message is on its way — we'll reply by email.",
+      success: {
+        title: 'Message sent! 📨',
+        body: "Thanks! Your message is on its way — we'll reply by email.",
+        note: "We'll be in touch shortly.",
+        back: 'Back to home',
+      },
+    },
+    getStarted: {
+      pill: 'Early access · limited spots',
+      title: 'Reserve your',
+      titleAccent: 'spot.',
+      lead: "We're onboarding a first wave of businesses. Leave your details and we'll personally set up your loyalty program — then reach out within one day.",
+      benefits: [
+        'Free white-glove setup of your first loyalty card',
+        'Priority onboarding before public launch',
+        'Founding-member pricing, locked in for good',
+      ],
+      socialProof: 'Cafés, restaurants & shops are already on the list.',
+      cardTitle: 'Join the waitlist',
+      cardSub: 'Takes 30 seconds — no app, no credit card.',
+      labels: {
+        name: 'Your name',
+        email: 'Email',
+        phone: 'Phone number',
+        business: 'Business name',
+      },
+      submit: 'Join the waitlist',
+      submitting: 'Reserving your spot…',
+      note: "We'll only use these details to set up your account and reach out.",
+      errors: {
+        name: 'Please enter your name.',
+        email: 'Please enter your email.',
+        emailInvalid: 'Please enter a valid email address.',
+        phone: 'Please enter your phone number.',
+        business: 'Please enter your business name.',
+        fix: 'Please fix the highlighted fields and try again.',
+        network:
+          'We could not reach the server. Check your connection and try again.',
+        generic: 'Something went wrong. Please try again.',
+      },
+      success: {
+        title: "You're on the list! 🎉",
+        body: "We've saved your spot. Our team will reach out within one day to get your loyalty program set up.",
+        note: "Keep an eye on your inbox — we'll be in touch very soon.",
+        back: 'Back to home',
+      },
     },
     privacy: {
       title: 'Privacy Policy',
@@ -139,6 +193,11 @@ export const translations = {
       support: {
         title: 'Support — Stampn',
         description: "Questions about Stampn? Send us a message and we'll reply by email.",
+      },
+      getStarted: {
+        title: 'Get started — Stampn',
+        description:
+          "Leave your details and the Stampn team will contact you within one day to set up your digital loyalty program.",
       },
       privacy: {
         title: 'Privacy Policy — Stampn',
@@ -207,9 +266,17 @@ export const translations = {
       },
     },
     support: {
-      title: 'الدعم',
-      lead: 'عندك سؤال؟ ابعتلنا رسالة وهنرد عليك على الإيميل.',
-      meta: 'تحب الإيميل؟ راسلنا مباشرة على',
+      pill: 'احنا هنا نساعدك',
+      title: 'خلينا',
+      titleAccent: 'نتكلم.',
+      lead: 'عندك سؤال عن التفعيل أو الأسعار أو أي حاجة؟ ابعتلنا رسالة وهنرد عليك على الإيميل.',
+      points: [
+        { icon: 'schedule', text: 'بنرد بالإيميل، عادة خلال يوم' },
+        { icon: 'support_agent', text: 'ناس حقيقية — اسألنا أي حاجة عن Stampn' },
+      ],
+      emailLabel: 'تحب الإيميل؟ راسلنا على',
+      cardTitle: 'ابعتلنا رسالة',
+      cardSub: 'هنرد عليك على إيميلك في أقرب وقت.',
       labels: {
         name: 'الاسم',
         email: 'البريد الإلكتروني',
@@ -228,7 +295,51 @@ export const translations = {
         network: 'مقدرناش نوصل للسيرفر. اتأكد من اتصالك وحاول تاني.',
         generic: 'حصلت مشكلة في إرسال رسالتك. من فضلك حاول تاني.',
       },
-      success: 'تمام! وصلتنا رسالتك وهنرد عليك على الإيميل.',
+      success: {
+        title: 'اتبعتت! 📨',
+        body: 'تمام! وصلتنا رسالتك وهنرد عليك على الإيميل.',
+        note: 'هنتواصل معاك قريب.',
+        back: 'الرجوع للرئيسية',
+      },
+    },
+    getStarted: {
+      pill: 'وصول مبكر · أماكن محدودة',
+      title: 'احجز',
+      titleAccent: 'مكانك.',
+      lead: 'إحنا بنضم أول مجموعة من النشاطات. سيب بياناتك وإحنا هنجهّزلك برنامج الولاء بنفسنا — ونتواصل معاك خلال يوم واحد.',
+      benefits: [
+        'تجهيز كامل لأول كارت ولاء ليك — علينا',
+        'أولوية في التفعيل قبل الإطلاق الرسمي',
+        'سعر المؤسسين محجوز ليك للأبد',
+      ],
+      socialProof: 'كافيهات ومطاعم ومحلات موجودة على القائمة بالفعل.',
+      cardTitle: 'انضم لقائمة الانتظار',
+      cardSub: 'بياخد 30 ثانية — من غير تطبيق ولا كارت ائتمان.',
+      labels: {
+        name: 'اسمك',
+        email: 'البريد الإلكتروني',
+        phone: 'رقم الموبايل',
+        business: 'اسم النشاط التجاري',
+      },
+      submit: 'انضم لقائمة الانتظار',
+      submitting: 'بنحجز مكانك…',
+      note: 'هنستخدم بياناتك بس عشان نجهّز حسابك ونتواصل معاك.',
+      errors: {
+        name: 'من فضلك اكتب اسمك.',
+        email: 'من فضلك اكتب بريدك الإلكتروني.',
+        emailInvalid: 'من فضلك اكتب بريد إلكتروني صحيح.',
+        phone: 'من فضلك اكتب رقم موبايلك.',
+        business: 'من فضلك اكتب اسم نشاطك التجاري.',
+        fix: 'من فضلك صحّح الحقول المظللة وحاول تاني.',
+        network: 'مقدرناش نوصل للسيرفر. اتأكد من اتصالك وحاول تاني.',
+        generic: 'حصلت مشكلة. من فضلك حاول تاني.',
+      },
+      success: {
+        title: 'تمام! مكانك اتحجز 🎉',
+        body: 'حفظنا مكانك. فريقنا هيتواصل معاك خلال يوم واحد عشان يجهّزلك برنامج الولاء بتاعك.',
+        note: 'تابع إيميلك — هنكلمك قريب جدًا.',
+        back: 'الرجوع للرئيسية',
+      },
     },
     privacy: {
       title: 'سياسة الخصوصية',
@@ -268,6 +379,11 @@ export const translations = {
       support: {
         title: 'الدعم — Stampn',
         description: 'عندك سؤال عن Stampn؟ ابعتلنا رسالة وهنرد عليك على الإيميل.',
+      },
+      getStarted: {
+        title: 'ابدأ الآن — Stampn',
+        description:
+          'سيب بياناتك وفريق Stampn هيتواصل معاك خلال يوم واحد عشان يجهّزلك برنامج الولاء الرقمي بتاعك.',
       },
       privacy: {
         title: 'سياسة الخصوصية — Stampn',

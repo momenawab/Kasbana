@@ -217,6 +217,8 @@ REST_FRAMEWORK = {
         "auth": env("THROTTLE_AUTH", "20/min"),
         "webhook": env("THROTTLE_WEBHOOK", "120/min"),
         "admin_auth": env("THROTTLE_ADMIN_AUTH", "10/min"),
+        # Public "Get started" lead intake from the marketing site.
+        "lead_intake": env("THROTTLE_LEAD_INTAKE", "10/min"),
     },
 }
 

@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom'
 import Seo from '../components/Seo.jsx'
 import { useLang, PAGE_PATHS } from '../i18n/index.js'
-import { DASHBOARD_SIGNUP_URL } from '../config.js'
 
 // Material Symbols icon. Decorative by default — callers that convey meaning
 // with an icon alone should pass a label instead.
@@ -46,10 +45,10 @@ export default function Home() {
             <p className="hero-lead">{h.lead}</p>
 
             <div className="hero-actions">
-              <a href={DASHBOARD_SIGNUP_URL} className="btn btn-primary">
+              <Link to={PAGE_PATHS.getStarted[lang]} className="btn btn-primary">
                 {h.ctaPrimary}
                 <Icon name="arrow_forward" />
-              </a>
+              </Link>
               <Link to={PAGE_PATHS.support[lang]} className="btn btn-glass">
                 <Icon name="play_circle" />
                 {h.contactCta}
