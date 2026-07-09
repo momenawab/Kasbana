@@ -441,3 +441,29 @@ class Lead(UUIDModel, TimeStampedModel):
 
     def __str__(self) -> str:
         return f"lead({self.business_name} · {self.email})"
+
+
+class ContactMessage(UUIDModel, TimeStampedModel):
+    """An inbound support/contact message from the public marketing site.
+
+    The Support ("Let's talk") form posts here anonymously; the team reads and
+    works the queue from the admin console (Messages section). Kept separate from
+    ``Lead`` because a contact message is a support enquiry, not a sales lead.
+    """
+
+    class Status(models.TextChoices):
+        NEW = "new", "New"
+        READ = "read", "Read"
+
+    name = models.CharField(max_length=120)
+    email = models.EmailField()
+    subject = models.CharField(max_length=200)
+    message = models.TextField()
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.NEW)
+    read_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return f"message({self.subject} · {self.email})"

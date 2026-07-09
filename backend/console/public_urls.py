@@ -8,8 +8,9 @@ from __future__ import annotations
 
 from django.urls import path
 
-from console.public import PublicLeadCreateView
+from console.public import PublicContactCreateView, PublicLeadCreateView
 
 urlpatterns = [
     path("leads", PublicLeadCreateView.as_view(), name="public-lead-create"),
+    path("contact", PublicContactCreateView.as_view(), name="public-contact-create"),
 ]

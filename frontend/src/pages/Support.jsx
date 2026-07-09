@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import Seo from '../components/Seo.jsx'
-import { CONTACT_EMAIL } from '../config.js'
+import { CONTACT_EMAIL, CONTACT_ENDPOINT } from '../config.js'
 import { useLang, PAGE_PATHS } from '../i18n/index.js'
 
 // Material Symbols icon (decorative by default).
@@ -14,11 +14,9 @@ function Icon({ name, className = '' }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Web3Forms: sign up (free) at https://web3forms.com, paste your access key
-// below. The destination email is the address you register there — that's where
-// every submission from this form is delivered. No backend server required.
+// The contact form POSTs to our own backend (/api/v1/contact). Messages land in
+// the admin console (Messages section). No third-party form service.
 // ─────────────────────────────────────────────────────────────────────────────
-const WEB3FORMS_ACCESS_KEY = 'YOUR_WEB3FORMS_ACCESS_KEY'
 
 const EMPTY = { name: '', email: '', subject: '', message: '', botcheck: '' }
 
@@ -72,31 +70,27 @@ export default function Support() {
     setStatus('submitting')
 
     try {
-      const res = await fetch('https://api.web3forms.com/submit', {
+      const res = await fetch(CONTACT_ENDPOINT, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Accept: 'application/json',
         },
         body: JSON.stringify({
-          access_key: WEB3FORMS_ACCESS_KEY,
           name: form.name,
           email: form.email,
           subject: form.subject,
           message: form.message,
           botcheck: form.botcheck,
-          from_name: 'Stampn Support Form',
         }),
       })
 
-      const data = await res.json()
-
-      if (data.success) {
+      if (res.ok) {
         setStatus('success')
         setForm(EMPTY)
       } else {
         setStatus('error')
-        setFeedback(data.message || s.errors.generic)
+        setFeedback(s.errors.generic)
       }
     } catch (err) {
       setStatus('error')

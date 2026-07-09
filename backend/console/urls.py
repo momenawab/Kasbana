@@ -42,6 +42,7 @@ from console.views_compliance import (
     MerchantDeleteView,
     RetentionPolicyView,
 )
+from console.views_contact import ContactMessageDetailView, ContactMessageListView
 from console.views_coupons import (
     ApplyCouponView,
     CouponDetailView,
@@ -262,6 +263,13 @@ urlpatterns = [
     # Inbound "Get started" leads from the marketing site
     path("leads", LeadListView.as_view(), name="admin-leads"),
     path("leads/<uuid:lead_id>", LeadDetailView.as_view(), name="admin-lead-detail"),
+    # Inbound support/contact messages from the marketing site
+    path("messages", ContactMessageListView.as_view(), name="admin-messages"),
+    path(
+        "messages/<uuid:message_id>",
+        ContactMessageDetailView.as_view(),
+        name="admin-message-detail",
+    ),
     # Coupons, discounts & promotions (Phase 11)
     path("coupons", CouponListView.as_view(), name="admin-coupons"),
     path("coupons/<str:code>", CouponDetailView.as_view(), name="admin-coupon-detail"),
