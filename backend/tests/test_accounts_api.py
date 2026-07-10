@@ -322,6 +322,74 @@ def test_password_change(merchant):
     assert ok.status_code == 200
     staff.user.refresh_from_db()
     assert staff.user.check_password("newpassword")
+    # Re-issues a fresh token pair for the current device.
+    assert ok.json()["access"] and ok.json()["refresh"]
+
+
+def test_password_change_revokes_existing_refresh_tokens(merchant):
+    """An old session's refresh token stops working after a password change; the
+    fresh pair returned to the caller keeps working."""
+    from rest_framework_simplejwt.tokens import RefreshToken
+
+    staff = factories.StaffUserFactory(merchant=merchant)
+    staff.user.set_password("oldpassword")
+    staff.user.save()
+
+    old_refresh = str(RefreshToken.for_user(staff.user))  # a pre-existing session
+    resp = _auth(staff).post(
+        "/api/v1/settings/account/password",
+        {"current": "oldpassword", "new": "newpassword"},
+        format="json",
+    )
+    assert resp.status_code == 200
+
+    # The old session can no longer refresh...
+    assert (
+        APIClient()
+        .post("/api/v1/auth/refresh", {"refresh": old_refresh}, format="json")
+        .status_code
+        == 401
+    )
+    # ...but the freshly-issued one can.
+    new_refresh = resp.json()["refresh"]
+    assert (
+        APIClient()
+        .post("/api/v1/auth/refresh", {"refresh": new_refresh}, format="json")
+        .status_code
+        == 200
+    )
+
+
+# ── Account data export (PDPL) ────────────────────────────────────────────────
+def test_account_export_owner_gets_full_snapshot(merchant):
+    owner = factories.StaffUserFactory(merchant=merchant, role=Role.OWNER)
+    factories.StaffUserFactory(merchant=merchant, role=Role.SCANNER)
+    MerchantSettings.objects.create(merchant=merchant, contact_phone="+201234567890")
+
+    resp = _auth(owner).get("/api/v1/settings/account/export")
+    assert resp.status_code == 200
+    assert 'attachment; filename="stampn-' in resp["Content-Disposition"]
+    body = resp.json()
+    assert body["merchant"]["id"] == str(merchant.id)
+    assert body["settings"]["contact_phone"] == "+201234567890"
+    assert {s["role"] for s in body["staff"]} == {Role.OWNER, Role.SCANNER}
+    assert "exported_at" in body
+
+
+def test_account_export_is_owner_only(merchant):
+    admin = factories.StaffUserFactory(merchant=merchant, role=Role.ADMIN)
+    assert _auth(admin).get("/api/v1/settings/account/export").status_code == 403
+
+
+def test_account_export_is_tenant_scoped(merchant):
+    """One owner never sees another merchant's staff/data."""
+    owner = factories.StaffUserFactory(merchant=merchant, role=Role.OWNER)
+    other = factories.MerchantFactory(name="Rival")
+    factories.StaffUserFactory(merchant=other, role=Role.OWNER, user__email="rival@x.test")
+
+    body = _auth(owner).get("/api/v1/settings/account/export").json()
+    emails = {s["email"] for s in body["staff"]}
+    assert "rival@x.test" not in emails
 
 
 def test_locked_merchant_me_shows_suspended(merchant):

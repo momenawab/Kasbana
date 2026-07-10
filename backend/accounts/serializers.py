@@ -123,14 +123,24 @@ class OkSerializer(serializers.Serializer):
     ok = serializers.BooleanField()
 
 
+class PasswordChangeOutSerializer(serializers.Serializer):
+    """A changed password re-issues the caller's tokens (all sessions revoked)."""
+
+    ok = serializers.BooleanField()
+    access = serializers.CharField()
+    refresh = serializers.CharField()
+
+
 class MerchantOutSerializer(serializers.Serializer):
     id = serializers.UUIDField()
     name = serializers.CharField()
+    legal_name = serializers.CharField(allow_blank=True)
     slug = serializers.CharField()
     status = serializers.ChoiceField(choices=["trial", "active", "suspended"])
     plan = serializers.ChoiceField(choices=["trial", "starter", "growth", "chain"])
     trial_ends_at = serializers.DateTimeField(allow_null=True)
     logo_url = serializers.URLField(allow_null=True)
+    address = serializers.CharField(allow_blank=True)
     color_bg = serializers.CharField(allow_blank=True)
     color_fg = serializers.CharField(allow_blank=True)
     enroll_headline = serializers.CharField(allow_blank=True)
