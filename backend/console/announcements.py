@@ -14,6 +14,7 @@ from django.core.mail import send_mail
 from django.db import transaction
 from django.utils import timezone
 
+from accounts.models import MerchantSettings
 from console import segments
 from console.merchants import owner_contact
 from console.models import Announcement, AnnouncementDelivery
@@ -41,8 +42,20 @@ def send(announcement: Announcement) -> dict[str, Any]:
         )
 
     if announcement.channel in (Announcement.Channel.EMAIL, Announcement.Channel.BOTH):
+        # Broadcasts honour the merchant's "Email notifications" preference; the
+        # in-app rows above do not (the toggle is email-only), and transactional
+        # mail — password reset, billing dunning, support replies — never checks
+        # it. Resolved in one query: a segment can be every merchant on the
+        # platform. No settings row = opted in.
+        opted_out = set(
+            MerchantSettings.objects.filter(merchant__in=merchants, notif_email=False).values_list(
+                "merchant_id", flat=True
+            )
+        )
         sent = 0
         for m in merchants:
+            if m.id in opted_out:
+                continue
             owner = owner_contact(m)
             if owner["email"]:
                 send_mail(

@@ -12,6 +12,7 @@ from typing import Any, cast
 
 from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
+from django.db import transaction
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -182,7 +183,10 @@ class SettingsBusinessView(APIView):
         return Response(merchant_payload(get_request_merchant(request)))
 
     @extend_schema(request=BusinessSettingsSerializer, responses=MerchantOutSerializer)
+    @transaction.atomic
     def patch(self, request: Request) -> Response:
+        # Atomic: the branding gate below can raise after ``merchant.save()``, and
+        # there is no ATOMIC_REQUESTS — a rejected save must not half-apply.
         body = BusinessSettingsSerializer(data=request.data, partial=True)
         body.is_valid(raise_exception=True)
         data = body.validated_data
@@ -212,14 +216,17 @@ class SettingsBusinessView(APIView):
             if field in data:
                 setattr(s, field, data[field])
 
-        # Branded enrollment copy is a paid feature — enforce the capability only
-        # when the merchant actually sends it (leaves other settings ungated).
-        if "enroll_headline" in data or "enroll_tagline" in data:
+        # Branded enrollment copy is a paid feature. Gate on *intent*, not on the
+        # key being present: the dashboard always posts both fields, so keying off
+        # presence would 402 every Business-tab save on an unbranded plan. Only
+        # setting a new non-empty value needs the capability — re-sending the
+        # stored value is a no-op, and clearing must stay open so a merchant who
+        # downgrades can still remove copy they can no longer set.
+        enroll_copy = {f: data[f] for f in ("enroll_headline", "enroll_tagline") if f in data}
+        if any(value and value != getattr(s, field) for field, value in enroll_copy.items()):
             entitlements.enforce(merchant, "custom_branding")
-            if "enroll_headline" in data:
-                s.enroll_headline = data["enroll_headline"]
-            if "enroll_tagline" in data:
-                s.enroll_tagline = data["enroll_tagline"]
+        for field, value in enroll_copy.items():
+            setattr(s, field, value)
         s.save()
         return Response(merchant_payload(merchant))
 

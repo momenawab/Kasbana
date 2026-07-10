@@ -48,8 +48,12 @@ function BusinessTab() {
   const save = useMutation({
     mutationFn: async () => {
       // The API takes phone nested under `contact`; everything else is top-level.
-      const { phone, ...rest } = form
-      return (await api.patch('/settings/business', { ...rest, contact: { phone } })).data
+      const { phone, enroll_headline, enroll_tagline, ...rest } = form
+      const payload = { ...rest, contact: { phone } }
+      // Enrollment copy is a custom_branding field — posting it on a plan that
+      // can't set it is a paid-feature attempt, not a business-details save.
+      if (branded) Object.assign(payload, { enroll_headline, enroll_tagline })
+      return (await api.patch('/settings/business', payload)).data
     },
     onSuccess: () => {
       toast.success(t('settings.saved'))
@@ -221,18 +225,17 @@ function AccountTab() {
           </button>
         ))}
       </div>
-      <Toggle
-        checked={form.notifications.email}
-        onChange={(v) => setForm({ ...form, notifications: { ...form.notifications, email: v } })}
-        label={t('settings.notifEmail')}
-      />
-      <Toggle
-        checked={form.notifications.whatsapp}
-        onChange={(v) =>
-          setForm({ ...form, notifications: { ...form.notifications, whatsapp: v } })
-        }
-        label={t('settings.notifWhatsapp')}
-      />
+      <div>
+        <Toggle
+          checked={form.notifications.email}
+          onChange={(v) => setForm({ ...form, notifications: { ...form.notifications, email: v } })}
+          label={t('settings.notifEmail')}
+        />
+        <p className="mt-1 text-xs text-tx-3">{t('settings.notifEmailHint')}</p>
+      </div>
+      {/* No WhatsApp toggle: the capability is off on every plan and the adapter
+          is dormant, so it could only ever be a no-op. The stored preference
+          rides along in `form.notifications` for when the channel comes back. */}
       <Button onClick={() => save.mutate()} loading={save.isPending}>
         {t('settings.save')}
       </Button>

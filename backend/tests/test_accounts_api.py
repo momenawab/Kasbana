@@ -83,6 +83,17 @@ def test_forgot_is_always_ok(api_client):
     assert PasswordResetToken.objects.filter(user__email="nobody@x.test").count() == 0
 
 
+def test_forgot_ignores_email_notification_opt_out(api_client, merchant, mailoutbox):
+    """`notif_email` gates broadcasts only — account recovery must always send."""
+    staff = factories.StaffUserFactory(merchant=merchant, user__email="quiet@x.test")
+    s = MerchantSettings.objects.create(merchant=staff.merchant, notif_email=False)
+    assert s.notif_email is False
+
+    api_client.post("/api/v1/auth/forgot", {"email": "quiet@x.test"}, format="json")
+    assert len(mailoutbox) == 1
+    assert PasswordResetToken.objects.filter(user__email="quiet@x.test").exists()
+
+
 def test_reset_with_valid_token(api_client):
     staff = factories.StaffUserFactory(user__email="reset@x.test")
     reset = PasswordResetToken.objects.create(user=staff.user)
@@ -185,6 +196,87 @@ def test_business_settings_round_trip(merchant):
     assert merchant.name == "Renamed Co" and merchant.color_bg == "#112233"
     s = MerchantSettings.objects.get(merchant=merchant)
     assert s.contact_phone == "+201111111111" and s.address == "5 Tahrir St"
+
+
+# The dashboard Business tab always posts every field it renders, including the
+# two custom_branding-gated enroll fields (blank when the plan can't set them).
+# Gating on key *presence* used to 402 the whole save on Starter.
+def _business_tab_payload(**over):
+    return {
+        "name": "Renamed Co",
+        "color_bg": "#0E1B2A",
+        "color_fg": "#FFFFFF",
+        "enroll_headline": "",
+        "enroll_tagline": "",
+        "contact": {"phone": "+201111111111"},
+        **over,
+    }
+
+
+def test_business_save_with_blank_enroll_copy_is_ungated(merchant):
+    staff = factories.StaffUserFactory(merchant=merchant, role=Role.ADMIN)
+    activate_plan(merchant, PlanTier.STARTER)  # custom_branding off
+
+    resp = _auth(staff).patch("/api/v1/settings/business", _business_tab_payload(), format="json")
+    assert resp.status_code == 200
+    merchant.refresh_from_db()
+    assert merchant.name == "Renamed Co"
+
+
+def test_business_save_resending_stored_enroll_copy_is_ungated(merchant):
+    """A downgraded merchant reloads the tab, which echoes the stored copy back."""
+    staff = factories.StaffUserFactory(merchant=merchant, role=Role.ADMIN)
+    s = MerchantSettings.objects.create(merchant=merchant, enroll_headline="Kept")
+    activate_plan(merchant, PlanTier.STARTER)
+
+    resp = _auth(staff).patch(
+        "/api/v1/settings/business",
+        _business_tab_payload(enroll_headline="Kept"),
+        format="json",
+    )
+    assert resp.status_code == 200
+    s.refresh_from_db()
+    assert s.enroll_headline == "Kept"
+
+
+def test_business_save_can_clear_enroll_copy_after_downgrade(merchant):
+    staff = factories.StaffUserFactory(merchant=merchant, role=Role.ADMIN)
+    s = MerchantSettings.objects.create(merchant=merchant, enroll_headline="Old")
+    activate_plan(merchant, PlanTier.STARTER)
+
+    resp = _auth(staff).patch("/api/v1/settings/business", _business_tab_payload(), format="json")
+    assert resp.status_code == 200
+    s.refresh_from_db()
+    assert s.enroll_headline == ""
+
+
+def test_business_save_setting_enroll_copy_still_requires_branding(merchant):
+    staff = factories.StaffUserFactory(merchant=merchant, role=Role.ADMIN)
+    activate_plan(merchant, PlanTier.STARTER)
+    original_name = merchant.name
+
+    resp = _auth(staff).patch(
+        "/api/v1/settings/business",
+        _business_tab_payload(enroll_headline="Join us!"),
+        format="json",
+    )
+    assert resp.status_code == 402
+    # The rejected save must not half-apply the ungated fields.
+    merchant.refresh_from_db()
+    assert merchant.name == original_name
+
+
+def test_business_save_setting_enroll_copy_allowed_on_growth(merchant):
+    staff = factories.StaffUserFactory(merchant=merchant, role=Role.ADMIN)
+    activate_plan(merchant, PlanTier.GROWTH)  # custom_branding on
+
+    resp = _auth(staff).patch(
+        "/api/v1/settings/business",
+        _business_tab_payload(enroll_headline="Join us!"),
+        format="json",
+    )
+    assert resp.status_code == 200
+    assert MerchantSettings.objects.get(merchant=merchant).enroll_headline == "Join us!"
 
 
 def test_business_settings_requires_admin(merchant):
