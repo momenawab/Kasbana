@@ -4,9 +4,11 @@ import { useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import api, { normalizeError } from '../../lib/api'
+import { setTokens } from '../../lib/auth'
 import { setLang } from '../../lib/i18n'
 import { useToast } from '../../hooks/useToast'
 import { usePlan } from '../../hooks/usePlan'
+import { useAuth } from '../../hooks/useAuth'
 import Tabs from '../../components/Tabs'
 import { Input, Textarea } from '../../components/Field'
 import { Toggle } from '../../components/Toggle'
@@ -30,7 +32,9 @@ function BusinessTab() {
     if (data)
       setForm({
         name: data.name || '',
+        legal_name: data.legal_name || '',
         logo_url: data.logo_url || '',
+        address: data.address || '',
         color_bg: data.color_bg || '#0E1B2A',
         color_fg: data.color_fg || '#FFFFFF',
         enroll_headline: data.enroll_headline || '',
@@ -71,9 +75,22 @@ function BusinessTab() {
         value={form.name}
         onChange={(e) => setForm({ ...form, name: e.target.value })}
       />
+      <Input
+        name="legal_name"
+        label={t('settings.legalName')}
+        value={form.legal_name}
+        onChange={(e) => setForm({ ...form, legal_name: e.target.value })}
+      />
       <FileUpload
         label={t('settings.logo')}
+        initial={form.logo_url || null}
         onUploaded={(url) => setForm({ ...form, logo_url: url })}
+      />
+      <Input
+        name="address"
+        label={t('settings.address')}
+        value={form.address}
+        onChange={(e) => setForm({ ...form, address: e.target.value })}
       />
       <div className="grid grid-cols-2 gap-3">
         <ColorPicker
@@ -189,6 +206,7 @@ function BusinessTab() {
 function AccountTab() {
   const { t, i18n } = useTranslation()
   const toast = useToast()
+  const { role } = useAuth()
   const { data } = useQuery({
     queryKey: ['settings', 'account'],
     queryFn: async () => (await api.get('/settings/account')).data,
@@ -209,6 +227,22 @@ function AccountTab() {
       setLang(form.language)
     },
     onError: (err) => toast.error(normalizeError(err).message),
+  })
+
+  // PDPL data export — owner-only. Fetch the JSON (with auth) and save it as a
+  // file client-side; a plain <a href> can't send the Bearer token.
+  const exporting = useMutation({
+    mutationFn: async () => (await api.get('/settings/account/export')).data,
+    onSuccess: (data) => {
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `stampn-${data?.merchant?.slug || 'account'}-data.json`
+      a.click()
+      URL.revokeObjectURL(url)
+    },
+    onError: () => toast.error(t('settings.exportFailed')),
   })
 
   if (!form) return null
@@ -239,6 +273,20 @@ function AccountTab() {
       <Button onClick={() => save.mutate()} loading={save.isPending}>
         {t('settings.save')}
       </Button>
+
+      {role === 'OWNER' && (
+        <div className="mt-2 rounded-ctl border border-line p-3">
+          <div className="mb-1 text-sm font-semibold text-tx">{t('settings.dataSection')}</div>
+          <p className="mb-3 text-xs text-tx-3">{t('settings.exportDataHint')}</p>
+          <Button
+            variant="secondary"
+            onClick={() => exporting.mutate()}
+            loading={exporting.isPending}
+          >
+            {t('settings.exportData')}
+          </Button>
+        </div>
+      )}
     </div>
   )
 }
@@ -252,7 +300,10 @@ function PasswordTab() {
   const save = useMutation({
     mutationFn: async () =>
       (await api.post('/settings/account/password', { current, new: next })).data,
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // The server revoked every session (incl. this device's old tokens) and
+      // returned a fresh pair — adopt it so this device stays signed in.
+      if (data?.access && data?.refresh) setTokens({ access: data.access, refresh: data.refresh })
       toast.success(t('settings.passwordChanged'))
       setCurrent('')
       setNext('')

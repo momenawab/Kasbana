@@ -5,11 +5,13 @@ import api, { normalizeError } from '../lib/api'
 import { useToast } from '../hooks/useToast'
 
 // FileUpload (spec §10) — POSTs to /uploads, returns {url}, calls onUploaded.
-export default function FileUpload({ accept = 'image/*', onUploaded, label }) {
+// `initial` seeds the preview with an already-saved image (e.g. the current
+// logo) so the control reflects saved state instead of always looking empty.
+export default function FileUpload({ accept = 'image/*', onUploaded, label, initial = null }) {
   const { t } = useTranslation()
   const toast = useToast()
   const [busy, setBusy] = useState(false)
-  const [preview, setPreview] = useState(null)
+  const [preview, setPreview] = useState(initial)
 
   async function handle(e) {
     const file = e.target.files?.[0]

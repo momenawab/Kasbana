@@ -98,6 +98,9 @@ THIRD_PARTY_APPS = [
     "corsheaders",
     "django_celery_beat",
     "django_celery_results",  # queryable TaskResult table for the ops task monitor (Phase 14)
+    # Tracks issued refresh tokens (OutstandingToken) so a password change can
+    # blacklist every existing session. Ships its own migrations.
+    "rest_framework_simplejwt.token_blacklist",
 ]
 
 # All persistent models live in ``core`` (contract §3.4). The other apps own

@@ -35,11 +35,13 @@ def merchant_payload(merchant: Merchant) -> dict[str, Any]:
     return {
         "id": str(merchant.id),
         "name": merchant.name,
+        "legal_name": merchant.legal_name,
         "slug": merchant.slug,
         "status": status_to_wire(merchant, sub),
         "plan": plan_to_wire(sub),
         "trial_ends_at": sub.trial_ends_at,
         "logo_url": merchant.logo_url or None,
+        "address": s.address,
         "color_bg": merchant.color_bg,
         "color_fg": merchant.color_fg,
         "enroll_headline": s.enroll_headline,

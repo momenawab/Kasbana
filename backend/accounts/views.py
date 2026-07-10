@@ -32,6 +32,7 @@ from accounts.serializers import (
     MeOutSerializer,
     MerchantOutSerializer,
     OkSerializer,
+    PasswordChangeOutSerializer,
     PasswordChangeSerializer,
     ResetSerializer,
     SignupSerializer,
@@ -41,8 +42,8 @@ from accounts.services import merchant_payload, settings_for
 from billing import entitlements
 from common.errors import Conflict, TokenExpired
 from common.middleware import resolve_staff
-from common.permissions import CanManageCards, IsScannerOrAbove
-from core.models import StaffUser
+from common.permissions import CanManageCards, IsOwner, IsScannerOrAbove
+from core.models import Card, Location, StaffUser
 from core.tenancy import get_request_merchant
 
 User = get_user_model()
@@ -263,7 +264,7 @@ class SettingsAccountView(APIView):
 class PasswordChangeView(APIView):
     permission_classes = [IsAuthenticated]
 
-    @extend_schema(request=PasswordChangeSerializer, responses=OkSerializer)
+    @extend_schema(request=PasswordChangeSerializer, responses=PasswordChangeOutSerializer)
     def post(self, request: Request) -> Response:
         body = PasswordChangeSerializer(data=request.data)
         body.is_valid(raise_exception=True)
@@ -274,4 +275,96 @@ class PasswordChangeView(APIView):
             raise ValidationError({"current": ["Current password is incorrect."]})
         user.set_password(body.validated_data["new"])
         user.save(update_fields=["password"])
-        return Response({"ok": True})
+
+        # Invalidate every existing session: blacklist all of the user's tracked
+        # refresh tokens, then mint a fresh pair so the device that just changed
+        # the password stays signed in. Other devices keep working until their
+        # short-lived access token (≤30 min) expires and the refresh is rejected.
+        from rest_framework_simplejwt.token_blacklist.models import (
+            BlacklistedToken,
+            OutstandingToken,
+        )
+
+        outstanding = OutstandingToken.objects.filter(user=user)  # type: ignore[attr-defined]
+        for token in outstanding:
+            BlacklistedToken.objects.get_or_create(token=token)  # type: ignore[attr-defined]
+        refresh = RefreshToken.for_user(user)
+        return Response({"ok": True, "access": str(refresh.access_token), "refresh": str(refresh)})
+
+
+class AccountExportView(APIView):
+    """GET /settings/account/export — the merchant's own account data as a JSON
+    download (PDPL data-portability). Owner-only: it includes staff emails and
+    the full business profile. Customer PII is out of scope here — that lives
+    behind the separate, entitlement-gated customer export."""
+
+    permission_classes = [IsOwner]
+
+    def get(self, request: Request) -> Response:
+        merchant = get_request_merchant(request)
+        s = settings_for(merchant)
+        staff = (
+            StaffUser.objects.for_merchant(merchant)
+            .select_related("user", "location")
+            .order_by("created_at")
+        )
+        payload = {
+            "exported_at": timezone.now().isoformat(),
+            "merchant": {
+                "id": str(merchant.id),
+                "name": merchant.name,
+                "slug": merchant.slug,
+                "legal_name": merchant.legal_name,
+                "status": merchant.status,
+                "plan": merchant.plan,
+                "logo_url": merchant.logo_url,
+                "color_bg": merchant.color_bg,
+                "color_fg": merchant.color_fg,
+                "created_at": merchant.created_at.isoformat(),
+            },
+            "settings": {
+                "contact_phone": s.contact_phone,
+                "contact_email": s.contact_email,
+                "address": s.address,
+                "facebook_url": s.facebook_url,
+                "instagram_url": s.instagram_url,
+                "tiktok_url": s.tiktok_url,
+                "whatsapp": s.whatsapp,
+                "terms_url": s.terms_url,
+                "branches": s.branches,
+                "language": s.language,
+                "notif_email": s.notif_email,
+                "notif_whatsapp": s.notif_whatsapp,
+                "enroll_headline": s.enroll_headline,
+                "enroll_tagline": s.enroll_tagline,
+            },
+            "staff": [
+                {
+                    "name": st.user.get_full_name() or "",
+                    "email": st.user.email,
+                    "role": st.role,
+                    "location": st.location.name if st.location else None,
+                    "is_active": st.is_active,
+                    "created_at": st.created_at.isoformat(),
+                }
+                for st in staff
+            ],
+            "locations": [
+                {"name": loc.name, "address": loc.address, "lat": loc.lat, "lng": loc.lng}
+                for loc in Location.objects.for_merchant(merchant).order_by("name")
+            ],
+            "cards": [
+                {
+                    "name": c.name,
+                    "type": c.type,
+                    "stamps_required": c.stamps_required,
+                    "reward_title": c.reward_title,
+                    "status": c.status,
+                    "created_at": c.created_at.isoformat(),
+                }
+                for c in Card.objects.for_merchant(merchant).order_by("created_at")
+            ],
+        }
+        resp = Response(payload)
+        resp["Content-Disposition"] = f'attachment; filename="stampn-{merchant.slug}-data.json"'
+        return resp
