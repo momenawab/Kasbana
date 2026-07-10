@@ -544,6 +544,7 @@
     "enrollTagline": "Join-page tagline",
     "upgradeToUnlock": "Upgrade to unlock",
     "notifEmail": "Email notifications",
+    "notifEmailHint": "Product announcements only. Account, billing and support emails are always sent.",
     "notifWhatsapp": "WhatsApp notifications",
     "currentPassword": "Current password",
     "newPassword": "New password",
