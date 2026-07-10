@@ -56,4 +56,3 @@ class AdminContactMessageCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = ContactMessage
         fields = ["name", "email", "subject", "message"]
-
