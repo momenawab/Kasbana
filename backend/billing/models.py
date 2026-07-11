@@ -124,6 +124,11 @@ class Subscription(UUIDModel, TimeStampedModel):
     override_expires_at = models.DateTimeField(null=True, blank=True)
     notes = models.TextField(blank=True)
 
+    class Meta:
+        # Platform analytics counts subscriptions by status (active / trialing /
+        # past_due / churned) on every dashboard load — index the status column.
+        indexes = [models.Index(fields=["status"])]
+
     def __str__(self) -> str:
         return f"{self.merchant_id} · {self.status} · {self.plan}"
 
@@ -217,7 +222,13 @@ class Invoice(UUIDModel, TimeStampedModel):
 
     class Meta:
         ordering = ["-issued_at"]
-        indexes = [models.Index(fields=["merchant", "-issued_at"])]
+        indexes = [
+            models.Index(fields=["merchant", "-issued_at"]),
+            # Revenue analytics scans PAID invoices by issue date cross-tenant
+            # (MRR, month buckets, payer set) — the merchant-leading index above
+            # can't serve those, so index (status, issued_at) too.
+            models.Index(fields=["status", "issued_at"]),
+        ]
         constraints = [
             # DB-level guarantee that a replayed (or concurrent duplicate) webhook
             # can't create a second invoice for the same gateway transaction.

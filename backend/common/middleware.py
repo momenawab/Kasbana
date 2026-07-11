@@ -7,9 +7,46 @@ unambiguous for an authenticated user. Anonymous/public requests get ``None``.
 
 from __future__ import annotations
 
+import uuid
 from collections.abc import Callable
 
 from django.http import HttpRequest, HttpResponse, JsonResponse
+
+from common.logging import request_id_var
+
+REQUEST_ID_HEADER = "X-Request-ID"
+
+
+class RequestIDMiddleware:
+    """Give every request a correlation id: reuse an inbound ``X-Request-ID``
+    (e.g. from Caddy) or mint one, expose it to logging via a ContextVar, tag the
+    Sentry scope, and echo it on the response so a client can quote it in a bug
+    report. Placed first so it wraps every other middleware's logging."""
+
+    def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]) -> None:
+        self.get_response = get_response
+
+    def __call__(self, request: HttpRequest) -> HttpResponse:
+        incoming = request.headers.get(REQUEST_ID_HEADER, "").strip()
+        # Cap an attacker-supplied header so it can't bloat every log line.
+        request_id = incoming[:64] if incoming else uuid.uuid4().hex
+        token = request_id_var.set(request_id)
+        request.request_id = request_id  # type: ignore[attr-defined]
+
+        # Tie Sentry issues to the same id, best-effort (no-op without the SDK).
+        try:
+            import sentry_sdk
+
+            sentry_sdk.set_tag("request_id", request_id)
+        except Exception:  # pragma: no cover - Sentry absent/uninitialised
+            pass
+
+        try:
+            response = self.get_response(request)
+        finally:
+            request_id_var.reset(token)
+        response[REQUEST_ID_HEADER] = request_id
+        return response
 
 
 class StaffContextMiddleware:

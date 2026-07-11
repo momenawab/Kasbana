@@ -122,6 +122,7 @@ LOCAL_APPS = [
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
 MIDDLEWARE = [
+    "common.middleware.RequestIDMiddleware",  # first: correlation id for all logs
     "corsheaders.middleware.CorsMiddleware",  # before CommonMiddleware
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",  # serve static behind Caddy
@@ -266,8 +267,13 @@ SIMPLE_JWT = {
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "Stampn API",
-    "DESCRIPTION": "Digital loyalty & wallet-pass platform — v1 API.",
-    "VERSION": "1.0.0",
+    "DESCRIPTION": (
+        "Digital loyalty & wallet-pass platform. Merchant API under `/api/v1` and "
+        "the admin console under `/api/admin/v1`. This document is generated from "
+        "the live code by drf-spectacular — `contracts/openapi.yaml` is the "
+        "committed snapshot and CI fails if it drifts from the served schema."
+    ),
+    "VERSION": "1.2.0",
     "SERVE_INCLUDE_SCHEMA": False,
     "SCHEMA_PATH_PREFIX": r"/api/v1",
     "ENUM_NAME_OVERRIDES": {
@@ -401,6 +407,40 @@ CELERY_BEAT_SCHEDULE = {
 }
 CELERY_TASK_ACKS_LATE = True
 CELERY_TIMEZONE = TIME_ZONE
+
+# ── Structured logging (Phase D) ──────────────────────────────────────────────
+# JSON logs (one object per line) with a request-id correlation field, so prod
+# logs are queryable. Format is env-controlled: `console` (human-readable) is the
+# default for local dev; prod sets LOG_FORMAT=json. Both attach RequestIDFilter.
+LOG_LEVEL = env("LOG_LEVEL", "INFO")
+LOG_FORMAT = env("LOG_FORMAT", "console")  # "json" in prod
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "filters": {
+        "request_id": {"()": "common.logging.RequestIDFilter"},
+    },
+    "formatters": {
+        "json": {"()": "common.logging.JSONFormatter"},
+        "console": {
+            "format": "%(asctime)s %(levelname)-7s [%(request_id)s] %(name)s: %(message)s",
+        },
+    },
+    "handlers": {
+        "default": {
+            "class": "logging.StreamHandler",
+            "filters": ["request_id"],
+            "formatter": "json" if LOG_FORMAT == "json" else "console",
+        },
+    },
+    "root": {"handlers": ["default"], "level": LOG_LEVEL},
+    "loggers": {
+        # Django's request logger duplicates 4xx/5xx we already surface; keep it
+        # at ERROR so the JSON stream isn't noisy with WARNING 404s.
+        "django.request": {"level": "ERROR", "handlers": ["default"], "propagate": False},
+    },
+}
 
 # ── Observability — Sentry (Phase 5) ──────────────────────────────────────────
 # No-op unless SENTRY_DSN is set, so dev/CI stay silent. In prod the DSN comes
