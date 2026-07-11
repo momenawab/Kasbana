@@ -31,6 +31,7 @@ from dashboard.views_announcements import (
     AnnouncementReadView,
 )
 from dashboard.views_main_qr import MainQrRotateView, MainQrView
+from dashboard.views_support import MerchantSupportMessagesView
 from wallets.views import CardWalletDesignView, WalletTemplateListView
 
 urlpatterns = [
@@ -48,6 +49,8 @@ urlpatterns = [
     # Main QR (one printed code, re-pointable at any program)
     path("settings/main-qr", MainQrView.as_view(), name="main-qr"),
     path("settings/main-qr/rotate", MainQrRotateView.as_view(), name="main-qr-rotate"),
+    # Merchant support (message the team; lands on the admin Support tab)
+    path("support/messages", MerchantSupportMessagesView.as_view(), name="support-messages"),
     # Uploads
     path("uploads", UploadView.as_view(), name="upload"),
     # Wallet pass templates (layout-locked catalog — single source of truth)

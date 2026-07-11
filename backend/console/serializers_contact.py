@@ -27,6 +27,8 @@ class ContactMessageCreateSerializer(serializers.ModelSerializer):
 
 
 class ContactMessageSerializer(serializers.ModelSerializer):
+    merchant_name = serializers.CharField(source="merchant.name", default=None, read_only=True)
+
     class Meta:
         model = ContactMessage
         fields = [
@@ -36,6 +38,9 @@ class ContactMessageSerializer(serializers.ModelSerializer):
             "subject",
             "message",
             "status",
+            "source",
+            "merchant",
+            "merchant_name",
             "read_at",
             "replied_at",
             "created_at",

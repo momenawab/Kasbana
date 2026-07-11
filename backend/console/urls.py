@@ -100,6 +100,7 @@ from console.views_support import (
     ImpersonateView,
     ImpersonationEndView,
     ImpersonationListView,
+    MerchantContactMessagesView,
     ResendInviteView,
     SendPasswordResetView,
     SupportNotesView,
@@ -209,6 +210,11 @@ urlpatterns = [
         "merchants/<uuid:merchant_id>/support/notes",
         SupportNotesView.as_view(),
         name="admin-merchant-support-notes",
+    ),
+    path(
+        "merchants/<uuid:merchant_id>/support/messages",
+        MerchantContactMessagesView.as_view(),
+        name="admin-merchant-support-messages",
     ),
     path(
         "merchants/<uuid:merchant_id>/activity",

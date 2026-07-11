@@ -32,7 +32,8 @@
     "locations": "Locations",
     "team": "Team",
     "billing": "Billing",
-    "settings": "Settings"
+    "settings": "Settings",
+    "support": "Support"
   },
   "roles": {
     "OWNER": "Owner",
@@ -472,6 +473,23 @@
     "rotateConfirmCta": "Reset it",
     "rotated": "A new main QR was generated.",
     "rotateFailed": "Couldn't reset the QR code."
+  },
+  "support": {
+    "title": "Help & support",
+    "explainer": "Send our team a message and we'll reply to your account email. We usually respond within one business day.",
+    "subject": "Subject",
+    "message": "How can we help?",
+    "send": "Send message",
+    "sent": "Message sent — we'll reply by email.",
+    "sendFailed": "Couldn't send your message. Please try again.",
+    "history": "Your messages",
+    "emptyTitle": "No messages yet",
+    "emptyBody": "When you contact support, your messages and their status show here.",
+    "status": {
+      "new": "Sent",
+      "read": "Seen",
+      "replied": "Replied"
+    }
   },
   "poster": {
     "print": "Print / Save as PDF",

@@ -25,8 +25,9 @@ from accounts.models import INVITE_TTL_DAYS, PasswordResetToken, StaffInvite
 from billing.services import subscription_for
 from console import activity, audit
 from console.impersonation import end_impersonation, impersonation_target, start_impersonation
-from console.models import AdminUser, Impersonation, SupportNote
+from console.models import AdminUser, ContactMessage, Impersonation, SupportNote
 from console.permissions import AdminAPIView, IsAdminUser, IsSupportAdmin
+from console.serializers_contact import ContactMessageSerializer
 from console.serializers_support import (
     ActivityEventSerializer,
     ImpersonateRequestSerializer,
@@ -314,6 +315,20 @@ class SupportNotesView(AdminAPIView):
             ).data,
             status=201,
         )
+
+
+class MerchantContactMessagesView(AdminAPIView):
+    """GET /merchants/{id}/support/messages — this merchant's dashboard messages.
+
+    The team replies from here with the same branded email flow as the global
+    inbox (POST /messages/{id}/reply). Read is open to any admin, matching the
+    notes thread and every other console read.
+    """
+
+    @extend_schema(responses=ContactMessageSerializer(many=True))
+    def get(self, request: Request, merchant_id: str) -> Response:
+        rows = ContactMessage.objects.filter(merchant_id=merchant_id).order_by("-created_at")[:50]
+        return Response(ContactMessageSerializer(rows, many=True).data)
 
 
 class ActivityView(AdminAPIView):

@@ -183,7 +183,30 @@ A merchant sets a main card, prints one QR, switches the main card, and the
 
 ---
 
-# Phase B — Merchant support (dashboard → admin Support tab)
+# Phase B — Merchant support (dashboard → admin Support tab) ✅ DONE
+
+> **Status: built on `dev`.** `console.ContactMessage` gained nullable `merchant`
+> + `source` fields (migration `0012`); new dashboard `GET/POST /support/messages`
+> (`dashboard/views_support.py`, identity from the session, `support_message`
+> throttle scope), new admin `GET /merchants/{id}/support/messages`
+> (`views_support.py`); dashboard `/support` screen + sidebar entry; admin
+> `SupportTab` "Messages from merchant" thread with reply; global `MessagesHome`
+> gained a source filter + merchant chip. **13 new tests; full gate green**
+> (backend 599 pytest · ruff · black · mypy; both frontends eslint 0 warnings +
+> build; dashboard 46 vitest). Verified end-to-end at runtime: a merchant sent a
+> message, it appeared on the admin per-merchant list **and** the global inbox
+> tagged `dashboard`/merchant, a support admin replied (branded email rendered,
+> `To: shop@sup.com`), and the merchant's status flipped to `replied`.
+>
+> **Probes that held:** a spoofed `email`/`name`/`merchant` in the POST body is
+> ignored (identity comes from the session); a merchant JWT is rejected from the
+> admin route (401); empty body → 400; the throttle blocks the 11th POST in a
+> minute (10×201 then 429); the marketing intake still defaults to
+> `source=marketing`, `merchant=null`.
+>
+> **Not browser-driven:** the admin `SupportTab` UI itself was verified by build +
+> its endpoints via curl, not a Playwright pass (admin login is MFA-gated); the
+> dashboard `/support` screen *was* driven in a real browser.
 
 ## The problem
 
