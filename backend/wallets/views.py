@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from django.conf import settings
 from drf_spectacular.utils import extend_schema
+from rest_framework import serializers
 from rest_framework.permissions import BasePermission
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -54,6 +55,15 @@ class CardWalletDesignView(APIView):
         return Response(ser.data)
 
 
+class WalletTemplateListSerializer(serializers.Serializer):
+    """Response shape for the template catalog. Each template is a free-form
+    object (per-platform layout dicts), so it's documented as an open dict."""
+
+    templates = serializers.ListField(child=serializers.DictField())
+    platform_logo_url = serializers.CharField(allow_blank=True)
+    platform_label = serializers.CharField(allow_blank=True)
+
+
 class WalletTemplateListView(APIView):
     """``GET /wallet-templates`` — the layout-locked template catalog.
 
@@ -65,7 +75,7 @@ class WalletTemplateListView(APIView):
 
     permission_classes: list[type[BasePermission]] = [CanManageCards]
 
-    @extend_schema(tags=["wallets"])
+    @extend_schema(tags=["wallets"], responses=WalletTemplateListSerializer)
     def get(self, request: Request) -> Response:
         return Response(
             {

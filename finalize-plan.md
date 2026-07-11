@@ -306,20 +306,39 @@ because it is merchant-visible polish, not hardening.
 
 ---
 
-# Phase D — Cross-cutting backend hardening
+# Phase D — Cross-cutting backend hardening ✅ DONE
 
-- **Structured logging** — no `LOGGING` config exists today. Add JSON logs + an
-  `X-Request-ID` middleware, and attach the request ID to Sentry events.
-- **DB index review** — profile the cross-tenant admin analytics aggregates
-  (revenue, platform, lifecycle) and the heaviest merchant list queries.
-- **OpenAPI contract sync** — the frozen `contracts/openapi.yaml` has drifted.
-  Fold in the additive changes: `/loyalty/scan`, `Card.single_use`,
-  `Card.referral_enabled`, `card_type`, the `specialized_roles` +
-  `custom_branding` entitlements, the branded-enroll + registration-theme fields,
-  the **new Phase A + B endpoints**, and **all `/api/admin/v1/*` console
-  endpoints (Phases 2–15)**. Reconcile against the live drf-spectacular schema at
-  `/api/schema` and add a CI drift check. `redocly.yaml` (untracked, in the repo
-  root) suggests this was already being set up.
+> **Status: built on `dev`.** All three sub-tasks landed. **9 new tests; full
+> gate green** (backend 608 pytest · ruff · black · mypy · schema 0 errors; new
+> `check_openapi` CI step in sync). Runtime-verified: JSON logs carry
+> `request_id` + `extra=` fields under `LOG_FORMAT=json`, the `X-Request-ID`
+> header is minted + echoed (and an inbound one reused), and both index
+> migrations apply to a real DB.
+>
+> **What shipped:**
+> - **Structured logging** — new `common/logging.py` (dependency-free
+>   `JSONFormatter` + `RequestIDFilter` + a `request_id` `ContextVar`), a
+>   `RequestIDMiddleware` placed first in the chain (reuses/mints `X-Request-ID`,
+>   caps it at 64 chars, tags the Sentry scope, echoes it on the response), and a
+>   `LOGGING` config in `base.py`. Env-controlled `LOG_FORMAT` (`console` default;
+>   prod defaults to `json`).
+> - **DB indexes (console/billing only, per decision)** — `billing.Invoice`
+>   gained `(status, issued_at)` for the cross-tenant revenue scans (the existing
+>   `(merchant, -issued_at)` can't serve them); `billing.Subscription` gained
+>   `(status)` for the platform status counts. Migration `billing/0011`.
+>   **Frozen-core findings, noted not touched:** `core.StampLedger` would benefit
+>   from `(event_type)` and `(merchant, created_at)` indexes for the platform
+>   analytics `.filter(event_type=…)` and `.values("merchant").annotate(Max)`
+>   queries — deferred because `core` is frozen.
+> - **OpenAPI contract sync (generate-from-code, per decision)** — made
+>   drf-spectacular the source of truth. Fixed the schema-gen errors
+>   (`WalletTemplateListView`, `AccountExportView` had no response serializer;
+>   schema now generates with **0 errors**), regenerated `contracts/openapi.yaml`
+>   from the live code (1700 curated lines → 8368 generated, now covering all 83
+>   `/api/admin/v1/*` operations + the Phase A/B endpoints, bumped to `1.2.0`),
+>   and added a `console` management command **`check_openapi`** (`--write` to
+>   regenerate, default to diff-and-fail) wired as a **CI drift step** in
+>   `backend-ci.yml`. Generation confirmed deterministic across runs.
 
 ---
 

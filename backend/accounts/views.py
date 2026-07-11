@@ -14,6 +14,7 @@ from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
 from django.db import transaction
 from django.utils import timezone
+from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.request import Request
@@ -300,6 +301,7 @@ class AccountExportView(APIView):
 
     permission_classes = [IsOwner]
 
+    @extend_schema(responses=OpenApiTypes.OBJECT)
     def get(self, request: Request) -> Response:
         merchant = get_request_merchant(request)
         s = settings_for(merchant)
