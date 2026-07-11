@@ -60,7 +60,7 @@ class WalletTemplateListView(APIView):
     One source of truth for the backend renderers and the frontend gallery: the
     fixed per-platform layouts live in code (``wallets.templates``); this exposes
     the compact, frontend-safe list plus the platform-logo URL (so the preview
-    can render the real bottom-left logo when configured).
+    can render the real bottom-right logo when configured).
     """
 
     permission_classes: list[type[BasePermission]] = [CanManageCards]
