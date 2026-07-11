@@ -444,16 +444,23 @@ Full backend gate (ruff/black/mypy/pytest) + frontend gate (eslint/prettier/vite
 
 # Phase F — Housekeeping & operational decisions
 
-- **WhatsApp** — dormant, disabled on every plan. Decide: revive or delete.
-- **Fawry** — adapter + webhook kept but disabled (Paymob-only). Same decision.
+- **WhatsApp** ✅ **DELETED** (owner's call) — dev commit `4e59644`. The dormant
+  messaging channel (client, metering, quota, `WhatsAppUsage`, `MessageChannel`,
+  the `channel` field, plan `whatsapp`/`whatsapp_quota`) is fully removed; the
+  merchant WhatsApp *contact link* on passes + `notif_whatsapp` preference stay.
+  See [`whatsapp-removal-plan.md`](./whatsapp-removal-plan.md). CI-green.
+- **Fawry** ✅ **DELETED** (owner's call) — dev commit `858604d`. The disabled
+  adapter, `FawryWebhookView` + route, settings block, and export removed;
+  unknown-provider guards kept.
 - **Secret-rotation runbook** — document rotating wallet / gateway / JWT keys.
-  The admin incident runbook exists; a general secrets runbook does not.
+  The admin incident runbook exists; a general secrets runbook does not. *(open)*
 - **Backup cron confirmation** — verify the nightly `backup.sh` + weekly
-  `verify_backup.sh` crontab lines are actually installed on the box.
+  `verify_backup.sh` crontab lines are actually installed on the box. *(open —
+  needs server access)*
 - **MFA enrolment confirmation** — confirm every real `AdminUser` completed
-  forced enrolment post-deploy.
+  forced enrolment post-deploy. *(open — needs prod DB access)*
 - **Stale docs** — after this file lands, delete or redirect `main/docs/MISSING.md`
-  and `finalize-missing.md` so there is one source of truth.
+  and `finalize-missing.md` so there is one source of truth. *(open)*
 
 ---
 
