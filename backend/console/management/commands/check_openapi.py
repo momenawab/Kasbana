@@ -50,7 +50,12 @@ class Command(BaseCommand):
                 f"{CONTRACT_PATH} is missing. Run `manage.py check_openapi --write`."
             )
 
-        committed = CONTRACT_PATH.read_bytes()
+        # Normalize line endings before comparing: git ``autocrlf=true`` (common on
+        # Windows) checks the LF-committed file out as CRLF, which would otherwise
+        # read back as a spurious "drift" against the LF the renderer emits. Real
+        # content changes still differ; a pure EOL difference does not.
+        committed = CONTRACT_PATH.read_bytes().replace(b"\r\n", b"\n")
+        generated = generated.replace(b"\r\n", b"\n")
         if committed == generated:
             self.stdout.write(self.style.SUCCESS("OpenAPI contract is in sync."))
             return

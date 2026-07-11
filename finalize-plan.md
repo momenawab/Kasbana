@@ -297,12 +297,84 @@ email and sees the status flip to `replied`.
 
 ---
 
-# Phase C — Wallet pass templates
+# Phase C — Wallet pass templates ✅ DONE
 
-Fully specced already in [`wallet-templates-plan.md`](./wallet-templates-plan.md)
+> **Status: built on `dev`** (commit `a593d8b` "templates-only passes with
+> hardcoded field positions" + follow-ups; migration
+> `0007_walletcarddesign_templates`). The `wallet-templates-plan.md` spec is fully
+> implemented and passes the **entire enforced CI gate**: backend `ruff` · `black`
+> · `mypy` (246 files) · `manage.py check` · `makemigrations --check` ·
+> `check_openapi` · full `pytest` green; frontend `eslint` (0 warnings) · `vitest`
+> (46) · `vite build` green.
+>
+> **What shipped:** `template_key` + `bottom_image_url` on `WalletCardDesign`; the
+> code-defined registry `wallets/templates.py` (`loyalty_stamps`, `coffee_stamps`,
+> `points_reward`, `store_image`, `minimal`) + `resolve_template`/`template_choices`;
+> `design.py::template_for`/`render_template_fields`; Apple `passdata.py` (storeCard
+> fields from the template) + `signing.py` (stamp grid **or** `_render_bottom_image_strip`
+> into the top strip band); Google `builders.py` (title/subtitle/rows) + `hero.py`
+> (`bottom_image_hero_url` + per-count stamp hero); serializer validation;
+> `GET /api/v1/wallet-templates` (`WalletTemplateListView`); and the frontend
+> `TemplatePicker.jsx` (+ test), `WalletDesignEditor.jsx`, `WalletPreview.jsx`,
+> `api.js`, `en.json`/`ar.json`.
+>
+> **One divergence from the written spec, worth recording:** the build went
+> **templates-only**, not the spec's "parallel path." The plan intended
+> `template_key == "custom"` to keep rendering today's freeform editor unchanged;
+> instead `resolve_template()` **never returns `None`** — a `custom`/unknown/missing
+> key now falls back to the card type's default locked template (`loyalty_stamps`
+> for STAMP, `points_reward` for POINTS). So field positions are always locked and
+> the old freeform *rendering* path is retired. Internally consistent and tested,
+> but a product decision the original spec did not call for.
+
+Fully specced in [`wallet-templates-plan.md`](./wallet-templates-plan.md)
 (a layout-locked template gallery over the existing freeform `WalletCardDesign`
-editor). **Not started.** Read that file cold; it is self-contained. Slot it here
-because it is merchant-visible polish, not hardening.
+editor). Read that file cold; it is self-contained.
+Goal
+
+Extend the existing freeform wallet-pass editor with a layout-locked template gallery (AddToWallet.co style). Merchant picks a pre-designed pass and can only tweak colors, stamp icons, a bottom image, text, and logo — never field positions.
+
+The crux rule (Apple vs Google)
+
+The same template renders on both platforms, but the bottom visual moves:
+- Apple storeCard → bottom visual goes in the top strip band (nothing can sit below the barcode)
+- Google flat card → same visual goes under the QR/barcode
+
+This mapping (stamps = stamp counter, image = full-width photo, none) is the core of the feature.
+
+Backend tasks (backend/wallets/)
+
+1. Model + migration — add template_key (default "custom") and bottom_image_url to WalletCardDesign (never touch frozen core)
+2. wallets/templates.py — a pure-dict registry of 4–6 code-defined templates (locked layouts for both platforms + which vars are editable)
+3. design.py — add resolve_layout(card) to return the fixed layout or fall through to freeform
+4. Apple passdata.py — build storeCard fields from the template; force strip on for stamps
+5. Apple signing.py — render stamp grid OR the bottom image into the strip band (top)
+6. Google builders.py + hero.py — title/subtitle/rows from template; per-count stamp_hero_url for stamps, new bottom_image_hero_url for images
+7. Google client.py — keep refreshing hero on stamp for stamps templates
+8. Serializer — validate template_key, only allow that template's editable vars
+9. Endpoint — no route change (PATCH /cards/{id}/wallet-design, still gated by custom_branding)
+10. Tests — new test_wallet_templates.py covering the Apple-strip/Google-hero split, non-editable-var rejection, tenancy + gating, unique field keys
+
+Frontend tasks (frontend/dashboard/src/)
+
+1. Expose the registry (prefer a GET /wallet-templates endpoint)
+2. Template gallery picker in WalletDesignEditor.jsx + "Custom (advanced)" escape hatch
+3. Restricted editor — show only the template's editable controls
+4. Dual live preview in WalletPreview.jsx applying the Apple-top / Google-under rule
+5. Save via useSaveWalletDesign
+6. i18n walletTemplates.* in en + ar
+
+Definition of done
+
+Full backend gate (ruff/black/mypy/pytest) + frontend gate (eslint/prettier/vite build/vitest) green; merchant can pick → customize → see faithful Apple+Google preview → save → real pass reflects it; ship both platforms together; promote to prod only on approval.
+
+---
+> **Contradiction resolved (2026-07-11):** an earlier note flagged that mem0
+> memories said Wallet Templates was already implemented (positions hardcoded,
+> freeform editor retired) while this file said "Not started." Verified against the
+> code on disk: the memories were correct — Phase C was already built, committed,
+> and green (see the status block above). This file's "Not started" was stale and
+> is now corrected.
 
 ---
 
