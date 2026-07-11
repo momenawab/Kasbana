@@ -297,12 +297,39 @@ email and sees the status flip to `replied`.
 
 ---
 
-# Phase C — Wallet pass templates
+# Phase C — Wallet pass templates ✅ DONE
 
-Fully specced already in [`wallet-templates-plan.md`](./wallet-templates-plan.md)
+> **Status: built on `dev`** (commit `a593d8b` "templates-only passes with
+> hardcoded field positions" + follow-ups; migration
+> `0007_walletcarddesign_templates`). The `wallet-templates-plan.md` spec is fully
+> implemented and passes the **entire enforced CI gate**: backend `ruff` · `black`
+> · `mypy` (246 files) · `manage.py check` · `makemigrations --check` ·
+> `check_openapi` · full `pytest` green; frontend `eslint` (0 warnings) · `vitest`
+> (46) · `vite build` green.
+>
+> **What shipped:** `template_key` + `bottom_image_url` on `WalletCardDesign`; the
+> code-defined registry `wallets/templates.py` (`loyalty_stamps`, `coffee_stamps`,
+> `points_reward`, `store_image`, `minimal`) + `resolve_template`/`template_choices`;
+> `design.py::template_for`/`render_template_fields`; Apple `passdata.py` (storeCard
+> fields from the template) + `signing.py` (stamp grid **or** `_render_bottom_image_strip`
+> into the top strip band); Google `builders.py` (title/subtitle/rows) + `hero.py`
+> (`bottom_image_hero_url` + per-count stamp hero); serializer validation;
+> `GET /api/v1/wallet-templates` (`WalletTemplateListView`); and the frontend
+> `TemplatePicker.jsx` (+ test), `WalletDesignEditor.jsx`, `WalletPreview.jsx`,
+> `api.js`, `en.json`/`ar.json`.
+>
+> **One divergence from the written spec, worth recording:** the build went
+> **templates-only**, not the spec's "parallel path." The plan intended
+> `template_key == "custom"` to keep rendering today's freeform editor unchanged;
+> instead `resolve_template()` **never returns `None`** — a `custom`/unknown/missing
+> key now falls back to the card type's default locked template (`loyalty_stamps`
+> for STAMP, `points_reward` for POINTS). So field positions are always locked and
+> the old freeform *rendering* path is retired. Internally consistent and tested,
+> but a product decision the original spec did not call for.
+
+Fully specced in [`wallet-templates-plan.md`](./wallet-templates-plan.md)
 (a layout-locked template gallery over the existing freeform `WalletCardDesign`
-editor). **Not started.** Read that file cold; it is self-contained. Slot it here
-because it is merchant-visible polish, not hardening.
+editor). Read that file cold; it is self-contained.
 Goal
 
 Extend the existing freeform wallet-pass editor with a layout-locked template gallery (AddToWallet.co style). Merchant picks a pre-designed pass and can only tweak colors, stamp icons, a bottom image, text, and logo — never field positions.
@@ -342,7 +369,12 @@ Definition of done
 Full backend gate (ruff/black/mypy/pytest) + frontend gate (eslint/prettier/vite build/vitest) green; merchant can pick → customize → see faithful Apple+Google preview → save → real pass reflects it; ship both platforms together; promote to prod only on approval.
 
 ---
-⚠️ One flag worth raising: two mem0 memories (~7 days old) say a Wallet Templates feature was already implemented from this same plan — including making positions fully hardcoded and removing the freeform editor. But finalize-plan.md (written 1 day ago) still marks Phase C "Not started." Those contradict. Before starting Phase C, I'd want to check the actual backend/wallets/ code for templates.py / template_key to see what's really on disk. Want me to verify the current state?
+> **Contradiction resolved (2026-07-11):** an earlier note flagged that mem0
+> memories said Wallet Templates was already implemented (positions hardcoded,
+> freeform editor retired) while this file said "Not started." Verified against the
+> code on disk: the memories were correct — Phase C was already built, committed,
+> and green (see the status block above). This file's "Not started" was stale and
+> is now corrected.
 
 ---
 
