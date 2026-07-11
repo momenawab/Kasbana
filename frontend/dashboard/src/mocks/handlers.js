@@ -31,4 +31,11 @@ export const handlers = [
     Object.assign(db.businessSettings, rest, contact?.phone ? { phone: contact.phone } : {})
     return HttpResponse.json(db.businessSettings)
   }),
+  // Registration-page (enroll) theme — GET seeds the editor; PATCH merges &
+  // echoes so a save in the "Registration page" tab persists for the session.
+  http.get(`${BASE}/settings/enroll-theme`, () => HttpResponse.json(db.enrollTheme)),
+  http.patch(`${BASE}/settings/enroll-theme`, async ({ request }) => {
+    Object.assign(db.enrollTheme, await request.json())
+    return HttpResponse.json(db.enrollTheme)
+  }),
 ]

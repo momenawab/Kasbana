@@ -7,11 +7,11 @@ import QrBlock from '../../components/QrBlock'
 function PreviewField({ label, required }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-xs text-tx-2">
+      <span className="mb-1 block text-xs text-black/70">
         {label}
-        {required && <span className="text-danger"> *</span>}
+        {required && <span className="text-black/70"> *</span>}
       </span>
-      <div className="h-8 w-full rounded-ctl border border-line bg-white" />
+      <div className="h-8 w-full rounded-ctl border border-black/10 bg-white" />
     </label>
   )
 }
@@ -27,7 +27,7 @@ export default function EnrollPreview({
   const { t } = useTranslation()
   const accent = theme.accent_color || '#0E1B2A'
   const btnText = theme.button_text_color || '#FFFFFF'
-  const pageBg = theme.bg_color || '#FFFFFF'
+  const pageBg = theme.bg_color || '#E7E0E4'
   const fc = theme.fields_config || {}
   const qr = theme.qr_style || {}
   const showPoweredBy = !theme.hide_powered_by
@@ -57,15 +57,15 @@ export default function EnrollPreview({
               </span>
             )}
             <div className="min-w-0">
-              <div className="truncate text-sm font-semibold text-tx">{merchantName}</div>
-              <div className="truncate text-xs text-tx-3">{programName}</div>
+              <div className="truncate text-sm font-semibold text-black">{merchantName}</div>
+              <div className="truncate text-xs text-black/50">{programName}</div>
             </div>
           </div>
 
-          <h3 className="font-head text-lg font-bold text-tx">
+          <h3 className="font-head text-lg font-bold text-black">
             {t('enroll.title', { merchant: merchantName })}
           </h3>
-          <p className="mb-4 mt-1 text-xs text-tx-2">
+          <p className="mb-4 mt-1 text-xs text-black/70">
             {theme.welcome_body || t('enroll.subtitle', { reward: rewardTitle })}
           </p>
 
@@ -90,25 +90,26 @@ export default function EnrollPreview({
           </div>
 
           {(theme.terms_url || theme.privacy_url) && (
-            <div className="mt-2 flex justify-center gap-3 text-[10px] text-tx-3 underline">
+            <div className="mt-2 flex justify-center gap-3 text-[10px] text-black/50 underline">
               {theme.terms_url && <span>{t('enroll.terms')}</span>}
               {theme.privacy_url && <span>{t('enroll.privacy')}</span>}
             </div>
           )}
 
           {showPoweredBy && (
-            <p className="mt-3 text-center text-[10px] text-tx-3">{t('enroll.poweredBy')}</p>
+            <p className="mt-3 text-center text-[10px] text-black/50">{t('enroll.poweredBy')}</p>
           )}
         </div>
       </div>
 
-      {/* QR preview — colors live; shape (dots/rounded) applies on the saved QR. */}
+      {/* QR preview — colors and module shape (square/rounded/dots) are live. */}
       <div className="mt-4 flex justify-center">
         <QrBlock
           value={joinUrl}
           size={140}
           fgColor={qr.fg_color || '#0E1B2A'}
           bgColor={qr.bg_color || '#FFFFFF'}
+          moduleStyle={qr.module_style || 'square'}
           downloadName="enroll-qr-preview"
         />
       </div>
