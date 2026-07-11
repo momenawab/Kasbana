@@ -34,6 +34,7 @@ class Permission:
     COMPLIANCE_DELETE = "compliance.delete"  # Phase 13 — right-to-be-forgotten merchant delete
     RETENTION_MANAGE = "retention.manage"  # Phase 13 — edit the data-retention policy
     OPS_MANAGE = "ops.manage"  # Phase 14 — flags/settings/maintenance, job & webhook retries
+    PARTNERS_MANAGE = "partners.manage"  # Phase E.1 — referral partners + reward config
 
 
 ALL_PERMISSIONS: frozenset[str] = frozenset(
@@ -59,6 +60,7 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
             Permission.BILLING_MANAGE,
             Permission.REVENUE_VIEW,
             Permission.PROMOTIONS_MANAGE,
+            Permission.PARTNERS_MANAGE,
         }
     ),
     AdminRole.SUPPORT: frozenset(

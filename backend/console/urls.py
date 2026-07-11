@@ -87,6 +87,12 @@ from console.views_ops import (
     WebhookDeliveryListView,
     WebhookReplayView,
 )
+from console.views_partners import (
+    PartnerConfigView,
+    PartnerDetailView,
+    PartnerListView,
+    PartnerReferralsView,
+)
 from console.views_plans import PlanDetailView, PlanListView
 from console.views_subscription import (
     CompView,
@@ -305,6 +311,15 @@ urlpatterns = [
         "merchants/<uuid:merchant_id>/apply-coupon",
         ApplyCouponView.as_view(),
         name="admin-merchant-apply-coupon",
+    ),
+    # Partner / merchant-referral program (Phase E.1)
+    path("partner-config", PartnerConfigView.as_view(), name="admin-partner-config"),
+    path("partners", PartnerListView.as_view(), name="admin-partners"),
+    path("partners/<uuid:partner_id>", PartnerDetailView.as_view(), name="admin-partner-detail"),
+    path(
+        "partners/<uuid:partner_id>/referrals",
+        PartnerReferralsView.as_view(),
+        name="admin-partner-referrals",
     ),
     # Admin team & RBAC (Phase 12)
     path("admins", AdminListCreateView.as_view(), name="admin-admins"),
