@@ -6,7 +6,7 @@
 // strip at the TOP, in the Google hero under the header). The merchant's business
 // name rides as Apple `logoText` beside the top-left brand logo; the platform
 // (Kasbana) brand rides in the top-right header field (Apple has no right-side
-// image slot), and as a bottom-left watermark on the Google hero.
+// image slot), and as a bottom-right watermark on the Google hero.
 // Pure/presentational — updates as props change.
 import { useTranslation } from 'react-i18next'
 import { arDigits } from '../lib/format'
@@ -129,13 +129,13 @@ function Barcode({ fg, altText }) {
   )
 }
 
-// Platform (Kasbana) logo at the bottom-left of the pass. `url` is the real
+// Platform (Kasbana) logo at the bottom-right of the pass. `url` is the real
 // asset when configured; otherwise a drawn PLACEHOLDER badge (the slot is wired).
 function PlatformLogo({ url, fg }) {
   return (
-    <div className="pointer-events-none absolute bottom-1.5 left-2">
+    <div className="pointer-events-none absolute bottom-1.5 right-2">
       {url ? (
-        <img src={url} alt="" className="h-4 max-w-[64px] object-contain opacity-80" />
+        <img src={url} alt="" className="h-auto max-w-[104px] object-contain opacity-90" />
       ) : (
         <span
           className="rounded-[3px] px-1 py-px text-[7px] font-bold uppercase tracking-wide"
@@ -152,7 +152,7 @@ export default function WalletPreview({
   platform = 'APPLE',
   design = null,
   template = null,
-  platformLogoUrl = '',
+  platformLogoUrl = '/stampn-lockup.png',
   platformLabel = 'Stampn',
   logoUrl,
   colorBg = '#0E1B2A',

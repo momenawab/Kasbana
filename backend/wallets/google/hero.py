@@ -8,7 +8,7 @@ distinct URL, so a PATCH to the new URL forces Google to fetch the fresh image.
 
 Image-style templates do the same with the merchant's bottom image (static,
 content-addressed on the image URL). The platform (Kasbana) watermark is
-composited at the bottom-left of every banner.
+composited at the bottom-right of every banner.
 
 All work is best-effort — a render/storage failure returns ``None`` so the pass
 still updates its numeric balance.
@@ -156,7 +156,7 @@ def stamp_hero_url(customer_card: CustomerCard, *, force: bool = False) -> str |
                 empty_icon=empty_icon,
                 filled_icon=filled_icon,
             )
-            # Platform watermark at the bottom-left of the banner.
+            # Platform watermark at the bottom-right of the banner.
             img = apply_watermark(img, fg)
             buf = io.BytesIO()
             img.convert("RGB").save(buf, format="PNG")

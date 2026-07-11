@@ -3,7 +3,7 @@
 * **Apple** → the platform brand rides as ``logoText`` beside the top-left logo
   (see ``wallets.apple.passdata``); Apple store cards have no right-side image
   slot and nothing may sit below the barcode, so there is no footer image.
-* **Google** → composited into the bottom-left corner of the hero banner when a
+* **Google** → composited into the bottom-right corner of the hero banner when a
   hero is generated (Google has no footer slot). ``apply_watermark`` below.
 
 The real asset is configured via ``settings.WALLET_PLATFORM_LOGO_URL`` (a local
@@ -17,10 +17,17 @@ so it can never break or withhold a pass.
 from __future__ import annotations
 
 import io
+import os
 
 from django.conf import settings
 
 _RGB = tuple[int, int, int]
+
+# Bundled platform lockup (the Stampn mark + "Stampn" wordmark, white with a
+# soft shadow so it reads on light or dark heroes). Used as the fallback when
+# WALLET_PLATFORM_LOGO_URL isn't configured, so the real "logo + name" renders
+# out of the box — no env/upload.
+_BUNDLED_LOGO = os.path.join(os.path.dirname(__file__), "static", "wallet", "platform-logo.png")
 
 
 def _local_media_bytes(url: str) -> bytes | None:
@@ -42,9 +49,22 @@ def _local_media_bytes(url: str) -> bytes | None:
     return None
 
 
+def _bundled_logo_bytes() -> bytes | None:
+    """The self-hosted platform logo shipped in ``wallets/static/wallet``."""
+    try:
+        with open(_BUNDLED_LOGO, "rb") as fh:
+            return fh.read()
+    except OSError:  # pragma: no cover - missing bundled asset
+        return None
+
+
 def platform_logo_bytes() -> bytes | None:
-    """Configured platform logo bytes, or ``None`` (→ draw the placeholder)."""
-    return _local_media_bytes(getattr(settings, "WALLET_PLATFORM_LOGO_URL", ""))
+    """Platform logo bytes: the configured ``WALLET_PLATFORM_LOGO_URL`` upload if
+    set, otherwise the bundled brand logo. ``None`` only if neither is readable
+    (→ draw the placeholder)."""
+    return _local_media_bytes(getattr(settings, "WALLET_PLATFORM_LOGO_URL", "")) or (
+        _bundled_logo_bytes()
+    )
 
 
 def _decode(data: bytes | None):  # type: ignore[no-untyped-def]
@@ -90,10 +110,10 @@ def _placeholder(size: tuple[int, int], fg: _RGB, label: str = "LOGO"):  # type:
 
 
 def apply_watermark(hero, fg: _RGB):  # type: ignore[no-untyped-def]
-    """Paste the platform logo (or placeholder) at the bottom-left of ``hero``.
+    """Paste the platform logo (or placeholder) at the bottom-right of ``hero``.
 
     Returns ``hero`` (modified in place). Used by the Google hero renderer so
-    the bottom-left branding appears on the generated banner image.
+    the bottom-right branding appears on the generated banner image.
     """
     try:
         w, h = hero.size
@@ -104,7 +124,7 @@ def apply_watermark(hero, fg: _RGB):  # type: ignore[no-untyped-def]
         else:
             logo.thumbnail((w // 3, target_h))
         pad = max(8, h // 28)
-        hero.paste(logo, (pad, h - logo.height - pad), logo)
+        hero.paste(logo, (w - logo.width - pad, h - logo.height - pad), logo)
         return hero
     except Exception:  # pragma: no cover - best-effort
         return hero
