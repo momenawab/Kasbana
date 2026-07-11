@@ -13,6 +13,18 @@ function fullHex(raw) {
   return /^[0-9a-fA-F]{6}$/.test(h) ? `#${h.toUpperCase()}` : null
 }
 
+// Perceived luminance of a hex color → true if it's a "light" fill. Used to flip
+// the eyedropper badge to dark-on-light or light-on-dark so it stays visible on
+// whatever color the client picks (white swatch, black swatch, or anything).
+function isLightColor(hex) {
+  const h = (hex || '').replace(/^#/, '')
+  if (!/^[0-9a-fA-F]{6}$/.test(h)) return false
+  const r = parseInt(h.slice(0, 2), 16)
+  const g = parseInt(h.slice(2, 4), 16)
+  const b = parseInt(h.slice(4, 6), 16)
+  return 0.299 * r + 0.587 * g + 0.114 * b > 150
+}
+
 // Lenient normalize used on blur — also accepts 3-digit shorthand (`abc` → #AABBCC).
 function normalizeHex(raw) {
   const h = raw.trim().replace(/^#/, '')
@@ -54,6 +66,9 @@ export default function ColorPicker({ value = '#0E1B2A', onChange, label }) {
   }
 
   const invalid = normalizeHex(text) === null
+  // Badge contrasts the chosen swatch: dark-on-light for pale colors, the reverse
+  // for dark ones — so the eyedropper never disappears into the fill.
+  const light = isLightColor(value)
 
   return (
     <div>
@@ -61,9 +76,11 @@ export default function ColorPicker({ value = '#0E1B2A', onChange, label }) {
       <div className="flex flex-wrap items-center gap-3">
         {/* Tappable brand chip — clicking it opens the OS color picker. The
             eyedropper badge overlaps the swatch so it reads unmistakably as an
-            interactive picker, not just a colored box. */}
+            interactive picker, not just a colored box. The mid-gray border keeps
+            the chip visible even when its fill matches the card (white on white
+            in light mode, near-black on the dark panel). */}
         <label
-          className="group relative h-10 w-14 shrink-0 cursor-pointer overflow-hidden rounded-ctl border border-line shadow-sm transition hover:border-violet focus-within:border-violet focus-within:ring-2 focus-within:ring-violet/40"
+          className="group relative h-10 w-14 shrink-0 cursor-pointer overflow-hidden rounded-ctl border border-tx-3/50 shadow-sm transition hover:border-violet focus-within:border-violet focus-within:ring-2 focus-within:ring-violet/40"
           style={{ background: value }}
           title={label}
         >
@@ -74,7 +91,11 @@ export default function ColorPicker({ value = '#0E1B2A', onChange, label }) {
             className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
             aria-label={label || 'color'}
           />
-          <span className="pointer-events-none absolute bottom-1 end-1 flex h-4 w-4 items-center justify-center rounded-full bg-white/90 text-slate shadow-sm ring-1 ring-black/10 transition group-hover:scale-110">
+          <span
+            className={`pointer-events-none absolute bottom-1 end-1 flex h-4 w-4 items-center justify-center rounded-full shadow-sm ring-1 transition group-hover:scale-110 ${
+              light ? 'bg-slate text-white ring-white/40' : 'bg-white text-slate ring-black/15'
+            }`}
+          >
             <svg
               viewBox="0 0 24 24"
               className="h-2.5 w-2.5"
@@ -105,7 +126,9 @@ export default function ColorPicker({ value = '#0E1B2A', onChange, label }) {
           />
         </div>
         {/* Quick presets — wrap when the row runs out of room instead of
-            overflowing a narrow column. Active preset gets a violet ring. */}
+            overflowing a narrow column. The mid-gray border keeps every dot
+            visible in both themes (the white and near-black presets would
+            otherwise blend into the card); the active one gets a violet ring. */}
         <div className="flex flex-wrap gap-1.5">
           {PRESETS.map((c) => {
             const active = value?.toUpperCase() === c.toUpperCase()
@@ -118,7 +141,7 @@ export default function ColorPicker({ value = '#0E1B2A', onChange, label }) {
                 className={`h-6 w-6 rounded-full border transition ${
                   active
                     ? 'border-violet ring-2 ring-violet/40'
-                    : 'border-line hover:scale-110'
+                    : 'border-tx-3/60 hover:scale-110'
                 }`}
                 aria-label={c}
                 aria-pressed={active}
