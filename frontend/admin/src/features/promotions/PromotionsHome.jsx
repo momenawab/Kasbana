@@ -1,6 +1,15 @@
 import { useState } from 'react'
-import { Loader2, Ticket, Plus, Power } from 'lucide-react'
-import { useCoupons, useCreateCoupon, useUpdateCoupon, useCouponRedemptions } from './api'
+import { Loader2, Ticket, Plus, Power, Folder, Trash2 } from 'lucide-react'
+import {
+  useCoupons,
+  useCreateCoupon,
+  useUpdateCoupon,
+  useCouponRedemptions,
+  useCouponGroups,
+  useCreateCouponGroup,
+  useUpdateCouponGroup,
+  useDeleteCouponGroup,
+} from './api'
 import { useAuth } from '../../hooks/useAuth'
 import Badge from '../../components/Badge'
 import { normalizeError } from '../../lib/api'
@@ -25,19 +34,43 @@ function typeLabel(t, value) {
 export default function PromotionsHome() {
   const { role } = useAuth()
   const canManage = FINANCE_ROLES.includes(role)
-  const { data, isLoading } = useCoupons()
+  const { data: groups } = useCouponGroups()
+  const groupList = groups ?? []
+  // '' = all, 'none' = ungrouped, else a group id. Drives the coupon query filter.
+  const [filter, setFilter] = useState('')
+  const { data, isLoading } = useCoupons(filter || undefined)
   const rows = data ?? []
   const [openCode, setOpenCode] = useState(null)
 
   return (
     <div className="flex flex-col gap-5">
       <h1 className="font-head text-2xl font-bold text-tx">Promotions</h1>
-      {canManage && <Builder />}
+
+      <Groups groups={groupList} canManage={canManage} />
+      {canManage && <Builder groups={groupList} />}
+
+      <div className="flex items-center gap-2">
+        <label className="text-xs text-tx-3">Group</label>
+        <select
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          className="rounded-ctl border border-line bg-surface-2 px-3 py-1.5 text-sm text-tx"
+        >
+          <option value="">All coupons</option>
+          <option value="none">Ungrouped</option>
+          {groupList.map((g) => (
+            <option key={g.id} value={g.id}>
+              {g.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
       {isLoading ? (
         <Loader2 className="mx-auto mt-6 animate-spin text-tx-3" />
       ) : rows.length === 0 ? (
         <div className="rounded-card border border-line bg-surface p-8 text-center text-tx-3">
-          No coupons yet.
+          No coupons {filter ? 'in this group' : 'yet'}.
         </div>
       ) : (
         <div className="flex flex-col gap-2">
@@ -45,6 +78,7 @@ export default function PromotionsHome() {
             <CouponRow
               key={c.id}
               c={c}
+              groups={groupList}
               canManage={canManage}
               open={openCode === c.code}
               onToggle={() => setOpenCode(openCode === c.code ? null : c.code)}
@@ -56,8 +90,105 @@ export default function PromotionsHome() {
   )
 }
 
-function Builder() {
-  const [form, setForm] = useState({ code: '', type: 'percent', value: '', max_redemptions: '' })
+function Groups({ groups, canManage }) {
+  const [name, setName] = useState('')
+  const [msg, setMsg] = useState(null)
+  const create = useCreateCouponGroup()
+  const update = useUpdateCouponGroup()
+  const del = useDeleteCouponGroup()
+
+  async function submit() {
+    setMsg(null)
+    if (!name.trim()) {
+      setMsg('Group name is required.')
+      return
+    }
+    try {
+      await create.mutateAsync({ name })
+      setName('')
+    } catch (err) {
+      setMsg(normalizeError(err).message)
+    }
+  }
+
+  return (
+    <div className="rounded-card border border-line bg-surface p-4">
+      <div className="mb-3 flex items-center gap-2 text-tx">
+        <Folder size={16} className="text-tx-3" />
+        <h2 className="font-head text-sm font-semibold">Groups</h2>
+      </div>
+
+      {groups.length === 0 ? (
+        <p className="text-sm text-tx-3">No groups yet.</p>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          {groups.map((g) => (
+            <div
+              key={g.id}
+              className="flex items-center gap-2 rounded-ctl border border-line bg-surface-2 px-3 py-1.5 text-sm"
+            >
+              <span className="text-tx">{g.name}</span>
+              <Badge tone={g.active ? 'success' : 'neutral'}>{num(g.coupon_count)}</Badge>
+              {canManage && (
+                <>
+                  <button
+                    title={g.active ? 'Deactivate' : 'Activate'}
+                    onClick={() => update.mutate({ id: g.id, patch: { active: !g.active } })}
+                    className="text-tx-3 hover:text-brand"
+                  >
+                    <Power size={14} />
+                  </button>
+                  <button
+                    title="Delete group (coupons are kept, just ungrouped)"
+                    onClick={() => {
+                      if (
+                        window.confirm(
+                          `Delete group "${g.name}"? Its ${g.coupon_count} coupon(s) are kept and become ungrouped.`,
+                        )
+                      )
+                        del.mutate(g.id)
+                    }}
+                    className="text-tx-3 hover:text-danger"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {canManage && (
+        <div className="mt-3 flex items-end gap-2">
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="New group name"
+            className="block w-52 rounded-ctl border border-line bg-surface-2 px-3 py-2 text-sm text-tx outline-none focus:border-brand"
+          />
+          <button
+            onClick={submit}
+            disabled={create.isPending}
+            className="flex items-center gap-1.5 rounded-ctl border border-line px-3 py-2 text-sm font-semibold text-tx-2 hover:border-brand hover:text-brand disabled:opacity-60"
+          >
+            <Plus size={14} /> Add group
+          </button>
+          {msg && <p className="text-sm text-tx-2">{msg}</p>}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function Builder({ groups }) {
+  const [form, setForm] = useState({
+    code: '',
+    type: 'percent',
+    value: '',
+    max_redemptions: '',
+    group: '',
+  })
   const [msg, setMsg] = useState(null)
   const create = useCreateCoupon()
 
@@ -77,8 +208,9 @@ function Builder() {
         type: form.type,
         value: form.value,
         max_redemptions: form.max_redemptions ? Number(form.max_redemptions) : null,
+        group: form.group || null,
       })
-      setForm({ code: '', type: 'percent', value: '', max_redemptions: '' })
+      setForm({ code: '', type: 'percent', value: '', max_redemptions: '', group: '' })
       setMsg('Coupon created.')
     } catch (err) {
       setMsg(normalizeError(err).message)
@@ -136,6 +268,21 @@ function Builder() {
             className="mt-1 block w-28 rounded-ctl border border-line bg-surface-2 px-3 py-2 text-sm text-tx outline-none focus:border-brand"
           />
         </label>
+        <label className="text-xs text-tx-3">
+          Group
+          <select
+            value={form.group}
+            onChange={(e) => set('group', e.target.value)}
+            className="mt-1 block rounded-ctl border border-line bg-surface-2 px-3 py-2 text-sm text-tx"
+          >
+            <option value="">— none —</option>
+            {groups.map((g) => (
+              <option key={g.id} value={g.id}>
+                {g.name}
+              </option>
+            ))}
+          </select>
+        </label>
         <button
           onClick={submit}
           disabled={create.isPending}
@@ -149,10 +296,11 @@ function Builder() {
   )
 }
 
-function CouponRow({ c, canManage, open, onToggle }) {
+function CouponRow({ c, groups, canManage, open, onToggle }) {
   const update = useUpdateCoupon()
   const capped = c.max_redemptions != null
   const remaining = capped ? c.max_redemptions - c.redemption_count : null
+  const groupName = groups.find((g) => g.id === c.group)?.name
 
   return (
     <div className="rounded-card border border-line bg-surface p-4">
@@ -162,6 +310,7 @@ function CouponRow({ c, canManage, open, onToggle }) {
             <span className="font-mono text-tx">{c.code}</span>
             <Badge tone={c.active ? 'success' : 'neutral'}>{c.active ? 'active' : 'inactive'}</Badge>
             <span className="text-sm text-tx-2">{typeLabel(c.type, c.value)}</span>
+            {groupName && <Badge tone="info">{groupName}</Badge>}
           </div>
           <div className="mt-1 text-xs text-tx-3">
             {num(c.redemption_count)} redeemed
@@ -169,8 +318,26 @@ function CouponRow({ c, canManage, open, onToggle }) {
             {c.expires_at ? ` · expires ${shortDate(c.expires_at)}` : ''}
           </div>
         </div>
-        <div className="flex gap-2">
-          <button onClick={onToggle} className="rounded-ctl border border-line px-3 py-1.5 text-sm text-tx-2 hover:border-brand hover:text-brand">
+        <div className="flex items-center gap-2">
+          {canManage && (
+            <select
+              value={c.group ?? ''}
+              onChange={(e) => update.mutate({ code: c.code, patch: { group: e.target.value || null } })}
+              title="Assign to a group"
+              className="rounded-ctl border border-line bg-surface-2 px-2 py-1.5 text-sm text-tx-2"
+            >
+              <option value="">Ungrouped</option>
+              {groups.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.name}
+                </option>
+              ))}
+            </select>
+          )}
+          <button
+            onClick={onToggle}
+            className="rounded-ctl border border-line px-3 py-1.5 text-sm text-tx-2 hover:border-brand hover:text-brand"
+          >
             {open ? 'Hide' : 'Redemptions'}
           </button>
           {canManage && (

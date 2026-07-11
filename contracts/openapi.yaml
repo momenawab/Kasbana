@@ -713,6 +713,118 @@ paths:
               schema:
                 $ref: '#/components/schemas/RetentionPolicy'
           description: ''
+  /api/admin/v1/coupon-groups:
+    get:
+      operationId: api_admin_v1_coupon_groups_list
+      description: |-
+        GET /coupon-groups (any admin, paginated) · POST create (Finance+).
+
+        Groups are a purely organisational wrapper over coupons (Phase 11 deferral):
+        a coupon works identically whether grouped or not.
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CouponGroup'
+          description: ''
+    post:
+      operationId: api_admin_v1_coupon_groups_create
+      description: |-
+        GET /coupon-groups (any admin, paginated) · POST create (Finance+).
+
+        Groups are a purely organisational wrapper over coupons (Phase 11 deferral):
+        a coupon works identically whether grouped or not.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CouponGroupWrite'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CouponGroupWrite'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CouponGroupWrite'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CouponGroup'
+          description: ''
+  /api/admin/v1/coupon-groups/{group_id}:
+    get:
+      operationId: api_admin_v1_coupon_groups_retrieve
+      description: GET /coupon-groups/{id} (any admin) · PATCH/DELETE (Finance+).
+      parameters:
+      - in: path
+        name: group_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CouponGroup'
+          description: ''
+    patch:
+      operationId: api_admin_v1_coupon_groups_partial_update
+      description: GET /coupon-groups/{id} (any admin) · PATCH/DELETE (Finance+).
+      parameters:
+      - in: path
+        name: group_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedCouponGroupWrite'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedCouponGroupWrite'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedCouponGroupWrite'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CouponGroup'
+          description: ''
+    delete:
+      operationId: api_admin_v1_coupon_groups_destroy
+      description: GET /coupon-groups/{id} (any admin) · PATCH/DELETE (Finance+).
+      parameters:
+      - in: path
+        name: group_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      responses:
+        '204':
+          description: No response body
   /api/admin/v1/coupons:
     get:
       operationId: api_admin_v1_coupons_list
@@ -5047,6 +5159,10 @@ components:
         redemption_count:
           type: integer
           readOnly: true
+        group:
+          type: string
+          format: uuid
+          nullable: true
         created_at:
           type: string
           format: date-time
@@ -5085,10 +5201,52 @@ components:
           nullable: true
         active:
           type: boolean
+        group:
+          type: string
+          format: uuid
+          nullable: true
       required:
       - code
       - type
       - value
+    CouponGroup:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 80
+        description:
+          type: string
+        active:
+          type: boolean
+        coupon_count:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - coupon_count
+      - created_at
+      - id
+      - name
+    CouponGroupWrite:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 80
+        description:
+          type: string
+        active:
+          type: boolean
+      required:
+      - name
     CouponRedemption:
       type: object
       properties:
@@ -6681,6 +6839,16 @@ components:
           type: string
           format: date-time
           readOnly: true
+    PatchedCouponGroupWrite:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 80
+        description:
+          type: string
+        active:
+          type: boolean
     PatchedFeatureFlag:
       type: object
       properties:

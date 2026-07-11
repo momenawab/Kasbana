@@ -50,6 +50,8 @@ from console.views_contact import (
 from console.views_coupons import (
     ApplyCouponView,
     CouponDetailView,
+    CouponGroupDetailView,
+    CouponGroupListView,
     CouponListView,
     CouponRedemptionsView,
 )
@@ -286,6 +288,12 @@ urlpatterns = [
         name="admin-message-reply",
     ),
     # Coupons, discounts & promotions (Phase 11)
+    path("coupon-groups", CouponGroupListView.as_view(), name="admin-coupon-groups"),
+    path(
+        "coupon-groups/<uuid:group_id>",
+        CouponGroupDetailView.as_view(),
+        name="admin-coupon-group-detail",
+    ),
     path("coupons", CouponListView.as_view(), name="admin-coupons"),
     path("coupons/<str:code>", CouponDetailView.as_view(), name="admin-coupon-detail"),
     path(

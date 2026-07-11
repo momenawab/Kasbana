@@ -1,10 +1,48 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '../../lib/api'
 
-export function useCoupons() {
+// `group` is optional: undefined = every coupon, 'none' = ungrouped only, or a
+// group id to narrow to that group. Matches the backend ?group= filter.
+export function useCoupons(group) {
   return useQuery({
-    queryKey: ['coupons'],
-    queryFn: async () => (await api.get('/coupons')).data,
+    queryKey: ['coupons', group ?? 'all'],
+    queryFn: async () =>
+      (await api.get('/coupons', { params: group ? { group } : undefined })).data,
+  })
+}
+
+// Coupon groups are cursor-paginated on the server; unwrap to the results array.
+export function useCouponGroups() {
+  return useQuery({
+    queryKey: ['coupon-groups'],
+    queryFn: async () => (await api.get('/coupon-groups')).data.results ?? [],
+  })
+}
+
+export function useCreateCouponGroup() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (body) => (await api.post('/coupon-groups', body)).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['coupon-groups'] }),
+  })
+}
+
+export function useUpdateCouponGroup() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, patch }) => (await api.patch(`/coupon-groups/${id}`, patch)).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['coupon-groups'] }),
+  })
+}
+
+export function useDeleteCouponGroup() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (id) => (await api.delete(`/coupon-groups/${id}`)).data,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['coupon-groups'] })
+      qc.invalidateQueries({ queryKey: ['coupons'] })
+    },
   })
 }
 

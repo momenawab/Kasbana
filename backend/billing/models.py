@@ -244,6 +244,25 @@ class Invoice(UUIDModel, TimeStampedModel):
         return f"{self.merchant_id} · {self.amount_egp} EGP · {self.status}"
 
 
+class CouponGroup(UUIDModel, TimeStampedModel):
+    """A named grouping over individually-created coupons (Phase 11 deferral).
+
+    Purely organisational — coupons work exactly as before whether grouped or
+    not. A coupon's ``group`` is optional and ``SET_NULL`` on delete, so removing
+    a group never removes its coupons; they simply become ungrouped again.
+    """
+
+    name = models.CharField(max_length=80)
+    description = models.TextField(blank=True)
+    active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return self.name
+
+
 class Coupon(UUIDModel, TimeStampedModel):
     """A discount/promo code (Phase 11) — billing-owned config, admin-managed.
 
@@ -268,6 +287,15 @@ class Coupon(UUIDModel, TimeStampedModel):
     expires_at = models.DateTimeField(null=True, blank=True)
     active = models.BooleanField(default=True)
     redemption_count = models.IntegerField(default=0)  # denormalised for cap checks
+    # Optional organisational grouping (Phase 11 deferral). Blank/null = ungrouped,
+    # today's behaviour. SET_NULL so deleting a group never deletes its coupons.
+    group = models.ForeignKey(
+        CouponGroup,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="coupons",
+    )
 
     class Meta:
         ordering = ["-created_at"]
