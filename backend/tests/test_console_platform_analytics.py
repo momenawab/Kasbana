@@ -21,7 +21,7 @@ from console.enums import AdminRole
 from console.models import AdminUser
 from core.enums import CardType, LedgerEvent, MerchantStatus, WalletPlatform
 from core.models import Redemption, StampLedger, WalletRegistration
-from messaging.enums import AutomationKey, CampaignStatus, MessageChannel
+from messaging.enums import AutomationKey, CampaignStatus
 from messaging.models import Automation, Campaign
 from tests import factories
 
@@ -142,15 +142,12 @@ def test_feature_adoption(api_client, support_admin):
     m1 = factories.MerchantFactory()
     factories.CardFactory(merchant=m1, referral_enabled=True)
     factories.CardFactory(merchant=m1, type=CardType.POINTS)
-    Automation.objects.create(
-        merchant=m1, key=AutomationKey.BIRTHDAY, enabled=True, channel=MessageChannel.PUSH
-    )
+    Automation.objects.create(merchant=m1, key=AutomationKey.BIRTHDAY, enabled=True)
     s = settings_for(m1)
     s.enroll_headline = "Welcome!"
     s.save()
     Campaign.objects.create(
         merchant=m1,
-        channel=MessageChannel.PUSH,
         audience="all",
         message="hi",
         status=CampaignStatus.DRAFT,
@@ -172,9 +169,7 @@ def test_feature_adoption(api_client, support_admin):
 
 def test_disabled_automation_not_counted(api_client, support_admin):
     m = factories.MerchantFactory()
-    Automation.objects.create(
-        merchant=m, key=AutomationKey.BIRTHDAY, enabled=False, channel=MessageChannel.PUSH
-    )
+    Automation.objects.create(merchant=m, key=AutomationKey.BIRTHDAY, enabled=False)
     adoption = {
         row["key"]: row
         for row in _bearer(api_client, support_admin).get(URL).json()["feature_adoption"]

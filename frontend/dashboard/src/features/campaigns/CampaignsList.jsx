@@ -16,7 +16,6 @@ export default function CampaignsList() {
   const lang = i18n.language
 
   const columns = [
-    { key: 'channel', label: t('campaigns.channel'), render: (r) => <Badge tone="neutral">{r.channel}</Badge> },
     { key: 'audience', label: t('campaigns.audience') },
     { key: 'status', label: t('campaigns.statusCol'), render: (r) => <Badge tone="teal">{r.status}</Badge> },
     {

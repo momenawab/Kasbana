@@ -1,59 +1,35 @@
-"""Messaging Celery tasks (Phase 1.7) — WhatsApp send + automation scan.
+"""Messaging Celery tasks (Phase 1.7) — campaign send + automation scan.
 
-``send_whatsapp`` is the single dispatch path: it sends via ``WhatsAppClient``
-and meters the send against the merchant's monthly quota. Quota *gating* (402)
-happens at the API edge before enqueue; metering here records what was actually
-dispatched. Routed to the ``messaging`` queue (settings ``CELERY_TASK_ROUTES``).
+Campaigns fan out over the free wallet push channel (Apple ``changeMessage`` +
+Google ``addMessage``). Routed to the ``messaging`` queue (settings
+``CELERY_TASK_ROUTES``).
 """
 
 from __future__ import annotations
-
-import logging
 
 from celery import shared_task
 from django.utils import timezone
 
 from core.models import CustomerCard, Merchant
 
-logger = logging.getLogger(__name__)
-
-
-@shared_task(queue="messaging")
-def send_whatsapp(customer_card_id: str, text: str) -> str:
-    """Send one WhatsApp text to a customer and meter it. Returns message id."""
-    from messaging import metering
-    from messaging.whatsapp import WhatsAppClient
-
-    customer = CustomerCard.objects.select_related("merchant").get(pk=customer_card_id)
-    result = WhatsAppClient().send_text(to=customer.customer_phone, text=text)
-    if result.ok:
-        metering.record_send(customer.merchant, count=1)
-    return result.message_id
-
 
 @shared_task(queue="messaging")
 def send_campaign(campaign_id: str) -> int:
-    """Fan a campaign out to its segment; returns the number dispatched."""
-    from messaging.enums import CampaignStatus, MessageChannel
+    """Fan a campaign out to its segment via wallet push; returns the count."""
+    from messaging.enums import CampaignStatus
     from messaging.models import Campaign
     from messaging.segments import resolve
+    from wallets import service as wallet
 
     campaign = Campaign.objects.select_related("merchant").get(pk=campaign_id)
     campaign.status = CampaignStatus.SENDING
     campaign.save(update_fields=["status", "updated_at"])
 
     recipients = list(resolve(campaign.merchant, campaign.audience))
-    wants_push = campaign.channel in (MessageChannel.PUSH, MessageChannel.BOTH)
-    wants_whatsapp = campaign.channel in (MessageChannel.WHATSAPP, MessageChannel.BOTH)
     sent = 0
     for customer in recipients:
-        if wants_whatsapp:
-            send_whatsapp.delay(str(customer.id), campaign.message)
-        if wants_push:
-            # Free wallet notification (Apple changeMessage + Google addMessage).
-            from wallets import service as wallet
-
-            wallet.push_message(customer, campaign.message)
+        # Free wallet notification (Apple changeMessage + Google addMessage).
+        wallet.push_message(customer, campaign.message)
         sent += 1
 
     campaign.status = CampaignStatus.SENT

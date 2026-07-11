@@ -302,7 +302,7 @@ WALLET_AUTH_TOKEN_SECRET = env("WALLET_AUTH_TOKEN_SECRET", "")
 PASS_BARCODE_SECRET = env("PASS_BARCODE_SECRET", "")
 
 # ── Billing gateways (Phase 1.7 · contract §3.10) ─────────────────────────────
-# Paymob/Fawry credentials. Unset locally/CI → the adapters run in stub mode
+# Paymob credentials. Unset locally/CI → the adapter runs in stub mode
 # (deterministic checkout URL, no network); real creds are wired on staging.
 BILLING = {
     "PAYMOB": {
@@ -310,19 +310,6 @@ BILLING = {
         "HMAC_SECRET": env("PAYMOB_HMAC_SECRET", ""),
         "INTEGRATION_ID": env("PAYMOB_INTEGRATION_ID", ""),
         "IFRAME_ID": env("PAYMOB_IFRAME_ID", ""),
-    },
-    "FAWRY": {
-        "MERCHANT_CODE": env("FAWRY_MERCHANT_CODE", ""),
-        "SECURITY_KEY": env("FAWRY_SECURITY_KEY", ""),
-    },
-}
-
-# ── Messaging (Phase 1.7 · contract §3.10) ────────────────────────────────────
-# WhatsApp Business (Cloud) API. Unset → ``WhatsAppClient`` runs in stub mode.
-MESSAGING = {
-    "WHATSAPP": {
-        "API_TOKEN": env("WHATSAPP_API_TOKEN", ""),
-        "PHONE_ID": env("WHATSAPP_PHONE_ID", ""),
     },
 }
 

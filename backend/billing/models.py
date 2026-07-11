@@ -52,7 +52,6 @@ class Plan(UUIDModel, TimeStampedModel):
     max_staff = models.PositiveIntegerField(null=True, blank=True)
     max_customers = models.PositiveIntegerField(null=True, blank=True)
 
-    whatsapp = models.BooleanField(default=False)
     export = models.BooleanField(default=False)
     api = models.BooleanField(default=False)
     specialized_roles = models.BooleanField(default=False)
@@ -62,7 +61,6 @@ class Plan(UUIDModel, TimeStampedModel):
     analytics = models.CharField(
         max_length=8, choices=AnalyticsTier.choices, default=AnalyticsTier.BASIC
     )
-    whatsapp_quota = models.PositiveIntegerField(null=True, blank=True)
 
     class Meta:
         ordering = ["price_egp", "key"]
@@ -77,14 +75,12 @@ class Plan(UUIDModel, TimeStampedModel):
             "max_locations": self.max_locations,
             "max_staff": self.max_staff,
             "max_customers": self.max_customers,
-            "whatsapp": self.whatsapp,
             "export": self.export,
             "api": self.api,
             "specialized_roles": self.specialized_roles,
             "custom_branding": self.custom_branding,
             "automations": self.automations,
             "analytics": self.analytics,
-            "whatsapp_quota": self.whatsapp_quota,
         }
 
 
@@ -100,7 +96,7 @@ class Subscription(UUIDModel, TimeStampedModel):
     )
     trial_ends_at = models.DateTimeField(null=True, blank=True, default=default_trial_end)
     current_period_end = models.DateTimeField(null=True, blank=True)
-    # Gateway linkage (Paymob / Fawry) — filled by the webhook handlers.
+    # Gateway linkage (Paymob) — filled by the webhook handlers.
     provider = models.CharField(max_length=16, blank=True)
     gateway_ref = models.CharField(max_length=128, blank=True)
     # The plan a pending checkout will convert to, recorded at ``subscribe`` time
@@ -202,7 +198,7 @@ class Invoice(UUIDModel, TimeStampedModel):
     """A billing invoice, created by the gateway webhook on a successful charge.
 
     Tenant-scoped via ``merchant``; ``gateway_ref`` links it back to the
-    Paymob/Fawry transaction so webhook replays are idempotent.
+    Paymob transaction so webhook replays are idempotent.
     """
 
     merchant = models.ForeignKey(Merchant, on_delete=models.CASCADE, related_name="invoices")

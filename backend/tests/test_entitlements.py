@@ -42,8 +42,6 @@ def test_subscription_for_is_idempotent(merchant):
 
 def test_trial_grants_growth_features(merchant):
     # Trial = Growth-level: export/api/specialized_roles/custom_branding on.
-    # WhatsApp is disabled on every plan now (wallet push is the channel).
-    assert entitlements.check(merchant, "whatsapp") is False
     assert entitlements.check(merchant, "export") is True
     assert entitlements.check(merchant, "api") is True
     assert entitlements.check(merchant, "specialized_roles") is True

@@ -104,7 +104,7 @@ export default function Gallery() {
       <Section title="Overlays + gating">
         <Button onClick={() => setModal(true)}>Open Modal</Button>
         <Button variant="secondary" onClick={() => setDrawer(true)}>Open Drawer</Button>
-        <Button variant="ghost" onClick={() => gating.open('whatsapp')}>Trigger UpgradeDrawer</Button>
+        <Button variant="ghost" onClick={() => gating.open('custom_branding')}>Trigger UpgradeDrawer</Button>
         <Modal open={modal} onClose={() => setModal(false)} title="Example modal" footer={<Button onClick={() => setModal(false)}>OK</Button>}>
           <p className="text-tx-2">Modal body content.</p>
         </Modal>

@@ -29,14 +29,17 @@ def seed_plans(apps, schema_editor):
                 "max_locations": limits["max_locations"],
                 "max_staff": limits["max_staff"],
                 "max_customers": limits["max_customers"],
-                "whatsapp": limits["whatsapp"],
+                # ``whatsapp``/``whatsapp_quota`` were removed from PLAN_LIMITS when the
+                # WhatsApp channel was retired; default them here so this historical
+                # seed still runs on a fresh DB (the columns are dropped in 0013).
+                "whatsapp": limits.get("whatsapp", False),
                 "export": limits["export"],
                 "api": limits["api"],
                 "specialized_roles": limits["specialized_roles"],
                 "custom_branding": limits["custom_branding"],
                 "automations": limits["automations"],
                 "analytics": limits["analytics"],
-                "whatsapp_quota": limits["whatsapp_quota"],
+                "whatsapp_quota": limits.get("whatsapp_quota", 0),
             },
         )
 

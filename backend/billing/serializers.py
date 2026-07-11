@@ -22,8 +22,6 @@ class UsageSerializer(serializers.Serializer):
     locations = serializers.IntegerField()
     staff = serializers.IntegerField()
     customers = serializers.IntegerField()
-    whatsapp_used = serializers.IntegerField()
-    whatsapp_quota = serializers.IntegerField(allow_null=True)
 
 
 class BillingStateSerializer(serializers.Serializer):

@@ -62,7 +62,7 @@ export default function FlagsTab({ canManage }) {
               required
               value={form.key}
               onChange={(e) => setForm({ ...form, key: e.target.value })}
-              placeholder="whatsapp_channel"
+              placeholder="new_dashboard"
               className="w-48 rounded-ctl border border-line bg-bg px-3 py-2 text-sm text-tx focus:border-brand focus:outline-none"
             />
           </label>

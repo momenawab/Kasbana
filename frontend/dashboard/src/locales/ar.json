@@ -258,9 +258,6 @@
       "message": "تم إرسال رسالة"
     },
     "send": "إرسال",
-    "channel": "القناة",
-    "channelPush": "إشعار المحفظة (مجاني)",
-    "channelWhatsapp": "واتساب (مدفوع)",
     "text": "الرسالة"
   },
   "analytics": {
@@ -274,21 +271,16 @@
   "campaigns": {
     "title": "الحملات",
     "new": "حملة جديدة",
-    "channel": "القناة",
     "audience": "الجمهور",
     "statusCol": "الحالة",
     "sent": "أُرسلت",
     "scheduled": "مجدولة",
     "delivered": "تم التسليم",
     "emptyTitle": "لا توجد حملات بعد",
-    "emptyBody": "ابعت رسالة إشعار أو واتساب لعملائك."
+    "emptyBody": "ابعت رسالة إشعار محفظة لعملائك."
   },
   "compose": {
     "title": "حملة جديدة",
-    "channel": "القناة",
-    "channel_PUSH": "إشعار المحفظة (مجاني)",
-    "channel_WHATSAPP": "واتساب (مدفوع)",
-    "channel_BOTH": "المحفظة + واتساب",
     "audience": "الجمهور",
     "audienceAll": "كل العملاء",
     "message": "الرسالة",
@@ -298,8 +290,7 @@
     "sent": "تم إرسال الحملة.",
     "scheduled": "تم جدولة الحملة.",
     "textRequired": "نص الرسالة مطلوب.",
-    "allowance": "باقي {{n}} رسالة واتساب هذا الشهر.",
-    "quotaExhausted": "استنفدت حصة الواتساب."
+    "quotaExhausted": "تم الوصول إلى حد خطتك."
   },
   "automations": {
     "title": "الأتمتة",

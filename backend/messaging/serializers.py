@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from rest_framework import serializers
 
-from messaging.enums import AutomationKey, MessageChannel
+from messaging.enums import AutomationKey
 from messaging.models import Automation, Campaign
 
 
@@ -24,7 +24,6 @@ class CampaignSerializer(serializers.ModelSerializer):
         model = Campaign
         fields = [
             "id",
-            "channel",
             "audience",
             "message",
             "status",
@@ -39,7 +38,6 @@ class CampaignSerializer(serializers.ModelSerializer):
 
 
 class CampaignWriteSerializer(serializers.Serializer):
-    channel = serializers.ChoiceField(choices=MessageChannel.choices)
     audience = serializers.CharField(max_length=64)
     message = serializers.CharField()
     schedule_at = serializers.DateTimeField(required=False, allow_null=True)
@@ -55,20 +53,18 @@ class SegmentSerializer(serializers.Serializer):
 class AutomationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Automation
-        fields = ["key", "enabled", "channel", "timing", "template"]
+        fields = ["key", "enabled", "timing", "template"]
         read_only_fields = ["key"]
 
 
 class AutomationWriteSerializer(serializers.Serializer):
     enabled = serializers.BooleanField(required=False)
-    channel = serializers.ChoiceField(choices=MessageChannel.choices, required=False)
     timing = serializers.CharField(required=False, allow_blank=True, max_length=64)
     template = serializers.CharField(required=False, allow_blank=True)
 
 
 class CustomerMessageSerializer(serializers.Serializer):
-    # PUSH = free wallet notification · WHATSAPP = paid/metered · BOTH = each.
-    channel = serializers.ChoiceField(choices=MessageChannel.choices)
+    # Free wallet notification (Apple changeMessage + Google addMessage).
     text = serializers.CharField()
 
 

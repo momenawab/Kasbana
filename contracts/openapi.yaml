@@ -3035,17 +3035,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/CheckoutResponse'
           description: ''
-  /api/v1/billing/webhook/fawry:
-    post:
-      operationId: billing_webhook_fawry_create
-      description: Base for the unauthenticated gateway webhooks (security:[] in contract).
-      tags:
-      - billing
-      security:
-      - {}
-      responses:
-        '200':
-          description: No response body
   /api/v1/billing/webhook/paymob:
     post:
       operationId: billing_webhook_paymob_create
@@ -3453,7 +3442,7 @@ paths:
   /api/v1/customers/{customer_id}/message:
     post:
       operationId: customers_message_create
-      description: POST /customers/{id}/message — send a one-off PUSH/WhatsApp message.
+      description: POST /customers/{id}/message — send a one-off wallet push message.
       parameters:
       - in: path
         name: customer_id
@@ -4608,7 +4597,7 @@ components:
         body:
           type: string
         channel:
-          $ref: '#/components/schemas/Channel829Enum'
+          $ref: '#/components/schemas/ChannelEnum'
         audience:
           $ref: '#/components/schemas/AudienceEnum'
         audience_param:
@@ -4675,7 +4664,7 @@ components:
         body:
           type: string
         channel:
-          $ref: '#/components/schemas/Channel829Enum'
+          $ref: '#/components/schemas/ChannelEnum'
         audience:
           $ref: '#/components/schemas/AudienceEnum'
         audience_param:
@@ -4800,8 +4789,6 @@ components:
           readOnly: true
         enabled:
           type: boolean
-        channel:
-          $ref: '#/components/schemas/ChannelAf8Enum'
         timing:
           type: string
           maxLength: 64
@@ -4862,8 +4849,6 @@ components:
           type: string
           format: uuid
           readOnly: true
-        channel:
-          $ref: '#/components/schemas/ChannelAf8Enum'
         audience:
           type: string
           maxLength: 64
@@ -4889,7 +4874,6 @@ components:
           readOnly: true
       required:
       - audience
-      - channel
       - id
       - message
       - sent_at
@@ -4912,8 +4896,6 @@ components:
     CampaignWrite:
       type: object
       properties:
-        channel:
-          $ref: '#/components/schemas/ChannelAf8Enum'
         audience:
           type: string
           maxLength: 64
@@ -4925,7 +4907,6 @@ components:
           nullable: true
       required:
       - audience
-      - channel
       - message
     CancelRequest:
       type: object
@@ -5101,7 +5082,7 @@ components:
       description: |-
         * `STAMP` - Stamp card
         * `POINTS` - Points card
-    Channel829Enum:
+    ChannelEnum:
       enum:
       - in_app
       - email
@@ -5111,16 +5092,6 @@ components:
         * `in_app` - In-app
         * `email` - Email
         * `both` - In-app + email
-    ChannelAf8Enum:
-      enum:
-      - PUSH
-      - WHATSAPP
-      - BOTH
-      type: string
-      description: |-
-        * `PUSH` - Push
-        * `WHATSAPP` - WhatsApp
-        * `BOTH` - Both
     CheckoutResponse:
       type: object
       properties:
@@ -5556,12 +5527,9 @@ components:
     CustomerMessage:
       type: object
       properties:
-        channel:
-          $ref: '#/components/schemas/ChannelAf8Enum'
         text:
           type: string
       required:
-      - channel
       - text
     DunningRow:
       type: object
@@ -7047,7 +7015,7 @@ components:
         body:
           type: string
         channel:
-          $ref: '#/components/schemas/Channel829Enum'
+          $ref: '#/components/schemas/ChannelEnum'
         audience:
           $ref: '#/components/schemas/AudienceEnum'
         audience_param:
@@ -7062,8 +7030,6 @@ components:
       properties:
         enabled:
           type: boolean
-        channel:
-          $ref: '#/components/schemas/ChannelAf8Enum'
         timing:
           type: string
           maxLength: 64
@@ -7344,8 +7310,6 @@ components:
           minimum: 0
           format: int64
           nullable: true
-        whatsapp:
-          type: boolean
         export:
           type: boolean
         api:
@@ -7361,12 +7325,6 @@ components:
           format: int64
         analytics:
           $ref: '#/components/schemas/AnalyticsEnum'
-        whatsapp_quota:
-          type: integer
-          maximum: 9223372036854775807
-          minimum: 0
-          format: int64
-          nullable: true
         created_at:
           type: string
           format: date-time
@@ -7624,8 +7582,6 @@ components:
           minimum: 0
           format: int64
           nullable: true
-        whatsapp:
-          type: boolean
         export:
           type: boolean
         api:
@@ -7641,12 +7597,6 @@ components:
           format: int64
         analytics:
           $ref: '#/components/schemas/AnalyticsEnum'
-        whatsapp_quota:
-          type: integer
-          maximum: 9223372036854775807
-          minimum: 0
-          format: int64
-          nullable: true
         created_at:
           type: string
           format: date-time
@@ -8615,18 +8565,11 @@ components:
           type: integer
         customers:
           type: integer
-        whatsapp_used:
-          type: integer
-        whatsapp_quota:
-          type: integer
-          nullable: true
       required:
       - cards
       - customers
       - locations
       - staff
-      - whatsapp_quota
-      - whatsapp_used
     WalletCardDesign:
       type: object
       properties:

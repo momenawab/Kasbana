@@ -1,7 +1,7 @@
 """Billing services (Phase 1.4) — subscription lifecycle helpers.
 
 Pure functions the webhook handlers and the entitlements engine call. The
-gateway adapters (Paymob/Fawry) are deferred to the payments slice; these
+gateway adapters (Paymob) are deferred to the payments slice; these
 helpers express the state transitions independent of any provider.
 """
 

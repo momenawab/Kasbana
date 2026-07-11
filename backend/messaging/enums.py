@@ -1,18 +1,13 @@
-"""Messaging enums (Phase 1.7) — channels, statuses, automation keys.
+"""Messaging enums (Phase 1.7) — statuses, automation keys.
 
-Wire values mirror the contract (``Campaign.channel``, ``Automation.key``):
-``PUSH|WHATSAPP|BOTH`` for channels, the five automation keys for triggers.
+Wire values mirror the contract (``Automation.key``): the campaign statuses and
+the five automation keys for triggers. Delivery is push-only (free wallet
+channel), so there is no channel enum.
 """
 
 from __future__ import annotations
 
 from django.db import models
-
-
-class MessageChannel(models.TextChoices):
-    PUSH = "PUSH", "Push"
-    WHATSAPP = "WHATSAPP", "WhatsApp"
-    BOTH = "BOTH", "Both"
 
 
 class CampaignStatus(models.TextChoices):
