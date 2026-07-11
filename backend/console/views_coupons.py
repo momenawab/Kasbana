@@ -9,7 +9,9 @@ audited.
 from __future__ import annotations
 
 from decimal import Decimal
+from uuid import UUID
 
+from django.db.models import Count
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema
 from rest_framework.request import Request
@@ -18,12 +20,15 @@ from rest_framework.response import Response
 from billing import coupons as coupon_svc
 from billing import services
 from billing.coupons import normalize
-from billing.models import Coupon, CouponRedemption
+from billing.models import Coupon, CouponGroup, CouponRedemption
+from common.pagination import DefaultCursorPagination
 from console import audit
 from console.permissions import AdminAPIView, IsAdminUser, IsFinanceAdmin
 from console.serializers_coupons import (
     ApplyCouponSerializer,
     CouponCreateSerializer,
+    CouponGroupSerializer,
+    CouponGroupWriteSerializer,
     CouponRedemptionSerializer,
     CouponSerializer,
 )
@@ -49,7 +54,18 @@ class CouponListView(AdminAPIView):
 
     @extend_schema(responses=CouponSerializer(many=True))
     def get(self, request: Request) -> Response:
-        return Response(CouponSerializer(Coupon.objects.all(), many=True).data)
+        qs = Coupon.objects.all()
+        # Optional grouping filter: ?group=<uuid> narrows to a group; ?group=none
+        # returns only ungrouped coupons. Absent = every coupon (today's default).
+        group = request.query_params.get("group")
+        if group == "none":
+            qs = qs.filter(group__isnull=True)
+        elif group:
+            try:
+                qs = qs.filter(group_id=UUID(group))
+            except ValueError:
+                qs = qs.none()  # malformed id → no matches, never a 500
+        return Response(CouponSerializer(qs, many=True).data)
 
     @extend_schema(request=CouponCreateSerializer, responses=CouponSerializer)
     def post(self, request: Request) -> Response:
@@ -169,3 +185,83 @@ class ApplyCouponView(AdminAPIView):
             metadata={"code": coupon.code, "type": coupon.type, "detail": detail},
         )
         return Response({"ok": True, "detail": detail})
+
+
+class CouponGroupListView(AdminAPIView):
+    """GET /coupon-groups (any admin, paginated) · POST create (Finance+).
+
+    Groups are a purely organisational wrapper over coupons (Phase 11 deferral):
+    a coupon works identically whether grouped or not.
+    """
+
+    def get_permissions(self):
+        classes = [IsAdminUser] if self.request.method == "GET" else [IsAdminUser, IsFinanceAdmin]
+        return [cls() for cls in classes]
+
+    @extend_schema(responses=CouponGroupSerializer(many=True))
+    def get(self, request: Request) -> Response:
+        qs = CouponGroup.objects.annotate(coupon_count_annotated=Count("coupons"))
+        paginator = DefaultCursorPagination()
+        page = paginator.paginate_queryset(qs, request, view=self) or []
+        return paginator.get_paginated_response(CouponGroupSerializer(page, many=True).data)
+
+    @extend_schema(request=CouponGroupWriteSerializer, responses=CouponGroupSerializer)
+    def post(self, request: Request) -> Response:
+        body = CouponGroupWriteSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+        group = body.save()
+        audit.record(
+            request,
+            "coupon_group.create",
+            target_type="coupon_group",
+            target_id=str(group.id),
+            metadata={"name": group.name},
+        )
+        return Response(CouponGroupSerializer(group).data, status=201)
+
+
+class CouponGroupDetailView(AdminAPIView):
+    """GET /coupon-groups/{id} (any admin) · PATCH/DELETE (Finance+)."""
+
+    def get_permissions(self):
+        classes = [IsAdminUser] if self.request.method == "GET" else [IsAdminUser, IsFinanceAdmin]
+        return [cls() for cls in classes]
+
+    def _get(self, group_id: str) -> CouponGroup:
+        return get_object_or_404(CouponGroup, pk=group_id)
+
+    @extend_schema(responses=CouponGroupSerializer)
+    def get(self, request: Request, group_id: str) -> Response:
+        return Response(CouponGroupSerializer(self._get(group_id)).data)
+
+    @extend_schema(request=CouponGroupWriteSerializer, responses=CouponGroupSerializer)
+    def patch(self, request: Request, group_id: str) -> Response:
+        group = self._get(group_id)
+        before = CouponGroupSerializer(group).data
+        body = CouponGroupWriteSerializer(group, data=request.data, partial=True)
+        body.is_valid(raise_exception=True)
+        body.save()
+        audit.record(
+            request,
+            "coupon_group.update",
+            target_type="coupon_group",
+            target_id=str(group.id),
+            metadata={"before": before, "after": CouponGroupSerializer(group).data},
+        )
+        return Response(CouponGroupSerializer(group).data)
+
+    @extend_schema(request=None, responses=None)
+    def delete(self, request: Request, group_id: str) -> Response:
+        group = self._get(group_id)
+        name = group.name
+        # SET_NULL: the group's coupons survive the delete, just become ungrouped.
+        detached = group.coupons.count()
+        group.delete()
+        audit.record(
+            request,
+            "coupon_group.delete",
+            target_type="coupon_group",
+            target_id=str(group_id),
+            metadata={"name": name, "coupons_detached": detached},
+        )
+        return Response(status=204)

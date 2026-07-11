@@ -14,6 +14,7 @@ import PlatformHome from './features/platform/PlatformHome'
 import LifecycleHome from './features/lifecycle/LifecycleHome'
 import AnnouncementsHome from './features/announcements/AnnouncementsHome'
 import PromotionsHome from './features/promotions/PromotionsHome'
+import PartnersHome from './features/partners/PartnersHome'
 import TeamHome from './features/team/TeamHome'
 import AuditHome from './features/audit/AuditHome'
 import ComplianceHome from './features/compliance/ComplianceHome'
@@ -43,6 +44,7 @@ export default function App() {
         <Route path="/lifecycle" element={<LifecycleHome />} />
         <Route path="/announcements" element={<AnnouncementsHome />} />
         <Route path="/promotions" element={<PromotionsHome />} />
+        <Route path="/partners" element={<PartnersHome />} />
         <Route path="/team" element={<TeamHome />} />
         <Route path="/audit" element={<AuditHome />} />
         <Route path="/compliance" element={<ComplianceHome />} />

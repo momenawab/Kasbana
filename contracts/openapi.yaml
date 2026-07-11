@@ -713,6 +713,118 @@ paths:
               schema:
                 $ref: '#/components/schemas/RetentionPolicy'
           description: ''
+  /api/admin/v1/coupon-groups:
+    get:
+      operationId: api_admin_v1_coupon_groups_list
+      description: |-
+        GET /coupon-groups (any admin, paginated) · POST create (Finance+).
+
+        Groups are a purely organisational wrapper over coupons (Phase 11 deferral):
+        a coupon works identically whether grouped or not.
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CouponGroup'
+          description: ''
+    post:
+      operationId: api_admin_v1_coupon_groups_create
+      description: |-
+        GET /coupon-groups (any admin, paginated) · POST create (Finance+).
+
+        Groups are a purely organisational wrapper over coupons (Phase 11 deferral):
+        a coupon works identically whether grouped or not.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CouponGroupWrite'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CouponGroupWrite'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CouponGroupWrite'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CouponGroup'
+          description: ''
+  /api/admin/v1/coupon-groups/{group_id}:
+    get:
+      operationId: api_admin_v1_coupon_groups_retrieve
+      description: GET /coupon-groups/{id} (any admin) · PATCH/DELETE (Finance+).
+      parameters:
+      - in: path
+        name: group_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CouponGroup'
+          description: ''
+    patch:
+      operationId: api_admin_v1_coupon_groups_partial_update
+      description: GET /coupon-groups/{id} (any admin) · PATCH/DELETE (Finance+).
+      parameters:
+      - in: path
+        name: group_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedCouponGroupWrite'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedCouponGroupWrite'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedCouponGroupWrite'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CouponGroup'
+          description: ''
+    delete:
+      operationId: api_admin_v1_coupon_groups_destroy
+      description: GET /coupon-groups/{id} (any admin) · PATCH/DELETE (Finance+).
+      parameters:
+      - in: path
+        name: group_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      responses:
+        '204':
+          description: No response body
   /api/admin/v1/coupons:
     get:
       operationId: api_admin_v1_coupons_list
@@ -2215,6 +2327,199 @@ paths:
               schema:
                 type: object
                 additionalProperties: {}
+          description: ''
+  /api/admin/v1/partner-config:
+    get:
+      operationId: api_admin_v1_partner_config_retrieve
+      description: GET /partner-config (any admin) · PATCH the global default (Finance+).
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartnerProgramConfig'
+          description: ''
+    patch:
+      operationId: api_admin_v1_partner_config_partial_update
+      description: GET /partner-config (any admin) · PATCH the global default (Finance+).
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPartnerProgramConfig'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedPartnerProgramConfig'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedPartnerProgramConfig'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartnerProgramConfig'
+          description: ''
+  /api/admin/v1/partners:
+    get:
+      operationId: api_admin_v1_partners_list
+      description: GET /partners (any admin, paginated) · POST create (Finance+).
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Partner'
+          description: ''
+    post:
+      operationId: api_admin_v1_partners_create
+      description: GET /partners (any admin, paginated) · POST create (Finance+).
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PartnerCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PartnerCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PartnerCreate'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Partner'
+          description: ''
+  /api/admin/v1/partners/{partner_id}:
+    get:
+      operationId: api_admin_v1_partners_retrieve
+      description: GET /partners/{id} (any admin) · PATCH/DELETE (Finance+).
+      parameters:
+      - in: path
+        name: partner_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Partner'
+          description: ''
+    patch:
+      operationId: api_admin_v1_partners_partial_update
+      description: GET /partners/{id} (any admin) · PATCH/DELETE (Finance+).
+      parameters:
+      - in: path
+        name: partner_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPartnerUpdate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedPartnerUpdate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedPartnerUpdate'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Partner'
+          description: ''
+    delete:
+      operationId: api_admin_v1_partners_destroy
+      description: GET /partners/{id} (any admin) · PATCH/DELETE (Finance+).
+      parameters:
+      - in: path
+        name: partner_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      responses:
+        '204':
+          description: No response body
+  /api/admin/v1/partners/{partner_id}/referrals:
+    get:
+      operationId: api_admin_v1_partners_referrals_list
+      description: GET /partners/{id}/referrals — reward report · POST manual attribution.
+      parameters:
+      - in: path
+        name: partner_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PartnerReferral'
+          description: ''
+    post:
+      operationId: api_admin_v1_partners_referrals_create
+      description: GET /partners/{id}/referrals — reward report · POST manual attribution.
+      parameters:
+      - in: path
+        name: partner_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignReferral'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AssignReferral'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AssignReferral'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartnerReferral'
           description: ''
   /api/admin/v1/plans:
     get:
@@ -4390,6 +4695,14 @@ components:
           type: string
       required:
       - code
+    AssignReferral:
+      type: object
+      properties:
+        merchant_id:
+          type: string
+          format: uuid
+      required:
+      - merchant_id
     AtRisk:
       type: object
       properties:
@@ -4412,6 +4725,14 @@ components:
       - name
       - reasons
       - slug
+    AttributedViaEnum:
+      enum:
+      - signup_code
+      - admin
+      type: string
+      description: |-
+        * `signup_code` - Signup code
+        * `admin` - Admin assignment
     AudienceEnum:
       enum:
       - all
@@ -5047,6 +5368,10 @@ components:
         redemption_count:
           type: integer
           readOnly: true
+        group:
+          type: string
+          format: uuid
+          nullable: true
         created_at:
           type: string
           format: date-time
@@ -5085,10 +5410,52 @@ components:
           nullable: true
         active:
           type: boolean
+        group:
+          type: string
+          format: uuid
+          nullable: true
       required:
       - code
       - type
       - value
+    CouponGroup:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 80
+        description:
+          type: string
+        active:
+          type: boolean
+        coupon_count:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - coupon_count
+      - created_at
+      - id
+      - name
+    CouponGroupWrite:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 80
+        description:
+          type: string
+        active:
+          type: boolean
+      required:
+      - name
     CouponRedemption:
       type: object
       properties:
@@ -6489,6 +6856,139 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Staff'
+    Partner:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        merchant:
+          type: object
+          additionalProperties: {}
+          readOnly: true
+        code:
+          type: string
+          maxLength: 32
+        active:
+          type: boolean
+        enabled_override:
+          type: boolean
+          nullable: true
+        partner_free_months_override:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+        merchant_free_months_override:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+        resolved:
+          type: object
+          additionalProperties: {}
+          readOnly: true
+        referral_count:
+          type: integer
+          readOnly: true
+        converted_count:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - code
+      - converted_count
+      - created_at
+      - id
+      - merchant
+      - referral_count
+      - resolved
+    PartnerCreate:
+      type: object
+      description: Enrol an existing merchant as a partner with a unique code.
+      properties:
+        merchant_id:
+          type: string
+          format: uuid
+        code:
+          type: string
+          maxLength: 32
+        active:
+          type: boolean
+          default: true
+        enabled_override:
+          type: boolean
+          nullable: true
+        partner_free_months_override:
+          type: integer
+          minimum: 0
+          nullable: true
+        merchant_free_months_override:
+          type: integer
+          minimum: 0
+          nullable: true
+      required:
+      - code
+      - merchant_id
+    PartnerProgramConfig:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+        partner_free_months:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        merchant_free_months:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+    PartnerReferral:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        referred_merchant:
+          type: object
+          additionalProperties: {}
+          readOnly: true
+        attributed_via:
+          $ref: '#/components/schemas/AttributedViaEnum'
+        converted_at:
+          type: string
+          format: date-time
+          nullable: true
+        reward_granted:
+          type: boolean
+        partner_months_granted:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        merchant_months_granted:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - attributed_via
+      - created_at
+      - id
+      - referred_merchant
     PasswordChange:
       type: object
       properties:
@@ -6681,6 +7181,16 @@ components:
           type: string
           format: date-time
           readOnly: true
+    PatchedCouponGroupWrite:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 80
+        description:
+          type: string
+        active:
+          type: boolean
     PatchedFeatureFlag:
       type: object
       properties:
@@ -6753,6 +7263,44 @@ components:
         message:
           type: string
           default: ''
+    PatchedPartnerProgramConfig:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+        partner_free_months:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        merchant_free_months:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+    PatchedPartnerUpdate:
+      type: object
+      properties:
+        code:
+          type: string
+          maxLength: 32
+        active:
+          type: boolean
+        enabled_override:
+          type: boolean
+          nullable: true
+        partner_free_months_override:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+        merchant_free_months_override:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
     PatchedPlanUpdate:
       type: object
       description: Same shape as ``PlanSerializer`` but ``key`` can't be changed after
@@ -7574,6 +8122,9 @@ components:
           minLength: 8
         consent:
           type: boolean
+        referral_code:
+          type: string
+          default: ''
       required:
       - business_name
       - consent

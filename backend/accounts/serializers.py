@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from django.contrib.auth import get_user_model
@@ -14,6 +15,7 @@ from core.enums import Role
 from core.models import Merchant, StaffUser
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
 
 # ── Auth lifecycle ───────────────────────────────────────────────────────────
@@ -26,6 +28,8 @@ class SignupSerializer(serializers.Serializer):
     phone = serializers.CharField(max_length=20)  # E.164
     password = serializers.CharField(min_length=8, write_only=True)
     consent = serializers.BooleanField()
+    # Optional partner referral code (Phase E.1). Blank/unknown = no attribution.
+    referral_code = serializers.CharField(required=False, allow_blank=True, default="")
 
     def validate_consent(self, value: bool) -> bool:
         if not value:
@@ -51,6 +55,17 @@ class SignupSerializer(serializers.Serializer):
         s.save(update_fields=["contact_email", "contact_phone", "updated_at"])
 
         subscription_for(merchant)  # starts the 14-day trial
+
+        # Best-effort partner attribution (Phase E.1) — never block signup on it.
+        code = validated_data.get("referral_code", "")
+        if code:
+            try:
+                from partners.services import attribute_signup
+
+                attribute_signup(merchant, code)
+            except Exception:  # pragma: no cover - defensive
+                logger.exception("partner attribution failed for %s", merchant.id)
+
         return staff
 
 

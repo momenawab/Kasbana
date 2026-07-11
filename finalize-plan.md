@@ -414,14 +414,31 @@ Full backend gate (ruff/black/mypy/pytest) + frontend gate (eslint/prettier/vite
 
 ---
 
-# Phase E — Admin panel deferrals
+# Phase E — Admin panel deferrals ✅ DONE (on `dev`, CI-green; not yet promoted)
 
-- **Partner / affiliate tracking + payout report** — deferred from Phase 11.
-  Model (partner, referred-merchant link, attribution, commission), an admin
-  screen, `/api/admin/v1/*` endpoints. Audit-logged, RBAC-gated to
-  Finance/Super-admin, cursor-paginated.
-- **Promotion grouping model** — deferred from Phase 11. A group wrapper over the
-  individually-shipped coupons; migrate existing coupons to an optional group.
+> Both Phase 11 deferrals shipped on `dev` (E.2 commit `1eb3548`, E.1 commit
+> `f661c4d`), full backend + admin gate green, Backend CI green. Bundle-promote
+> to prod together on approval.
+
+- **E.2 — Promotion grouping** ✅ — `billing.CouponGroup` + nullable `Coupon.group`
+  (SET_NULL, migration `0012`); `/coupon-groups` CRUD gated `PROMOTIONS_MANAGE`,
+  cursor-paginated, audited; coupons filterable by `?group=`; admin promotions UI
+  gained a groups panel + filter + per-coupon reassignment. Existing coupons stay
+  ungrouped.
+- **E.1 — Partner / merchant-referral program** ✅ — the "partner/affiliate +
+  payout" line, defined concretely per the owner (see
+  [`partners-plan.md`](./partners-plan.md)): a **partner is an existing merchant**;
+  on a referred merchant's first paid conversion, **both** the partner and the new
+  merchant get **free months (comp)**, one-time, amounts + on/off configured in
+  admin (global default + per-partner override). New `partners` app
+  (`PartnerProgramConfig`/`Partner`/`PartnerReferral`, migration `0001`);
+  attribution via signup code **and** manual admin; `billing.grant_free_months`;
+  best-effort idempotent reward fired from `apply_webhook_event`; admin `/partners`
+  CRUD + `/partner-config` + reward report, gated new `PARTNERS_MANAGE`
+  (Finance/Super), cursor-paginated, audited; Partners admin screen. 24 tests.
+  > **Reframed from the original line:** the plan said "commission / payout
+  > report"; the owner chose comp-months to both sides (not a cash %), so the
+  > "payout report" is the per-partner referral/reward report.
 
 ---
 

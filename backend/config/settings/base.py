@@ -117,6 +117,7 @@ LOCAL_APPS = [
     "messaging",
     "branding",  # registration-page theme + QR styling (finalize Phase 1)
     "console",  # platform admin panel (separate auth boundary)
+    "partners",  # merchant-referral program (Phase E.1)
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
