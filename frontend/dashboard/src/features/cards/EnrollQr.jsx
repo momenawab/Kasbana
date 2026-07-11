@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Copy, Printer, MessageCircle, ArrowLeft, Palette } from 'lucide-react'
+import { Copy, Printer, MessageCircle, ArrowLeft, Palette, QrCode } from 'lucide-react'
 import api from '../../lib/api'
 import QrBlock from '../../components/QrBlock'
 import Button from '../../components/Button'
@@ -90,6 +90,16 @@ export default function EnrollQr() {
               onClick={() => navigate(`/cards/${id}/enroll-page`)}
             >
               {t('enrollTheme.editCardPage')}
+            </Button>
+
+            {/* This QR is bound to this card forever. The main QR isn't. */}
+            <Button
+              variant="ghost"
+              iconStart={QrCode}
+              className="w-full"
+              onClick={() => navigate('/main-qr')}
+            >
+              {t('qr.openMainQr')}
             </Button>
           </>
         )}

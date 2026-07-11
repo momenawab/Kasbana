@@ -51,10 +51,10 @@ def _load_media_image(url: str | None) -> Image | None:
         return None
 
 
-def _prune_old_posters(card_id: Any, keep: str) -> None:
-    """Delete this card's stale posters (previous digests) so the media store
+def _prune_old_posters(key: str, keep: str) -> None:
+    """Delete this key's stale posters (previous digests) so the media store
     doesn't grow unbounded as the theme/reward is edited. Best-effort."""
-    prefix = f"card_{card_id}_"
+    prefix = f"{key}_"
     keep_base = keep.rsplit("/", 1)[-1]
     try:
         _dirs, files = default_storage.listdir("posters")
@@ -74,8 +74,17 @@ def build_and_store_poster(
     card: Card,
     theme: dict[str, Any],
     join_url: str,
+    *,
+    key: str | None = None,
 ) -> str:
-    """Compose + store the card's poster PDF and return its absolute media URL."""
+    """Compose + store a poster PDF and return its absolute media URL.
+
+    ``key`` namespaces the stored file and its pruning group. It defaults to the
+    card, but the main QR passes its own key: the two posters render the *same*
+    card at *different* join URLs, so sharing a key would make each one's prune
+    sweep delete the other on every request.
+    """
+    key = key or f"card_{card.id}"
     # Fingerprint every input that changes the pixels so the name is stable while
     # they are and rotates when they aren't. Uses only the URL strings (cheap) —
     # the images themselves are loaded lazily on a cache miss below.
@@ -92,7 +101,7 @@ def build_and_store_poster(
         ]
     )
     digest = hashlib.sha1(fingerprint.encode("utf-8")).hexdigest()[:16]
-    name = f"posters/card_{card.id}_{digest}.pdf"
+    name = f"posters/{key}_{digest}.pdf"
 
     if not default_storage.exists(name):
         # Only decode the logo/cover on a cache miss — on a hit the endpoint costs
@@ -111,6 +120,6 @@ def build_and_store_poster(
         # wrote `name`, it lands under a suffixed name and we still return `name`,
         # which that other request created (identical bytes).
         default_storage.save(name, ContentFile(pdf))
-        _prune_old_posters(card.id, keep=name)
+        _prune_old_posters(key, keep=name)
 
     return request.build_absolute_uri(settings.MEDIA_URL + name)
