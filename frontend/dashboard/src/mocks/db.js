@@ -17,8 +17,8 @@ export const db = {
   entitlements: {
     plan: 'trial',
     limits: { max_cards: 10, max_locations: 10, max_staff: 25, max_customers: 20000 },
-    features: { whatsapp: true, export: true, api: true, automations: 5, analytics: 'full' },
-    usage: { cards: 2, locations: 1, staff: 3, customers: 30, whatsapp_used: 0, whatsapp_quota: null },
+    features: { export: true, api: true, automations: 5, analytics: 'full' },
+    usage: { cards: 2, locations: 1, staff: 3, customers: 30 },
   },
   staff: { role: 'OWNER' },
   // Business settings (§14). Mutable so a mocked PATCH persists in-session and the

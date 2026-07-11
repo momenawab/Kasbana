@@ -313,15 +313,6 @@ BILLING = {
     },
 }
 
-# ── Messaging (Phase 1.7 · contract §3.10) ────────────────────────────────────
-# WhatsApp Business (Cloud) API. Unset → ``WhatsAppClient`` runs in stub mode.
-MESSAGING = {
-    "WHATSAPP": {
-        "API_TOKEN": env("WHATSAPP_API_TOKEN", ""),
-        "PHONE_ID": env("WHATSAPP_PHONE_ID", ""),
-    },
-}
-
 # Google Wallet requires every LoyaltyClass to carry a program logo. When a
 # merchant/card has no logo_url, fall back to this self-hosted default (served
 # by WhiteNoise at <BASE_URL>/static/wallet/logo.png). Must be publicly

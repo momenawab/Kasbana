@@ -258,9 +258,6 @@
       "message": "Message sent"
     },
     "send": "Send",
-    "channel": "Channel",
-    "channelPush": "Wallet notification (free)",
-    "channelWhatsapp": "WhatsApp (paid)",
     "text": "Message"
   },
   "analytics": {
@@ -274,21 +271,16 @@
   "campaigns": {
     "title": "Campaigns",
     "new": "New campaign",
-    "channel": "Channel",
     "audience": "Audience",
     "statusCol": "Status",
     "sent": "Sent",
     "scheduled": "Scheduled",
     "delivered": "Delivered",
     "emptyTitle": "No campaigns yet",
-    "emptyBody": "Send a push or WhatsApp message to your customers."
+    "emptyBody": "Send a wallet push message to your customers."
   },
   "compose": {
     "title": "New campaign",
-    "channel": "Channel",
-    "channel_PUSH": "Wallet notification (free)",
-    "channel_WHATSAPP": "WhatsApp (paid)",
-    "channel_BOTH": "Wallet + WhatsApp",
     "audience": "Audience",
     "audienceAll": "All customers",
     "message": "Message",
@@ -298,8 +290,7 @@
     "sent": "Campaign sent.",
     "scheduled": "Campaign scheduled.",
     "textRequired": "Message text is required.",
-    "allowance": "{{n}} WhatsApp messages remaining this month.",
-    "quotaExhausted": "Your WhatsApp allowance is exhausted."
+    "quotaExhausted": "Your plan limit was reached."
   },
   "automations": {
     "title": "Automations",

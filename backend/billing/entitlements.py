@@ -7,7 +7,7 @@ turns a *no* into ``PlanLimit`` (-> ``PLAN_LIMIT`` / HTTP 402).
 Resolution (see ``Subscription.effective_plan``):
 - locked (trial expired / canceled / past-due) -> every capability denied;
 - ``max_*`` limit -> allowed while *current usage < limit* (``None`` = unlimited);
-- feature flag (``whatsapp``/``export``/``api``) -> the plan's boolean.
+- feature flag (``export``/``api``) -> the plan's boolean.
 
 Replaces the Phase 1.0 permissive stub. The signature is unchanged, so Joe's
 call sites (`enforce(merchant, "max_cards")`, `check(merchant, "export")`) light
@@ -73,17 +73,11 @@ def enforce(merchant: Merchant, capability: str) -> None:
 
 def usage(merchant: Merchant) -> dict[str, int | None]:
     """Live tenant-scoped usage counts (drives /me and /billing)."""
-    # Imported lazily: ``messaging`` depends on ``billing`` (metering reads the
-    # plan quota), so a module-level import would be circular.
-    from messaging import metering
-
     return {
         "cards": _USAGE_COUNTERS["max_cards"](merchant),
         "locations": _USAGE_COUNTERS["max_locations"](merchant),
         "staff": _USAGE_COUNTERS["max_staff"](merchant),
         "customers": _USAGE_COUNTERS["max_customers"](merchant),
-        "whatsapp_used": metering.used_this_period(merchant),
-        "whatsapp_quota": metering.quota_for(merchant),
     }
 
 
@@ -103,7 +97,6 @@ def describe(merchant: Merchant) -> dict[str, object]:
         "plan": plan_to_wire(sub),
         "limits": {k: limits[k] for k in LIMIT_CAPABILITIES},
         "features": {
-            "whatsapp": bool(limits["whatsapp"]),
             "export": bool(limits["export"]),
             "api": bool(limits["api"]),
             "specialized_roles": bool(limits["specialized_roles"]),

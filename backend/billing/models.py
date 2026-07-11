@@ -52,7 +52,6 @@ class Plan(UUIDModel, TimeStampedModel):
     max_staff = models.PositiveIntegerField(null=True, blank=True)
     max_customers = models.PositiveIntegerField(null=True, blank=True)
 
-    whatsapp = models.BooleanField(default=False)
     export = models.BooleanField(default=False)
     api = models.BooleanField(default=False)
     specialized_roles = models.BooleanField(default=False)
@@ -62,7 +61,6 @@ class Plan(UUIDModel, TimeStampedModel):
     analytics = models.CharField(
         max_length=8, choices=AnalyticsTier.choices, default=AnalyticsTier.BASIC
     )
-    whatsapp_quota = models.PositiveIntegerField(null=True, blank=True)
 
     class Meta:
         ordering = ["price_egp", "key"]
@@ -77,14 +75,12 @@ class Plan(UUIDModel, TimeStampedModel):
             "max_locations": self.max_locations,
             "max_staff": self.max_staff,
             "max_customers": self.max_customers,
-            "whatsapp": self.whatsapp,
             "export": self.export,
             "api": self.api,
             "specialized_roles": self.specialized_roles,
             "custom_branding": self.custom_branding,
             "automations": self.automations,
             "analytics": self.analytics,
-            "whatsapp_quota": self.whatsapp_quota,
         }
 
 

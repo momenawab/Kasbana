@@ -7,23 +7,18 @@ Two firing paths feed the same ``dispatch``:
 - **date-driven** — ``birthday`` / ``expiry`` / ``winback`` fire from the daily
   ``scan_automations`` beat.
 
-``dispatch`` is best-effort: it respects the ``enabled`` flag, the WhatsApp
-capability + quota (silently skipping when unavailable — a background trigger
-never raises into a request), and the channel.
+``dispatch`` is best-effort: it respects the ``enabled`` flag and delivers over
+the free wallet push channel (a background trigger never raises into a request).
 """
 
 from __future__ import annotations
 
-import logging
 from datetime import date, timedelta
 
-from billing import entitlements
 from core.models import CustomerCard, Merchant
-from messaging.enums import AutomationKey, MessageChannel
+from messaging.enums import AutomationKey
 from messaging.models import Automation
 from messaging.segments import LAPSED_DAYS
-
-logger = logging.getLogger(__name__)
 
 _DEFAULT_TEMPLATES: dict[str, str] = {
     AutomationKey.REWARD_READY: "Your reward is ready — come redeem it!",
@@ -41,9 +36,8 @@ def _automation(merchant: Merchant, key: str) -> Automation | None:
 def dispatch(merchant: Merchant, customer: CustomerCard, key: str) -> bool:
     """Fire automation ``key`` for ``customer`` if enabled.
 
-    PUSH rides the free wallet channel (no capability/quota gate); WhatsApp is
-    gated by capability + monthly quota. ``BOTH`` does each independently.
-    Returns ``True`` when at least one channel was dispatched.
+    Delivers over the free wallet push channel (no capability/quota gate).
+    Returns ``True`` when a message was dispatched.
     """
     automation = _automation(merchant, key)
     if automation is None:
@@ -53,34 +47,11 @@ def dispatch(merchant: Merchant, customer: CustomerCard, key: str) -> bool:
     if not text:
         return False
 
-    wants_push = automation.channel in (MessageChannel.PUSH, MessageChannel.BOTH)
-    wants_whatsapp = automation.channel in (MessageChannel.WHATSAPP, MessageChannel.BOTH)
-    fired = False
+    # Free wallet notification (Apple changeMessage + Google addMessage).
+    from wallets import service as wallet
 
-    if wants_push:
-        # Free wallet notification (Apple changeMessage + Google addMessage).
-        from wallets import service as wallet
-
-        wallet.push_message(customer, text)
-        fired = True
-
-    if wants_whatsapp and entitlements.check(merchant, "whatsapp"):
-        from messaging import metering
-
-        if _within_quota(merchant, metering):
-            from messaging.tasks import send_whatsapp
-
-            send_whatsapp.delay(str(customer.id), text)
-            fired = True
-        else:
-            logger.info("Automation %s WhatsApp skipped for %s: quota exhausted", key, merchant.id)
-
-    return fired
-
-
-def _within_quota(merchant: Merchant, metering) -> bool:  # type: ignore[no-untyped-def]
-    quota = metering.quota_for(merchant)
-    return quota is None or metering.used_this_period(merchant) < quota
+    wallet.push_message(customer, text)
+    return True
 
 
 def run_daily_scan(today: date) -> int:

@@ -8,7 +8,6 @@ const FEATURES = [
   ['api', 'API access'],
   ['specialized_roles', 'Marketing/Designer roles'],
   ['custom_branding', 'Custom branding'],
-  ['whatsapp', 'WhatsApp (dormant)'],
 ]
 
 const LIMITS = [
@@ -28,21 +27,19 @@ function blankFrom(plan) {
     max_locations: plan?.max_locations ?? '',
     max_staff: plan?.max_staff ?? '',
     max_customers: plan?.max_customers ?? '',
-    whatsapp: plan?.whatsapp ?? false,
     export: plan?.export ?? false,
     api: plan?.api ?? false,
     specialized_roles: plan?.specialized_roles ?? false,
     custom_branding: plan?.custom_branding ?? false,
     automations: plan?.automations ?? 0,
     analytics: plan?.analytics ?? 'basic',
-    whatsapp_quota: plan?.whatsapp_quota ?? '',
   }
 }
 
 // Blank limit inputs mean "unlimited" (null) — mirrors the backend's None = unlimited.
 function toPayload(form) {
   const payload = { ...form }
-  for (const key of ['max_cards', 'max_locations', 'max_staff', 'max_customers', 'whatsapp_quota']) {
+  for (const key of ['max_cards', 'max_locations', 'max_staff', 'max_customers']) {
     payload[key] = payload[key] === '' ? null : Number(payload[key])
   }
   payload.automations = Number(payload.automations)
@@ -173,16 +170,6 @@ export default function PlanForm({ plan, onDone, onCancel }) {
             <option value="basic">Basic</option>
             <option value="full">Full</option>
           </select>
-        </label>
-        <label className="block">
-          <span className="mb-1 block text-xs text-tx-3">WhatsApp quota (blank = unlimited)</span>
-          <input
-            type="number"
-            min="0"
-            value={form.whatsapp_quota}
-            onChange={(e) => set('whatsapp_quota', e.target.value)}
-            className="w-full rounded-ctl border border-line bg-surface-2 px-3 py-2 text-tx outline-none focus:border-brand"
-          />
         </label>
       </div>
 

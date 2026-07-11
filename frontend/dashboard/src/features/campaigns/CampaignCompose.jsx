@@ -28,7 +28,6 @@ export default function CampaignCompose() {
     }
     try {
       await create.mutateAsync({
-        channel: 'PUSH',
         audience: audience || 'all',
         message: text,
         schedule_at: scheduleAt || null,
