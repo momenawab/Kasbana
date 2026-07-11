@@ -116,15 +116,28 @@ def apply_watermark(hero, fg: _RGB):  # type: ignore[no-untyped-def]
     the bottom-right branding appears on the generated banner image.
     """
     try:
+        from PIL import Image, ImageFilter
+
         w, h = hero.size
         target_h = int(h * 0.34)
         logo = _decode(platform_logo_bytes())
         if logo is None:
             logo = _placeholder((max(target_h * 2, target_h + 24), target_h), fg)
         else:
+            # Trim transparent padding so the logo sits flush in the corner.
+            bbox = logo.getbbox()
+            if bbox:
+                logo = logo.crop(bbox)
             logo.thumbnail((w // 3, target_h))
         pad = max(8, h // 28)
-        hero.paste(logo, (w - logo.width - pad, h - logo.height - pad), logo)
+        x, y = w - logo.width - pad, h - logo.height - pad
+        # Soft shadow behind the logo so a light/white wordmark stays legible on
+        # light heroes (it's invisible on dark ones).
+        shadow = Image.new("RGBA", logo.size, (0, 0, 0, 0))
+        shadow.paste(Image.new("RGBA", logo.size, (0, 0, 0, 165)), (0, 0), logo.split()[3])
+        shadow = shadow.filter(ImageFilter.GaussianBlur(max(2, logo.height // 18)))
+        hero.paste(shadow, (x, y + 2), shadow)
+        hero.paste(logo, (x, y), logo)
         return hero
     except Exception:  # pragma: no cover - best-effort
         return hero
