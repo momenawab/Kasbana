@@ -11,17 +11,20 @@ import {
   UserCog,
   Receipt,
   Settings,
+  QrCode,
 } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { canAccess } from '../lib/roles'
 
 // Nav is grouped into labelled sections for scannability. `area` gates each
 // item by role (null = open to all). `section` is null for the top item (no
-// header). The mobile bottom bar flattens the first 5 *visible* items.
+// header). The mobile bottom bar flattens the first 5 items with `mobile !==
+// false` — set it on desk-bound items so they don't evict a daily-use one.
 const NAV = [
   { to: '/', key: 'overview', Icon: LayoutDashboard, end: true, area: 'insights', section: null },
   { to: '/scan', key: 'scan', Icon: ScanLine, area: 'scan', section: 'operate' },
   { to: '/cards', key: 'cards', Icon: CreditCard, area: 'cards', section: 'operate' },
+  { to: '/main-qr', key: 'mainQr', Icon: QrCode, area: 'cards', section: 'operate', mobile: false },
   { to: '/customers', key: 'customers', Icon: Users, area: 'engage', section: 'operate' },
   { to: '/campaigns', key: 'messaging', Icon: MessageSquare, area: 'engage', section: 'grow' },
   { to: '/analytics', key: 'analytics', Icon: BarChart3, area: 'insights', section: 'grow' },
@@ -82,22 +85,25 @@ export default function Sidebar() {
         </nav>
       </aside>
 
-      {/* Mobile bottom nav (first 5 visible) */}
+      {/* Mobile bottom nav (first 5 visible, minus desk-bound items) */}
       <nav className="theme-t md:hidden fixed bottom-0 inset-x-0 z-40 border-t border-line bg-surface flex justify-around py-2">
-        {items.slice(0, 5).map(({ to, key, Icon, end }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={end}
-            className={({ isActive }) =>
-              'flex flex-col items-center gap-1 px-2 text-[11px] transition ' +
-              (isActive ? 'text-violet font-semibold' : 'text-tx-3')
-            }
-          >
-            <Icon size={20} />
-            <span>{t(`nav.${key}`)}</span>
-          </NavLink>
-        ))}
+        {items
+          .filter((item) => item.mobile !== false)
+          .slice(0, 5)
+          .map(({ to, key, Icon, end }) => (
+            <NavLink
+              key={to}
+              to={to}
+              end={end}
+              className={({ isActive }) =>
+                'flex flex-col items-center gap-1 px-2 text-[11px] transition ' +
+                (isActive ? 'text-violet font-semibold' : 'text-tx-3')
+              }
+            >
+              <Icon size={20} />
+              <span>{t(`nav.${key}`)}</span>
+            </NavLink>
+          ))}
       </nav>
     </>
   )

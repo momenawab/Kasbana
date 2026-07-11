@@ -25,6 +25,7 @@
     "overview": "Overview",
     "scan": "Scan",
     "cards": "Cards",
+    "mainQr": "Main QR",
     "customers": "Customers",
     "analytics": "Analytics",
     "messaging": "Messaging",
@@ -85,6 +86,7 @@
     "account": "Account",
     "loading": "Loading…",
     "upload": "Upload an image",
+    "cancel": "Cancel",
     "comingSoon": "Coming soon in this phase"
   },
   "impersonation": {
@@ -446,7 +448,30 @@
     "copyFailed": "Couldn't copy the link.",
     "poster": "Printable poster",
     "whatsapp": "Share on WhatsApp",
-    "shareMsg": "Join our loyalty card:"
+    "shareMsg": "Join our loyalty card:",
+    "openMainQr": "Use the main QR instead"
+  },
+  "mainQr": {
+    "title": "Main QR",
+    "explainer": "Print this once. Customers who scan it join whichever card you set as your main card — change it any time and the printed code keeps working.",
+    "cardLabel": "Main card",
+    "cardHint": "Only active cards can be the main card.",
+    "noCard": "No main card",
+    "badge": "Main",
+    "setAsMain": "Set as main",
+    "onlyActive": "Only an active card can be the main card.",
+    "saved": "Main card updated. Your printed QR now points here.",
+    "saveFailed": "Couldn't update the main card.",
+    "emptyTitle": "No main card yet",
+    "emptyBody": "Pick a card above to activate your main QR.",
+    "emptyNoActive": "Activate a card first, then pick it here.",
+    "rotate": "Reset the QR code",
+    "rotateHint": "Generates a brand-new code. Only do this if the old one leaked.",
+    "rotateConfirmTitle": "Reset the main QR?",
+    "rotateConfirmBody": "Every poster and sticker you've already printed will stop working. Customers scanning the old code will see a \"link not found\" page. This can't be undone.",
+    "rotateConfirmCta": "Reset it",
+    "rotated": "A new main QR was generated.",
+    "rotateFailed": "Couldn't reset the QR code."
   },
   "poster": {
     "print": "Print / Save as PDF",

@@ -15,6 +15,7 @@ import CardDesigner from './features/cards/CardDesigner'
 import CardDetail from './features/cards/CardDetail'
 import Poster from './features/cards/Poster'
 import EnrollQr from './features/cards/EnrollQr'
+import MainQr from './features/main-qr/MainQr'
 import EnrollThemePage from './features/enroll-theme/EnrollThemePage'
 import CustomersList from './features/customers/CustomersList'
 import CustomerProfile from './features/customers/CustomerProfile'
@@ -60,6 +61,7 @@ export default function App() {
         <Route path="/cards/:id/qr" element={<EnrollQr />} />
         <Route path="/cards/:id/enroll-page" element={<EnrollThemePage />} />
         <Route path="/cards/:id/poster" element={<Poster />} />
+        <Route path="/main-qr" element={<MainQr />} />
         <Route path="/customers" element={<CustomersList />} />
         <Route path="/customers/:id" element={<CustomerProfile />} />
         <Route path="/analytics" element={<Analytics />} />

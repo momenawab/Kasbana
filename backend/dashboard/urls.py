@@ -30,6 +30,7 @@ from dashboard.views_announcements import (
 from dashboard.views_announcements import (
     AnnouncementReadView,
 )
+from dashboard.views_main_qr import MainQrRotateView, MainQrView
 from wallets.views import CardWalletDesignView, WalletTemplateListView
 
 urlpatterns = [
@@ -44,6 +45,9 @@ urlpatterns = [
         CardWalletDesignView.as_view(),
         name="card-wallet-design",
     ),
+    # Main QR (one printed code, re-pointable at any program)
+    path("settings/main-qr", MainQrView.as_view(), name="main-qr"),
+    path("settings/main-qr/rotate", MainQrRotateView.as_view(), name="main-qr-rotate"),
     # Uploads
     path("uploads", UploadView.as_view(), name="upload"),
     # Wallet pass templates (layout-locked catalog — single source of truth)

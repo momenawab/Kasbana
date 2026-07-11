@@ -25,31 +25,30 @@ from enrollment.serializers import (
     EnrollRequestSerializer,
     EnrollResponseSerializer,
 )
-from enrollment.tokens import resolve_active_token
+from enrollment.tokens import resolve_join_target
 from wallets import service as wallet
 
 
 class EnrollView(APIView):
-    """Public join flow behind a QR token."""
+    """Public join flow behind a QR token (a card token or the main-QR token)."""
 
     permission_classes = [AllowAny]
     authentication_classes: list = []
 
-    def _get_token_or_404(self, token: str):
-        row = resolve_active_token(token)  # raises TokenExpired (410) if expired
-        if row is None:
+    def _resolve_or_404(self, token: str):
+        # raises TokenExpired (410) if a card token is past its TTL
+        target = resolve_join_target(token)
+        if target is None:
             from rest_framework.exceptions import NotFound
 
             raise NotFound("Enrollment link not found.")
-        return row
+        return target
 
     @extend_schema(responses=EnrollLandingSerializer)
     def get(self, request: Request, token: str) -> Response:
         from billing import entitlements
 
-        row = self._get_token_or_404(token)
-        card = row.card
-        merchant = row.merchant
+        merchant, card = self._resolve_or_404(token)
 
         # Branded enrollment: on custom_branding plans the merchant's own copy
         # shows and the "Powered by Stampn" footer is hidden (white-label).
@@ -83,8 +82,7 @@ class EnrollView(APIView):
 
     @extend_schema(request=EnrollRequestSerializer, responses=EnrollResponseSerializer)
     def post(self, request: Request, token: str) -> Response:
-        row = self._get_token_or_404(token)
-        card = row.card
+        _merchant, card = self._resolve_or_404(token)
 
         body = EnrollRequestSerializer(data=request.data)
         body.is_valid(raise_exception=True)

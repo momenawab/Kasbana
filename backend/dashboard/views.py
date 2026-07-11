@@ -223,6 +223,7 @@ class CardQRView(APIView):
 
     @extend_schema(responses=CardQRSerializer)
     def get(self, request: Request, card_id: str) -> Response:
+        from dashboard.qr_assets import build_qr_assets
         from enrollment.tokens import get_or_issue_enrollment_token
 
         card = get_scoped(Card, request, pk=card_id)
@@ -232,33 +233,8 @@ class CardQRView(APIView):
         # then calls the API — not the raw API endpoint.
         join_url = f"{settings.ENROLL_BASE_URL}/enroll/{token.token}"
 
-        # Styled QR from the merchant's resolved theme (finalize Phase 1): brand
-        # colors + module shape.
         merchant = get_request_merchant(request)
-        svg = ""
-        theme = None
-        try:
-            from branding.qr import render_qr_svg
-            from branding.services import resolve_theme
-
-            theme = resolve_theme(merchant, card)
-            svg = render_qr_svg(join_url, theme["qr_style"])
-        except Exception:  # pragma: no cover - QR library unavailable
-            theme = None
-
-        # Composed poster PDF (Phase 3): logo-in-QR + reward copy, stored to media
-        # and served at /media. Best-effort and independent of the SVG above — a
-        # poster failure (e.g. Pillow missing) must not blank the inline code.
-        poster_url = ""
-        if theme is not None:
-            try:
-                from branding.poster import build_and_store_poster
-
-                poster_url = build_and_store_poster(request, merchant, card, theme, join_url)
-            except Exception:  # pragma: no cover - Pillow/storage unavailable
-                poster_url = ""
-
-        return Response({"join_url": join_url, "qr_svg": svg, "poster_pdf_url": poster_url})
+        return Response(build_qr_assets(request, merchant, card, join_url))
 
 
 # ── Uploads ───────────────────────────────────────────────────────────────────
