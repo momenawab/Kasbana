@@ -573,6 +573,8 @@
     "address": "Address",
     "save": "Save",
     "saved": "Saved.",
+    "brandColors": "Brand colors",
+    "brandColorsHint": "Used on your wallet pass and enrollment page. Click a swatch to pick a color, type a hex code, or choose a preset.",
     "passLinks": "Contact & pass links",
     "passLinksHint": "Shown on the back of the wallet pass. Each is optional — only the ones you fill in appear.",
     "phone": "Phone number",

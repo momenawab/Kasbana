@@ -92,17 +92,23 @@ function BusinessTab() {
         value={form.address}
         onChange={(e) => setForm({ ...form, address: e.target.value })}
       />
-      <div className="grid grid-cols-2 gap-3">
-        <ColorPicker
-          label={t('onboarding.colorBg')}
-          value={form.color_bg}
-          onChange={(v) => setForm({ ...form, color_bg: v })}
-        />
-        <ColorPicker
-          label={t('onboarding.colorFg')}
-          value={form.color_fg}
-          onChange={(v) => setForm({ ...form, color_fg: v })}
-        />
+      {/* Brand colors — grouped like the other sections and stacked full-width
+          so the swatch, hex field and presets have room to breathe. */}
+      <div className="rounded-ctl border border-line p-3">
+        <div className="mb-1 text-sm font-semibold text-tx">{t('settings.brandColors')}</div>
+        <p className="mb-3 text-xs text-tx-3">{t('settings.brandColorsHint')}</p>
+        <div className="flex flex-col gap-4">
+          <ColorPicker
+            label={t('onboarding.colorBg')}
+            value={form.color_bg}
+            onChange={(v) => setForm({ ...form, color_bg: v })}
+          />
+          <ColorPicker
+            label={t('onboarding.colorFg')}
+            value={form.color_fg}
+            onChange={(v) => setForm({ ...form, color_fg: v })}
+          />
+        </div>
       </div>
 
       {/* Branded enrollment page — custom_branding plans (Growth+). */}

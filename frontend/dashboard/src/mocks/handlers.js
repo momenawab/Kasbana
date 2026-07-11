@@ -22,4 +22,13 @@ export const handlers = [
   http.get(`${BASE}/announcements`, () => HttpResponse.json([])),
   // Locations table (paginated shape: { results }).
   http.get(`${BASE}/locations`, () => HttpResponse.json({ results: [] })),
+  // Business settings (§14) — GET seeds the form; PATCH merges & echoes back so a
+  // save in the Business tab persists for the rest of the session.
+  http.get(`${BASE}/settings/business`, () => HttpResponse.json(db.businessSettings)),
+  http.patch(`${BASE}/settings/business`, async ({ request }) => {
+    const body = await request.json()
+    const { contact, ...rest } = body
+    Object.assign(db.businessSettings, rest, contact?.phone ? { phone: contact.phone } : {})
+    return HttpResponse.json(db.businessSettings)
+  }),
 ]

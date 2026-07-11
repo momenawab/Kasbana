@@ -21,4 +21,23 @@ export const db = {
     usage: { cards: 2, locations: 1, staff: 3, customers: 30, whatsapp_used: 0, whatsapp_quota: null },
   },
   staff: { role: 'OWNER' },
+  // Business settings (§14). Mutable so a mocked PATCH persists in-session and the
+  // form reflects saves. Seeded to match the merchant brand above.
+  businessSettings: {
+    name: 'Cairo Coffee',
+    legal_name: 'Cairo Coffee LLC',
+    logo_url: null,
+    address: '12 Nile St, Cairo',
+    color_bg: '#0E1B2A',
+    color_fg: '#FFFFFF',
+    enroll_headline: '',
+    enroll_tagline: '',
+    phone: '+20 100 000 0000',
+    facebook_url: '',
+    instagram_url: '',
+    whatsapp: '',
+    tiktok_url: '',
+    terms_url: '',
+    branches: '',
+  },
 }
