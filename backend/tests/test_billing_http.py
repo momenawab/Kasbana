@@ -1,8 +1,8 @@
 """Tests for billing HTTP endpoints + gateway webhooks (Phase 1.7).
 
 Covers GET /billing, subscribe (checkout via faked gateway), invoices, cancel,
-and the Paymob/Fawry webhook → activate_plan/lock round-trip. The gateway
-adapters are faked (stub mode) so no real HTTP is made.
+and the Paymob webhook → activate_plan/lock round-trip. The gateway adapter is
+faked (stub mode) so no real HTTP is made.
 """
 
 from __future__ import annotations
@@ -157,50 +157,14 @@ def test_paymob_webhook_replay_is_idempotent(settings, merchant):
     assert sub.plan == PlanTier.GROWTH
 
 
-def _fawry_body(*, ref: str, status: str = "PAID", amount: str = "799.00", sig: str = "bad"):
-    return json.dumps(
-        {
-            "merchantRefNumber": ref,
-            "orderStatus": status,
-            "paymentAmount": amount,
-            "paymentRefrenceNumber": "fawry-txn-1",
-            "messageSignature": sig,
-        }
-    ).encode()
-
-
-def test_subscribe_rejects_disabled_provider(merchant):
-    """Fawry is disabled — a ?provider=fawry checkout must be refused, not 500."""
+def test_subscribe_rejects_unknown_provider(merchant):
+    """An unknown/unsupported provider (Paymob is the only one) must be refused,
+    not 500 — never route money to a provider we can't verify."""
     client, _ = _client_for(Role.OWNER, merchant)
     resp = client.post(
         "/api/v1/billing/subscribe?provider=fawry", {"plan": "growth"}, format="json"
     )
     assert resp.status_code == 400
-
-
-def test_fawry_webhook_disabled_returns_404(settings, merchant):
-    """The Fawry webhook route is kept (frozen contract) but inert while the
-    provider is disabled — a callback is acknowledged with 404, not processed."""
-    settings.DEBUG = True
-    client, _ = _client_for(Role.OWNER, merchant)
-    resp = client.post(
-        "/api/v1/billing/webhook/fawry",
-        data=_fawry_body(ref="ref123"),
-        content_type="application/json",
-    )
-    assert resp.status_code == 404
-
-
-def test_fawry_adapter_still_rejects_bad_signature(settings):
-    """The retained Fawry adapter verifies callbacks (constant-time) so it stays
-    safe to re-enable even though no route reaches it today."""
-    from billing.gateways.base import WebhookVerificationError
-    from billing.gateways.fawry import FawryGateway
-
-    settings.DEBUG = False
-    settings.BILLING = {**settings.BILLING, "FAWRY": {"SECURITY_KEY": "shh", "MERCHANT_CODE": "mc"}}
-    with pytest.raises(WebhookVerificationError):
-        FawryGateway().verify_and_parse(headers={}, body=_fawry_body(ref="r1", sig="wrong"))
 
 
 def test_paymob_webhook_bad_hmac_rejected(settings, merchant):

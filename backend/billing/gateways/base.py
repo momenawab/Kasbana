@@ -38,7 +38,7 @@ class WebhookEvent:
 
 
 class PaymentGateway(Protocol):
-    """The seam billing calls; Paymob/Fawry implement it (contract §3.10)."""
+    """The seam billing calls; Paymob implements it (contract §3.10)."""
 
     provider: str
 

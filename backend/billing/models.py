@@ -100,7 +100,7 @@ class Subscription(UUIDModel, TimeStampedModel):
     )
     trial_ends_at = models.DateTimeField(null=True, blank=True, default=default_trial_end)
     current_period_end = models.DateTimeField(null=True, blank=True)
-    # Gateway linkage (Paymob / Fawry) — filled by the webhook handlers.
+    # Gateway linkage (Paymob) — filled by the webhook handlers.
     provider = models.CharField(max_length=16, blank=True)
     gateway_ref = models.CharField(max_length=128, blank=True)
     # The plan a pending checkout will convert to, recorded at ``subscribe`` time
@@ -202,7 +202,7 @@ class Invoice(UUIDModel, TimeStampedModel):
     """A billing invoice, created by the gateway webhook on a successful charge.
 
     Tenant-scoped via ``merchant``; ``gateway_ref`` links it back to the
-    Paymob/Fawry transaction so webhook replays are idempotent.
+    Paymob transaction so webhook replays are idempotent.
     """
 
     merchant = models.ForeignKey(Merchant, on_delete=models.CASCADE, related_name="invoices")

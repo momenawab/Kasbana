@@ -3035,17 +3035,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/CheckoutResponse'
           description: ''
-  /api/v1/billing/webhook/fawry:
-    post:
-      operationId: billing_webhook_fawry_create
-      description: Base for the unauthenticated gateway webhooks (security:[] in contract).
-      tags:
-      - billing
-      security:
-      - {}
-      responses:
-        '200':
-          description: No response body
   /api/v1/billing/webhook/paymob:
     post:
       operationId: billing_webhook_paymob_create

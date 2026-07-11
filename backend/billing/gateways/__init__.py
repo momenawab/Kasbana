@@ -1,27 +1,22 @@
 """Payment gateway adapters (Phase 1.7).
 
-A thin ``PaymentGateway`` interface with Paymob/Fawry implementations. The
-adapters own two concerns: creating a hosted-checkout URL for ``subscribe`` and
-verifying + parsing the provider's webhook into a provider-agnostic
-``WebhookEvent``. Network calls go through ``httpx``; in tests the adapters are
-faked (no real HTTP) — see ``tests/test_billing_http.py``.
+A thin ``PaymentGateway`` interface with a Paymob implementation. The adapter
+owns two concerns: creating a hosted-checkout URL for ``subscribe`` and verifying
++ parsing the provider's webhook into a provider-agnostic ``WebhookEvent``.
+Network calls go through ``httpx``; in tests the adapter is faked (no real HTTP)
+— see ``tests/test_billing_http.py``.
 
-Real credentials are wired on staging (``PAYMOB_API_KEY``, ``FAWRY_*``); locally
-the gateways run in a deterministic stub mode when their keys are unset.
+Real credentials are wired on staging (``PAYMOB_API_KEY``); locally the gateway
+runs in a deterministic stub mode when its keys are unset.
 """
 
 from __future__ import annotations
 
 from billing.gateways.base import PaymentGateway, WebhookEvent
-from billing.gateways.fawry import FawryGateway
 from billing.gateways.paymob import PaymobGateway
 
 # Active provider adapters. ``subscribe`` picks the default; the webhook routes
-# carry the provider in the path.
-#
-# Fawry is implemented but DISABLED — we bill via Paymob only. The adapter, its
-# webhook route, and its config all remain in place; to re-enable, add
-# ``"fawry": FawryGateway`` back to this map.
+# carry the provider in the path. Paymob is the only provider.
 _GATEWAYS: dict[str, type[PaymentGateway]] = {
     "paymob": PaymobGateway,
 }
@@ -43,7 +38,6 @@ def get_gateway(provider: str = DEFAULT_PROVIDER) -> PaymentGateway:
 
 __all__ = [
     "DEFAULT_PROVIDER",
-    "FawryGateway",
     "PaymentGateway",
     "PaymobGateway",
     "WebhookEvent",

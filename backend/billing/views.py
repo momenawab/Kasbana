@@ -1,11 +1,11 @@
 """Billing endpoints (contract §3.6 · Phase 1.7).
 
 Read state (``GET /billing``), start a checkout (``POST /billing/subscribe`` →
-gateway URL), list invoices, cancel, and the unauthenticated gateway webhooks
-(``/billing/webhook/{paymob,fawry}``) that drive the subscription state machine.
+gateway URL), list invoices, cancel, and the unauthenticated gateway webhook
+(``/billing/webhook/paymob``) that drives the subscription state machine.
 
-The gateway adapters (``billing.gateways``) are faked in tests and run in stub
-mode locally; real Paymob/Fawry round-trips are a staging concern.
+The gateway adapter (``billing.gateways``) is faked in tests and runs in stub
+mode locally; real Paymob round-trips are a staging concern.
 """
 
 from __future__ import annotations
@@ -112,7 +112,7 @@ class SubscribeView(APIView):
         try:
             gateway = get_gateway(provider)
         except ValueError as exc:
-            # Unknown or disabled provider (e.g. Fawry) — never route money there.
+            # Unknown/unsupported provider — never route money there.
             raise DRFValidationError({"provider": "Unsupported payment provider."}) from exc
         session = gateway.create_checkout(
             merchant_id=str(merchant.id),
@@ -180,9 +180,9 @@ class _WebhookView(APIView):
         try:
             gateway = get_gateway(self.provider)
         except ValueError:
-            # Provider implemented but disabled (e.g. Fawry). The route is kept
-            # for the frozen contract, but we don't process its callbacks.
-            logger.info("%s webhook hit but provider is disabled", self.provider)
+            # Defensive: an unknown/unconfigured provider on the webhook path is
+            # acknowledged inertly rather than 500ing.
+            logger.info("%s webhook hit but provider is not enabled", self.provider)
             webhook_log.record(self.provider, WebhookDelivery.Status.DISABLED)
             return Response({"detail": "provider not enabled"}, status=status.HTTP_404_NOT_FOUND)
         try:
@@ -204,7 +204,3 @@ class _WebhookView(APIView):
 
 class PaymobWebhookView(_WebhookView):
     provider = "paymob"
-
-
-class FawryWebhookView(_WebhookView):
-    provider = "fawry"
