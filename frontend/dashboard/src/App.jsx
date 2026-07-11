@@ -16,6 +16,7 @@ import CardDetail from './features/cards/CardDetail'
 import Poster from './features/cards/Poster'
 import EnrollQr from './features/cards/EnrollQr'
 import MainQr from './features/main-qr/MainQr'
+import Support from './features/support/Support'
 import EnrollThemePage from './features/enroll-theme/EnrollThemePage'
 import CustomersList from './features/customers/CustomersList'
 import CustomerProfile from './features/customers/CustomerProfile'
@@ -73,6 +74,7 @@ export default function App() {
         <Route path="/team" element={<Team />} />
         <Route path="/billing" element={<Billing />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/support" element={<Support />} />
         <Route path="/onboarding" element={<Onboarding />} />
       </Route>
 

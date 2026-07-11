@@ -12,6 +12,7 @@ import {
   Receipt,
   Settings,
   QrCode,
+  LifeBuoy,
 } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { canAccess } from '../lib/roles'
@@ -32,6 +33,7 @@ const NAV = [
   { to: '/team', key: 'team', Icon: UserCog, area: 'team', section: 'business' },
   { to: '/billing', key: 'billing', Icon: Receipt, area: 'billing', section: 'business' },
   { to: '/settings', key: 'settings', Icon: Settings, area: null, section: 'general' },
+  { to: '/support', key: 'support', Icon: LifeBuoy, area: null, section: 'general', mobile: false },
 ]
 
 function itemClass({ isActive }) {

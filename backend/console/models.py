@@ -444,11 +444,14 @@ class Lead(UUIDModel, TimeStampedModel):
 
 
 class ContactMessage(UUIDModel, TimeStampedModel):
-    """An inbound support/contact message from the public marketing site.
+    """An inbound support/contact message.
 
-    The Support ("Let's talk") form posts here anonymously; the team reads and
-    works the queue from the admin console (Messages section). Kept separate from
-    ``Lead`` because a contact message is a support enquiry, not a sales lead.
+    Two sources feed one queue: the public marketing "Let's talk" form (anonymous,
+    ``source=marketing``, ``merchant`` null) and a logged-in merchant's dashboard
+    support form (``source=dashboard``, ``merchant`` set). The team works both from
+    the admin console — the global Messages inbox and, for dashboard messages, the
+    merchant's Support tab. Kept separate from ``Lead`` because a contact message
+    is a support enquiry, not a sales lead.
     """
 
     class Status(models.TextChoices):
@@ -456,11 +459,26 @@ class ContactMessage(UUIDModel, TimeStampedModel):
         READ = "read", "Read"
         REPLIED = "replied", "Replied"
 
+    class Source(models.TextChoices):
+        MARKETING = "marketing", "Marketing site"
+        DASHBOARD = "dashboard", "Merchant dashboard"
+
     name = models.CharField(max_length=120)
     email = models.EmailField()
     subject = models.CharField(max_length=200)
     message = models.TextField()
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.NEW)
+    # Dashboard messages carry the sending merchant so they surface on its Support
+    # tab. SET_NULL (not CASCADE): deleting a merchant must not erase the support
+    # history the team may still need. Marketing messages leave this null.
+    source = models.CharField(max_length=16, choices=Source.choices, default=Source.MARKETING)
+    merchant = models.ForeignKey(
+        "core.Merchant",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="contact_messages",
+    )
     read_at = models.DateTimeField(null=True, blank=True)
     replied_at = models.DateTimeField(null=True, blank=True)
 

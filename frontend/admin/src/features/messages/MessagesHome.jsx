@@ -1,15 +1,5 @@
 import { useState } from 'react'
-import {
-  Loader2,
-  Mail,
-  Trash2,
-  Check,
-  RotateCcw,
-  Reply,
-  Send,
-  X,
-  Plus,
-} from 'lucide-react'
+import { Loader2, Mail, Trash2, Check, RotateCcw, Reply, Send, X, Plus } from 'lucide-react'
 import {
   useMessages,
   useUpdateMessage,
@@ -23,11 +13,22 @@ import { fromNow } from '../../lib/format'
 const STATUS_TONE = { new: 'info', read: 'neutral', replied: 'success' }
 const STATUS_LABEL = { new: 'New', read: 'Read', replied: 'Replied' }
 
+const SOURCE_FILTERS = [
+  { key: 'all', label: 'All' },
+  { key: 'marketing', label: 'Marketing site' },
+  { key: 'dashboard', label: 'Merchant dashboard' },
+]
+
 export default function MessagesHome() {
   const { data, isLoading } = useMessages()
   const rows = data ?? []
   const newCount = rows.filter((r) => r.status === 'new').length
   const [showCreate, setShowCreate] = useState(false)
+  const [source, setSource] = useState('all')
+
+  // `source` is absent on older rows; treat those as marketing.
+  const filtered =
+    source === 'all' ? rows : rows.filter((r) => (r.source ?? 'marketing') === source)
 
   return (
     <div className="flex flex-col gap-5">
@@ -44,15 +45,32 @@ export default function MessagesHome() {
         </button>
       </div>
       <p className="-mt-3 text-sm text-tx-3">
-        Support &amp; contact messages from the marketing site.
+        Support &amp; contact messages from the marketing site and merchant dashboards.
       </p>
+
+      <div className="flex flex-wrap gap-2">
+        {SOURCE_FILTERS.map((f) => (
+          <button
+            key={f.key}
+            onClick={() => setSource(f.key)}
+            className={
+              'rounded-ctl border px-3 py-1.5 text-sm ' +
+              (source === f.key
+                ? 'border-brand bg-brand/10 text-brand'
+                : 'border-line text-tx-2 hover:border-brand hover:text-brand')
+            }
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
 
       {showCreate && <CreateMessageForm onClose={() => setShowCreate(false)} />}
 
       {isLoading ? (
         <Loader2 className="mx-auto mt-6 animate-spin text-tx-3" />
       ) : (
-        <List rows={rows} />
+        <List rows={filtered} />
       )}
     </div>
   )
@@ -85,10 +103,7 @@ function CreateMessageForm({ onClose }) {
     : null
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="rounded-card border border-brand/30 bg-surface p-5"
-    >
+    <form onSubmit={handleSubmit} className="rounded-card border border-brand/30 bg-surface p-5">
       <h2 className="mb-4 text-sm font-semibold text-tx">
         New Message — set the recipient you want to email
       </h2>
@@ -160,11 +175,7 @@ function CreateMessageForm({ onClose }) {
           disabled={!canSubmit || create.isPending}
           className="flex items-center gap-1.5 rounded-ctl bg-brand px-4 py-1.5 text-sm font-semibold text-white hover:bg-brand-d disabled:opacity-60"
         >
-          {create.isPending ? (
-            <Loader2 size={14} className="animate-spin" />
-          ) : (
-            <Plus size={14} />
-          )}
+          {create.isPending ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
           Create
         </button>
       </div>
@@ -225,6 +236,9 @@ function MessageRow({ m }) {
             <a href={`mailto:${m.email}`} className="flex items-center gap-1 hover:text-brand">
               <Mail size={12} /> {m.email}
             </a>
+            {m.source === 'dashboard' && (
+              <Badge tone="brand">{m.merchant_name || 'Dashboard'}</Badge>
+            )}
             <span>· {fromNow(m.created_at)}</span>
           </div>
         </div>

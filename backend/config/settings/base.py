@@ -238,6 +238,8 @@ REST_FRAMEWORK = {
         "admin_auth": env("THROTTLE_ADMIN_AUTH", "10/min"),
         # Public "Get started" lead intake from the marketing site.
         "lead_intake": env("THROTTLE_LEAD_INTAKE", "10/min"),
+        # Logged-in merchant opening a support message from the dashboard.
+        "support_message": env("THROTTLE_SUPPORT_MESSAGE", "10/min"),
     },
 }
 
