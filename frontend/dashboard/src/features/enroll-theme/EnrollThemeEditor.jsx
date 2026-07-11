@@ -330,15 +330,23 @@ export default function EnrollThemeEditor({ cardId }) {
         </Button>
       </div>
 
-      {/* Preview column */}
-      <div className="lg:sticky lg:top-4 lg:self-start">
-        <EnrollPreview
-          theme={effective}
-          merchantName={merchantName}
-          programName={programName}
-          rewardTitle={rewardTitle}
-          logoUrl={logoUrl}
-        />
+      {/* Preview column — on wide screens it's a full-viewport-height sticky
+          rail with the mock centered inside. Because the rail spans the whole
+          viewport height (not just the panel's own height), the preview stays
+          pinned and fully visible for the entire editor scroll — it rides along
+          like a floating layer instead of scrolling out of view near the end.
+          `zoom` (not transform:scale) shrinks the real layout box so the whole
+          mock (card + QR) fits the viewport height. */}
+      <div className="lg:sticky lg:top-20 lg:flex lg:h-[calc(100dvh-6rem)] lg:items-center lg:justify-center lg:self-start">
+        <div style={{ zoom: 0.7 }}>
+          <EnrollPreview
+            theme={effective}
+            merchantName={merchantName}
+            programName={programName}
+            rewardTitle={rewardTitle}
+            logoUrl={logoUrl}
+          />
+        </div>
       </div>
     </div>
   )

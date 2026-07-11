@@ -40,4 +40,25 @@ export const db = {
     terms_url: '',
     branches: '',
   },
+  // Registration-page (enroll) theme (§ finalize Phase 2). Mutable so a mocked
+  // PATCH persists in-session. bg_color left empty so the preview showcases its
+  // warm default; name + email fields shown so the mock preview looks populated.
+  enrollTheme: {
+    template_key: 'classic',
+    cover_image_url: '',
+    bg_color: '',
+    accent_color: '',
+    button_text_color: '',
+    font: 'system',
+    welcome_body: '',
+    fields_config: {
+      name: { show: true, required: true },
+      email: { show: true, required: false },
+      birthday: { show: false, required: false },
+    },
+    qr_style: { module_style: 'square', fg_color: '', bg_color: '', frame: 'none' },
+    terms_url: '',
+    privacy_url: '',
+    hide_powered_by: false,
+  },
 }

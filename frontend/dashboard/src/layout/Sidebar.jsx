@@ -60,8 +60,11 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* Desktop sidebar */}
-      <aside className="theme-t hidden md:flex md:w-64 md:flex-col border-e border-line bg-surface p-3">
+      {/* Desktop sidebar — sticky, viewport-height rail so the nav options stay
+          visible the whole time instead of scrolling away with the page. `self-start`
+          stops the flex row from stretching it (which would kill the sticky), and
+          `overflow-y-auto` lets the nav scroll internally on short viewports. */}
+      <aside className="theme-t hidden md:sticky md:top-0 md:flex md:h-screen md:w-64 md:flex-col md:self-start md:overflow-y-auto border-e border-line bg-surface p-3">
         <div className="flex items-center gap-2.5 px-2 py-4">
           <img src="/logo.svg" alt="" className="h-8 w-8" />
           <span className="font-head text-xl font-bold text-tx">{t('app.name')}</span>
