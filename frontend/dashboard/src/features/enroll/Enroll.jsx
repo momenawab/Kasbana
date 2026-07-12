@@ -8,7 +8,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import api, { normalizeError } from '../../lib/api'
-import { isDarkColor } from '../../lib/color'
+import { isDarkColor, lowContrast, readableTextOn } from '../../lib/color'
 import { useTranslation } from 'react-i18next'
 import { Input } from '../../components/Field'
 import { Checkbox } from '../../components/Toggle'
@@ -168,7 +168,22 @@ function EnrollForm({ info, token, refId, onEnrolled }) {
   const fc = theme.fields_config || {}
   const schema = useMemo(() => buildSchema(theme.fields_config || {}), [theme])
   const accent = theme.accent_color || info.color_bg || '#0E1B2A'
-  const btnText = theme.button_text_color || info.color_fg || '#FFFFFF'
+  // Only button_text_color is a statement about *this* button. The old fallback
+  // to color_fg paired the label with the wrong colour: color_fg belongs with
+  // color_bg on the wallet card, so a merchant with a pale accent_color and a
+  // white color_fg got a white label on a pale button. Derive it from the accent
+  // instead; for the common default (accent = dark color_bg) this still lands on
+  // white, so nothing visibly changes for merchants who never touched it.
+  const btnText = theme.button_text_color || readableTextOn(accent)
+  // A dark accent on a dark card (or a pale one on a pale card) is legible but
+  // stops reading as a button. Give it an edge only when it would otherwise melt
+  // into the card; a card with no bg_color is the default light surface.
+  const cardBg = theme.bg_color || '#FFFFFF'
+  const btnEdge = lowContrast(accent, cardBg)
+    ? isDarkColor(cardBg)
+      ? 'rgba(255, 255, 255, 0.35)'
+      : 'rgba(0, 0, 0, 0.18)'
+    : null
 
   const {
     register,
@@ -238,8 +253,11 @@ function EnrollForm({ info, token, refId, onEnrolled }) {
         onChange={(v) => setValue('consent', v, { shouldValidate: true })}
         label={t('enroll.consent')}
       />
+      {/* A <p>, not a <div>: .enroll-dark can only lighten element-qualified
+          selectors (a bare .text-tx-3 would also hit WalletPreview's light body),
+          and these links must lighten on a dark card like the rest of the copy. */}
       {(theme.terms_url || theme.privacy_url) && (
-        <div className="flex flex-wrap gap-x-3 text-xs text-tx-3">
+        <p className="flex flex-wrap gap-x-3 text-xs text-tx-3">
           {theme.terms_url && (
             <a href={theme.terms_url} target="_blank" rel="noreferrer" className="underline">
               {t('enroll.terms')}
@@ -250,7 +268,7 @@ function EnrollForm({ info, token, refId, onEnrolled }) {
               {t('enroll.privacy')}
             </a>
           )}
-        </div>
+        </p>
       )}
       {errors.consent && <p className="text-xs text-danger">{t('enroll.consentRequired')}</p>}
       {errors.root && <p className="text-sm text-danger">{errors.root.message}</p>}
@@ -258,7 +276,11 @@ function EnrollForm({ info, token, refId, onEnrolled }) {
         type="submit"
         loading={isSubmitting}
         className="w-full"
-        style={{ background: accent, color: btnText }}
+        style={{
+          background: accent,
+          color: btnText,
+          boxShadow: btnEdge ? `0 0 0 1px ${btnEdge}` : undefined,
+        }}
       >
         {t('enroll.submit')}
       </Button>
