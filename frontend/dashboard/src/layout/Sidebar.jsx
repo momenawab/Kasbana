@@ -13,6 +13,7 @@ import {
   Settings,
   QrCode,
   LifeBuoy,
+  LogOut,
 } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { canAccess } from '../lib/roles'
@@ -47,7 +48,7 @@ function itemClass({ isActive }) {
 
 export default function Sidebar() {
   const { t } = useTranslation()
-  const { role } = useAuth()
+  const { role, logout } = useAuth()
   const items = NAV.filter((item) => canAccess(role, item.area))
 
   // Group consecutive items by their section for rendering headers.
@@ -88,6 +89,19 @@ export default function Sidebar() {
             </div>
           ))}
         </nav>
+
+        {/* Sign out is an action, not a route, so it stays outside <nav> and out
+            of NAV (whose items are NavLinks with active styling). The nav's
+            flex-1 pins it to the bottom of the rail. */}
+        <div className="mt-4 border-t border-line pt-3">
+          <button
+            onClick={logout}
+            className="flex w-full items-center gap-3 rounded-ctl px-3 py-2 text-sm text-tx-2 transition hover:bg-surface-2 hover:text-danger"
+          >
+            <LogOut size={18} className="shrink-0" />
+            <span>{t('common.logout')}</span>
+          </button>
+        </div>
       </aside>
 
       {/* Mobile bottom nav (first 5 visible, minus desk-bound items) */}

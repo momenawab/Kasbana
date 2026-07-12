@@ -38,4 +38,10 @@ export const handlers = [
     Object.assign(db.enrollTheme, await request.json())
     return HttpResponse.json(db.enrollTheme)
   }),
+  // Account settings (§14) — the Account tab stays blank until this GET resolves.
+  http.get(`${BASE}/settings/account`, () => HttpResponse.json(db.accountSettings)),
+  http.patch(`${BASE}/settings/account`, async ({ request }) => {
+    Object.assign(db.accountSettings, await request.json())
+    return HttpResponse.json(db.accountSettings)
+  }),
 ]

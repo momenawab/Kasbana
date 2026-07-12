@@ -82,7 +82,7 @@
     "cta": "شوف الباقات"
   },
   "common": {
-    "language": "English",
+    "language": "اللغة",
     "logout": "تسجيل الخروج",
     "account": "الحساب",
     "loading": "جاري التحميل…",
@@ -592,7 +592,9 @@
     "dataSection": "بياناتك",
     "exportData": "تنزيل بياناتي",
     "exportDataHint": "ملف JSON يضم ملف نشاطك والإعدادات والفريق والفروع والبطاقات.",
-    "exportFailed": "تعذّر تجهيز تصدير بياناتك."
+    "exportFailed": "تعذّر تجهيز تصدير بياناتك.",
+    "sessionSection": "الجلسة",
+    "logoutHint": "تسجيل الخروج من ستامبن على هذا الجهاز."
   },
   "enroll": {
     "title": "انضم إلى {{merchant}}",

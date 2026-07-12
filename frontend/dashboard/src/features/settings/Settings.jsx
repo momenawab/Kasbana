@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import { LogOut } from 'lucide-react'
 import api, { normalizeError } from '../../lib/api'
 import { setTokens } from '../../lib/auth'
 import { setLang } from '../../lib/i18n'
@@ -212,7 +213,7 @@ function BusinessTab() {
 function AccountTab() {
   const { t, i18n } = useTranslation()
   const toast = useToast()
-  const { role } = useAuth()
+  const { role, logout } = useAuth()
   const { data } = useQuery({
     queryKey: ['settings', 'account'],
     queryFn: async () => (await api.get('/settings/account')).data,
@@ -293,6 +294,18 @@ function AccountTab() {
           </Button>
         </div>
       )}
+
+      {/* Sign out — phone only. The sidebar (`hidden md:flex`) carries logout on
+          desktop, so this is its exact complement: `md:hidden` means logout is
+          reachable at every width, and never shown twice. */}
+      <div className="mt-2 rounded-ctl border border-line p-3 md:hidden">
+        <div className="mb-1 text-sm font-semibold text-tx">{t('settings.sessionSection')}</div>
+        <p className="mb-3 text-xs text-tx-3">{t('settings.logoutHint')}</p>
+        <Button variant="danger" onClick={logout}>
+          <LogOut size={16} />
+          {t('common.logout')}
+        </Button>
+      </div>
     </div>
   )
 }
