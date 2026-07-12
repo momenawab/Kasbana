@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { Globe, LogOut, Sun, Moon } from 'lucide-react'
+import { Globe, Sun, Moon } from 'lucide-react'
 import { setLang } from '../lib/i18n'
 import { useTheme, toggleTheme } from '../lib/theme'
 import { useAuth } from '../hooks/useAuth'
@@ -9,7 +9,7 @@ import { arDigits, daysUntil } from '../lib/format'
 export default function Topbar() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
-  const { merchant, logout } = useAuth()
+  const { merchant } = useAuth()
   const theme = useTheme()
   const lang = i18n.language
 
@@ -39,12 +39,27 @@ export default function Topbar() {
           </button>
         )}
         <button
+          type="button"
+          role="switch"
+          aria-checked={isDark}
           onClick={toggleTheme}
-          className="flex h-9 w-9 items-center justify-center rounded-ctl text-tx-2 transition hover:bg-surface-2 hover:text-tx"
+          className="relative flex h-8 w-16 shrink-0 items-center rounded-full bg-surface-2 ring-1 ring-inset ring-line transition hover:ring-violet/40"
           aria-label={isDark ? t('theme.toLight') : t('theme.toDark')}
           title={isDark ? t('theme.toLight') : t('theme.toDark')}
         >
-          {isDark ? <Sun size={18} /> : <Moon size={18} />}
+          {/* Knob geometry is exact only because the track has no border: the
+              flex halves (32px) and the knob's inset offsets then share one box. */}
+          <span
+            className={`absolute top-1 start-1 h-6 w-6 rounded-full bg-surface shadow-sm transition-transform duration-200 ${
+              isDark ? 'translate-x-8 rtl:-translate-x-8' : 'translate-x-0'
+            }`}
+          />
+          <span className="relative z-10 flex flex-1 items-center justify-center">
+            <Sun size={14} className={isDark ? 'text-tx-3' : 'text-violet-d'} />
+          </span>
+          <span className="relative z-10 flex flex-1 items-center justify-center">
+            <Moon size={14} className={isDark ? 'text-violet-d' : 'text-tx-3'} />
+          </span>
         </button>
         <button
           onClick={toggleLang}
@@ -53,14 +68,6 @@ export default function Topbar() {
         >
           <Globe size={16} />
           <span className="hidden sm:inline">{t('common.language')}</span>
-        </button>
-        <button
-          onClick={logout}
-          className="flex items-center gap-1.5 rounded-ctl px-2.5 py-1.5 text-sm text-tx-2 transition hover:bg-surface-2 hover:text-tx"
-          aria-label={t('common.logout')}
-        >
-          <LogOut size={16} />
-          <span className="hidden md:inline">{t('common.logout')}</span>
         </button>
       </div>
     </header>

@@ -592,7 +592,9 @@
     "dataSection": "Your data",
     "exportData": "Download my data",
     "exportDataHint": "A JSON file with your business profile, settings, team, locations and cards.",
-    "exportFailed": "Could not prepare your data export."
+    "exportFailed": "Could not prepare your data export.",
+    "sessionSection": "Session",
+    "logoutHint": "Sign out of Stampn on this device."
   },
   "enroll": {
     "title": "Join {{merchant}}",

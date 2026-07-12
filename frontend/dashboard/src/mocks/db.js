@@ -61,4 +61,10 @@ export const db = {
     privacy_url: '',
     hide_powered_by: false,
   },
+  // Account settings (§14, Account tab). Without this the tab renders blank in
+  // mock mode: AccountTab bails with `if (!form) return null` until the GET lands.
+  accountSettings: {
+    language: 'en',
+    notifications: { email: true, whatsapp: false },
+  },
 }
