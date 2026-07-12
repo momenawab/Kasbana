@@ -131,6 +131,7 @@
 .enroll-dark span.text-tx-3 {
   color: rgba(255, 255, 255, 0.55);
 }
+.enroll-dark p.text-danger,
 .enroll-dark span.text-danger {
   color: #f8a5a5;
 }

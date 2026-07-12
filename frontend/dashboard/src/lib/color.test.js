@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isDarkColor, isLightColor } from './color'
+import { isDarkColor, isLightColor, lowContrast, luminance, readableTextOn } from './color'
 
 describe('isLightColor', () => {
   it('reads pale fills as light and deep ones as dark', () => {
@@ -45,5 +45,46 @@ describe('isDarkColor', () => {
     expect(isDarkColor('linear-gradient(#fff, #eee)')).toBe(false)
     expect(isDarkColor('rgb(0,0,0)')).toBe(false)
     expect(isDarkColor('#12345')).toBe(false)
+  })
+})
+
+describe('luminance', () => {
+  it('spans black to white and is null when unparseable', () => {
+    expect(luminance('#000000')).toBe(0)
+    expect(luminance('#FFFFFF')).toBeCloseTo(255)
+    expect(luminance('nope')).toBeNull()
+  })
+})
+
+describe('readableTextOn', () => {
+  it('picks ink that survives on the fill', () => {
+    expect(readableTextOn('#FFFFFF')).toBe('#0E1B2A')
+    expect(readableTextOn('#FFE08A')).toBe('#0E1B2A') // pale accent → dark label
+    expect(readableTextOn('#0E1B2A')).toBe('#FFFFFF')
+  })
+
+  // The enroll button's label used to fall back to color_fg (usually #FFFFFF).
+  // For the default accent — the dark brand navy — the derived answer is also
+  // white, so switching to readableTextOn changes nothing for merchants who
+  // never set an accent. That equivalence is the reason the fix is safe to ship.
+  it('agrees with the old #FFFFFF default on the default dark accent', () => {
+    expect(readableTextOn('#0E1B2A')).toBe('#FFFFFF')
+  })
+})
+
+describe('lowContrast', () => {
+  it('flags fills that melt into each other', () => {
+    expect(lowContrast('#0E1B2A', '#2b1a4d')).toBe(true) // dark button on dark card
+    expect(lowContrast('#FFFFFF', '#FFF3E0')).toBe(true) // pale button on pale card
+  })
+
+  it('leaves genuinely distinct fills alone', () => {
+    expect(lowContrast('#0E1B2A', '#FFFFFF')).toBe(false)
+    expect(lowContrast('#0E1B2A', '#FFF3E0')).toBe(false) // the common good case
+  })
+
+  it('does not flag what it cannot measure', () => {
+    expect(lowContrast('linear-gradient(#000, #111)', '#0E1B2A')).toBe(false)
+    expect(lowContrast('#0E1B2A', undefined)).toBe(false)
   })
 })
