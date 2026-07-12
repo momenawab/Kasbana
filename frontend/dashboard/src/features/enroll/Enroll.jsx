@@ -8,6 +8,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import api, { normalizeError } from '../../lib/api'
+import { isDarkColor } from '../../lib/color'
 import { useTranslation } from 'react-i18next'
 import { Input } from '../../components/Field'
 import { Checkbox } from '../../components/Toggle'
@@ -294,10 +295,14 @@ function AppleWalletButton({ url }) {
 }
 
 function Centered({ children, bg }) {
+  // The merchant picks `bg`. When it's a dark colour the card's default dark-on-
+  // light text is unreadable, so flip the page's copy and field labels to light
+  // (see the .enroll-dark block in index.css).
+  const dark = isDarkColor(bg)
   return (
     <div className="flex min-h-screen items-center justify-center bg-paper p-4">
       <div
-        className="w-full max-w-sm rounded-card bg-surface p-6 shadow-bold"
+        className={`w-full max-w-sm rounded-card bg-surface p-6 shadow-bold${dark ? ' enroll-dark' : ''}`}
         style={bg ? { background: bg } : undefined}
       >
         {children}
