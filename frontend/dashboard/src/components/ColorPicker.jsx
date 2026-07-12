@@ -3,6 +3,7 @@
 // without a leading '#', 3- or 6-digit hex, uppercases, and only commits once the
 // value is a valid color — so typing a partial code never corrupts the swatch.
 import { useEffect, useState } from 'react'
+import { isLightColor } from '../lib/color'
 
 const PRESETS = ['#0E1B2A', '#E0A23B', '#1C7C73', '#C75D43', '#16293D', '#FFFFFF']
 
@@ -11,18 +12,6 @@ const PRESETS = ['#0E1B2A', '#E0A23B', '#1C7C73', '#C75D43', '#16293D', '#FFFFFF
 function fullHex(raw) {
   const h = raw.trim().replace(/^#/, '')
   return /^[0-9a-fA-F]{6}$/.test(h) ? `#${h.toUpperCase()}` : null
-}
-
-// Perceived luminance of a hex color → true if it's a "light" fill. Used to flip
-// the eyedropper badge to dark-on-light or light-on-dark so it stays visible on
-// whatever color the client picks (white swatch, black swatch, or anything).
-function isLightColor(hex) {
-  const h = (hex || '').replace(/^#/, '')
-  if (!/^[0-9a-fA-F]{6}$/.test(h)) return false
-  const r = parseInt(h.slice(0, 2), 16)
-  const g = parseInt(h.slice(2, 4), 16)
-  const b = parseInt(h.slice(4, 6), 16)
-  return 0.299 * r + 0.587 * g + 0.114 * b > 150
 }
 
 // Lenient normalize used on blur — also accepts 3-digit shorthand (`abc` → #AABBCC).

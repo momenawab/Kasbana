@@ -108,6 +108,43 @@
   color: rgba(255, 255, 255, 0.4);
 }
 
+/* Dark enroll page — the merchant picks the card's bg_color, so a dark brand
+   colour used to leave the headline, consent text and field labels as dark-on-dark
+   (unreadable). Applied by Enroll's <Centered> only when bg_color parses as a dark
+   hex; see lib/color isDarkColor.
+
+   Every selector is element-qualified on purpose. WalletPreview sits inside this
+   card with its own always-light body and paints "STAMPS / 0-of-10" with the same
+   text-tx / text-tx-3 tokens — but on <div>s. Bare .text-tx here would white those
+   out against white. Headings and copy on this page are h1/h2/p; the shared form
+   labels (Field, Checkbox) are spans — hence h1/h2/p/span and never a bare class. */
+.enroll-dark h1.text-tx,
+.enroll-dark h2.text-tx,
+.enroll-dark span.text-tx {
+  color: rgba(255, 255, 255, 0.92);
+}
+.enroll-dark p.text-tx-2,
+.enroll-dark span.text-tx-2 {
+  color: rgba(255, 255, 255, 0.75);
+}
+.enroll-dark p.text-tx-3,
+.enroll-dark span.text-tx-3 {
+  color: rgba(255, 255, 255, 0.55);
+}
+.enroll-dark span.text-danger {
+  color: #f8a5a5;
+}
+.enroll-dark input:not([type='checkbox']),
+.enroll-dark textarea,
+.enroll-dark select {
+  background-color: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+.enroll-dark input::placeholder {
+  color: rgba(255, 255, 255, 0.45);
+}
+
 /* Dark-theme brand text: the mid/dark brand hues (used on tint chips, badges,
    accents, and inline error text) are too dark to read on the deep dark tints,
    so lighten them app-wide when the .dark theme is active. Light mode keeps the
