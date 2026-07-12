@@ -8,11 +8,11 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import api, { normalizeError } from '../../lib/api'
-import { setLang } from '../../lib/i18n'
 import { useTranslation } from 'react-i18next'
 import { Input } from '../../components/Field'
 import { Checkbox } from '../../components/Toggle'
 import Button from '../../components/Button'
+import LangSwitch from '../../components/LangSwitch'
 import WalletPreview from '../../components/WalletPreview'
 import Skeleton from '../../components/Skeleton'
 
@@ -44,7 +44,7 @@ export default function Enroll() {
   const { token } = useParams()
   const [searchParams] = useSearchParams()
   const ref = searchParams.get('ref') // referrer's customer_card id, if shared
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const [info, setInfo] = useState(null)
   const [loadError, setLoadError] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -66,7 +66,6 @@ export default function Enroll() {
     }
   }, [token, t])
 
-  const toggleLang = () => setLang(i18n.language === 'ar' ? 'en' : 'ar')
 
   if (loading) {
     return (
@@ -136,9 +135,7 @@ export default function Enroll() {
   return (
     <Centered bg={theme.bg_color}>
       <div className="mb-3 flex justify-end">
-        <button onClick={toggleLang} className="text-sm text-tx-2 underline">
-          {i18n.language === 'ar' ? 'English' : 'العربية'}
-        </button>
+        <LangSwitch />
       </div>
       {theme.cover_image_url && (
         <img
