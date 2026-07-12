@@ -2,8 +2,8 @@
 // violet→fuchsia panel on the left (desktop) and a dark glass form card on the
 // right. The `.auth-dark` wrapper darkens the shared (light) form components.
 import { useTranslation } from 'react-i18next'
-import { Globe, Check, ShieldCheck, CreditCard } from 'lucide-react'
-import { setLang } from '../../lib/i18n'
+import { Check, ShieldCheck, CreditCard } from 'lucide-react'
+import LangSwitch from '../../components/LangSwitch'
 
 function StampCard({ t }) {
   // Decorative mock loyalty card echoing the logo (3 dots + a check badge).
@@ -35,9 +35,7 @@ function StampCard({ t }) {
 }
 
 export default function AuthLayout({ title, subtitle, children, footer }) {
-  const { t, i18n } = useTranslation()
-  const lang = i18n.language
-  const toggleLang = () => setLang(lang === 'ar' ? 'en' : 'ar')
+  const { t } = useTranslation()
   const features = [t('auth.feature1'), t('auth.feature2'), t('auth.feature3'), t('auth.feature4')]
 
   return (
@@ -89,15 +87,7 @@ export default function AuthLayout({ title, subtitle, children, footer }) {
           always reachable even though the page itself never scrolls. */}
       <main className="auth-dark flex w-full flex-col overflow-y-auto lg:w-[54%]">
         <div className="flex justify-end p-3">
-          <button
-            type="button"
-            onClick={toggleLang}
-            className="inline-flex items-center gap-2 rounded-ctl px-3 py-1.5 text-sm text-white/70 transition hover:bg-white/10 hover:text-white"
-            aria-label={t('common.language')}
-          >
-            <Globe size={16} />
-            <span>{t('common.language')}</span>
-          </button>
+          <LangSwitch onDark />
         </div>
 
         <div className="flex flex-1 items-center justify-center px-4 pb-8">

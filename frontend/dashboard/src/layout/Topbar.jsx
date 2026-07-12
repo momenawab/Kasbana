@@ -1,9 +1,9 @@
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { Globe, Sun, Moon } from 'lucide-react'
-import { setLang } from '../lib/i18n'
+import { Sun, Moon } from 'lucide-react'
 import { useTheme, toggleTheme } from '../lib/theme'
 import { useAuth } from '../hooks/useAuth'
+import LangSwitch from '../components/LangSwitch'
 import { arDigits, daysUntil } from '../lib/format'
 
 export default function Topbar() {
@@ -13,7 +13,6 @@ export default function Topbar() {
   const theme = useTheme()
   const lang = i18n.language
 
-  const toggleLang = () => setLang(lang === 'ar' ? 'en' : 'ar')
   const trialing = merchant?.status === 'trial'
   const daysLeft = trialing && merchant?.trial_ends_at ? daysUntil(merchant.trial_ends_at) : 0
   const name = merchant?.name || t('app.name')
@@ -61,14 +60,7 @@ export default function Topbar() {
             <Moon size={14} className={isDark ? 'text-violet-d' : 'text-tx-3'} />
           </span>
         </button>
-        <button
-          onClick={toggleLang}
-          className="flex items-center gap-1.5 rounded-ctl px-2.5 py-1.5 text-sm text-tx-2 transition hover:bg-surface-2 hover:text-tx"
-          aria-label={t('common.language')}
-        >
-          <Globe size={16} />
-          <span className="hidden sm:inline">{t('common.language')}</span>
-        </button>
+        <LangSwitch />
       </div>
     </header>
   )
