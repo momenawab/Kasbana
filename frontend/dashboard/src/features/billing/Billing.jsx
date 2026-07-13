@@ -94,119 +94,124 @@ export default function Billing() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       <h1 className="font-head text-2xl font-bold text-tx">{t('billing.title')}</h1>
 
-      {/* Current plan + trial */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-line bg-surface p-5">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="text-tx-2">{t('billing.currentPlan')}:</span>
-            <Badge tone="violet">{t(`billing.plan.${plan}`, plan)}</Badge>
+      {/* Invoices sit in a second column on a wide screen — stacked under the plan
+          matrix they only ever appeared below the fold. Placement is explicit, so
+          narrow screens keep the original order: plan → usage → plans → invoices. */}
+      <div className="grid gap-4 xl:grid-cols-2">
+        {/* Current plan + trial */}
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-line bg-surface p-4 xl:col-start-1 xl:row-start-1">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-tx-2">{t('billing.currentPlan')}:</span>
+              <Badge tone="violet">{t(`billing.plan.${plan}`, plan)}</Badge>
+            </div>
+            {plan === 'trial' && trialEnds && (
+              <p className="mt-1 text-sm text-tx-3">
+                {t('billing.trialLeft', { count: arDigits(daysUntil(trialEnds), lang) })}
+              </p>
+            )}
+            {cancelsOn && (
+              <p className="mt-1 text-sm text-violet-d">
+                {t('billing.cancelsOn', { date: fmtDate(cancelsOn, lang) })}
+              </p>
+            )}
           </div>
-          {plan === 'trial' && trialEnds && (
-            <p className="mt-1 text-sm text-tx-3">
-              {t('billing.trialLeft', { count: arDigits(daysUntil(trialEnds), lang) })}
-            </p>
-          )}
-          {cancelsOn && (
-            <p className="mt-1 text-sm text-violet-d">
-              {t('billing.cancelsOn', { date: fmtDate(cancelsOn, lang) })}
-            </p>
+          {plan !== 'chain' && !cancelsOn && (
+            <Button variant="ghost" onClick={doCancel} loading={cancel.isPending}>
+              {t('billing.cancel')}
+            </Button>
           )}
         </div>
-        {plan !== 'chain' && !cancelsOn && (
-          <Button variant="ghost" onClick={doCancel} loading={cancel.isPending}>
-            {t('billing.cancel')}
-          </Button>
-        )}
-      </div>
 
-      {/* Usage bars */}
-      <div className="grid gap-4 rounded-card border border-line bg-surface p-5 sm:grid-cols-2">
-        <UsageBar
-          label={t('overview.enrollments')}
-          used={usage.customers ?? 0}
-          max={limits.max_customers}
-          lang={lang}
-        />
-        <UsageBar
-          label={t('nav.cards')}
-          used={usage.cards ?? 0}
-          max={limits.max_cards}
-          lang={lang}
-        />
-        <UsageBar
-          label={t('nav.locations')}
-          used={usage.locations ?? 0}
-          max={limits.max_locations}
-          lang={lang}
-        />
-        <UsageBar
-          label={t('nav.team')}
-          used={usage.staff ?? 0}
-          max={limits.max_staff}
-          lang={lang}
-        />
-      </div>
+        {/* Usage bars */}
+        <div className="grid gap-3 rounded-card border border-line bg-surface p-4 sm:grid-cols-2 xl:col-start-1 xl:row-start-2">
+          <UsageBar
+            label={t('overview.enrollments')}
+            used={usage.customers ?? 0}
+            max={limits.max_customers}
+            lang={lang}
+          />
+          <UsageBar
+            label={t('nav.cards')}
+            used={usage.cards ?? 0}
+            max={limits.max_cards}
+            lang={lang}
+          />
+          <UsageBar
+            label={t('nav.locations')}
+            used={usage.locations ?? 0}
+            max={limits.max_locations}
+            lang={lang}
+          />
+          <UsageBar
+            label={t('nav.team')}
+            used={usage.staff ?? 0}
+            max={limits.max_staff}
+            lang={lang}
+          />
+        </div>
 
-      {/* Plan matrix */}
-      <div className="grid gap-4 sm:grid-cols-3">
-        {PLANS.map((p) => (
-          <div
-            key={p}
-            className={`rounded-card border p-5 ${plan === p ? 'border-violet bg-violet-bg' : 'border-line bg-surface'}`}
-          >
-            <h3 className="font-head text-lg font-bold text-tx">{t(`billing.plan.${p}`)}</h3>
-            <Button
-              className="mt-4 w-full"
-              variant={plan === p ? 'ghost' : 'primary'}
-              disabled={plan === p}
-              loading={subscribe.isPending}
-              onClick={() => subscribe.mutate(p)}
+        {/* Plan matrix */}
+        <div className="grid gap-4 sm:grid-cols-3 xl:col-start-1 xl:row-start-3">
+          {PLANS.map((p) => (
+            <div
+              key={p}
+              className={`rounded-card border p-4 ${plan === p ? 'border-violet bg-violet-bg' : 'border-line bg-surface'}`}
             >
-              {plan === p ? t('billing.current') : t('billing.choose')}
-            </Button>
-          </div>
-        ))}
-      </div>
-
-      {/* Invoices */}
-      <div>
-        <h2 className="mb-3 font-head font-semibold text-tx">{t('billing.invoices')}</h2>
-        <Table
-          columns={[
-            { key: 'date', label: t('billing.date') },
-            {
-              key: 'amount_egp',
-              label: t('billing.amount'),
-              render: (r) => money(r.amount_egp, lang),
-            },
-            {
-              key: 'status',
-              label: t('billing.statusCol'),
-              render: (r) => (
-                <Badge tone={r.status === 'paid' ? 'success' : 'violet'}>{r.status}</Badge>
-              ),
-            },
-            {
-              key: 'pdf_url',
-              label: '',
-              render: (r) =>
-                r.pdf_url ? (
-                  <a href={r.pdf_url} className="text-violet-d" target="_blank" rel="noreferrer">
-                    PDF
-                  </a>
-                ) : null,
-            },
-          ]}
-          rows={invoices}
-          emptyState={
-            <div className="rounded-card border border-line bg-surface p-6 text-center text-tx-3">
-              {t('billing.noInvoices')}
+              <h3 className="font-head font-bold text-tx">{t(`billing.plan.${p}`)}</h3>
+              <Button
+                className="mt-3 w-full"
+                variant={plan === p ? 'ghost' : 'primary'}
+                disabled={plan === p}
+                loading={subscribe.isPending}
+                onClick={() => subscribe.mutate(p)}
+              >
+                {plan === p ? t('billing.current') : t('billing.choose')}
+              </Button>
             </div>
-          }
-        />
+          ))}
+        </div>
+
+        {/* Invoices */}
+        <div className="xl:col-start-2 xl:row-span-3 xl:row-start-1">
+          <h2 className="mb-3 font-head font-semibold text-tx">{t('billing.invoices')}</h2>
+          <Table
+            columns={[
+              { key: 'date', label: t('billing.date') },
+              {
+                key: 'amount_egp',
+                label: t('billing.amount'),
+                render: (r) => money(r.amount_egp, lang),
+              },
+              {
+                key: 'status',
+                label: t('billing.statusCol'),
+                render: (r) => (
+                  <Badge tone={r.status === 'paid' ? 'success' : 'violet'}>{r.status}</Badge>
+                ),
+              },
+              {
+                key: 'pdf_url',
+                label: '',
+                render: (r) =>
+                  r.pdf_url ? (
+                    <a href={r.pdf_url} className="text-violet-d" target="_blank" rel="noreferrer">
+                      PDF
+                    </a>
+                  ) : null,
+              },
+            ]}
+            rows={invoices}
+            emptyState={
+              <div className="rounded-card border border-line bg-surface p-6 text-center text-tx-3">
+                {t('billing.noInvoices')}
+              </div>
+            }
+          />
+        </div>
       </div>
     </div>
   )

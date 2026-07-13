@@ -40,7 +40,7 @@ export default function CardsList() {
 
   return (
     <div>
-      <div className="mb-5 flex items-center justify-between">
+      <div className="mb-4 flex items-center justify-between">
         <h1 className="font-head text-2xl font-bold text-tx">{t('cards.title')}</h1>
         <Button iconStart={Plus} onClick={newCard} disabled={atLimit('max_cards')}>
           {t('cards.new')}
@@ -76,9 +76,12 @@ export default function CardsList() {
               >
                 <button
                   onClick={() => navigate(`/cards/${card.id}`)}
-                  className="flex flex-col items-center gap-3 p-4 text-start"
+                  className="flex flex-col items-center gap-2 p-3 text-start"
                 >
-                  <div className="scale-90">
+                  {/* `zoom`, not `scale`: a transform shrinks the preview visually
+                      but still reserves its full 320×285 box, which padded every
+                      tile enough to push the first row of cards past the fold. */}
+                  <div style={{ zoom: 0.8 }}>
                     <WalletPreview
                       platform="APPLE"
                       logoUrl={card.logo_url}
@@ -108,7 +111,7 @@ export default function CardsList() {
                   </div>
                 </button>
 
-                <div className="flex items-center justify-center border-t border-line px-4 py-2">
+                <div className="flex items-center justify-center border-t border-line px-4 py-1.5">
                   {isMain ? (
                     <Badge tone="violet">{t('mainQr.badge')}</Badge>
                   ) : (
