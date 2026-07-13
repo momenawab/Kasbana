@@ -30,7 +30,6 @@ export default function EnrollPreview({
   const pageBg = theme.bg_color || '#E7E0E4'
   const fc = theme.fields_config || {}
   const qr = theme.qr_style || {}
-  const showPoweredBy = !theme.hide_powered_by
 
   return (
     <div className="rounded-card border border-line bg-paper p-4">
@@ -73,7 +72,9 @@ export default function EnrollPreview({
             {fc.name?.show && (
               <PreviewField label={t('enroll.name')} required={fc.name?.required} />
             )}
-            <PreviewField label={t('enroll.phone')} required />
+            {fc.phone?.show && (
+              <PreviewField label={t('enroll.phone')} required={fc.phone?.required} />
+            )}
             {fc.email?.show && (
               <PreviewField label={t('enroll.email')} required={fc.email?.required} />
             )}
@@ -96,9 +97,7 @@ export default function EnrollPreview({
             </div>
           )}
 
-          {showPoweredBy && (
-            <p className="mt-3 text-center text-[10px] text-black/50">{t('enroll.poweredBy')}</p>
-          )}
+          <p className="mt-3 text-center text-[10px] text-black/50">{t('enroll.poweredBy')}</p>
         </div>
       </div>
 

@@ -20,6 +20,9 @@ if TYPE_CHECKING:
 _DEFAULT_FG = "#000000"
 _DEFAULT_BG = "#FFFFFF"
 
+# Shown on every poster, on every plan — merchants cannot switch it off.
+POWERED_BY = "Powered by Stampn"
+
 _RGB = tuple[int, int, int]
 
 
@@ -195,6 +198,16 @@ def render_poster_pdf(
     if reward_description:
         y += 16
         y = _draw_centered(draw, reward_description, y, width, _font(34), ink)
+
+    # Mandatory platform mark — pinned to the foot of the sheet (not after the
+    # reward copy) so it lands in the same place whatever the copy above runs to.
+    # Muted halfway to the background so it reads as a footer, not as content.
+    muted: _RGB = (
+        (ink[0] + bg[0]) // 2,
+        (ink[1] + bg[1]) // 2,
+        (ink[2] + bg[2]) // 2,
+    )
+    _draw_centered(draw, POWERED_BY, height - 90, width, _font(28), muted)
 
     buf = BytesIO()
     canvas.save(buf, format="PDF", resolution=150.0)

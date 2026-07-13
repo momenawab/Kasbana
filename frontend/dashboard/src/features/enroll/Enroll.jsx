@@ -30,7 +30,8 @@ function buildSchema(fc) {
   const optional = z.string().optional().or(z.literal(''))
   const req = (base) => base
   return z.object({
-    customer_phone: z.string().min(6),
+    customer_phone:
+      fc?.phone?.show && fc?.phone?.required ? z.string().min(6) : z.string().min(6).or(optional),
     customer_name: fc?.name?.show && fc?.name?.required ? z.string().min(1) : optional,
     customer_email:
       fc?.email?.show && fc?.email?.required
@@ -129,6 +130,7 @@ export default function Enroll() {
           )}
           {result.referral_url && <ReferShare url={result.referral_url} />}
         </div>
+        <p className="mt-4 text-center text-xs text-tx-3">{t('enroll.poweredBy')}</p>
       </Centered>
     )
   }
@@ -155,9 +157,7 @@ export default function Enroll() {
 
       <EnrollForm info={info} token={token} refId={ref} onEnrolled={setResult} />
 
-      {info.show_powered_by && (
-        <p className="mt-4 text-center text-xs text-tx-3">{t('enroll.poweredBy')}</p>
-      )}
+      <p className="mt-4 text-center text-xs text-tx-3">{t('enroll.poweredBy')}</p>
     </Centered>
   )
 }
@@ -198,7 +198,7 @@ function EnrollForm({ info, token, refId, onEnrolled }) {
     try {
       const { data } = await api.post(`/enroll/${token}`, {
         customer_name: values.customer_name || '',
-        customer_phone: values.customer_phone,
+        customer_phone: values.customer_phone || '',
         customer_email: values.customer_email || '',
         birthday: values.birthday || null,
         consent: true,
@@ -221,15 +221,17 @@ function EnrollForm({ info, token, refId, onEnrolled }) {
           {...register('customer_name')}
         />
       )}
-      <Input
-        label={t('enroll.phone')}
-        type="tel"
-        dir="ltr"
-        required
-        placeholder="+20…"
-        error={errors.customer_phone && t('enroll.phoneInvalid')}
-        {...register('customer_phone')}
-      />
+      {fc.phone?.show && (
+        <Input
+          label={t('enroll.phone')}
+          type="tel"
+          dir="ltr"
+          required={fc.phone?.required}
+          placeholder="+20…"
+          error={errors.customer_phone && t('enroll.phoneInvalid')}
+          {...register('customer_phone')}
+        />
+      )}
       {fc.email?.show && (
         <Input
           label={t('enroll.email')}

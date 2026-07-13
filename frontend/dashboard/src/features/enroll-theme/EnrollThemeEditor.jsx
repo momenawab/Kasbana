@@ -27,7 +27,6 @@ const EDITABLE = [
   'qr_style',
   'terms_url',
   'privacy_url',
-  'hide_powered_by',
 ]
 
 function normalize(theme) {
@@ -42,7 +41,12 @@ function normalize(theme) {
     button_text_color: theme.button_text_color || '',
     font: theme.font || 'system',
     welcome_body: theme.welcome_body || '',
-    fields_config: { name: field('name'), email: field('email'), birthday: field('birthday') },
+    fields_config: {
+      phone: field('phone'),
+      name: field('name'),
+      email: field('email'),
+      birthday: field('birthday'),
+    },
     qr_style: {
       module_style: qr.module_style || 'square',
       fg_color: qr.fg_color || '',
@@ -51,7 +55,6 @@ function normalize(theme) {
     },
     terms_url: theme.terms_url || '',
     privacy_url: theme.privacy_url || '',
-    hide_powered_by: theme.hide_powered_by ?? true,
   }
 }
 
@@ -265,17 +268,13 @@ export default function EnrollThemeEditor({ cardId }) {
                 value={form.welcome_body}
                 onChange={(e) => setField('welcome_body', e.target.value)}
               />
-              <Toggle
-                checked={form.hide_powered_by}
-                onChange={(v) => setField('hide_powered_by', v)}
-                label={t('enrollTheme.hidePoweredBy')}
-              />
             </div>
           </Lockable>
         </Section>
 
         <Section title={t('enrollTheme.sectionFields')}>
           <FieldRow k="name" label={t('enroll.name')} />
+          <FieldRow k="phone" label={t('enroll.phone')} />
           <FieldRow k="email" label={t('enroll.email')} />
           <FieldRow k="birthday" label={t('enroll.birthday')} />
           <p className="text-xs text-tx-3">{t('enrollTheme.fieldPhoneNote')}</p>

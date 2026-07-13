@@ -30,7 +30,6 @@ class RegistrationThemeSerializer(serializers.ModelSerializer):
             "qr_style",
             "terms_url",
             "privacy_url",
-            "hide_powered_by",
         ]
 
     def validate_fields_config(self, value: Any) -> dict[str, Any]:
@@ -81,4 +80,3 @@ class EnrollThemeSerializer(serializers.Serializer):
     qr_style = serializers.JSONField()
     terms_url = serializers.CharField(allow_blank=True)
     privacy_url = serializers.CharField(allow_blank=True)
-    hide_powered_by = serializers.BooleanField()

@@ -4,7 +4,10 @@
 the QR endpoint (``dashboard``) call. It resolves the effective theme
 (card override -> merchant default -> system default) and then **gates the rich
 branding** behind the ``custom_branding`` entitlement: free plans always get the
-stock look + "Powered by Stampn", exactly like the old headline/tagline gate.
+stock look, exactly like the old headline/tagline gate.
+
+The "Powered by Stampn" footer is not part of that gate — it is shown on every
+customer-facing page on every plan, and there is no theme field to suppress it.
 """
 
 from __future__ import annotations
@@ -36,8 +39,6 @@ def _system_default() -> dict[str, Any]:
         "qr_style": default_qr_style(),
         "terms_url": "",
         "privacy_url": "",
-        # White-label by default; forced to False for free plans below.
-        "hide_powered_by": True,
     }
 
 
@@ -54,7 +55,6 @@ def _row_to_dict(theme: RegistrationTheme) -> dict[str, Any]:
         "qr_style": theme.qr_style or default_qr_style(),
         "terms_url": theme.terms_url,
         "privacy_url": theme.privacy_url,
-        "hide_powered_by": theme.hide_powered_by,
     }
 
 
@@ -93,16 +93,15 @@ def resolve_theme(merchant: Merchant, card: Card | None = None) -> dict[str, Any
     """Return the effective theme for the join page, with branding gated.
 
     On ``custom_branding`` plans the merchant's full theme applies. Otherwise the
-    stock look is forced (template/cover/font/welcome/hide-powered-by reset),
-    keeping only the functional bits (which fields to collect, QR colors, legal
-    links). Brand-color inheritance is applied last, either way.
+    stock look is forced (template/cover/font/welcome reset), keeping only the
+    functional bits (which fields to collect, QR colors, legal links).
+    Brand-color inheritance is applied last, either way.
     """
     data = _effective(merchant, card)
     if not entitlements.check(merchant, "custom_branding"):
         gated = _system_default()
         for key in _FUNCTIONAL_KEYS:
             gated[key] = data[key]
-        gated["hide_powered_by"] = False  # free plans always show the footer
         data = gated
 
     _apply_color_inheritance(data, merchant, card)

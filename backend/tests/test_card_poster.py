@@ -115,3 +115,24 @@ def test_render_poster_pdf_is_pdf():
     )
     assert pdf[:5] == b"%PDF-"
     assert len(pdf) > 1000
+
+
+def test_poster_always_stamps_powered_by(monkeypatch):
+    # The mark is mandatory on every plan. The copy is rasterised into the PDF,
+    # so assert on what gets drawn rather than grepping the bytes.
+    import branding.qr as qr
+
+    drawn: list[str] = []
+    original = qr._draw_centered
+
+    def record(draw, text, y, width, font, fill):  # noqa: ANN001
+        drawn.append(text)
+        return original(draw, text, y, width, font, fill)
+
+    monkeypatch.setattr(qr, "_draw_centered", record)
+    qr.render_poster_pdf(
+        "https://x/enroll/abc",
+        {"bg_color": "#101010", "qr_style": {"module_style": "square"}},
+        reward_title="Free coffee",
+    )
+    assert qr.POWERED_BY in drawn

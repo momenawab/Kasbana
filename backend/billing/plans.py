@@ -38,7 +38,8 @@ TRIAL_PLAN = PlanTier.GROWTH
 # boolean feature flags. Keep in sync with ``entitlements.CAPABILITIES``.
 LIMIT_CAPABILITIES = frozenset({"max_cards", "max_locations", "max_staff", "max_customers"})
 # ``specialized_roles`` gates the Marketing/Designer staff roles; ``custom_branding``
-# gates custom join-page branding / removing "Powered by Stampn". Both Growth+.
+# gates custom join-page branding (the "Powered by Stampn" footer is mandatory on
+# every plan and cannot be removed). Both Growth+.
 FEATURE_CAPABILITIES = frozenset({"export", "api", "specialized_roles", "custom_branding"})
 
 # plan -> {capability: limit|flag}. ``None`` limit = unlimited.

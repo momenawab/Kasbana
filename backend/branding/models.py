@@ -48,9 +48,6 @@ class RegistrationTheme(UUIDModel, TimeStampedModel):
 
     terms_url = models.URLField(blank=True)
     privacy_url = models.URLField(blank=True)
-    # Honoured only on custom_branding plans (white-label by default); free plans
-    # always show the footer regardless (gating forces it in resolve_theme).
-    hide_powered_by = models.BooleanField(default=True)
 
     objects = TenantManager()
 

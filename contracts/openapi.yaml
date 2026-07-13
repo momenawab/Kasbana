@@ -5155,7 +5155,6 @@ components:
           type: string
           format: date-time
       required:
-      - customer_phone
       - id
     Contact:
       type: object
@@ -5613,6 +5612,7 @@ components:
       properties:
         customer_phone:
           type: string
+          default: ''
           maxLength: 20
         customer_name:
           type: string
@@ -5634,7 +5634,6 @@ components:
           nullable: true
       required:
       - consent
-      - customer_phone
     EnrollResponse:
       type: object
       description: POST /enroll/{token} success response.
@@ -5685,8 +5684,6 @@ components:
           type: string
         privacy_url:
           type: string
-        hide_powered_by:
-          type: boolean
       required:
       - accent_color
       - bg_color
@@ -5694,7 +5691,6 @@ components:
       - cover_image_url
       - fields_config
       - font
-      - hide_powered_by
       - privacy_url
       - qr_style
       - template_key
@@ -7388,8 +7384,6 @@ components:
           type: string
           format: uri
           maxLength: 200
-        hide_powered_by:
-          type: boolean
     PatchedRetentionPolicy:
       type: object
       description: The global data-retention policy. Windows are days; 0 = keep forever.
@@ -7796,8 +7790,6 @@ components:
           type: string
           format: uri
           maxLength: 200
-        hide_powered_by:
-          type: boolean
     ResendInvite:
       type: object
       properties:

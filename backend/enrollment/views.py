@@ -50,15 +50,13 @@ class EnrollView(APIView):
 
         merchant, card = self._resolve_or_404(token)
 
-        # Branded enrollment: on custom_branding plans the merchant's own copy
-        # shows and the "Powered by Stampn" footer is hidden (white-label).
+        # Branded enrollment: on custom_branding plans the merchant's own copy shows.
         branded = entitlements.check(merchant, "custom_branding")
         settings = getattr(merchant, "settings", None)
         headline = (getattr(settings, "enroll_headline", "") or "") if branded else ""
         tagline = (getattr(settings, "enroll_tagline", "") or "") if branded else ""
 
-        # Resolved registration theme (finalize Phase 1). Gating is applied inside
-        # resolve_theme, so the footer follows the resolved hide_powered_by.
+        # Resolved registration theme (finalize Phase 1) — gating applied inside.
         from branding.services import resolve_theme
 
         theme = resolve_theme(merchant, card)
@@ -74,7 +72,10 @@ class EnrollView(APIView):
                 "logo_url": card.logo_url or merchant.logo_url,
                 "headline": headline,
                 "tagline": tagline,
-                "show_powered_by": not theme["hide_powered_by"],
+                # Always on, every plan — merchants cannot suppress the footer.
+                # Kept in the payload (rather than dropped) so a stale cached
+                # join page, which still reads this flag, keeps rendering it.
+                "show_powered_by": True,
                 "theme": theme,
             }
         ).data
@@ -91,8 +92,10 @@ class EnrollView(APIView):
         email = body.validated_data["customer_email"]
         birthday = body.validated_data["birthday"]
 
-        # One card per phone per program (contract §3.4 uniqueness).
-        if CustomerCard.objects.filter(card=card, customer_phone=phone).exists():
+        # One card per phone per program (contract §3.4 uniqueness). Only applies
+        # when a phone was given — phone-less members can't be deduped, so every
+        # join creates a new card (matching the partial DB constraint).
+        if phone and CustomerCard.objects.filter(card=card, customer_phone=phone).exists():
             raise AlreadyEnrolled()
 
         try:
