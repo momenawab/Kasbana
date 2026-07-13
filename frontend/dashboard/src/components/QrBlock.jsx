@@ -7,6 +7,10 @@ import Button from './Button'
 // Colors default to the brand ink/white; the enroll-theme editor passes the
 // merchant's chosen QR colors for a live preview.
 //
+// `size` is the canvas resolution, i.e. how big the downloaded PNG is; the
+// optional `displaySize` shrinks only the on-screen footprint. They are separate
+// so a page can show a compact QR without handing the merchant a low-res print.
+//
 // `moduleStyle` ('square' | 'rounded' | 'dots'): qrcode.react only draws square
 // modules, so for the styled shapes we render an off-screen QRCodeCanvas, read
 // back its module grid, and repaint it as rounded rects / dots on our own
@@ -101,6 +105,7 @@ function paintStyled(src, out, { fgColor, bgColor, moduleStyle }) {
 export default function QrBlock({
   value,
   size = 220,
+  displaySize = size,
   downloadName = 'stampn-qr',
   fgColor = '#0E1B2A',
   bgColor = '#FFFFFF',
@@ -140,11 +145,17 @@ export default function QrBlock({
             >
               <QRCodeCanvas value={value || ''} size={size} fgColor={fgColor} bgColor={bgColor} />
             </div>
-            <canvas ref={outRef} style={{ width: size, height: size }} />
+            <canvas ref={outRef} style={{ width: displaySize, height: displaySize }} />
           </>
         ) : (
           <div ref={ref}>
-            <QRCodeCanvas value={value || ''} size={size} fgColor={fgColor} bgColor={bgColor} />
+            <QRCodeCanvas
+              value={value || ''}
+              size={size}
+              fgColor={fgColor}
+              bgColor={bgColor}
+              style={{ width: displaySize, height: displaySize }}
+            />
           </div>
         )}
       </div>
