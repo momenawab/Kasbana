@@ -49,7 +49,7 @@ export default function EnrollQr() {
         {t('onboarding.back')}
       </Button>
 
-      <div className="flex flex-col items-center gap-5 rounded-card border border-line bg-white p-6">
+      <div className="flex flex-col items-center gap-5 rounded-card border border-line bg-surface p-6">
         <h1 className="font-head text-2xl font-bold text-tx">{t('qr.title')}</h1>
 
         {isLoading ? (
