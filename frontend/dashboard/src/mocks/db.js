@@ -52,6 +52,7 @@ export const db = {
     font: 'system',
     welcome_body: '',
     fields_config: {
+      phone: { show: true, required: true },
       name: { show: true, required: true },
       email: { show: true, required: false },
       birthday: { show: false, required: false },
@@ -59,7 +60,6 @@ export const db = {
     qr_style: { module_style: 'square', fg_color: '', bg_color: '', frame: 'none' },
     terms_url: '',
     privacy_url: '',
-    hide_powered_by: false,
   },
   // Account settings (§14, Account tab). Without this the tab renders blank in
   // mock mode: AccountTab bails with `if (!form) return null` until the GET lands.

@@ -2,17 +2,21 @@
 
 JSONField defaults must be *callables* returning fresh dicts (a shared mutable
 default would be aliased across rows), so ``fields_config`` / ``qr_style`` each
-have a factory. ``phone`` is always collected (it is the loyalty key), so it is
-not part of ``fields_config``.
+have a factory.
+
+``phone`` is configurable like the rest, but it defaults to shown+required
+because it is the loyalty key: it is what dedupes a returning customer and what
+lets a merchant recover someone who lost their pass. A merchant who turns it off
+gets members who exist only as their wallet pass (see ``CustomerCard``'s partial
+uniqueness constraint).
 """
 
 from __future__ import annotations
 
 from typing import Any
 
-# The optional fields a merchant may collect on the join form, with show/require
-# toggles. Phone is implicit and always required.
-FIELD_KEYS = ("name", "email", "birthday")
+# The fields a merchant may collect on the join form, with show/require toggles.
+FIELD_KEYS = ("phone", "name", "email", "birthday")
 
 # QR module shapes the styled renderer understands (see ``branding.qr``).
 QR_MODULE_STYLES = ("square", "rounded", "dots")
@@ -27,6 +31,7 @@ FONT_KEYS = ("system", "serif", "rounded")
 
 def default_fields_config() -> dict[str, Any]:
     return {
+        "phone": {"show": True, "required": True},
         "name": {"show": True, "required": False},
         "email": {"show": True, "required": False},
         "birthday": {"show": False, "required": False},

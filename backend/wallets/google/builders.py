@@ -86,7 +86,9 @@ def build_loyalty_object(customer_card: CustomerCard) -> dict:
         "classId": class_id_for(card),
         "state": object_state_for(customer_card),
         "accountId": str(customer_card.id),
-        "accountName": customer_card.customer_name or customer_card.customer_phone,
+        # A member may have neither (both fields optional on the join form) —
+        # Google rejects a blank accountName, so fall back to the program name.
+        "accountName": (customer_card.customer_name or customer_card.customer_phone or card.name),
         "loyaltyPoints": {
             "label": unit_label(card),
             "balance": {"int": customer_card.stamp_count},

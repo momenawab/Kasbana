@@ -53,7 +53,6 @@ def test_free_plan_is_gated_to_stock_look(merchant, card):
         template_key="bold",
         cover_image_url="https://cdn.example/hero.png",
         welcome_body="Fancy copy",
-        hide_powered_by=True,
     )
     activate_plan(merchant, PlanTier.STARTER)  # custom_branding off
 
@@ -61,7 +60,6 @@ def test_free_plan_is_gated_to_stock_look(merchant, card):
     assert theme["template_key"] == "classic"  # forced back to stock
     assert theme["cover_image_url"] == ""
     assert theme["welcome_body"] == ""
-    assert theme["hide_powered_by"] is False  # free plans always show the footer
 
 
 def test_accent_color_inherits_from_card(merchant, card):

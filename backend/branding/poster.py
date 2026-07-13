@@ -90,6 +90,11 @@ def build_and_store_poster(
     # the images themselves are loaded lazily on a cache miss below.
     fingerprint = "|".join(
         [
+            # Layout version. Bump whenever render_poster_pdf changes the pixels
+            # for unchanged inputs — otherwise every already-stored poster keeps
+            # its old digest and is served from cache forever. v2 = mandatory
+            # "Powered by Stampn" footer.
+            "v2",
             join_url,
             card.reward_title or "",
             card.reward_description or "",
