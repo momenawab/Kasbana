@@ -442,7 +442,11 @@ Full backend gate (ruff/black/mypy/pytest) + frontend gate (eslint/prettier/vite
 
 ---
 
-# Phase F — Housekeeping & operational decisions
+# Phase F — Housekeeping & operational decisions ✅ DONE (code side)
+
+> **Status: closed on `dev` 2026-07-14.** Everything Phase F could close from code
+> is closed. The two remaining lines are **owner-blocked, not open work** — they
+> need SSH / prod-DB access, and the exact commands to run are now written down.
 
 - **WhatsApp** ✅ **DELETED** (owner's call) — dev commit `4e59644`. The dormant
   messaging channel (client, metering, quota, `WhatsAppUsage`, `MessageChannel`,
@@ -452,15 +456,44 @@ Full backend gate (ruff/black/mypy/pytest) + frontend gate (eslint/prettier/vite
 - **Fawry** ✅ **DELETED** (owner's call) — dev commit `858604d`. The disabled
   adapter, `FawryWebhookView` + route, settings block, and export removed;
   unknown-provider guards kept.
-- **Secret-rotation runbook** — document rotating wallet / gateway / JWT keys.
-  The admin incident runbook exists; a general secrets runbook does not. *(open)*
-- **Backup cron confirmation** — verify the nightly `backup.sh` + weekly
-  `verify_backup.sh` crontab lines are actually installed on the box. *(open —
-  needs server access)*
-- **MFA enrolment confirmation** — confirm every real `AdminUser` completed
-  forced enrolment post-deploy. *(open — needs prod DB access)*
-- **Stale docs** — after this file lands, delete or redirect `main/docs/MISSING.md`
-  and `finalize-missing.md` so there is one source of truth. *(open)*
+- **Secret-rotation runbook** ✅ — new
+  [`main/docs/Secret-Rotation-Runbook.md`](./main/docs/Secret-Rotation-Runbook.md):
+  where secrets live, a blast-radius table, and a per-secret procedure for
+  `SECRET_KEY`, the DB password, Paymob, the Google SA key, the Apple cert, and
+  SMTP. Both of its Django shell commands were **run against the real schema**,
+  not just written.
+  > **Two findings the runbook had to correct rather than document.**
+  > 1. **`WALLET_AUTH_TOKEN_SECRET` and `PASS_BARCODE_SECRET` were dead settings** —
+  >    declared in `config/settings/base.py` but read by **no code anywhere**
+  >    (whole-repo grep). A rotation runbook that told you to rotate them would
+  >    have been pure false comfort. **Now removed** from `base.py` and both env
+  >    examples. The real Apple pass token is `CustomerCard.auth_token`
+  >    (`core/models.py:138`) — a **random per-row column**, so there is no global
+  >    lever to invalidate pass tokens, and the runbook says so.
+  > 2. **`SECRET_KEY` is the signing key for merchant *and* admin JWTs** —
+  >    `SIMPLE_JWT` declares no `SIGNING_KEY`, and `console/auth.py:69` mints admin
+  >    tokens with the same `AccessToken`. So rotating it is a platform-wide forced
+  >    logout. The runbook points at revoking `AdminSession` rows as the surgical
+  >    lever instead.
+- **Dead env keys** ✅ — the WhatsApp/Fawry deletions left `WHATSAPP_*` /
+  `FAWRY_*` behind in `backend/.env.example` and `infra/.env.prod.example`;
+  removed. `infra/.env.prod.example` was also **missing `PAYMOB_HMAC_SECRET`**,
+  which `base.py:310` reads to verify inbound webhooks — added, because a missing
+  HMAC secret fails webhooks *silently* and billing state just quietly drifts.
+- **Stale docs** ✅ — `main/docs/MISSING.md`, `finalize-missing.md`, and
+  `finalize-phases.md` now carry ⛔ SUPERSEDED banners pointing here.
+  **Redirected, not deleted**, on purpose: seven `backend/branding/*.py` docstrings
+  cite `finalize-phases` by name as the spec they were built from, and
+  `main/docs/LAUNCH.md` linked to `finalize-missing.md` — deleting would have
+  orphaned both. `LAUNCH.md` itself was stale in two places (it still asked
+  whether to "revive or remove" WhatsApp, and called the QR "a plain black
+  square"); both corrected.
+- **Backup cron confirmation** — *(owner-blocked — needs SSH)*. Commands in
+  [the runbook's appendix](./main/docs/Secret-Rotation-Runbook.md#appendix--the-two-prod-checks-that-need-server-access).
+  The real question there is not the crontab line but whether **`BACKUP_S3` is
+  set** — if it is empty, the backups die with the server.
+- **MFA enrolment confirmation** — *(owner-blocked — needs prod DB)*. One query,
+  in the same appendix. **Pass = zero rows.**
 
 ---
 

@@ -1,5 +1,19 @@
 # Stampn Backend — Remaining Phases & Tasks
 
+> # ⛔ SUPERSEDED — nothing in here is "remaining"
+>
+> **Go to [`finalize-plan.md`](../../finalize-plan.md)** for what is actually left.
+>
+> Despite the title, this file is a **2026-06-29 snapshot**. Phases 1.6, 1.7 and
+> 1.8 that it lists as remaining have all shipped — and the WhatsApp + Fawry
+> integrations it specs were **deliberately deleted** (dev `4e59644` / `858604d`),
+> so building from this file would resurrect code the owner chose to remove.
+>
+> Kept as the historical record of the v1.1.0 contract build. Retired
+> **2026-07-14** (Phase F).
+
+---
+
 > Status as of **2026-06-29** (branch `dev`; prod running image `f3de98bae4af`).
 > The frozen `contracts/openapi.yaml` (v1.1.0) defines ~45 endpoints. Phases
 > **1.0–1.5 + observability are done**; what remains is **1.6 (Dashboard

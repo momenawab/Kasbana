@@ -16,6 +16,7 @@ from django.db import models
 from core.enums import WalletPlatform
 from core.models import Card, CustomerCard, Merchant, TimeStampedModel, UUIDModel
 from core.tenancy import TenantManager
+from wallets import stamp_grid
 
 # Matches the ``#RRGGBB`` shape used by ``core.Merchant``/``Card`` colors.
 hex_color = RegexValidator(r"^#(?:[0-9a-fA-F]{6})$", "Enter a hex color like #1A2B3C.")
@@ -147,6 +148,15 @@ class WalletCardDesign(UUIDModel, TimeStampedModel):
     # Fill color for the stamps (both the built-in icon and the drawn circles).
     # Blank = the card foreground color. Apple/stamp cards only.
     stamp_color = models.CharField(max_length=7, blank=True, validators=[hex_color])
+    # How the stamps are arranged. Blank = "grid" — today's row-major layout, so
+    # an unset design renders exactly what it always did. "columns" numbers down
+    # each column instead of across each row (6 stamps → 0,2,4 on top, 1,3,5
+    # below); "stagger" does the same but offsets the lower row half a cell for a
+    # zigzag. Only bites on cards that wrap to two rows (>5 stamps). Shared by the
+    # Apple strip AND the Google hero — one renderer draws both.
+    stamp_layout = models.CharField(
+        max_length=12, blank=True, choices=[(k, k) for k in stamp_grid.LAYOUTS]
+    )
 
     # ── Google (constrained) ────────────────────────────────────────────────
     google_title = models.CharField(max_length=40, blank=True)  # blank = merchant name

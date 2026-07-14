@@ -348,6 +348,11 @@
     "stampIcon": "أيقونة الختم",
     "stampNone": "بدون (دوائر)",
     "stampColor": "لون الختم",
+    "stampLayout": "ترتيب الأختام",
+    "stampLayout_grid": "صفوف",
+    "stampLayout_columns": "أعمدة",
+    "stampLayout_stagger": "متعرّج",
+    "stampLayoutHint": "بيأثر بس على الكروت اللي فيها أكتر من ٥ أختام، لما تتوزّع على صفّين.",
     "stampUploadHint": "أو ارفع صور الختم الفارغ والممتلئ بتاعتك.",
     "stampSaveFailed": "تم حفظ الكارت، لكن تعذّر تطبيق شكل الختم."
   },

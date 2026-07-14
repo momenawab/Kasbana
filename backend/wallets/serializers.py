@@ -68,6 +68,7 @@ class WalletCardDesignSerializer(serializers.ModelSerializer):
             "strip_filled_url",
             "stamp_icon",
             "stamp_color",
+            "stamp_layout",
             "google_title",
             "google_subtitle",
             "google_rows",

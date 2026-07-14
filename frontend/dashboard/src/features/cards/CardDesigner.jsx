@@ -39,7 +39,49 @@ const EMPTY = {
 
 // Create-time stamp styling — persisted to the card's wallet design after the
 // card is created (edit mode uses the full WalletDesignEditor instead).
-const EMPTY_STAMP = { stamp_icon: '', stamp_color: '', strip_empty_url: '', strip_filled_url: '' }
+const EMPTY_STAMP = {
+  stamp_icon: '',
+  stamp_color: '',
+  stamp_layout: '',
+  strip_empty_url: '',
+  strip_filled_url: '',
+}
+
+// How the stamps are arranged. Blank = the backend default (row-major). Only has
+// a visible effect once the card wraps to two rows, i.e. more than 5 stamps.
+const STAMP_LAYOUTS = ['', 'columns', 'stagger']
+
+// A six-dot thumbnail of each arrangement, so the merchant picks by shape instead
+// of by reading a word. Mirrors stampRows() in WalletPreview and _centers() in
+// wallets/stamp_grid.py: grid runs across (0,1,2 / 3,4,5), the other two alternate
+// down (0,2,4 / 1,3,5), and stagger additionally offsets the lower row.
+function StampLayoutGlyph({ layout, color }) {
+  const alternating = layout === 'columns' || layout === 'stagger'
+  const rows = alternating
+    ? [
+        [0, 2, 4],
+        [1, 3, 5],
+      ]
+    : [
+        [0, 1, 2],
+        [3, 4, 5],
+      ]
+  return (
+    <span className="flex flex-col gap-0.5" aria-hidden="true">
+      {rows.map((row, r) => (
+        <span
+          key={r}
+          className="flex gap-0.5"
+          style={layout === 'stagger' && r > 0 ? { marginInlineStart: '4px' } : undefined}
+        >
+          {row.map((i) => (
+            <span key={i} className="h-1.5 w-1.5 rounded-full" style={{ background: color }} />
+          ))}
+        </span>
+      ))}
+    </span>
+  )
+}
 
 // The default locked template per card type (matches the backend + the design
 // editor) so the stamp fields land in an editable template on the stored design.
@@ -107,7 +149,7 @@ export default function CardDesigner() {
   // The stamp design is worth persisting only when the merchant actually picked
   // an icon/color or uploaded a custom pair (blank = the default drawn circles).
   const hasStampDesign =
-    Boolean(stamp.stamp_icon || stamp.stamp_color) ||
+    Boolean(stamp.stamp_icon || stamp.stamp_color || stamp.stamp_layout) ||
     Boolean(stamp.strip_empty_url && stamp.strip_filled_url)
 
   // Apply a chosen template's seed over the current form, then reveal the form.
@@ -156,6 +198,7 @@ export default function CardDesigner() {
             template_key: DEFAULT_TEMPLATE_KEY.STAMP,
             stamp_icon: stamp.stamp_icon,
             stamp_color: stamp.stamp_color,
+            stamp_layout: stamp.stamp_layout,
             strip_empty_url: stamp.strip_empty_url,
             strip_filled_url: stamp.strip_filled_url,
           })
@@ -341,6 +384,32 @@ export default function CardDesigner() {
                   value={stamp.stamp_color || form.color_fg}
                   onChange={setStampField('stamp_color')}
                 />
+                <div>
+                  <label className="mb-1 block text-sm text-tx-2">
+                    {t('designer.stampLayout')}
+                  </label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {STAMP_LAYOUTS.map((key) => (
+                      <button
+                        key={key || 'grid'}
+                        type="button"
+                        aria-pressed={(stamp.stamp_layout || '') === key}
+                        onClick={() => setStampField('stamp_layout')(key)}
+                        className={`flex flex-col items-center gap-1 rounded-ctl border px-3 py-2 transition ${
+                          (stamp.stamp_layout || '') === key
+                            ? 'border-primary ring-1 ring-primary'
+                            : 'border-line hover:border-tx-3'
+                        }`}
+                      >
+                        <StampLayoutGlyph layout={key} color={stamp.stamp_color || form.color_fg} />
+                        <span className="text-xs text-tx-2">
+                          {t(`designer.stampLayout_${key || 'grid'}`)}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                  <p className="mt-1 text-xs text-tx-3">{t('designer.stampLayoutHint')}</p>
+                </div>
                 <div>
                   <span className="mb-1 block text-xs text-tx-3">
                     {t('designer.stampUploadHint')}

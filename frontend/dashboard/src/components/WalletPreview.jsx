@@ -58,52 +58,85 @@ function Field({ label, value, fg, labelColor, align = 'start' }) {
   )
 }
 
+// Which stamps sit on which row — mirrors wallets/stamp_grid.py::_centers so the
+// preview cannot drift from the pass. `grid` runs across each row (0,1,2 / 3,4,5);
+// `columns` and `stagger` alternate down them (0,2,4 / 1,3,5). 5 or fewer stamps
+// is a single row, where there is nothing to alternate.
+export function stampRows(n, layout) {
+  const rows = n <= 5 ? 1 : 2
+  const out = Array.from({ length: rows }, () => [])
+  if (rows === 1) {
+    for (let i = 0; i < n; i++) out[0].push(i)
+    return out
+  }
+  if (layout === 'columns' || layout === 'stagger') {
+    for (let i = 0; i < n; i++) out[i % rows].push(i)
+    return out
+  }
+  const cols = Math.ceil(n / rows)
+  for (let i = 0; i < n; i++) out[Math.floor(i / cols)].push(i)
+  return out
+}
+
 // Stamp strip preview. Priority mirrors the backend (wallets.stamp_icons):
 // uploaded custom images win; else a built-in icon tinted with `stampColor`;
 // else the drawn circles. `stampColor` (when set) also recolors the circles.
-function StampGrid({ count, required, fg, emptyUrl, filledUrl, stampIcon, stampColor }) {
+function StampGrid({ count, required, fg, emptyUrl, filledUrl, stampIcon, stampColor, layout }) {
   const n = Math.max(1, Math.min(required, 15))
   const custom = emptyUrl && filledUrl
   const builtIn = !custom && isStampIcon(stampIcon)
   const tint = stampColor || fg
+
+  const stamp = (i) => {
+    const earned = i < count
+    if (custom) {
+      return (
+        <img
+          key={i}
+          src={earned ? filledUrl : emptyUrl}
+          alt=""
+          className="h-5 w-5 object-contain"
+        />
+      )
+    }
+    if (builtIn) {
+      return (
+        <StampGlyph
+          key={i}
+          icon={stampIcon}
+          filled={earned}
+          faded={!earned}
+          color={tint}
+          size={20}
+        />
+      )
+    }
+    return (
+      <span
+        key={i}
+        className="h-4 w-4 rounded-full border"
+        style={{
+          borderColor: tint,
+          background: earned ? tint : 'transparent',
+          opacity: earned ? 1 : 0.45,
+        }}
+      />
+    )
+  }
+
   return (
-    <div className="flex flex-wrap gap-1.5">
-      {Array.from({ length: n }).map((_, i) => {
-        const earned = i < count
-        if (custom) {
-          return (
-            <img
-              key={i}
-              src={earned ? filledUrl : emptyUrl}
-              alt=""
-              className="h-5 w-5 object-contain"
-            />
-          )
-        }
-        if (builtIn) {
-          return (
-            <StampGlyph
-              key={i}
-              icon={stampIcon}
-              filled={earned}
-              faded={!earned}
-              color={tint}
-              size={20}
-            />
-          )
-        }
-        return (
-          <span
-            key={i}
-            className="h-4 w-4 rounded-full border"
-            style={{
-              borderColor: tint,
-              background: earned ? tint : 'transparent',
-              opacity: earned ? 1 : 0.45,
-            }}
-          />
-        )
-      })}
+    <div className="flex flex-col gap-1.5">
+      {stampRows(n, layout).map((row, r) => (
+        <div
+          key={r}
+          className="flex gap-1.5"
+          // The zigzag: nudge every row below the first half a cell along. Logical
+          // inline-start, not left, so it still leans the right way in Arabic.
+          style={layout === 'stagger' && r > 0 ? { marginInlineStart: '0.8125rem' } : undefined}
+        >
+          {row.map(stamp)}
+        </div>
+      ))}
     </div>
   )
 }
@@ -249,6 +282,7 @@ export default function WalletPreview({
                 filledUrl={design?.strip_filled_url}
                 stampIcon={design?.stamp_icon}
                 stampColor={design?.stamp_color}
+                layout={design?.stamp_layout}
               />
             )}
           </div>
@@ -359,6 +393,7 @@ export default function WalletPreview({
               filledUrl={design?.strip_filled_url}
               stampIcon={design?.stamp_icon}
               stampColor={design?.stamp_color}
+              layout={design?.stamp_layout}
             />
           )}
         </div>

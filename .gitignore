@@ -30,7 +30,11 @@ backend/media/
 # ── Environment ──────────────────────────────────────────────────────────────
 **/.env
 **/.env.*
+# Templates only — these carry placeholders, never real values. Without the
+# second exception infra/.env.prod.example is ignored, and deploy.sh tells a
+# fresh server to "copy .env.prod.example and fill it" — a file that isn't there.
 !**/.env.example
+!**/.env.*.example
 
 # ── OS / editor ──────────────────────────────────────────────────────────────
 .DS_Store

@@ -7504,6 +7504,10 @@ components:
           type: string
           pattern: ^#(?:[0-9a-fA-F]{6})$
           maxLength: 7
+        stamp_layout:
+          oneOf:
+          - $ref: '#/components/schemas/StampLayoutEnum'
+          - $ref: '#/components/schemas/BlankEnum'
         google_title:
           type: string
           maxLength: 40
@@ -8186,6 +8190,16 @@ components:
           type: boolean
       required:
       - role
+    StampLayoutEnum:
+      enum:
+      - grid
+      - columns
+      - stagger
+      type: string
+      description: |-
+        * `grid` - grid
+        * `columns` - columns
+        * `stagger` - stagger
     StampRequest:
       type: object
       description: POST /loyalty/stamp request body.
@@ -8617,6 +8631,10 @@ components:
           type: string
           pattern: ^#(?:[0-9a-fA-F]{6})$
           maxLength: 7
+        stamp_layout:
+          oneOf:
+          - $ref: '#/components/schemas/StampLayoutEnum'
+          - $ref: '#/components/schemas/BlankEnum'
         google_title:
           type: string
           maxLength: 40

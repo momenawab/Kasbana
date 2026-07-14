@@ -17,6 +17,7 @@ from django.conf import settings
 from core.models import CustomerCard
 from wallets.apple.config import SigningMaterial, load_signing_material
 from wallets.apple.passdata import build_pass_json
+from wallets.stamp_grid import LAYOUT_GRID as _LAYOUT_GRID
 from wallets.stamp_grid import darken as _darken
 from wallets.stamp_grid import hex_to_rgb as _hex_to_rgb
 from wallets.stamp_grid import render_stamp_grid as _render_stamp_strip
@@ -190,6 +191,7 @@ def build_pass_images(customer_card: CustomerCard) -> dict[str, bytes]:
                 (1125, 369),
                 empty_icon=empty_icon,
                 filled_icon=filled_icon,
+                layout=(design.stamp_layout if design else "") or _LAYOUT_GRID,
             )
         images["strip@3x.png"] = _png(base)
         images["strip@2x.png"] = _png(base.resize((750, 246), Image.Resampling.LANCZOS))
