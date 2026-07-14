@@ -348,6 +348,11 @@
     "stampIcon": "Stamp icon",
     "stampNone": "None (circles)",
     "stampColor": "Stamp fill color",
+    "stampLayout": "Stamp arrangement",
+    "stampLayout_grid": "Rows",
+    "stampLayout_columns": "Columns",
+    "stampLayout_stagger": "Zigzag",
+    "stampLayoutHint": "Only changes cards with more than 5 stamps, where they wrap onto two rows.",
     "stampUploadHint": "Or upload your own empty + filled stamp images.",
     "stampSaveFailed": "Card saved, but the stamp style couldn't be applied."
   },

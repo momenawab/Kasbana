@@ -26,7 +26,7 @@ from django.core.files.storage import default_storage
 from core.models import CustomerCard
 from wallets import design as design_mod
 from wallets.platform_logo import apply_watermark
-from wallets.stamp_grid import darken, hex_to_rgb, render_stamp_grid
+from wallets.stamp_grid import LAYOUT_GRID, darken, hex_to_rgb, render_stamp_grid
 
 # Google hero recommended ratio is wide (~1032x336).
 _HERO_SIZE = (1032, 336)
@@ -141,6 +141,10 @@ def stamp_hero_url(customer_card: CustomerCard, *, force: bool = False) -> str |
                 design.strip_filled_url if design else "",
                 design.stamp_icon if design else "",
                 design.stamp_color if design else "",
+                # Without this a layout change would hash to the SAME name, and
+                # Google would keep serving the cached hero — the edit would look
+                # like it silently did nothing.
+                design.stamp_layout if design else "",
             ]
         )
         digest = hashlib.sha1(fingerprint.encode("utf-8")).hexdigest()[:16]
@@ -155,6 +159,7 @@ def stamp_hero_url(customer_card: CustomerCard, *, force: bool = False) -> str |
                 _HERO_SIZE,
                 empty_icon=empty_icon,
                 filled_icon=filled_icon,
+                layout=(design.stamp_layout if design else "") or LAYOUT_GRID,
             )
             # Platform watermark at the bottom-right of the banner.
             img = apply_watermark(img, fg)
