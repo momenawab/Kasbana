@@ -266,7 +266,18 @@
     "stamps": "الأختام",
     "redemptions": "الاستبدالات",
     "walletSplit": "Apple مقابل Google",
-    "locked": "ترقَّ لفتح الميزة"
+    "locked": "ترقَّ لفتح الميزة",
+    "expand": "توسيع",
+    "total": "الإجمالي",
+    "dailyAvg": "المتوسط اليومي",
+    "peakDay": "أعلى يوم",
+    "activeDays": "الأيام النشطة",
+    "date": "التاريخ",
+    "count": "العدد",
+    "share": "النسبة",
+    "wallet": "المحفظة",
+    "exportCsv": "تصدير CSV",
+    "noData": "لا توجد بيانات في هذه الفترة."
   },
   "campaigns": {
     "title": "الحملات",
