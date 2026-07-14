@@ -6,7 +6,12 @@
 > and the enroll page, so the work lands in one place:
 > `frontend/dashboard/src/components/WalletPreview.jsx`.
 >
-> **Status: not started.** Spec only. Written 2026-07-14 on `dev`.
+> **Status: P1 + P3 done** (2026-07-14, `dev`). Decisions taken: chrome rebuilt in
+> JS first with **Option B deferred**, applied to **all** Apple previews, and the
+> Cards tiles show a **realistic dummy state**. **P2 (the real strip PNG endpoint)
+> is not built.** The reference screenshot was never supplied, so the chrome follows
+> Apple's *documented* `storeCard` geometry — the Definition of Done below (side by
+> side with a real pass) remains **unverified**.
 >
 > Ground rules from [`finalize-plan.md`](./finalize-plan.md) apply: `core` is
 > frozen, blank = default, best-effort rendering, and the full gate (backend
@@ -51,6 +56,14 @@ is laid out, proportioned and styled.
 ---
 
 ## The fidelity gaps (each one is a concrete diff)
+
+> Gaps 1-6 below are **fixed**. A seventh, found while building, was not in this list:
+> the preview drew every stamp at a flat 20px while the backend sizes them from the
+> strip geometry (`radius = min(pitch, cell_h) * 0.34`), so a 3-stamp card rendered at
+> roughly **half** the size the pass draws it. The strip is now an SVG in the backend's
+> own `1125×369` coordinate space with `_centers` ported verbatim, which fixes the
+> arrangement, the scale and the aspect ratio together — and makes the Google hero
+> correct on its own `1032×336` canvas for free.
 
 Current Apple branch is `WalletPreview.jsx:312-448`.
 

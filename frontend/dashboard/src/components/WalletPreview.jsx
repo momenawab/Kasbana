@@ -7,11 +7,23 @@
 // name rides as Apple `logoText` beside the top-left brand logo; the platform
 // (Kasbana) brand rides in the top-right header field (Apple has no right-side
 // image slot), and as a bottom-right watermark on the Google hero.
+//
+// The Apple chrome follows the real storeCard: the strip is FULL-BLEED (edge to
+// edge, no padding, no radius) at the pass's own aspect ratio, primary fields are
+// overlaid ON it, secondary and auxiliary are two separate rows beneath, and the
+// barcode is pinned to the bottom.
 // Pure/presentational — updates as props change.
+import { useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { QRCodeSVG } from 'qrcode.react'
 import { arDigits } from '../lib/format'
-import { isStampIcon } from './stampIcons'
-import StampGlyph from './StampGlyph'
+import { isStampIcon, STAMP_ICON_PATHS } from './stampIcons'
+
+// The canvases the backend actually renders into (wallets/apple/signing.py and
+// wallets/google/hero.py). Drawing the preview in these same coordinate spaces is
+// what locks its proportions to the pass's instead of to whatever the DOM does.
+export const APPLE_STRIP = [1125, 369]
+export const GOOGLE_HERO = [1032, 336]
 
 // Resolve a slot `source` token to a preview value (mirrors wallets/design.py).
 function resolveValue(source, ctx) {
@@ -42,122 +54,198 @@ function darkenHex(hex, factor = 0.82) {
   return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`
 }
 
-function Field({ label, value, fg, labelColor, align = 'start' }) {
-  return (
-    <div className={`flex min-w-0 flex-col ${align === 'end' ? 'items-end text-right' : ''}`}>
-      <span
-        className="text-[9px] font-semibold uppercase tracking-wide"
-        style={{ color: labelColor, opacity: 0.85 }}
-      >
-        {label}
-      </span>
-      <span className="truncate text-sm font-semibold" style={{ color: fg }}>
-        {value}
-      </span>
-    </div>
-  )
-}
-
-// Which stamps sit on which row — mirrors wallets/stamp_grid.py::_centers so the
-// preview cannot drift from the pass. `grid` runs across each row (0,1,2 / 3,4,5);
-// `columns` and `stagger` alternate down them (0,2,4 / 1,3,5). 5 or fewer stamps
-// is a single row, where there is nothing to alternate.
-export function stampRows(n, layout) {
+// ── Stamp geometry ────────────────────────────────────────────────────────────
+// A direct port of wallets/stamp_grid.py::_centers, working in the same pixel
+// space the backend draws into. Same padding, same pitch, same radius formula —
+// so the preview's stamps are the pass's stamps in shape AND in scale, not just
+// in arrangement. (The old preview drew fixed 20px glyphs, which on a 3-stamp
+// card came out roughly half the size the pass renders them.)
+export function stampGeometry(count, layout, size = APPLE_STRIP) {
+  const [w, h] = size
+  const n = Math.max(1, Math.min(count, 15)) // cap so a big card doesn't render dust
   const rows = n <= 5 ? 1 : 2
-  const out = Array.from({ length: rows }, () => [])
-  if (rows === 1) {
-    for (let i = 0; i < n; i++) out[0].push(i)
-    return out
-  }
-  if (layout === 'columns' || layout === 'stagger') {
-    for (let i = 0; i < n; i++) out[i % rows].push(i)
-    return out
-  }
   const cols = Math.ceil(n / rows)
-  for (let i = 0; i < n; i++) out[Math.floor(i / cols)].push(i)
-  return out
+  const padX = Math.trunc(w * 0.06)
+  const padY = Math.trunc(h * 0.14)
+  const cellW = (w - 2 * padX) / cols
+  const cellH = (h - 2 * padY) / rows
+
+  let centers
+  let pitch
+  if ((layout === 'columns' || layout === 'stagger') && rows > 1) {
+    // Both alternate down the rows — stamp i sits on row `i % rows`, column
+    // `i // rows` — so a 6-stamp card runs 0,2,4 across the top and 1,3,5 across
+    // the bottom. STAGGER additionally slides each lower row half a column along,
+    // which is what turns the grid into a zigzag.
+    const units = []
+    for (let i = 0; i < n; i++) {
+      const r = i % rows
+      const c = Math.floor(i / rows)
+      units.push([r, c + 0.5 + (layout === 'stagger' ? 0.5 * r : 0)])
+    }
+    const lo = Math.min(...units.map(([, u]) => u))
+    const hi = Math.max(...units.map(([, u]) => u))
+    // +1.0 leaves half a pitch of margin either side, so the row that sticks out
+    // furthest (the staggered one) still sits inside the padding.
+    pitch = (w - 2 * padX) / (hi - lo + 1)
+    centers = units.map(([r, u], i) => ({
+      i,
+      row: r,
+      x: padX + (u - lo + 0.5) * pitch,
+      y: padY + r * cellH + cellH / 2,
+    }))
+  } else {
+    pitch = cellW
+    centers = []
+    for (let i = 0; i < n; i++) {
+      const row = Math.floor(i / cols)
+      const c = i % cols
+      // centre the last row if it is short
+      const inRow = row < rows - 1 ? cols : n - cols * (rows - 1)
+      const rowW = inRow * cellW
+      centers.push({
+        i,
+        row,
+        x: (w - rowW) / 2 + c * cellW + cellW / 2,
+        y: padY + row * cellH + cellH / 2,
+      })
+    }
+  }
+
+  const radius = Math.trunc(Math.min(pitch, cellH) * 0.34)
+  return {
+    centers,
+    pitch,
+    radius,
+    ring: Math.max(4, Math.trunc(radius / 7)),
+    iconSize: Math.trunc(Math.min(pitch, cellH) * 0.82),
+  }
 }
 
-// Stamp strip preview. Priority mirrors the backend (wallets.stamp_icons):
-// uploaded custom images win; else a built-in icon tinted with `stampColor`;
-// else the drawn circles. `stampColor` (when set) also recolors the circles.
-function StampGrid({ count, required, fg, emptyUrl, filledUrl, stampIcon, stampColor, layout }) {
+// The stamp strip, drawn in the backend's own coordinate space and scaled to fit
+// by the viewBox — so it is full-bleed and correctly proportioned at any width.
+// Priority mirrors the backend (wallets.stamp_icons): uploaded custom images win;
+// else a built-in icon tinted with `stampColor`; else the drawn circles.
+function StampStrip({
+  count,
+  required,
+  fg,
+  bg,
+  emptyUrl,
+  filledUrl,
+  stampIcon,
+  stampColor,
+  layout,
+  size = APPLE_STRIP,
+}) {
+  const [w, h] = size
   const n = Math.max(1, Math.min(required, 15))
+  const earned = Math.max(0, Math.min(count, n))
   const custom = emptyUrl && filledUrl
-  const builtIn = !custom && isStampIcon(stampIcon)
+  const paths = !custom && isStampIcon(stampIcon) ? STAMP_ICON_PATHS[stampIcon] : null
   const tint = stampColor || fg
-
-  const stamp = (i) => {
-    const earned = i < count
-    if (custom) {
-      return (
-        <img
-          key={i}
-          src={earned ? filledUrl : emptyUrl}
-          alt=""
-          className="h-5 w-5 object-contain"
-        />
-      )
-    }
-    if (builtIn) {
-      return (
-        <StampGlyph
-          key={i}
-          icon={stampIcon}
-          filled={earned}
-          faded={!earned}
-          color={tint}
-          size={20}
-        />
-      )
-    }
-    return (
-      <span
-        key={i}
-        className="h-4 w-4 rounded-full border"
-        style={{
-          borderColor: tint,
-          background: earned ? tint : 'transparent',
-          opacity: earned ? 1 : 0.45,
-        }}
-      />
-    )
-  }
+  const { centers, radius, ring, iconSize } = stampGeometry(n, layout, size)
 
   return (
-    <div className="flex flex-col gap-1.5">
-      {stampRows(n, layout).map((row, r) => (
-        <div
-          key={r}
-          className="flex gap-1.5"
-          // The zigzag: nudge every row below the first half a cell along. Logical
-          // inline-start, not left, so it still leans the right way in Arabic.
-          style={layout === 'stagger' && r > 0 ? { marginInlineStart: '0.8125rem' } : undefined}
-        >
-          {row.map(stamp)}
-        </div>
-      ))}
-    </div>
+    <svg
+      viewBox={`0 0 ${w} ${h}`}
+      className="block h-full w-full"
+      preserveAspectRatio="xMidYMid slice"
+      data-testid="stamp-strip"
+      aria-hidden="true"
+    >
+      <rect width={w} height={h} fill={bg} />
+      {centers.map(({ i, x, y }) => {
+        const filled = i < earned
+        if (custom) {
+          return (
+            <image
+              key={i}
+              href={filled ? filledUrl : emptyUrl}
+              x={x - iconSize / 2}
+              y={y - iconSize / 2}
+              width={iconSize}
+              height={iconSize}
+              preserveAspectRatio="xMidYMid meet"
+            />
+          )
+        }
+        if (paths) {
+          // STAMP_ICON_PATHS are authored on a 256×256 viewBox — scale into place.
+          return (
+            <g
+              key={i}
+              transform={`translate(${x - iconSize / 2} ${y - iconSize / 2}) scale(${iconSize / 256})`}
+              opacity={filled ? 1 : 0.45}
+            >
+              <path d={filled ? paths.filled : paths.outline} fill={tint} />
+            </g>
+          )
+        }
+        return filled ? (
+          <circle key={i} cx={x} cy={y} r={radius} fill={tint} />
+        ) : (
+          // The backend rings remaining stamps at alpha 150/255 — match it.
+          <circle
+            key={i}
+            cx={x}
+            cy={y}
+            r={radius}
+            fill="none"
+            stroke={tint}
+            strokeOpacity={150 / 255}
+            strokeWidth={ring}
+          />
+        )
+      })}
+    </svg>
   )
 }
 
-function Barcode({ fg, altText }) {
+// A real QR — the pass shows one, so the preview shows one. `value` is what the
+// pass encodes; `altText` is the short human code a cashier can type instead.
+function Barcode({ value, altText, fg, size = 76 }) {
   return (
-    <div className="mt-1 flex flex-col items-center">
-      <div className="grid grid-cols-5 gap-0.5 rounded bg-white p-2">
-        {Array.from({ length: 25 }).map((_, i) => (
-          <span
-            key={i}
-            className="h-2.5 w-2.5"
-            style={{ background: (i * 7) % 3 ? '#111' : 'transparent' }}
-          />
-        ))}
+    <div className="flex flex-col items-center">
+      <div className="rounded-md bg-white p-1.5">
+        <QRCodeSVG
+          value={value || altText || '—'}
+          size={size}
+          level="M"
+          bgColor="#FFFFFF"
+          fgColor="#000000"
+          data-testid="pass-qr"
+        />
       </div>
       {altText && (
-        <span className="mt-1 font-mono text-[11px] tracking-widest" style={{ color: fg }}>
+        <span className="mt-1.5 font-mono text-[11px] tracking-[0.2em]" style={{ color: fg }}>
           {altText}
         </span>
       )}
+    </div>
+  )
+}
+
+// One Apple field: small caps label above the value (PassKit's field style).
+function Field({ label, value, fg, labelColor, onStrip = false }) {
+  return (
+    <div className="flex min-w-0 flex-col">
+      <span
+        className="truncate text-[9px] font-semibold uppercase tracking-[0.06em]"
+        style={{
+          color: labelColor,
+          opacity: 0.85,
+          textShadow: onStrip ? '0 1px 2px rgba(0,0,0,.55)' : undefined,
+        }}
+      >
+        {label}
+      </span>
+      <span
+        className="truncate text-[13px] font-semibold leading-tight"
+        style={{ color: fg, textShadow: onStrip ? '0 1px 2px rgba(0,0,0,.55)' : undefined }}
+      >
+        {value}
+      </span>
     </div>
   )
 }
@@ -181,6 +269,37 @@ function PlatformLogo({ url, fg }) {
   )
 }
 
+// A true miniature: the card is always laid out at its natural 320px width and
+// then scaled, so a tile is the same card seen smaller — never a re-flowed one.
+// The wrapper reserves exactly the scaled box (a bare `transform` would still
+// reserve the full-size one, padding every tile).
+function Scaled({ scale, children }) {
+  const ref = useRef(null)
+  const [height, setHeight] = useState(0)
+
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return undefined
+    const measure = () => setHeight(el.offsetHeight)
+    measure()
+    if (typeof ResizeObserver === 'undefined') return undefined
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
+  return (
+    <div style={{ width: 320 * scale, height: height * scale }}>
+      <div
+        ref={ref}
+        style={{ width: 320, transform: `scale(${scale})`, transformOrigin: 'top left' }}
+      >
+        {children}
+      </div>
+    </div>
+  )
+}
+
 export default function WalletPreview({
   platform = 'APPLE',
   design = null,
@@ -197,6 +316,8 @@ export default function WalletPreview({
   stampCount = 0,
   cardType = 'STAMP',
   shortCode = 'ABC123',
+  barcodeValue = '',
+  scale = 1,
 }) {
   const { i18n } = useTranslation()
   const lang = i18n.language
@@ -206,6 +327,7 @@ export default function WalletPreview({
   const remaining = Math.max(0, goal - stampCount)
   const labelColor = design?.label_color || colorFg
   const bottomImage = design?.bottom_image_url || ''
+  const stripBg = design?.strip_bg_color || darkenHex(colorBg)
 
   const ctx = {
     balance: `${arDigits(stampCount, lang)}/${arDigits(goal, lang)}`,
@@ -263,26 +385,28 @@ export default function WalletPreview({
             <div className="truncate text-xs opacity-80">{subtitle}</div>
           </div>
         </div>
-        {/* Bottom visual (stamp counter or photo) in the hero banner */}
+        {/* Bottom visual (stamp counter or photo) in the hero banner — the hero has
+            its own canvas on the backend, so it gets its own aspect ratio here. */}
         {showHero && (
-          <div
-            className="px-4 py-3"
-            style={{ background: design?.strip_bg_color || darkenHex(colorBg) }}
-          >
+          <div className="w-full" style={{ aspectRatio: `${GOOGLE_HERO[0]} / ${GOOGLE_HERO[1]}` }}>
             {tpl && bottomVisual === 'image' ? (
               bottomImage ? (
-                <img src={bottomImage} alt="" className="max-h-20 w-full object-contain" />
-              ) : null
+                <img src={bottomImage} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <div className="h-full w-full" style={{ background: stripBg }} />
+              )
             ) : (
-              <StampGrid
+              <StampStrip
                 count={stampCount}
                 required={goal}
                 fg={colorFg}
+                bg={stripBg}
                 emptyUrl={design?.strip_empty_url}
                 filledUrl={design?.strip_filled_url}
                 stampIcon={design?.stamp_icon}
                 stampColor={design?.stamp_color}
                 layout={design?.stamp_layout}
+                size={GOOGLE_HERO}
               />
             )}
           </div>
@@ -302,7 +426,7 @@ export default function WalletPreview({
           )}
         </div>
         <div className="border-t border-[#e5e7eb] p-4">
-          <Barcode fg="#111" altText={shortCode} />
+          <Barcode fg="#111" value={barcodeValue} altText={shortCode} />
         </div>
         <PlatformLogo url={platformLogoUrl} fg="#555" />
       </div>
@@ -341,13 +465,16 @@ export default function WalletPreview({
   // convey progress). Mirrors wallets.apple.passdata's header override.
   if (platformLabel) header = [{ label: '', value: platformLabel }]
 
-  return (
+  const card = (
+    // No padding on the card itself — the strip has to reach the edges, so every
+    // other row carries its own inset instead.
     <div
-      className="relative w-[320px] rounded-2xl p-4 shadow-bold"
+      className="relative flex w-[320px] flex-col overflow-hidden rounded-2xl shadow-bold"
       style={{ background: colorBg, color: colorFg }}
+      data-testid="apple-pass"
     >
       {/* Logo + logo text + header fields */}
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex items-center justify-between gap-2 px-4 pb-2.5 pt-3.5">
         <div className="flex min-w-0 items-center gap-2">
           {logoUrl ? (
             <img src={logoUrl} alt="" className="h-7 w-7 rounded-md bg-white object-cover" />
@@ -358,92 +485,112 @@ export default function WalletPreview({
           )}
           {logoText && <span className="truncate text-sm font-semibold">{logoText}</span>}
         </div>
-        <div className="flex gap-3">
+        <div className="flex shrink-0 gap-3">
           {header.map((f, i) => (
-            <Field
-              key={i}
-              label={f.label}
-              value={f.value}
-              fg={colorFg}
-              labelColor={labelColor}
-              align="end"
-            />
+            <div key={i} className="flex flex-col items-end text-right">
+              <span
+                className="text-[9px] font-semibold uppercase tracking-[0.06em]"
+                style={{ color: labelColor, opacity: 0.85 }}
+              >
+                {f.label}
+              </span>
+              <span className="text-sm font-semibold" style={{ color: colorFg }}>
+                {f.value}
+              </span>
+            </div>
           ))}
         </div>
       </div>
 
-      {/* Strip — the bottom visual: stamp grid (stamps) or full-width image
-          (image), on its own band so it doesn't blend in. On Apple this lives
-          at the TOP (Apple pins the barcode to the very bottom). */}
+      {/* Strip — full-bleed, locked to the pass's own aspect ratio, butted straight
+          under the header. Apple overlays the primary fields ON it. */}
       {stripOn && (
         <div
-          className="mt-3 rounded-lg p-3"
-          style={{ background: design?.strip_bg_color || darkenHex(colorBg) }}
+          className="relative w-full"
+          style={{ aspectRatio: `${APPLE_STRIP[0]} / ${APPLE_STRIP[1]}` }}
+          data-testid="apple-strip"
         >
           {stripIsImage ? (
             bottomImage ? (
-              <img src={bottomImage} alt="" className="max-h-24 w-full object-contain" />
-            ) : null
+              <img src={bottomImage} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <div className="h-full w-full" style={{ background: stripBg }} />
+            )
           ) : (
-            <StampGrid
+            <StampStrip
               count={stampCount}
               required={goal}
               fg={colorFg}
+              bg={stripBg}
               emptyUrl={design?.strip_empty_url}
               filledUrl={design?.strip_filled_url}
               stampIcon={design?.stamp_icon}
               stampColor={design?.stamp_color}
               layout={design?.stamp_layout}
+              size={APPLE_STRIP}
             />
+          )}
+          {primary.length > 0 && (
+            <div
+              className="absolute inset-0 flex items-start gap-6 px-4 pt-2"
+              data-testid="apple-primary"
+            >
+              {primary.map((f, i) => (
+                <Field
+                  key={i}
+                  label={f.label}
+                  value={f.value}
+                  fg={colorFg}
+                  labelColor={labelColor}
+                  onStrip
+                />
+              ))}
+            </div>
           )}
         </div>
       )}
 
-      {/* Primary field */}
-      {primary.length > 0 && (
-        <div className="mt-3 flex flex-col gap-2">
+      {/* No strip → the primary fields take their normal place in the flow. */}
+      {!stripOn && primary.length > 0 && (
+        <div className="flex gap-6 px-4 pt-1" data-testid="apple-primary">
           {primary.map((f, i) => (
-            <div key={i}>
-              <div
-                className="text-[9px] font-semibold uppercase tracking-wide"
+            <div key={i} className="flex min-w-0 flex-col">
+              <span
+                className="text-[9px] font-semibold uppercase tracking-[0.06em]"
                 style={{ color: labelColor, opacity: 0.85 }}
               >
                 {f.label}
-              </div>
-              <div className="font-mono text-2xl tabular-nums">{f.value}</div>
+              </span>
+              <span className="font-mono text-2xl tabular-nums">{f.value}</span>
             </div>
           ))}
         </div>
       )}
 
-      {/* Secondary + auxiliary */}
-      {(secondary.length > 0 || auxiliary.length > 0) && (
-        <div className="mt-3 flex justify-between gap-3">
-          <div className="flex gap-4">
-            {secondary.map((f, i) => (
-              <Field key={i} label={f.label} value={f.value} fg={colorFg} labelColor={labelColor} />
-            ))}
-          </div>
-          <div className="flex gap-4">
-            {auxiliary.map((f, i) => (
-              <Field
-                key={i}
-                label={f.label}
-                value={f.value}
-                fg={colorFg}
-                labelColor={labelColor}
-                align="end"
-              />
-            ))}
-          </div>
+      {/* Secondary and auxiliary are two SEPARATE rows on a real pass, each
+          running left-to-right — not one row split down the middle. */}
+      {secondary.length > 0 && (
+        <div className="flex gap-6 px-4 pt-3" data-testid="apple-secondary">
+          {secondary.map((f, i) => (
+            <Field key={i} label={f.label} value={f.value} fg={colorFg} labelColor={labelColor} />
+          ))}
+        </div>
+      )}
+      {auxiliary.length > 0 && (
+        <div className="flex gap-6 px-4 pt-2.5" data-testid="apple-auxiliary">
+          {auxiliary.map((f, i) => (
+            <Field key={i} label={f.label} value={f.value} fg={colorFg} labelColor={labelColor} />
+          ))}
         </div>
       )}
 
-      {/* Barcode — Apple pins it to the very bottom; nothing sits below it, and
-          the platform brand is in logoText above, so there's no footer here. */}
-      <div className="mt-4 border-t border-white/15 pt-3">
-        <Barcode fg={colorFg} altText={shortCode} />
+      {/* Barcode — Apple pins it to the very bottom; nothing sits below it, and the
+          platform brand is in the header field above, so there's no footer here. */}
+      <div className="mt-auto px-4 pb-3.5 pt-4">
+        <Barcode fg={colorFg} value={barcodeValue} altText={shortCode} />
       </div>
     </div>
   )
+
+  return scale === 1 ? card : <Scaled scale={scale}>{card}</Scaled>
 }
