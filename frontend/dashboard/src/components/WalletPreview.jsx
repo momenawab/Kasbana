@@ -289,7 +289,10 @@ function Scaled({ scale, children }) {
   }, [])
 
   return (
-    <div style={{ width: 320 * scale, height: height * scale }}>
+    // Until the first measurement lands, leave the box auto-height: a hard `height:
+    // 0` would collapse the tile to nothing if measuring ever failed, and an
+    // over-tall tile is a far better failure than an invisible one.
+    <div style={{ width: 320 * scale, height: height ? height * scale : undefined }}>
       <div
         ref={ref}
         style={{ width: 320, transform: `scale(${scale})`, transformOrigin: 'top left' }}
