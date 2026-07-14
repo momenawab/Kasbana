@@ -211,7 +211,9 @@ export default function WalletPreview({
     const rows = tpl ? tplRender(tpl.google?.rows) : render(design?.google_rows || [])
     const showHero = tpl ? hasBottom : isStamp && design?.google_stamp_hero
     return (
-      <div className="relative w-[320px] overflow-hidden rounded-2xl border border-line bg-white shadow-bold">
+      // The Google card body is white in the real wallet, so its text/borders are
+      // fixed light-theme colors — theme tokens would go white-on-white in dark mode.
+      <div className="relative w-[320px] overflow-hidden rounded-2xl border border-[#e5e7eb] bg-white shadow-bold">
         <div
           className="flex items-center gap-2 p-4"
           style={{ background: colorBg, color: colorFg }}
@@ -252,20 +254,20 @@ export default function WalletPreview({
           </div>
         )}
         <div className="p-4">
-          <div className="text-[10px] uppercase tracking-wide text-tx-3">{unit}</div>
-          <div className="font-mono text-3xl tabular-nums text-tx">{ctx.balance}</div>
+          <div className="text-[10px] uppercase tracking-wide text-[#555]">{unit}</div>
+          <div className="font-mono text-3xl tabular-nums text-[#111]">{ctx.balance}</div>
           {rows.length > 0 && (
-            <div className="mt-3 flex flex-col gap-2 border-t border-line pt-3">
+            <div className="mt-3 flex flex-col gap-2 border-t border-[#e5e7eb] pt-3">
               {rows.map((r, i) => (
                 <div key={i}>
-                  <div className="text-[10px] uppercase tracking-wide text-tx-3">{r.label}</div>
-                  <div className="text-sm text-tx">{r.value}</div>
+                  <div className="text-[10px] uppercase tracking-wide text-[#555]">{r.label}</div>
+                  <div className="text-sm text-[#111]">{r.value}</div>
                 </div>
               ))}
             </div>
           )}
         </div>
-        <div className="border-t border-line p-4">
+        <div className="border-t border-[#e5e7eb] p-4">
           <Barcode fg="#111" altText={shortCode} />
         </div>
         <PlatformLogo url={platformLogoUrl} fg="#555" />

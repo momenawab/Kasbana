@@ -11,7 +11,9 @@ function useEscClose(open, onClose) {
   }, [open, onClose])
 }
 
-export function Modal({ open, onClose, title, children, footer }) {
+const SIZES = { md: 'max-w-md', lg: 'max-w-2xl', xl: 'max-w-5xl' }
+
+export function Modal({ open, onClose, title, children, footer, size = 'md', headerExtra }) {
   useEscClose(open, onClose)
   if (!open) return null
   return (
@@ -21,15 +23,18 @@ export function Modal({ open, onClose, title, children, footer }) {
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="relative w-full max-w-md rounded-card bg-surface shadow-bold"
+        className={`relative flex max-h-[90vh] w-full flex-col rounded-card bg-surface shadow-bold ${SIZES[size] ?? SIZES.md}`}
       >
-        <header className="flex items-center justify-between border-b border-line px-5 py-3">
+        <header className="flex items-center justify-between gap-3 border-b border-line px-5 py-3">
           <h2 className="font-head text-lg font-semibold text-tx">{title}</h2>
-          <button onClick={onClose} aria-label="Close" className="text-tx-3 hover:text-tx">
-            <X size={20} />
-          </button>
+          <div className="flex items-center gap-3">
+            {headerExtra}
+            <button onClick={onClose} aria-label="Close" className="text-tx-3 hover:text-tx">
+              <X size={20} />
+            </button>
+          </div>
         </header>
-        <div className="px-5 py-4">{children}</div>
+        <div className="overflow-y-auto px-5 py-4">{children}</div>
         {footer && <footer className="border-t border-line px-5 py-3">{footer}</footer>}
       </div>
     </div>

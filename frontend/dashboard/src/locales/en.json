@@ -266,7 +266,18 @@
     "stamps": "Stamps",
     "redemptions": "Redemptions",
     "walletSplit": "Apple vs Google",
-    "locked": "Upgrade to unlock"
+    "locked": "Upgrade to unlock",
+    "expand": "Expand",
+    "total": "Total",
+    "dailyAvg": "Daily average",
+    "peakDay": "Peak day",
+    "activeDays": "Active days",
+    "date": "Date",
+    "count": "Count",
+    "share": "Share",
+    "wallet": "Wallet",
+    "exportCsv": "Export CSV",
+    "noData": "No data in this range."
   },
   "campaigns": {
     "title": "Campaigns",
