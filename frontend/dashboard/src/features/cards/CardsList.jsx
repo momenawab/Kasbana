@@ -16,6 +16,22 @@ import { useToast } from '../../hooks/useToast'
 
 const STATUS_TONE = { ACTIVE: 'teal', DRAFT: 'violet', ARCHIVED: 'neutral' }
 
+// A tile previews a *program*, not any one customer's pass — there is no real
+// holder here, so there is no real stamp count and no real code. Rather than show
+// an empty card (which never tells the merchant what their design looks like in
+// use), show it part-filled with a sample code, derived from the card id so a tile
+// stays stable across renders.
+const SAMPLE_FILL = 0.4
+
+function sampleCount(required) {
+  return Math.max(1, Math.round((required || 0) * SAMPLE_FILL))
+}
+
+function sampleCode(id) {
+  const chars = String(id || '').replace(/[^a-z0-9]/gi, '')
+  return (chars.slice(0, 6) || 'SAMPLE').toUpperCase()
+}
+
 export default function CardsList() {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -78,22 +94,19 @@ export default function CardsList() {
                   onClick={() => navigate(`/cards/${card.id}`)}
                   className="flex flex-col items-center gap-2 p-3 text-start"
                 >
-                  {/* `zoom`, not `scale`: a transform shrinks the preview visually
-                      but still reserves its full 320×285 box, which padded every
-                      tile enough to push the first row of cards past the fold. */}
-                  <div style={{ zoom: 0.8 }}>
-                    <WalletPreview
-                      platform="APPLE"
-                      logoUrl={card.logo_url}
-                      colorBg={card.color_bg || '#0E1B2A'}
-                      colorFg={card.color_fg || '#FFFFFF'}
-                      merchantName={merchant?.name || ''}
-                      programName={card.name}
-                      rewardTitle={card.reward_title}
-                      stampsRequired={card.stamps_required}
-                      stampCount={0}
-                    />
-                  </div>
+                  <WalletPreview
+                    platform="APPLE"
+                    scale={0.8}
+                    logoUrl={card.logo_url}
+                    colorBg={card.color_bg || '#0E1B2A'}
+                    colorFg={card.color_fg || '#FFFFFF'}
+                    merchantName={merchant?.name || ''}
+                    programName={card.name}
+                    rewardTitle={card.reward_title}
+                    stampsRequired={card.stamps_required}
+                    stampCount={sampleCount(card.stamps_required)}
+                    shortCode={sampleCode(card.id)}
+                  />
                   <div className="flex w-full items-center justify-between">
                     <span className="font-head font-semibold text-tx">{card.name}</span>
                     <Badge tone={STATUS_TONE[card.status] || 'neutral'}>

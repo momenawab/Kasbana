@@ -53,18 +53,24 @@ describe('<WalletPreview> stamp strip', () => {
     stampCount: 2,
   }
 
+  // The strip is one SVG drawn in the backend's own coordinate space, so these look
+  // inside it specifically — the pass also carries a real QR, which is made of paths
+  // too and would otherwise be counted as glyphs.
+  const strip = (container) => container.querySelector('[data-testid="stamp-strip"]')
+
   it('tints the built-in icon and draws one glyph per stamp', () => {
     const { container } = render(
-      <WalletPreview {...base} design={{ apple_strip_enabled: true, stamp_icon: 'star', stamp_color: '#00ff00' }} />
+      <WalletPreview
+        {...base}
+        design={{ apple_strip_enabled: true, stamp_icon: 'star', stamp_color: '#00ff00' }}
+      />
     )
-    const paths = [...container.querySelectorAll('svg path')].map((p) => p.getAttribute('d'))
-    // 2 earned (filled) + 2 remaining (outline) star glyphs somewhere in the pass.
-    expect(paths.filter((d) => d === STAMP_ICON_PATHS.star.filled)).toHaveLength(2)
-    expect(paths.filter((d) => d === STAMP_ICON_PATHS.star.outline)).toHaveLength(2)
-    const tinted = [...container.querySelectorAll('svg')].filter(
-      (s) => s.getAttribute('fill') === '#00ff00'
-    )
-    expect(tinted.length).toBeGreaterThanOrEqual(4)
+    const paths = [...strip(container).querySelectorAll('path')]
+    const d = paths.map((p) => p.getAttribute('d'))
+    // 2 earned (filled) + 2 remaining (outline) star glyphs on the strip.
+    expect(d.filter((v) => v === STAMP_ICON_PATHS.star.filled)).toHaveLength(2)
+    expect(d.filter((v) => v === STAMP_ICON_PATHS.star.outline)).toHaveLength(2)
+    expect(paths.filter((p) => p.getAttribute('fill') === '#00ff00')).toHaveLength(4)
   })
 
   it('recolors the drawn circles with stamp_color when no icon is picked', () => {
@@ -72,10 +78,11 @@ describe('<WalletPreview> stamp strip', () => {
       <WalletPreview {...base} design={{ apple_strip_enabled: true, stamp_color: '#123456' }} />
     )
     // No glyph paths — falls back to drawn circles, tinted with stamp_color.
-    expect(container.querySelector('svg path')).toBeNull()
-    const tintedCircles = [...container.querySelectorAll('span')].filter(
-      (el) => el.style.borderColor.replace(/\s/g, '') === 'rgb(18,52,86)'
-    )
-    expect(tintedCircles).toHaveLength(4)
+    expect(strip(container).querySelector('path')).toBeNull()
+    const circles = [...strip(container).querySelectorAll('circle')]
+    expect(circles).toHaveLength(4)
+    // 2 earned are filled with the tint; 2 remaining are ringed in it.
+    expect(circles.filter((c) => c.getAttribute('fill') === '#123456')).toHaveLength(2)
+    expect(circles.filter((c) => c.getAttribute('stroke') === '#123456')).toHaveLength(2)
   })
 })

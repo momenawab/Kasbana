@@ -52,7 +52,7 @@ const EMPTY_STAMP = {
 const STAMP_LAYOUTS = ['', 'columns', 'stagger']
 
 // A six-dot thumbnail of each arrangement, so the merchant picks by shape instead
-// of by reading a word. Mirrors stampRows() in WalletPreview and _centers() in
+// of by reading a word. Mirrors stampGeometry() in WalletPreview and _centers() in
 // wallets/stamp_grid.py: grid runs across (0,1,2 / 3,4,5), the other two alternate
 // down (0,2,4 / 1,3,5), and stagger additionally offsets the lower row.
 function StampLayoutGlyph({ layout, color }) {
