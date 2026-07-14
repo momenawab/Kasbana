@@ -329,6 +329,7 @@
     "stampsRange": "Must be between 1 and 30.",
     "rewardDescription": "Reward description",
     "collectBirthday": "Collect customer birthday",
+    "collectBirthdayHint": "Adds a birthday field to this card's join form. Edit the rest of that form on the Enroll page.",
     "singleUse": "Single-use card",
     "singleUseHint": "The card expires from the customer's wallet once the reward is redeemed (instead of resetting to keep collecting).",
     "referral": "Referral program",
@@ -354,33 +355,13 @@
     "stampLayout_stagger": "Zigzag",
     "stampLayoutHint": "Only changes cards with more than 5 stamps, where they wrap onto two rows.",
     "stampUploadHint": "Or upload your own empty + filled stamp images.",
-    "stampSaveFailed": "Card saved, but the stamp style couldn't be applied."
-  },
-  "templatePicker": {
-    "title": "Choose a template",
-    "subtitle": "Pick a starting design, then add your own details.",
-    "use": "Use this template",
-    "comingSoon": "Coming soon",
-    "previewOnly": "Preview only — can't be published yet",
-    "skip": "Start from scratch",
-    "change": "Change template",
-    "active": "Template",
-    "names": {
-      "loyalty": "Loyalty",
-      "event": "Event",
-      "boarding": "Boarding",
-      "membership": "Membership",
-      "coupon": "Coupon",
-      "giftcard": "Gift card",
-      "invitation": "Invitation",
-      "special": "Special occasion"
-    }
+    "stampSaveFailed": "Card saved, but the stamp style couldn't be applied.",
+    "birthdaySaveFailed": "Card saved, but the birthday setting couldn't be applied."
   },
   "walletDesign": {
     "title": "Wallet pass design",
     "save": "Save pass design",
     "saved": "Pass design saved.",
-    "saveFirst": "Save the card first to customize its wallet pass.",
     "upgradeNudge": "Customizing pass fields is a paid feature — tap to upgrade.",
     "locked": "Upgrade your plan to customize the wallet pass.",
     "logoText": "Logo text",
@@ -575,6 +556,8 @@
     "tabAccount": "Account",
     "tabPassword": "Password",
     "businessName": "Business name",
+    "businessNameLocked": "Set when you registered and shown on every pass your customers already hold, so it can't be edited here.",
+    "businessNameLockedCta": "Contact support to change it",
     "legalName": "Legal name",
     "logo": "Logo",
     "address": "Address",

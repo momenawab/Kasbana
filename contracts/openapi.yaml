@@ -7056,6 +7056,7 @@ components:
       properties:
         name:
           type: string
+          description: Read-only. Fixed at signup; changed only by support.
           maxLength: 120
         legal_name:
           type: string

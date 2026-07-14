@@ -134,6 +134,41 @@ def test_card_theme_get_does_not_autocreate_override(auth_client, card):
     assert not RegistrationTheme.objects.filter(merchant=card.merchant, card=card).exists()
 
 
+def test_new_card_override_is_seeded_from_the_merchant_default(auth_client, card):
+    """A partial PATCH must stay partial — it may not reset the merchant's theme.
+
+    resolve_theme takes the card row *wholesale*, so a card override created with
+    bare model defaults would silently drop the merchant's themed join page. This is
+    the exact path the card form's "collect birthday" toggle takes: it PATCHes one
+    key on a card that has no override yet.
+    """
+    auth_client.patch(
+        "/api/v1/settings/enroll-theme",
+        {"template_key": "hero", "accent_color": "#123456", "welcome_body": "Ahlan!"},
+        format="json",
+    )
+
+    resp = auth_client.patch(
+        f"/api/v1/cards/{card.id}/enroll-theme",
+        {
+            "fields_config": {
+                "phone": {"show": True, "required": True},
+                "name": {"show": True, "required": False},
+                "email": {"show": True, "required": False},
+                "birthday": {"show": True, "required": False},
+            }
+        },
+        format="json",
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["fields_config"]["birthday"]["show"] is True
+    # ...and the merchant's look survived it.
+    assert body["template_key"] == "hero"
+    assert body["accent_color"] == "#123456"
+    assert body["welcome_body"] == "Ahlan!"
+
+
 def test_card_theme_override_and_clear(auth_client, card):
     resp = auth_client.patch(
         f"/api/v1/cards/{card.id}/enroll-theme",

@@ -1,9 +1,15 @@
 // WalletDesignEditor (templates-only) — pick a layout-locked template and edit
-// only that template's `editable` variables (colors, stamp icons, a bottom
+// only that template's `editable` variables (colors, stamp style, a bottom
 // image) for one card, with a faithful dual live preview. Positions are always
 // hardcoded by the template; the merchant can never move fields. Rich controls
 // are gated behind custom_branding (free plans keep the smart defaults).
-// Edit-mode only: the wallet-design endpoint is per-card, so the card must exist.
+//
+// Two modes:
+//   edit   — `cardId` given: loads + saves the design itself, own Save button.
+//   create — `value`/`onChange` given and no cardId: the card doesn't exist yet, so
+//            the parent owns the state and persists it right after POST /cards. This
+//            is what lets the whole design be set at create time instead of forcing
+//            a save-then-go-edit round trip.
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useWalletDesign, useSaveWalletDesign, useWalletTemplates } from './api'
@@ -13,6 +19,8 @@ import { normalizeError } from '../../lib/api'
 import ColorPicker from '../../components/ColorPicker'
 import FileUpload from '../../components/FileUpload'
 import WalletPreview from '../../components/WalletPreview'
+import { STAMP_ICONS } from '../../components/stampIcons'
+import StampGlyph from '../../components/StampGlyph'
 import Button from '../../components/Button'
 
 // The default locked template per card type — must match the backend
@@ -20,7 +28,7 @@ import Button from '../../components/Button'
 // to the same layout the pass actually renders.
 const DEFAULT_TEMPLATE_KEY = { STAMP: 'loyalty_stamps', POINTS: 'points_reward' }
 
-const DEFAULTS = {
+export const DEFAULTS = {
   label_color: '',
   apple_logo_text: '',
   apple_header: [],
@@ -32,12 +40,51 @@ const DEFAULTS = {
   strip_bg_color: '',
   strip_empty_url: '',
   strip_filled_url: '',
+  stamp_icon: '',
+  stamp_color: '',
+  stamp_layout: '',
   google_title: '',
   google_subtitle: '',
   google_rows: [],
   google_stamp_hero: false,
   template_key: '',
   bottom_image_url: '',
+}
+
+// How the stamps are arranged. Blank = the backend default (row-major). Only has
+// a visible effect once the card wraps to two rows, i.e. more than 5 stamps.
+const STAMP_LAYOUTS = ['', 'columns', 'stagger']
+
+// A six-dot thumbnail of each arrangement, so the merchant picks by shape instead
+// of by reading a word. Mirrors stampGeometry() in WalletPreview and _centers() in
+// wallets/stamp_grid.py: grid runs across (0,1,2 / 3,4,5), the other two alternate
+// down (0,2,4 / 1,3,5), and stagger additionally offsets the lower row.
+function StampLayoutGlyph({ layout, color }) {
+  const alternating = layout === 'columns' || layout === 'stagger'
+  const rows = alternating
+    ? [
+        [0, 2, 4],
+        [1, 3, 5],
+      ]
+    : [
+        [0, 1, 2],
+        [3, 4, 5],
+      ]
+  return (
+    <span className="flex flex-col gap-0.5" aria-hidden="true">
+      {rows.map((row, r) => (
+        <span
+          key={r}
+          className="flex gap-0.5"
+          style={layout === 'stagger' && r > 0 ? { marginInlineStart: '4px' } : undefined}
+        >
+          {row.map((i) => (
+            <span key={i} className="h-1.5 w-1.5 rounded-full" style={{ background: color }} />
+          ))}
+        </span>
+      ))}
+    </span>
+  )
 }
 
 // A compact gallery thumbnail for one template — a tiny pass mock showing its
@@ -74,12 +121,12 @@ function TemplateThumb({ tpl, colorBg, colorFg }) {
   )
 }
 
-export default function WalletDesignEditor({ cardId, card }) {
+export default function WalletDesignEditor({ cardId, card, value, onChange }) {
   const { t } = useTranslation()
   const toast = useToast()
   const { can, requireFeature } = usePlan()
   const branded = can('custom_branding')
-  const { data: loaded } = useWalletDesign(cardId)
+  const { data: loaded } = useWalletDesign(cardId) // no-op without a cardId
   const { data: tplData } = useWalletTemplates()
   const save = useSaveWalletDesign(cardId)
 
@@ -87,16 +134,21 @@ export default function WalletDesignEditor({ cardId, card }) {
   const platformLogoUrl = tplData?.platform_logo_url || ''
   const platformLabel = tplData?.platform_label ?? 'Stampn'
 
-  const [design, setDesign] = useState(DEFAULTS)
+  // Controlled (create) vs self-owned (edit) — see the header comment.
+  const controlled = typeof onChange === 'function'
+  const [own, setOwn] = useState(DEFAULTS)
+  const design = controlled ? value : own
+  const setDesign = controlled ? onChange : setOwn
+
   const [dirty, setDirty] = useState(false)
   const [platform, setPlatform] = useState('APPLE')
 
   useEffect(() => {
-    if (loaded) setDesign({ ...DEFAULTS, ...loaded })
+    if (loaded) setOwn({ ...DEFAULTS, ...loaded })
   }, [loaded])
 
-  const set = (key) => (value) => {
-    setDesign((d) => ({ ...d, [key]: value }))
+  const set = (key) => (v) => {
+    setDesign((d) => ({ ...d, [key]: v }))
     setDirty(true)
   }
 
@@ -115,34 +167,40 @@ export default function WalletDesignEditor({ cardId, card }) {
     return availableTemplates[0]?.key || preferred || 'minimal'
   }, [cardType, availableTemplates])
 
-  // Templates-only: normalize a legacy `custom`/unknown/missing key to the locked
-  // default once the catalog loads, so there is never a freeform state to render.
-  useEffect(() => {
-    if (!availableTemplates.length) return
-    setDesign((d) =>
-      availableTemplates.some((tpl) => tpl.key === d.template_key)
-        ? d
-        : { ...d, template_key: defaultTemplateKey }
-    )
-  }, [availableTemplates, defaultTemplateKey])
+  // Templates-only: a legacy `custom`/unknown/missing key resolves to the locked
+  // default, so there is never a freeform state to render. DERIVED, never written
+  // back — writing it on load would mark a pristine create form dirty before the
+  // merchant has touched anything, and the backend resolves a blank key to this
+  // same default anyway (wallets.templates.resolve_template).
+  const templateKey = useMemo(
+    () =>
+      availableTemplates.some((tpl) => tpl.key === design.template_key)
+        ? design.template_key
+        : defaultTemplateKey,
+    [availableTemplates, design.template_key, defaultTemplateKey]
+  )
 
   const selectedTemplate = useMemo(
-    () => templates.find((tpl) => tpl.key === design.template_key) || null,
-    [templates, design.template_key]
+    () => templates.find((tpl) => tpl.key === templateKey) || null,
+    [templates, templateKey]
   )
 
   const onSave = () => {
     if (!requireFeature('custom_branding')) return
-    save.mutate(design, {
-      onSuccess: () => {
-        setDirty(false)
-        toast.success(t('walletDesign.saved'))
-      },
-      onError: (err) => {
-        const { code, message } = normalizeError(err)
-        toast.error(code === 'PLAN_LIMIT' ? t('walletDesign.locked') : message)
-      },
-    })
+    // Persist the resolved key, not the possibly-blank stored one.
+    save.mutate(
+      { ...design, template_key: templateKey },
+      {
+        onSuccess: () => {
+          setDirty(false)
+          toast.success(t('walletDesign.saved'))
+        },
+        onError: (err) => {
+          const { code, message } = normalizeError(err)
+          toast.error(code === 'PLAN_LIMIT' ? t('walletDesign.locked') : message)
+        },
+      }
+    )
   }
 
   const previewProps = {
@@ -167,9 +225,13 @@ export default function WalletDesignEditor({ cardId, card }) {
     <div className="mt-6 rounded-card border border-line bg-surface p-5">
       <div className="mb-4 flex items-center justify-between">
         <h2 className="font-head text-lg font-bold text-tx">{t('walletDesign.title')}</h2>
-        <Button onClick={onSave} loading={save.isPending} disabled={!dirty}>
-          {t('walletDesign.save')}
-        </Button>
+        {/* Create mode has no card to save against yet — the card's own Save Draft /
+            Publish persists this design straight after the card is created. */}
+        {!controlled && (
+          <Button onClick={onSave} loading={save.isPending} disabled={!dirty}>
+            {t('walletDesign.save')}
+          </Button>
+        )}
       </div>
 
       {!branded && (
@@ -193,7 +255,7 @@ export default function WalletDesignEditor({ cardId, card }) {
               disabled={!branded}
               onClick={() => set('template_key')(tpl.key)}
               className={`flex flex-col gap-1 rounded-ctl border p-2 text-left transition disabled:opacity-50 ${
-                design.template_key === tpl.key
+                templateKey === tpl.key
                   ? 'border-primary ring-1 ring-primary'
                   : 'border-line hover:border-tx-3'
               }`}
@@ -233,16 +295,99 @@ export default function WalletDesignEditor({ cardId, card }) {
                 onChange={set('strip_bg_color')}
               />
             )}
+            {/* Stamp style — a built-in icon + its fill color, and how the stamps are
+                arranged. The template says whether they apply (a stamps template
+                does; an image/none one doesn't). */}
+            {editable('stamp_icon') && (
+              <div>
+                <label className="mb-1 block text-sm text-tx-2">{t('designer.stampIcon')}</label>
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => set('stamp_icon')('')}
+                    className={`flex h-9 items-center rounded-ctl border px-2 text-xs ${
+                      design.stamp_icon
+                        ? 'border-line text-tx-3 hover:border-tx-3'
+                        : 'border-primary text-primary ring-1 ring-primary'
+                    }`}
+                  >
+                    {t('designer.stampNone')}
+                  </button>
+                  {STAMP_ICONS.map(([key, label]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      title={label}
+                      aria-pressed={design.stamp_icon === key}
+                      onClick={() => set('stamp_icon')(key)}
+                      className={`flex h-9 w-9 items-center justify-center rounded-ctl border transition ${
+                        design.stamp_icon === key
+                          ? 'border-primary ring-1 ring-primary'
+                          : 'border-line hover:border-tx-3'
+                      }`}
+                    >
+                      <StampGlyph
+                        icon={key}
+                        filled
+                        color={design.stamp_color || card?.color_fg || '#FFFFFF'}
+                        size={20}
+                      />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {editable('stamp_color') && (
+              <ColorPicker
+                label={t('designer.stampColor')}
+                value={design.stamp_color || card?.color_fg || '#FFFFFF'}
+                onChange={set('stamp_color')}
+              />
+            )}
+            {editable('stamp_layout') && (
+              <div>
+                <label className="mb-1 block text-sm text-tx-2">{t('designer.stampLayout')}</label>
+                <div className="flex flex-wrap gap-1.5">
+                  {STAMP_LAYOUTS.map((key) => (
+                    <button
+                      key={key || 'grid'}
+                      type="button"
+                      aria-pressed={(design.stamp_layout || '') === key}
+                      onClick={() => set('stamp_layout')(key)}
+                      className={`flex flex-col items-center gap-1 rounded-ctl border px-3 py-2 transition ${
+                        (design.stamp_layout || '') === key
+                          ? 'border-primary ring-1 ring-primary'
+                          : 'border-line hover:border-tx-3'
+                      }`}
+                    >
+                      <StampLayoutGlyph
+                        layout={key}
+                        color={design.stamp_color || card?.color_fg || '#FFFFFF'}
+                      />
+                      <span className="text-xs text-tx-2">
+                        {t(`designer.stampLayout_${key || 'grid'}`)}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-1 text-xs text-tx-3">{t('designer.stampLayoutHint')}</p>
+              </div>
+            )}
             {editable('strip_empty_url') && (
-              <div className="grid grid-cols-2 gap-3">
-                <FileUpload
-                  label={t('walletDesign.stripEmpty')}
-                  onUploaded={set('strip_empty_url')}
-                />
-                <FileUpload
-                  label={t('walletDesign.stripFilled')}
-                  onUploaded={set('strip_filled_url')}
-                />
+              <div>
+                <span className="mb-1 block text-xs text-tx-3">
+                  {t('designer.stampUploadHint')}
+                </span>
+                <div className="grid grid-cols-2 gap-3">
+                  <FileUpload
+                    label={t('walletDesign.stripEmpty')}
+                    onUploaded={set('strip_empty_url')}
+                  />
+                  <FileUpload
+                    label={t('walletDesign.stripFilled')}
+                    onUploaded={set('strip_filled_url')}
+                  />
+                </div>
               </div>
             )}
             {editable('bottom_image_url') && (
