@@ -1,10 +1,10 @@
 """Poster orchestration (Phase 3).
 
 Bridges the pure Pillow rendering in :mod:`branding.qr` to Django storage: pulls
-the merchant's logo + cover out of the media store, composes the poster PDF, and
-saves it under a **content-addressed** name so an unchanged card reuses the same
-file while a theme/reward/logo edit produces a fresh one. Returns the absolute
-``/media/...`` URL (served by Caddy in prod, Django under DEBUG).
+the merchant's cover out of the media store, composes the poster PDF, and saves it
+under a **content-addressed** name so an unchanged card reuses the same file while
+a theme/reward edit produces a fresh one. Returns the absolute ``/media/...`` URL
+(served by Caddy in prod, Django under DEBUG).
 
 All storage/PIL work is best-effort: the QR endpoint calls this in a ``try`` and
 falls back to an empty ``poster_pdf_url`` if anything here raises (e.g. Pillow
@@ -27,7 +27,7 @@ if TYPE_CHECKING:
     from PIL.Image import Image
     from rest_framework.request import Request
 
-    from core.models import Card, Merchant
+    from core.models import Card
 
 
 def _load_media_image(url: str | None) -> Image | None:
@@ -70,7 +70,6 @@ def _prune_old_posters(key: str, keep: str) -> None:
 
 def build_and_store_poster(
     request: Request,
-    merchant: Merchant,
     card: Card,
     theme: dict[str, Any],
     join_url: str,
@@ -93,8 +92,8 @@ def build_and_store_poster(
             # Layout version. Bump whenever render_poster_pdf changes the pixels
             # for unchanged inputs — otherwise every already-stored poster keeps
             # its old digest and is served from cache forever. v2 = mandatory
-            # "Powered by Stampn" footer.
-            "v2",
+            # "Powered by Stampn" footer; v3 = no logo over the QR centre.
+            "v3",
             join_url,
             card.reward_title or "",
             card.reward_description or "",
@@ -102,23 +101,20 @@ def build_and_store_poster(
             theme.get("bg_color") or "",
             theme.get("accent_color") or "",
             theme.get("cover_image_url") or "",
-            card.logo_url or merchant.logo_url or "",
         ]
     )
     digest = hashlib.sha1(fingerprint.encode("utf-8")).hexdigest()[:16]
     name = f"posters/{key}_{digest}.pdf"
 
     if not default_storage.exists(name):
-        # Only decode the logo/cover on a cache miss — on a hit the endpoint costs
-        # just the fingerprint + one exists() stat, not two image decodes.
-        logo = _load_media_image(card.logo_url or merchant.logo_url)
+        # Only decode the cover on a cache miss — on a hit the endpoint costs just
+        # the fingerprint + one exists() stat, not an image decode.
         cover = _load_media_image(theme.get("cover_image_url"))
         pdf = render_poster_pdf(
             join_url,
             theme,
             reward_title=card.reward_title or "",
             reward_description=card.reward_description or "",
-            logo=logo,
             cover=cover,
         )
         # FileSystemStorage.save won't overwrite; if a concurrent request already

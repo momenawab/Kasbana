@@ -45,9 +45,7 @@ def build_qr_assets(
         try:
             from branding.poster import build_and_store_poster
 
-            poster_url = build_and_store_poster(
-                request, merchant, card, theme, join_url, key=poster_key
-            )
+            poster_url = build_and_store_poster(request, card, theme, join_url, key=poster_key)
         except Exception:  # pragma: no cover - Pillow/storage unavailable
             poster_url = ""
 

@@ -91,17 +91,29 @@ def test_qr_endpoint_survives_poster_failure(auth_client, merchant, settings, tm
 
 
 # ── Pure renderers ────────────────────────────────────────────────────────────
-def test_render_qr_png_shapes_and_logo():
-    from PIL import Image
-
+def test_render_qr_png_shapes():
     from branding.qr import render_qr_png
 
     img = render_qr_png("https://x/enroll/abc", {"module_style": "dots", "fg_color": "#0a7"})
     assert img.mode == "RGB" and img.size[0] > 0
 
-    logo = Image.new("RGB", (48, 48), (200, 30, 30))
-    with_logo = render_qr_png("https://x/enroll/abc", {"module_style": "rounded"}, logo=logo)
-    assert with_logo.size[0] > 0
+    rounded = render_qr_png("https://x/enroll/abc", {"module_style": "rounded"})
+    assert rounded.size[0] > 0
+
+
+def test_render_qr_png_leaves_the_centre_unbranded():
+    # The merchant logo used to be overprinted on the code's middle. It isn't any
+    # more, so the centre must be plain code — i.e. only the fg/bg colors appear
+    # there, never a third (logo) color.
+    from branding.qr import render_qr_png
+
+    fg, bg = (0, 119, 51), (255, 255, 255)
+    img = render_qr_png("https://x/enroll/abc", {"fg_color": "#007733", "bg_color": "#ffffff"})
+    mid = img.size[0] // 2
+    pad = img.size[0] // 10
+    centre = img.crop((mid - pad, mid - pad, mid + pad, mid + pad))
+    colors = {color for _count, color in centre.getcolors(maxcolors=256)}
+    assert colors <= {fg, bg}
 
 
 def test_render_poster_pdf_is_pdf():
