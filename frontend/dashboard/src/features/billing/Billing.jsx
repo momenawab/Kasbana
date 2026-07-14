@@ -120,7 +120,7 @@ export default function Billing() {
             )}
           </div>
           {plan !== 'chain' && !cancelsOn && (
-            <Button variant="ghost" onClick={doCancel} loading={cancel.isPending}>
+            <Button variant="danger" onClick={doCancel} loading={cancel.isPending}>
               {t('billing.cancel')}
             </Button>
           )}

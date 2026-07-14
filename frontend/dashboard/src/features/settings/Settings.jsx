@@ -310,9 +310,14 @@ function BusinessTab() {
         </Button>
       </div>
 
-      {/* Preview rail — sticky so it stays in view for the whole form scroll. */}
-      <div className="min-w-0 lg:sticky lg:top-20 lg:self-start">
-        <BrandPreview form={form} />
+      {/* Preview rail — sticky so it stays in view for the whole form scroll.
+          The rail spans the viewport height and `zoom` (not transform:scale)
+          shrinks the real layout box, so the whole panel — pass mock plus the
+          pass-back list under it — fits without its tail being cut off. */}
+      <div className="min-w-0 lg:sticky lg:top-20 lg:h-[calc(100dvh-6rem)] lg:overflow-y-auto lg:self-start">
+        <div className="w-full" style={{ zoom: 0.85 }}>
+          <BrandPreview form={form} />
+        </div>
       </div>
     </div>
   )
