@@ -201,6 +201,13 @@ class AnalyticsSummarySerializer(serializers.Serializer):
     repeat_rate = serializers.FloatField()
 
 
+class WalletSplitResponseSerializer(serializers.Serializer):
+    """GET /analytics/wallet_split response — the summary counts, date-scoped."""
+
+    apple_count = serializers.IntegerField()
+    google_count = serializers.IntegerField()
+
+
 class CustomerSerializer(serializers.ModelSerializer):
     """Read representation for GET /customers and GET /customers/{id}."""
 

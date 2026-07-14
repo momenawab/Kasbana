@@ -13,7 +13,20 @@ function useEscClose(open, onClose) {
 
 const SIZES = { md: 'max-w-md', lg: 'max-w-2xl', xl: 'max-w-5xl' }
 
-export function Modal({ open, onClose, title, children, footer, size = 'md', headerExtra }) {
+// `fitViewport` pins the dialog to a fixed 90vh instead of merely capping it, so a
+// body laid out as a flex column has a definite height to divide up — that is what
+// lets a chart size itself to the space left over rather than pushing the modal
+// past the fold.
+export function Modal({
+  open,
+  onClose,
+  title,
+  children,
+  footer,
+  size = 'md',
+  headerExtra,
+  fitViewport = false,
+}) {
   useEscClose(open, onClose)
   if (!open) return null
   return (
@@ -23,7 +36,9 @@ export function Modal({ open, onClose, title, children, footer, size = 'md', hea
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className={`relative flex max-h-[90vh] w-full flex-col rounded-card bg-surface shadow-bold ${SIZES[size] ?? SIZES.md}`}
+        className={`relative flex w-full flex-col rounded-card bg-surface shadow-bold ${
+          fitViewport ? 'h-[90vh]' : 'max-h-[90vh]'
+        } ${SIZES[size] ?? SIZES.md}`}
       >
         <header className="flex items-center justify-between gap-3 border-b border-line px-5 py-3">
           <h2 className="font-head text-lg font-semibold text-tx">{title}</h2>
@@ -34,7 +49,7 @@ export function Modal({ open, onClose, title, children, footer, size = 'md', hea
             </button>
           </div>
         </header>
-        <div className="overflow-y-auto px-5 py-4">{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">{children}</div>
         {footer && <footer className="border-t border-line px-5 py-3">{footer}</footer>}
       </div>
     </div>

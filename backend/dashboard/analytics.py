@@ -14,8 +14,15 @@ from django.db.models import Count, Min
 from django.db.models.functions import TruncDate
 from django.utils import timezone
 
-from core.enums import CustomerCardStatus, LedgerEvent
-from core.models import CustomerCard, Location, Merchant, Redemption, StampLedger
+from core.enums import CustomerCardStatus, LedgerEvent, WalletPlatform
+from core.models import (
+    CustomerCard,
+    Location,
+    Merchant,
+    Redemption,
+    StampLedger,
+    WalletRegistration,
+)
 
 DEFAULT_RANGE_DAYS = 30
 
@@ -74,6 +81,36 @@ def timeseries(
         points.append({"date": cursor.isoformat(), "value": buckets.get(cursor, 0)})
         cursor += timedelta(days=1)
     return points
+
+
+def wallet_split(
+    merchant: Merchant,
+    from_date: date | None = None,
+    to_date: date | None = None,
+) -> dict[str, int]:
+    """Active wallet registrations by platform, for passes added in the window.
+
+    ``/analytics/summary`` reports the same two counts all-time; this one honours
+    the dashboard's date filter, so the Apple-vs-Google chart moves with the rest
+    of the page.
+    """
+    from_date, to_date = _date_range(from_date, to_date)
+
+    counts = {
+        row["platform"]: row["value"]
+        for row in WalletRegistration.objects.filter(
+            customer_card__merchant=merchant,
+            is_active=True,
+            created_at__date__gte=from_date,
+            created_at__date__lte=to_date,
+        )
+        .values("platform")
+        .annotate(value=Count("id"))
+    }
+    return {
+        "apple_count": counts.get(WalletPlatform.APPLE, 0),
+        "google_count": counts.get(WalletPlatform.GOOGLE, 0),
+    }
 
 
 def retention(

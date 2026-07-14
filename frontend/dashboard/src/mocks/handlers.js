@@ -63,6 +63,18 @@ export const handlers = [
       points: seriesPoints(metric, url.searchParams.get('from'), url.searchParams.get('to')),
     })
   }),
+  // Wallet split — the same two counts /summary carries, but scoped to the date
+  // range. Derive them from the window so narrowing the dates visibly moves the
+  // donut, the way the real endpoint does.
+  http.get(`${BASE}/analytics/wallet_split`, ({ request }) => {
+    const url = new URL(request.url)
+    const joins = seriesPoints('joins', url.searchParams.get('from'), url.searchParams.get('to'))
+    const total = joins.reduce((sum, p) => sum + p.value, 0)
+    return HttpResponse.json({
+      apple_count: Math.round(total * 0.65),
+      google_count: total - Math.round(total * 0.65),
+    })
+  }),
   // Business settings (§14) — GET seeds the form; PATCH merges & echoes back so a
   // save in the Business tab persists for the rest of the session.
   http.get(`${BASE}/settings/business`, () => HttpResponse.json(db.businessSettings)),

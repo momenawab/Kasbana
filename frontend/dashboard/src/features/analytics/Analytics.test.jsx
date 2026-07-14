@@ -1,7 +1,8 @@
-import { describe, it, expect, vi, beforeAll } from 'vitest'
+import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import i18n from '../../lib/i18n'
+import api from '../../lib/api'
 import Analytics from './Analytics'
 
 // 3-day window: 2 + 0 + 10 → total 12, avg 4.0, peak 10 on 3 Jul, 2 of 3 days active.
@@ -18,6 +19,9 @@ vi.mock('../../lib/api', () => ({
         return Promise.resolve({
           data: { enrollments: 12, active_cards: 5, redemptions: 3, repeat_rate: 0.5, apple_count: 7, google_count: 3 },
         })
+      }
+      if (url.startsWith('/analytics/wallet_split')) {
+        return Promise.resolve({ data: { apple_count: 7, google_count: 3 } })
       }
       return Promise.resolve({ data: { points: POINTS } })
     }),
@@ -38,8 +42,18 @@ function renderPage() {
   )
 }
 
+// The page's DateRange renders before the expanded one, so [0] is the page filter
+// and [1] — once a panel is open — is the modal's own copy.
+const fromInputs = () => screen.getAllByLabelText('from')
+
+const urlsHit = () => api.get.mock.calls.map(([url]) => url)
+
 beforeAll(async () => {
   await i18n.changeLanguage('en')
+})
+
+beforeEach(() => {
+  api.get.mockClear()
 })
 
 describe('<Analytics>', () => {
@@ -86,5 +100,47 @@ describe('<Analytics>', () => {
     // and the table row.
     expect(screen.getAllByText('70%').length).toBeGreaterThan(0)
     expect(screen.getAllByText('30%').length).toBeGreaterThan(0)
+  })
+
+  it('scopes the wallet split to the page date range, not all time', async () => {
+    renderPage()
+    await waitFor(() => expect(screen.getByLabelText('Expand — Apple vs Google')).toBeTruthy())
+
+    fireEvent.change(fromInputs()[0], { target: { value: '2026-07-01' } })
+
+    await waitFor(() =>
+      expect(urlsHit()).toContain('/analytics/wallet_split?from=2026-07-01&to=')
+    )
+  })
+
+  it('opens the expanded view on the range already chosen on the page', async () => {
+    renderPage()
+    await waitFor(() => expect(screen.getByLabelText('Expand — Joins')).toBeTruthy())
+
+    fireEvent.change(fromInputs()[0], { target: { value: '2026-07-01' } })
+    fireEvent.click(screen.getByLabelText('Expand — Joins'))
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeTruthy())
+
+    expect(fromInputs()).toHaveLength(2)
+    expect(fromInputs()[1].value).toBe('2026-07-01')
+  })
+
+  it('re-dating inside the expanded view refetches it but leaves the page filter alone', async () => {
+    renderPage()
+    await waitFor(() => expect(screen.getByLabelText('Expand — Joins')).toBeTruthy())
+
+    fireEvent.change(fromInputs()[0], { target: { value: '2026-07-01' } })
+    fireEvent.click(screen.getByLabelText('Expand — Joins'))
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeTruthy())
+
+    fireEvent.change(fromInputs()[1], { target: { value: '2026-06-15' } })
+
+    // The modal refetches on its own range …
+    await waitFor(() =>
+      expect(urlsHit()).toContain('/analytics/timeseries?metric=joins&from=2026-06-15&to=')
+    )
+    // … while the page's own filter is untouched.
+    expect(fromInputs()[0].value).toBe('2026-07-01')
+    expect(fromInputs()[1].value).toBe('2026-06-15')
   })
 })

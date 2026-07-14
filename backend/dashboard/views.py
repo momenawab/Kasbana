@@ -73,6 +73,7 @@ from dashboard.serializers import (
     TimeseriesResponseSerializer,
     UploadRequestSerializer,
     UploadSerializer,
+    WalletSplitResponseSerializer,
 )
 
 
@@ -661,6 +662,20 @@ class AnalyticsTimeseriesView(APIView):
 
         points = analytics.timeseries(merchant, metric, from_date, to_date, location_id)
         return Response({"points": points})
+
+
+class AnalyticsWalletSplitView(APIView):
+    """GET /analytics/wallet_split?from&to."""
+
+    permission_classes = [CanViewInsights]
+    serializer_class = WalletSplitResponseSerializer
+
+    @extend_schema(responses=WalletSplitResponseSerializer)
+    def get(self, request: Request) -> Response:
+        merchant = get_request_merchant(request)
+        from_date = _parse_date_param(request.query_params.get("from"))
+        to_date = _parse_date_param(request.query_params.get("to"))
+        return Response(analytics.wallet_split(merchant, from_date, to_date))
 
 
 class AnalyticsRetentionView(APIView):

@@ -7,7 +7,10 @@ the Google-class sync seam (faked — no Celery/broker required).
 
 from __future__ import annotations
 
+from datetime import timedelta
+
 import pytest
+from django.utils import timezone
 from rest_framework.test import APIClient
 
 from core import ledger
@@ -234,6 +237,42 @@ def test_analytics_excludes_inactive_wallet_registrations(auth_client, merchant)
     )
     resp = auth_client.get("/api/v1/analytics/summary")
     assert resp.json()["apple_count"] == 0  # inactive registration not counted
+
+
+def test_analytics_wallet_split_honours_the_date_range(auth_client, merchant):
+    """Unlike /summary, the split counts only passes added inside the window."""
+    card = factories.CardFactory(merchant=merchant)
+    inside = factories.CustomerCardFactory(card=card, merchant=merchant)
+    outside = factories.CustomerCardFactory(card=card, merchant=merchant)
+
+    recent = WalletRegistration.objects.create(
+        customer_card=inside, platform=WalletPlatform.APPLE, is_active=True
+    )
+    stale = WalletRegistration.objects.create(
+        customer_card=outside, platform=WalletPlatform.GOOGLE, is_active=True
+    )
+    # created_at is auto_now_add, so backdate the second one past the window.
+    WalletRegistration.objects.filter(pk=stale.pk).update(
+        created_at=timezone.now() - timedelta(days=400)
+    )
+
+    today = timezone.localdate()
+    resp = auth_client.get(
+        f"/api/v1/analytics/wallet_split?from={today - timedelta(days=7)}&to={today}"
+    )
+    assert resp.status_code == 200
+    assert resp.json() == {"apple_count": 1, "google_count": 0}
+
+    # Widen the range and the backdated Google pass comes back into view.
+    resp = auth_client.get(
+        f"/api/v1/analytics/wallet_split?from={today - timedelta(days=500)}&to={today}"
+    )
+    assert resp.json() == {"apple_count": 1, "google_count": 1}
+    assert recent.is_active
+
+
+def test_analytics_wallet_split_rejects_a_bad_date(auth_client):
+    assert auth_client.get("/api/v1/analytics/wallet_split?from=nope").status_code == 400
 
 
 # ── extra coverage: untested branches ─────────────────────────────────────────

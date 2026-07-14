@@ -2686,6 +2686,19 @@ paths:
               schema:
                 $ref: '#/components/schemas/TimeseriesResponse'
           description: ''
+  /api/v1/analytics/wallet_split:
+    get:
+      operationId: analytics_wallet_split_retrieve
+      description: GET /analytics/wallet_split?from&to.
+      tags:
+      - analytics
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WalletSplitResponse'
+          description: ''
   /api/v1/announcements:
     get:
       operationId: announcements_list
@@ -8624,6 +8637,17 @@ components:
       required:
       - apple
       - google
+    WalletSplitResponse:
+      type: object
+      description: GET /analytics/wallet_split response — the summary counts, date-scoped.
+      properties:
+        apple_count:
+          type: integer
+        google_count:
+          type: integer
+      required:
+      - apple_count
+      - google_count
     WalletSyncFailure:
       type: object
       properties:

@@ -8,6 +8,7 @@ from dashboard.views import (
     AnalyticsRetentionView,
     AnalyticsSummaryView,
     AnalyticsTimeseriesView,
+    AnalyticsWalletSplitView,
     CardDetailView,
     CardListCreateView,
     CardQRView,
@@ -76,6 +77,11 @@ urlpatterns = [
     # Analytics
     path("analytics/summary", AnalyticsSummaryView.as_view(), name="analytics-summary"),
     path("analytics/timeseries", AnalyticsTimeseriesView.as_view(), name="analytics-timeseries"),
+    path(
+        "analytics/wallet_split",
+        AnalyticsWalletSplitView.as_view(),
+        name="analytics-wallet-split",
+    ),
     path("analytics/retention", AnalyticsRetentionView.as_view(), name="analytics-retention"),
     path("analytics/by_location", AnalyticsByLocationView.as_view(), name="analytics-by-location"),
     path("activity", ActivityFeedView.as_view(), name="activity"),
