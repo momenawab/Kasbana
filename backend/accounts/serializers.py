@@ -91,7 +91,14 @@ class ContactSerializer(serializers.Serializer):
 class BusinessSettingsSerializer(serializers.Serializer):
     """PATCH /settings/business — partial update of branding + contact."""
 
-    name = serializers.CharField(max_length=120, required=False)
+    # Accepted but NOT settable: the business name is fixed at signup (see the view).
+    # It stays in the write shape so a client that echoes the whole form back gets a
+    # clear error on a real rename instead of a silent no-op on an unknown key.
+    name = serializers.CharField(
+        max_length=120,
+        required=False,
+        help_text="Read-only. Fixed at signup; changed only by support.",
+    )
     legal_name = serializers.CharField(max_length=160, required=False, allow_blank=True)
     logo_url = serializers.URLField(required=False, allow_blank=True, allow_null=True)
     color_bg = serializers.CharField(max_length=7, required=False, allow_blank=True)

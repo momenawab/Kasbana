@@ -159,7 +159,9 @@ function BusinessTab() {
   const save = useMutation({
     mutationFn: async () => {
       // The API takes phone nested under `contact`; everything else is top-level.
-      const { phone, enroll_headline, enroll_tagline, ...rest } = form
+      // `name` is deliberately dropped: the business name is fixed at signup, and
+      // the backend rejects a rename outright (support changes it, on a ticket).
+      const { phone, enroll_headline, enroll_tagline, name, ...rest } = form
       const payload = { ...rest, contact: { phone } }
       // Enrollment copy is a custom_branding field — posting it on a plan that
       // can't set it is a paid-feature attempt, not a business-details save.
@@ -179,11 +181,23 @@ function BusinessTab() {
       {/* Editor column */}
       <div className="flex min-w-0 flex-col gap-4">
         <Section title={t('settings.sectionIdentity')}>
+          {/* Fixed at signup — it seeds the merchant slug and is the brand already
+              printed on every pass in a customer's wallet. Support changes it. */}
           <Input
             name="name"
             label={t('settings.businessName')}
             value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            readOnly
+            disabled
+            className="cursor-not-allowed opacity-70"
+            hint={
+              <>
+                {t('settings.businessNameLocked')}{' '}
+                <Link to="/support" className="font-semibold text-brand underline">
+                  {t('settings.businessNameLockedCta')}
+                </Link>
+              </>
+            }
           />
           <Input
             name="legal_name"

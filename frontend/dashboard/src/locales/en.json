@@ -575,6 +575,8 @@
     "tabAccount": "Account",
     "tabPassword": "Password",
     "businessName": "Business name",
+    "businessNameLocked": "Set when you registered and shown on every pass your customers already hold, so it can't be edited here.",
+    "businessNameLockedCta": "Contact support to change it",
     "legalName": "Legal name",
     "logo": "Logo",
     "address": "Address",

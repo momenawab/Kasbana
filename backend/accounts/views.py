@@ -41,7 +41,7 @@ from accounts.serializers import (
 )
 from accounts.services import merchant_payload, settings_for
 from billing import entitlements
-from common.errors import Conflict, TokenExpired
+from common.errors import Conflict, DomainError, TokenExpired
 from common.middleware import resolve_staff
 from common.permissions import CanManageCards, IsOwner, IsScannerOrAbove
 from core.models import Card, Location, StaffUser
@@ -194,7 +194,18 @@ class SettingsBusinessView(APIView):
         data = body.validated_data
 
         merchant = get_request_merchant(request)
-        for field in ("name", "legal_name", "logo_url", "color_bg", "color_fg"):
+        # The business name is set once, at signup. It seeds the merchant slug (which
+        # nothing re-derives on a rename) and it is the brand already printed on every
+        # pass sitting in a customer's wallet — so renaming is a support action with a
+        # human in the loop, not a self-service edit. Gate on *intent*, like the branding
+        # gate below: re-sending the stored value stays a no-op, so a stale tab that
+        # echoes the whole form back still saves its other fields.
+        if "name" in data and data["name"] != merchant.name:
+            raise DomainError(
+                "Your business name can't be changed here — it's set when you register. "
+                "Open a support ticket and we'll update it for you."
+            )
+        for field in ("legal_name", "logo_url", "color_bg", "color_fg"):
             if field in data:
                 setattr(merchant, field, data[field] or "")
         merchant.save()

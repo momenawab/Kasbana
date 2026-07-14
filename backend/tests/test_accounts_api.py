@@ -182,7 +182,7 @@ def test_business_settings_round_trip(merchant):
     resp = client.patch(
         "/api/v1/settings/business",
         {
-            "name": "Renamed Co",
+            "legal_name": "Renamed Co LLC",
             "color_bg": "#112233",
             "contact": {"phone": "+201111111111"},
             "address": "5 Tahrir St",
@@ -190,20 +190,20 @@ def test_business_settings_round_trip(merchant):
         format="json",
     )
     assert resp.status_code == 200
-    assert resp.json()["name"] == "Renamed Co"
+    assert resp.json()["legal_name"] == "Renamed Co LLC"
 
     merchant.refresh_from_db()
-    assert merchant.name == "Renamed Co" and merchant.color_bg == "#112233"
+    assert merchant.legal_name == "Renamed Co LLC" and merchant.color_bg == "#112233"
     s = MerchantSettings.objects.get(merchant=merchant)
     assert s.contact_phone == "+201111111111" and s.address == "5 Tahrir St"
 
 
 # The dashboard Business tab always posts every field it renders, including the
 # two custom_branding-gated enroll fields (blank when the plan can't set them).
-# Gating on key *presence* used to 402 the whole save on Starter.
+# Gating on key *presence* used to 402 the whole save on Starter. The business name
+# is not in here: it is fixed at signup, so the tab no longer posts it.
 def _business_tab_payload(**over):
     return {
-        "name": "Renamed Co",
         "color_bg": "#0E1B2A",
         "color_fg": "#FFFFFF",
         "enroll_headline": "",
@@ -217,10 +217,60 @@ def test_business_save_with_blank_enroll_copy_is_ungated(merchant):
     staff = factories.StaffUserFactory(merchant=merchant, role=Role.ADMIN)
     activate_plan(merchant, PlanTier.STARTER)  # custom_branding off
 
-    resp = _auth(staff).patch("/api/v1/settings/business", _business_tab_payload(), format="json")
+    resp = _auth(staff).patch(
+        "/api/v1/settings/business",
+        _business_tab_payload(legal_name="Blank Copy Ltd"),
+        format="json",
+    )
     assert resp.status_code == 200
     merchant.refresh_from_db()
-    assert merchant.name == "Renamed Co"
+    assert merchant.legal_name == "Blank Copy Ltd"
+
+
+# ── The business name is fixed at signup ─────────────────────────────────────
+def test_business_name_cannot_be_renamed(merchant):
+    """Renaming is a support action — the endpoint refuses it outright."""
+    staff = factories.StaffUserFactory(merchant=merchant, role=Role.ADMIN)
+    original = merchant.name
+
+    resp = _auth(staff).patch(
+        "/api/v1/settings/business",
+        _business_tab_payload(name="Renamed Co"),
+        format="json",
+    )
+    assert resp.status_code == 400
+    # The merchant is told where to go, not just that it failed.
+    assert "support" in resp.json()["error"]["message"].lower()
+    merchant.refresh_from_db()
+    assert merchant.name == original
+
+
+def test_business_name_echoed_back_unchanged_is_a_noop(merchant):
+    """A stale tab posts the whole form back — that must still save everything else."""
+    staff = factories.StaffUserFactory(merchant=merchant, role=Role.ADMIN)
+
+    resp = _auth(staff).patch(
+        "/api/v1/settings/business",
+        _business_tab_payload(name=merchant.name, legal_name="Echoed Ltd"),
+        format="json",
+    )
+    assert resp.status_code == 200
+    merchant.refresh_from_db()
+    assert merchant.legal_name == "Echoed Ltd"
+
+
+def test_rejected_rename_does_not_half_apply_the_other_fields(merchant):
+    """The name gate raises mid-request; the atomic block must roll the rest back."""
+    staff = factories.StaffUserFactory(merchant=merchant, role=Role.ADMIN)
+
+    resp = _auth(staff).patch(
+        "/api/v1/settings/business",
+        _business_tab_payload(name="Renamed Co", legal_name="Should Not Stick"),
+        format="json",
+    )
+    assert resp.status_code == 400
+    merchant.refresh_from_db()
+    assert merchant.legal_name != "Should Not Stick"
 
 
 def test_business_save_resending_stored_enroll_copy_is_ungated(merchant):
@@ -253,17 +303,18 @@ def test_business_save_can_clear_enroll_copy_after_downgrade(merchant):
 def test_business_save_setting_enroll_copy_still_requires_branding(merchant):
     staff = factories.StaffUserFactory(merchant=merchant, role=Role.ADMIN)
     activate_plan(merchant, PlanTier.STARTER)
-    original_name = merchant.name
 
     resp = _auth(staff).patch(
         "/api/v1/settings/business",
-        _business_tab_payload(enroll_headline="Join us!"),
+        # legal_name, not name: the name is immutable now, so asserting it survives a
+        # rejected save would pass no matter what and prove nothing about the rollback.
+        _business_tab_payload(enroll_headline="Join us!", legal_name="Should Not Stick"),
         format="json",
     )
     assert resp.status_code == 402
     # The rejected save must not half-apply the ungated fields.
     merchant.refresh_from_db()
-    assert merchant.name == original_name
+    assert merchant.legal_name != "Should Not Stick"
 
 
 def test_business_save_setting_enroll_copy_allowed_on_growth(merchant):

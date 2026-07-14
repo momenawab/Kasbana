@@ -575,6 +575,8 @@
     "tabAccount": "الحساب",
     "tabPassword": "كلمة المرور",
     "businessName": "اسم النشاط",
+    "businessNameLocked": "تم تحديده عند التسجيل ويظهر على كل بطاقة بحوزة عملائك، لذلك لا يمكن تعديله من هنا.",
+    "businessNameLockedCta": "تواصل مع الدعم لتغييره",
     "legalName": "الاسم القانوني",
     "logo": "الشعار",
     "address": "العنوان",
