@@ -3,8 +3,12 @@
 The SVG path hand-rolls a colored, shaped code straight from the ``qrcode``
 matrix — no raster dependency and fully deterministic, so it inlines cleanly on
 the web and tests stay hermetic. Phase 3 adds a raster path (Pillow): a styled
-**PNG** with module drawers + a logo in the centre, and a composed **poster PDF**
-(cover / logo-in-QR / reward text) for merchants to print.
+**PNG** with module drawers, and a composed **poster PDF** (cover / QR / reward
+text) for merchants to print.
+
+The code itself is never overprinted with the merchant's logo: an occluded centre
+buys nothing on a printed poster (the shop's branding is already on the cover
+band) and costs scan reliability on cheap phone cameras.
 """
 
 from __future__ import annotations
@@ -90,15 +94,12 @@ def render_qr_png(
     data: str,
     qr_style: dict[str, Any] | None = None,
     *,
-    logo: Image | None = None,
     box_size: int = 12,
 ) -> Image:
-    """Return a styled QR as a PIL ``Image`` (module drawer + optional centre logo).
+    """Return a styled QR as a PIL ``Image`` (module drawer, no centre overprint).
 
     Same ``qr_style`` contract as :func:`render_qr_svg` (``module_style``,
-    ``fg_color``, ``bg_color``). When ``logo`` is given it is embedded in the
-    centre and the code is rendered at error-correction H so it still scans with
-    the logo occluding the middle. Raster-only — imports Pillow lazily so the SVG
+    ``fg_color``, ``bg_color``). Raster-only — imports Pillow lazily so the SVG
     path keeps working where Pillow is absent.
     """
     from qrcode.image.styledpil import StyledPilImage
@@ -115,20 +116,17 @@ def render_qr_png(
     drawers = {"dots": CircleModuleDrawer, "rounded": RoundedModuleDrawer}
     drawer_cls = drawers.get(style.get("module_style") or "square", SquareModuleDrawer)
 
-    ec = qrcode.constants.ERROR_CORRECT_H if logo is not None else qrcode.constants.ERROR_CORRECT_M
-    qr = qrcode.QRCode(border=2, box_size=box_size, error_correction=ec)
+    qr = qrcode.QRCode(
+        border=2, box_size=box_size, error_correction=qrcode.constants.ERROR_CORRECT_M
+    )
     qr.add_data(data)
     qr.make(fit=True)
 
-    kwargs: dict[str, Any] = {
-        "image_factory": StyledPilImage,
-        "module_drawer": drawer_cls(),
-        "color_mask": SolidFillColorMask(back_color=bg, front_color=fg),
-    }
-    if logo is not None:
-        kwargs["embeded_image"] = logo.convert("RGBA")
-
-    img = qr.make_image(**kwargs)
+    img = qr.make_image(
+        image_factory=StyledPilImage,
+        module_drawer=drawer_cls(),
+        color_mask=SolidFillColorMask(back_color=bg, front_color=fg),
+    )
     return img.get_image().convert("RGB")
 
 
@@ -157,15 +155,14 @@ def render_poster_pdf(
     *,
     reward_title: str = "",
     reward_description: str = "",
-    logo: Image | None = None,
     cover: Image | None = None,
     headline: str = "Scan to join",
 ) -> bytes:
-    """Compose a printable A4 poster (cover / logo-in-QR / reward text) as PDF bytes.
+    """Compose a printable A4 poster (cover / QR / reward text) as PDF bytes.
 
-    Layout, top to bottom: an optional cover band, the styled QR (with the logo in
-    its centre) on the theme background, then the headline + reward copy. Raster —
-    imports Pillow lazily.
+    Layout, top to bottom: an optional cover band, the styled QR on the theme
+    background, then the headline + reward copy. The QR is left clean — no logo
+    over its centre. Raster — imports Pillow lazily.
     """
     from PIL import Image as PILImage
     from PIL import ImageDraw, ImageOps
@@ -186,7 +183,7 @@ def render_poster_pdf(
         canvas.paste(fitted, (0, 0))
         y = band_h + 60
 
-    qr_img = render_qr_png(join_url, theme.get("qr_style"), logo=logo)
+    qr_img = render_qr_png(join_url, theme.get("qr_style"))
     qr_size = 720
     qr_img = qr_img.resize((qr_size, qr_size))
     canvas.paste(qr_img, ((width - qr_size) // 2, y))
