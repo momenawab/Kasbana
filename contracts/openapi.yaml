@@ -2663,7 +2663,13 @@ paths:
   /api/v1/analytics/summary:
     get:
       operationId: analytics_summary_retrieve
-      description: GET /analytics/summary — headline metrics for the merchant.
+      description: |-
+        GET /analytics/summary?from&to — headline metrics for the merchant.
+
+        With a range, the KPIs describe that window (see ``analytics.summary``). Without
+        one they are the lifetime totals, which is what the Overview page asks for — so
+        the two readings stay available side by side rather than one silently replacing
+        the other.
       tags:
       - analytics
       responses:
@@ -2685,6 +2691,19 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TimeseriesResponse'
+          description: ''
+  /api/v1/analytics/wallet_split:
+    get:
+      operationId: analytics_wallet_split_retrieve
+      description: GET /analytics/wallet_split?from&to.
+      tags:
+      - analytics
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WalletSplitResponse'
           description: ''
   /api/v1/announcements:
     get:
@@ -8624,6 +8643,17 @@ components:
       required:
       - apple
       - google
+    WalletSplitResponse:
+      type: object
+      description: GET /analytics/wallet_split response — the summary counts, date-scoped.
+      properties:
+        apple_count:
+          type: integer
+        google_count:
+          type: integer
+      required:
+      - apple_count
+      - google_count
     WalletSyncFailure:
       type: object
       properties:

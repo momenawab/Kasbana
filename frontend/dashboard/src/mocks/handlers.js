@@ -46,21 +46,52 @@ export const handlers = [
   // Locations table (paginated shape: { results }).
   http.get(`${BASE}/locations`, () => HttpResponse.json({ results: [] })),
   // Analytics (§14) — summary KPIs + the per-metric day buckets the charts plot.
-  http.get(`${BASE}/analytics/summary`, () =>
-    HttpResponse.json({
-      enrollments: 1284,
-      active_cards: 412,
-      redemptions: 96,
+  // With a range the KPIs describe that window (and the enrollments/redemptions tiles
+  // equal the sum of the matching chart, as they do for real); without one they're the
+  // lifetime totals, which is what Overview asks for.
+  http.get(`${BASE}/analytics/summary`, ({ request }) => {
+    const url = new URL(request.url)
+    const [from, to] = [url.searchParams.get('from'), url.searchParams.get('to')]
+    if (!from && !to) {
+      return HttpResponse.json({
+        enrollments: 1284,
+        active_cards: 412,
+        redemptions: 96,
+        repeat_rate: 0.38,
+        apple_count: 268,
+        google_count: 144,
+      })
+    }
+    const total = (metric) =>
+      seriesPoints(metric, from, to).reduce((sum, p) => sum + p.value, 0)
+    const enrollments = total('joins')
+    const apple = Math.round(enrollments * 0.65)
+    return HttpResponse.json({
+      enrollments,
+      active_cards: Math.round(total('stamps') / 3),
+      redemptions: total('redemptions'),
       repeat_rate: 0.38,
-      apple_count: 268,
-      google_count: 144,
+      apple_count: apple,
+      google_count: enrollments - apple,
     })
-  ),
+  }),
   http.get(`${BASE}/analytics/timeseries`, ({ request }) => {
     const url = new URL(request.url)
     const metric = url.searchParams.get('metric') ?? 'joins'
     return HttpResponse.json({
       points: seriesPoints(metric, url.searchParams.get('from'), url.searchParams.get('to')),
+    })
+  }),
+  // Wallet split — the same two counts /summary carries, but scoped to the date
+  // range. Derive them from the window so narrowing the dates visibly moves the
+  // donut, the way the real endpoint does.
+  http.get(`${BASE}/analytics/wallet_split`, ({ request }) => {
+    const url = new URL(request.url)
+    const joins = seriesPoints('joins', url.searchParams.get('from'), url.searchParams.get('to'))
+    const total = joins.reduce((sum, p) => sum + p.value, 0)
+    return HttpResponse.json({
+      apple_count: Math.round(total * 0.65),
+      google_count: total - Math.round(total * 0.65),
     })
   }),
   // Business settings (§14) — GET seeds the form; PATCH merges & echoes back so a

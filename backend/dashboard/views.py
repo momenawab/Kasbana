@@ -73,6 +73,7 @@ from dashboard.serializers import (
     TimeseriesResponseSerializer,
     UploadRequestSerializer,
     UploadSerializer,
+    WalletSplitResponseSerializer,
 )
 
 
@@ -588,14 +589,38 @@ class CustomerTimelineView(APIView):
 
 
 # ── Analytics ─────────────────────────────────────────────────────────────────
+def _parse_date_param(value: str | None) -> date | None:
+    if not value:
+        return None
+    try:
+        return date.fromisoformat(value)
+    except ValueError as exc:
+        raise ValidationError(
+            {"date": ["Invalid date format. Use ISO 8601 (YYYY-MM-DD)."]}
+        ) from exc
+
+
 class AnalyticsSummaryView(APIView):
-    """GET /analytics/summary — headline metrics for the merchant."""
+    """GET /analytics/summary?from&to — headline metrics for the merchant.
+
+    With a range, the KPIs describe that window (see ``analytics.summary``). Without
+    one they are the lifetime totals, which is what the Overview page asks for — so
+    the two readings stay available side by side rather than one silently replacing
+    the other.
+    """
 
     permission_classes = [CanViewInsights]
 
     @extend_schema(responses=AnalyticsSummarySerializer)
     def get(self, request: Request) -> Response:
         merchant = get_request_merchant(request)
+
+        from_date = _parse_date_param(request.query_params.get("from"))
+        to_date = _parse_date_param(request.query_params.get("to"))
+        if from_date or to_date:
+            windowed = analytics.summary(merchant, from_date, to_date)
+            return Response(AnalyticsSummarySerializer(windowed).data)
+
         customers = CustomerCard.objects.for_merchant(merchant)
 
         enrollments = customers.count()
@@ -631,17 +656,6 @@ class AnalyticsSummaryView(APIView):
         return Response(AnalyticsSummarySerializer(payload).data)
 
 
-def _parse_date_param(value: str | None) -> date | None:
-    if not value:
-        return None
-    try:
-        return date.fromisoformat(value)
-    except ValueError as exc:
-        raise ValidationError(
-            {"date": ["Invalid date format. Use ISO 8601 (YYYY-MM-DD)."]}
-        ) from exc
-
-
 class AnalyticsTimeseriesView(APIView):
     """GET /analytics/timeseries?from&to&metric=&location=."""
 
@@ -661,6 +675,20 @@ class AnalyticsTimeseriesView(APIView):
 
         points = analytics.timeseries(merchant, metric, from_date, to_date, location_id)
         return Response({"points": points})
+
+
+class AnalyticsWalletSplitView(APIView):
+    """GET /analytics/wallet_split?from&to."""
+
+    permission_classes = [CanViewInsights]
+    serializer_class = WalletSplitResponseSerializer
+
+    @extend_schema(responses=WalletSplitResponseSerializer)
+    def get(self, request: Request) -> Response:
+        merchant = get_request_merchant(request)
+        from_date = _parse_date_param(request.query_params.get("from"))
+        to_date = _parse_date_param(request.query_params.get("to"))
+        return Response(analytics.wallet_split(merchant, from_date, to_date))
 
 
 class AnalyticsRetentionView(APIView):
