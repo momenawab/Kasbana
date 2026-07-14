@@ -57,3 +57,8 @@ frontend/dashboard/public/TR_Add_to_Apple_Wallet_RGB_102121.svg
 .gitignore
 .kilo/kilo.jsonc
 .opencode/opencode.json
+
+# Playwright run artifacts
+test-results/
+e2e/test-results/
+e2e/playwright-report/
