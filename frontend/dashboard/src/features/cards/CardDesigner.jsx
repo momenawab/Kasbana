@@ -1,10 +1,17 @@
 // Card Designer (spec §14) — two-pane: left form, right live WalletPreview
 // (Apple⇄Google). Save draft (DRAFT) / Publish (ACTIVE) → POST or PATCH /cards.
 // Unsaved-changes guard; editing a published card warns it re-provisions passes.
-import { useEffect, useState } from 'react'
+//
+// Create and edit render the SAME fields. A new card opens straight into a blank
+// form (no preset picker), and the full wallet-design section is available before
+// the card exists — the design is held here and persisted right after POST, so a
+// merchant never has to save a card and then go back into it to finish designing.
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useQueryClient } from '@tanstack/react-query'
 import { useCard, useSaveCard } from './api'
+import { useEnrollTheme } from '../enroll-theme/api'
 import { useAuth } from '../../hooks/useAuth'
 import { usePlan } from '../../hooks/usePlan'
 import { useToast } from '../../hooks/useToast'
@@ -14,11 +21,7 @@ import { Toggle } from '../../components/Toggle'
 import ColorPicker from '../../components/ColorPicker'
 import FileUpload from '../../components/FileUpload'
 import WalletPreview from '../../components/WalletPreview'
-import { STAMP_ICONS } from '../../components/stampIcons'
-import StampGlyph from '../../components/StampGlyph'
-import WalletDesignEditor from './WalletDesignEditor'
-import TemplatePicker from './TemplatePicker'
-import { TEMPLATE_SEED } from './templateSeeds'
+import WalletDesignEditor, { DEFAULTS as DESIGN_DEFAULTS } from './WalletDesignEditor'
 import Button from '../../components/Button'
 import Skeleton from '../../components/Skeleton'
 
@@ -37,85 +40,44 @@ const EMPTY = {
   collect_birthday: false,
 }
 
-// Create-time stamp styling — persisted to the card's wallet design after the
-// card is created (edit mode uses the full WalletDesignEditor instead).
-const EMPTY_STAMP = {
-  stamp_icon: '',
-  stamp_color: '',
-  stamp_layout: '',
-  strip_empty_url: '',
-  strip_filled_url: '',
-}
-
-// How the stamps are arranged. Blank = the backend default (row-major). Only has
-// a visible effect once the card wraps to two rows, i.e. more than 5 stamps.
-const STAMP_LAYOUTS = ['', 'columns', 'stagger']
-
-// A six-dot thumbnail of each arrangement, so the merchant picks by shape instead
-// of by reading a word. Mirrors stampGeometry() in WalletPreview and _centers() in
-// wallets/stamp_grid.py: grid runs across (0,1,2 / 3,4,5), the other two alternate
-// down (0,2,4 / 1,3,5), and stagger additionally offsets the lower row.
-function StampLayoutGlyph({ layout, color }) {
-  const alternating = layout === 'columns' || layout === 'stagger'
-  const rows = alternating
-    ? [
-        [0, 2, 4],
-        [1, 3, 5],
-      ]
-    : [
-        [0, 1, 2],
-        [3, 4, 5],
-      ]
-  return (
-    <span className="flex flex-col gap-0.5" aria-hidden="true">
-      {rows.map((row, r) => (
-        <span
-          key={r}
-          className="flex gap-0.5"
-          style={layout === 'stagger' && r > 0 ? { marginInlineStart: '4px' } : undefined}
-        >
-          {row.map((i) => (
-            <span key={i} className="h-1.5 w-1.5 rounded-full" style={{ background: color }} />
-          ))}
-        </span>
-      ))}
-    </span>
-  )
-}
-
-// The default locked template per card type (matches the backend + the design
-// editor) so the stamp fields land in an editable template on the stored design.
-const DEFAULT_TEMPLATE_KEY = { STAMP: 'loyalty_stamps', POINTS: 'points_reward' }
-
 export default function CardDesigner() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { id } = useParams()
   const isEdit = Boolean(id)
   const { merchant } = useAuth()
-  const { can, requireFeature } = usePlan()
+  const { can } = usePlan()
   const branded = can('custom_branding')
   const toast = useToast()
+  const qc = useQueryClient()
   const save = useSaveCard()
 
   const { data: existing, isLoading } = useCard(id)
   const [form, setForm] = useState(EMPTY)
-  const [stamp, setStamp] = useState(EMPTY_STAMP)
+  // The wallet design. Only used on create — in edit the design editor owns and
+  // saves its own state against the existing card.
+  const [design, setDesign] = useState(DESIGN_DEFAULTS)
   const [dirty, setDirty] = useState(false)
   const [platform, setPlatform] = useState('APPLE')
   const [errors, setErrors] = useState({})
-  // New-card template picker: pickerDone gates the picker → form transition
-  // (edit mode skips it entirely). templateId records the chosen starting design.
-  const [templateId, setTemplateId] = useState(null)
-  const [pickerDone, setPickerDone] = useState(isEdit)
+
+  // "Collect birthday" is NOT a Card field — it lives in the registration theme's
+  // fields_config, the very switch the Enroll page editor writes. Reading the
+  // resolved theme gives the card's own override when editing, and the merchant
+  // default when creating (which is what the new card will inherit anyway).
+  const { data: theme } = useEnrollTheme(id)
+  const seeded = useRef(false)
+  useEffect(() => {
+    if (!theme || seeded.current) return
+    seeded.current = true // seed once, so a refetch can't stomp an unsaved toggle
+    setForm((f) => ({ ...f, collect_birthday: Boolean(theme.fields_config?.birthday?.show) }))
+  }, [theme])
 
   // Seed defaults from the merchant brand (create) or the loaded card (edit).
   useEffect(() => {
     if (isEdit && existing) {
-      setForm({ ...EMPTY, ...existing })
-    } else if (!isEdit && !templateId) {
-      // Seed the merchant's brand colors only until a template is chosen — the
-      // template's own seed (applied in chooseTemplate) takes precedence after.
+      setForm((f) => ({ ...EMPTY, ...existing, collect_birthday: f.collect_birthday }))
+    } else if (!isEdit) {
       setForm((f) => ({
         ...f,
         color_bg: merchant?.color_bg || f.color_bg,
@@ -123,7 +85,7 @@ export default function CardDesigner() {
         logo_url: merchant?.logo_url || '',
       }))
     }
-  }, [isEdit, existing, merchant, templateId])
+  }, [isEdit, existing, merchant])
 
   // Warn on browser-level navigation away with unsaved edits.
   useEffect(() => {
@@ -141,23 +103,28 @@ export default function CardDesigner() {
     setDirty(true)
   }
   const setEvt = (key) => (e) => set(key)(e.target.value)
-  const setStampField = (key) => (value) => {
-    setStamp((s) => ({ ...s, [key]: value }))
+  // The design editor is controlled on create; keep the unsaved-changes guard honest.
+  const changeDesign = (updater) => {
+    setDesign(updater)
     setDirty(true)
   }
 
-  // The stamp design is worth persisting only when the merchant actually picked
-  // an icon/color or uploaded a custom pair (blank = the default drawn circles).
-  const hasStampDesign =
-    Boolean(stamp.stamp_icon || stamp.stamp_color || stamp.stamp_layout) ||
-    Boolean(stamp.strip_empty_url && stamp.strip_filled_url)
-
-  // Apply a chosen template's seed over the current form, then reveal the form.
-  function chooseTemplate(id) {
-    const seed = TEMPLATE_SEED[id] || {}
-    setForm((f) => ({ ...f, logo_url: merchant?.logo_url || f.logo_url, ...seed }))
-    setTemplateId(id)
-    setPickerDone(true)
+  // Birthday collection replaces the whole fields_config on PATCH, so merge onto the
+  // resolved config rather than sending `birthday` alone — that would silently wipe
+  // the merchant's phone/name/email settings.
+  async function persistBirthday(cardId) {
+    const base = theme?.fields_config || {}
+    if (Boolean(base.birthday?.show) === form.collect_birthday) return
+    await api.patch(`/cards/${cardId}/enroll-theme`, {
+      fields_config: {
+        ...base,
+        birthday: {
+          show: form.collect_birthday,
+          required: form.collect_birthday ? Boolean(base.birthday?.required) : false,
+        },
+      },
+    })
+    qc.invalidateQueries({ queryKey: ['enroll-theme'] })
   }
 
   function validate() {
@@ -189,22 +156,24 @@ export default function CardDesigner() {
         status,
       }
       const card = await save.mutateAsync(payload)
-      // On create, persist the chosen stamp style onto the new card's wallet
-      // design (premium only — the endpoint enforces custom_branding). Best-effort:
-      // a design failure shouldn't lose the saved card, so surface it and go on.
-      if (!isEdit && branded && form.type === 'STAMP' && hasStampDesign) {
+      // Both of these need the card to exist, so they land right after it does.
+      // Best-effort: a failure here must not lose the card the merchant just saved,
+      // so surface it and carry on rather than throwing the whole save away.
+      //
+      // The design is only persisted on create — in edit mode the design editor
+      // saves itself. It's premium (the endpoint enforces custom_branding), and on a
+      // free plan its controls are disabled anyway, so there is nothing to send.
+      if (!isEdit && branded) {
         try {
-          await api.patch(`/cards/${card.id}/wallet-design`, {
-            template_key: DEFAULT_TEMPLATE_KEY.STAMP,
-            stamp_icon: stamp.stamp_icon,
-            stamp_color: stamp.stamp_color,
-            stamp_layout: stamp.stamp_layout,
-            strip_empty_url: stamp.strip_empty_url,
-            strip_filled_url: stamp.strip_filled_url,
-          })
+          await api.patch(`/cards/${card.id}/wallet-design`, design)
         } catch {
           toast.error(t('designer.stampSaveFailed'))
         }
+      }
+      try {
+        await persistBirthday(card.id)
+      } catch {
+        toast.error(t('designer.birthdaySaveFailed'))
       }
       setDirty(false)
       toast.success(status === 'ACTIVE' ? t('designer.published') : t('designer.savedDraft'))
@@ -225,27 +194,15 @@ export default function CardDesigner() {
     return <Skeleton h={400} rounded="card" />
   }
 
-  // New-card flow starts on the template picker until one is chosen or skipped.
-  if (!isEdit && !pickerDone) {
-    return <TemplatePicker onChoose={chooseTemplate} onSkip={() => setPickerDone(true)} />
-  }
-
   return (
     <div>
       <div className="mb-5 flex items-center justify-between">
         <h1 className="font-head text-2xl font-bold text-tx">
           {isEdit ? t('designer.editTitle') : t('designer.newTitle')}
         </h1>
-        <div className="flex items-center gap-2">
-          {!isEdit && templateId && (
-            <Button variant="ghost" onClick={() => setPickerDone(false)}>
-              {t('templatePicker.change')}
-            </Button>
-          )}
-          <Button variant="ghost" onClick={guardedBack}>
-            {t('onboarding.back')}
-          </Button>
-        </div>
+        <Button variant="ghost" onClick={guardedBack}>
+          {t('onboarding.back')}
+        </Button>
       </div>
 
       {isEdit && existing?.status === 'ACTIVE' && (
@@ -324,116 +281,14 @@ export default function CardDesigner() {
             />
           </div>
 
-          {/* Stamp style — pick a built-in icon + fill color (or upload your own).
-              Create-mode + STAMP only; edit mode uses the full design editor
-              below. Premium (custom_branding); free plans keep drawn circles. */}
-          {!isEdit && form.type === 'STAMP' && (
-            <div className="rounded-ctl border border-line p-3">
-              <div className="mb-2 flex items-center justify-between">
-                <span className="text-sm font-semibold text-tx">{t('designer.stampStyle')}</span>
-                {!branded && (
-                  <button
-                    type="button"
-                    onClick={() => requireFeature('custom_branding')}
-                    className="rounded-full bg-violet-bg px-2 py-0.5 text-xs text-violet-d"
-                  >
-                    {t('designer.premium')}
-                  </button>
-                )}
-              </div>
-              <fieldset disabled={!branded} className="flex flex-col gap-3 disabled:opacity-60">
-                <div>
-                  <label className="mb-1 block text-sm text-tx-2">{t('designer.stampIcon')}</label>
-                  <div className="flex flex-wrap gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setStampField('stamp_icon')('')}
-                      className={`flex h-9 items-center rounded-ctl border px-2 text-xs ${
-                        stamp.stamp_icon
-                          ? 'border-line text-tx-3 hover:border-tx-3'
-                          : 'border-primary text-primary ring-1 ring-primary'
-                      }`}
-                    >
-                      {t('designer.stampNone')}
-                    </button>
-                    {STAMP_ICONS.map(([key, label]) => (
-                      <button
-                        key={key}
-                        type="button"
-                        title={label}
-                        aria-pressed={stamp.stamp_icon === key}
-                        onClick={() => setStampField('stamp_icon')(key)}
-                        className={`flex h-9 w-9 items-center justify-center rounded-ctl border transition ${
-                          stamp.stamp_icon === key
-                            ? 'border-primary ring-1 ring-primary'
-                            : 'border-line hover:border-tx-3'
-                        }`}
-                      >
-                        <StampGlyph
-                          icon={key}
-                          filled
-                          color={stamp.stamp_color || form.color_fg}
-                          size={20}
-                        />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <ColorPicker
-                  label={t('designer.stampColor')}
-                  value={stamp.stamp_color || form.color_fg}
-                  onChange={setStampField('stamp_color')}
-                />
-                <div>
-                  <label className="mb-1 block text-sm text-tx-2">
-                    {t('designer.stampLayout')}
-                  </label>
-                  <div className="flex flex-wrap gap-1.5">
-                    {STAMP_LAYOUTS.map((key) => (
-                      <button
-                        key={key || 'grid'}
-                        type="button"
-                        aria-pressed={(stamp.stamp_layout || '') === key}
-                        onClick={() => setStampField('stamp_layout')(key)}
-                        className={`flex flex-col items-center gap-1 rounded-ctl border px-3 py-2 transition ${
-                          (stamp.stamp_layout || '') === key
-                            ? 'border-primary ring-1 ring-primary'
-                            : 'border-line hover:border-tx-3'
-                        }`}
-                      >
-                        <StampLayoutGlyph layout={key} color={stamp.stamp_color || form.color_fg} />
-                        <span className="text-xs text-tx-2">
-                          {t(`designer.stampLayout_${key || 'grid'}`)}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                  <p className="mt-1 text-xs text-tx-3">{t('designer.stampLayoutHint')}</p>
-                </div>
-                <div>
-                  <span className="mb-1 block text-xs text-tx-3">
-                    {t('designer.stampUploadHint')}
-                  </span>
-                  <div className="grid grid-cols-2 gap-3">
-                    <FileUpload
-                      label={t('walletDesign.stripEmpty')}
-                      onUploaded={setStampField('strip_empty_url')}
-                    />
-                    <FileUpload
-                      label={t('walletDesign.stripFilled')}
-                      onUploaded={setStampField('strip_filled_url')}
-                    />
-                  </div>
-                </div>
-              </fieldset>
-            </div>
-          )}
-
-          <Toggle
-            checked={form.collect_birthday}
-            onChange={set('collect_birthday')}
-            label={t('designer.collectBirthday')}
-          />
+          <div>
+            <Toggle
+              checked={form.collect_birthday}
+              onChange={set('collect_birthday')}
+              label={t('designer.collectBirthday')}
+            />
+            <p className="mt-1 text-xs text-tx-3">{t('designer.collectBirthdayHint')}</p>
+          </div>
           <div>
             <Toggle
               checked={form.single_use}
@@ -483,13 +338,10 @@ export default function CardDesigner() {
               Google
             </Button>
           </div>
+          {/* Brand-level preview. The pass design has its own faithful preview in the
+              design section below, which is where the design is actually edited. */}
           <WalletPreview
             platform={platform}
-            design={
-              !isEdit && form.type === 'STAMP' && hasStampDesign
-                ? { ...stamp, apple_strip_enabled: true, google_stamp_hero: true }
-                : null
-            }
             cardType={form.type}
             logoUrl={form.logo_url}
             colorBg={form.color_bg}
@@ -503,14 +355,15 @@ export default function CardDesigner() {
         </div>
       </div>
 
-      {/* Wallet pass design (notes 2-4) — edit-mode only (needs a saved card). */}
-      {isEdit ? (
-        <WalletDesignEditor cardId={id} card={{ ...form, merchantName: merchant?.name }} />
-      ) : (
-        <p className="mt-6 rounded-card border border-line bg-paper p-4 text-center text-sm text-tx-3">
-          {t('walletDesign.saveFirst')}
-        </p>
-      )}
+      {/* Wallet pass design (notes 2-4) — present in BOTH modes. On create it is
+          controlled from here and saved straight after the card is created, so the
+          whole card can be designed in one pass. */}
+      <WalletDesignEditor
+        cardId={id}
+        card={{ ...form, merchantName: merchant?.name }}
+        value={isEdit ? undefined : design}
+        onChange={isEdit ? undefined : changeDesign}
+      />
     </div>
   )
 }

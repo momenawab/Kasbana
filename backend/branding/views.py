@@ -20,6 +20,7 @@ from rest_framework.views import APIView
 
 from branding.models import RegistrationTheme
 from branding.serializers import RegistrationThemeSerializer
+from branding.services import new_card_override
 from common.permissions import CanManageCards
 from core.models import Card
 from core.tenancy import get_request_merchant, get_scoped
@@ -63,7 +64,13 @@ class CardEnrollThemeView(APIView):
     def patch(self, request: Request, card_id: str) -> Response:
         merchant = get_request_merchant(request)
         card = get_scoped(Card, request, pk=card_id)
-        row, _ = RegistrationTheme.objects.get_or_create(merchant=merchant, card=card)
+        row = RegistrationTheme.objects.filter(merchant=merchant, card=card).first()
+        if row is None:
+            # Seed a brand-new override from the merchant default — get_or_create
+            # would fill it with blank model defaults, and since resolve_theme takes
+            # the card row wholesale that would wipe the merchant's themed join page
+            # for this card the first time anyone PATCHes a single field.
+            row = new_card_override(merchant, card)
         ser = RegistrationThemeSerializer(row, data=request.data, partial=True)
         ser.is_valid(raise_exception=True)
         ser.save()

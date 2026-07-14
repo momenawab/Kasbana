@@ -12,6 +12,7 @@ customer-facing page on every plan, and there is no theme field to suppress it.
 
 from __future__ import annotations
 
+from copy import deepcopy
 from typing import TYPE_CHECKING, Any
 
 from billing import entitlements
@@ -56,6 +57,35 @@ def _row_to_dict(theme: RegistrationTheme) -> dict[str, Any]:
         "terms_url": theme.terms_url,
         "privacy_url": theme.privacy_url,
     }
+
+
+def new_card_override(merchant: Merchant, card: Card) -> RegistrationTheme:
+    """Create a per-card override row seeded from the merchant's default theme.
+
+    ``_effective`` below uses the card row **wholesale** — it does not merge it over
+    the merchant default. So a row created with bare model defaults would silently
+    drop a merchant's themed join page (cover, colors, copy, QR style) for that card.
+    Seeding from the default row keeps a *partial* PATCH partial: touching one field
+    (say ``fields_config``) must not reset every other one.
+    """
+    base = RegistrationTheme.objects.filter(merchant=merchant, card__isnull=True).first()
+    if base is None:
+        return RegistrationTheme.objects.create(merchant=merchant, card=card)
+    return RegistrationTheme.objects.create(
+        merchant=merchant,
+        card=card,
+        template_key=base.template_key,
+        cover_image_url=base.cover_image_url,
+        bg_color=base.bg_color,
+        accent_color=base.accent_color,
+        button_text_color=base.button_text_color,
+        font=base.font,
+        welcome_body=base.welcome_body,
+        fields_config=deepcopy(base.fields_config),
+        qr_style=deepcopy(base.qr_style),
+        terms_url=base.terms_url,
+        privacy_url=base.privacy_url,
+    )
 
 
 def _effective(merchant: Merchant, card: Card | None) -> dict[str, Any]:
