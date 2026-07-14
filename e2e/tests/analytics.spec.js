@@ -6,11 +6,12 @@ import { test, expect } from '@playwright/test'
 // and src/mocks/handlers.js mocks /analytics/{summary,timeseries,wallet_split}, so the
 // charts render real, deterministic data with no Django server.
 //
-// Two regressions this guards:
+// Three regressions this guards:
 //   1. The expanded panel used to overflow the modal — you had to scroll inside it to
 //      see the whole chart. Its body must now fit the 90vh dialog outright.
 //   2. The date range picked on the page must carry into the expanded view, and the
 //      copy inside the expanded view must NOT write back to the page's filter.
+//   3. The KPI tiles used to be lifetime totals that ignored the date filter entirely.
 
 const BASE = 'http://localhost:5174'
 const PANELS = ['Joins', 'Stamps', 'Redemptions', 'Apple vs Google']
@@ -56,6 +57,29 @@ test.describe('merchant dashboard — analytics', () => {
       expect(chart.height).toBeGreaterThan(150)
     })
   }
+
+  test('the KPI tiles follow the date filter', async ({ page }) => {
+    await openAnalytics(page)
+
+    // The picker is pre-filled with the window actually in force, not left blank.
+    const from = page.getByLabel('from', { exact: true }).first()
+    await expect(from).toHaveValue(/^\d{4}-\d{2}-\d{2}$/)
+
+    // The "Customers" KPI tile (label + value live in the same rounded-card).
+    const value = page
+      .locator('div.rounded-card')
+      .filter({ hasText: 'Customers' })
+      .first()
+      .locator('div.tabular-nums')
+
+    // It starts at 0 until the summary resolves, so wait for the real figure.
+    await expect.poll(async () => Number(await value.innerText())).toBeGreaterThan(0)
+    const before = Number(await value.innerText())
+
+    // Collapse the window to a single day — far fewer joins than 30 days' worth.
+    await from.fill(await page.getByLabel('to', { exact: true }).first().inputValue())
+    await expect.poll(async () => Number(await value.innerText())).toBeLessThan(before)
+  })
 
   test('carries the page date range in, and keeps the expanded copy independent', async ({
     page,

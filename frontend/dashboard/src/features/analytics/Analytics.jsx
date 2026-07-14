@@ -38,9 +38,20 @@ function useSeries(metric, range, enabled = true) {
   })
 }
 
-// Apple/Google counts for passes added inside the range. /analytics/summary carries
-// the same two numbers but all-time, so it only stands in for a backend that predates
-// the scoped endpoint.
+// The KPI tiles, scoped to the range. Asked without one, /analytics/summary returns
+// lifetime totals instead — which is what Overview wants, so the range belongs in the
+// query key too, or the two pages would trade cache entries and overwrite each other.
+function useSummary(range) {
+  const qs = new URLSearchParams(range).toString()
+  return useQuery({
+    queryKey: ['analytics', 'summary', range],
+    placeholderData: keepPreviousData,
+    queryFn: async () => (await api.get(`/analytics/summary?${qs}`)).data,
+  })
+}
+
+// Apple/Google counts for passes added inside the range. Only the expanded donut needs
+// this: the page's donut reads the same two numbers off the summary it already has.
 function useWalletSplit(range, enabled = true) {
   const qs = new URLSearchParams(range).toString()
   return useQuery({
@@ -48,10 +59,12 @@ function useWalletSplit(range, enabled = true) {
     enabled,
     placeholderData: keepPreviousData,
     queryFn: async () => {
+      // A backend without the scoped endpoint still answers /summary, and with a range
+      // that carries the very same date-scoped counts.
       try {
         return (await api.get(`/analytics/wallet_split?${qs}`)).data
       } catch {
-        return (await api.get('/analytics/summary')).data
+        return (await api.get(`/analytics/summary?${qs}`)).data
       }
     },
   })
@@ -61,6 +74,22 @@ const walletPoints = (data) => [
   { name: 'Apple', value: data?.apple_count ?? 0 },
   { name: 'Google', value: data?.google_count ?? 0 },
 ]
+
+// The backend reads an absent range as "the last 30 days". Spell that out in the picker
+// rather than leaving it blank: the inputs then show the window actually in force, and
+// the KPI tiles — which are lifetime totals until a range is sent — line up with the
+// charts from the first paint instead of quietly measuring a different period.
+const DEFAULT_RANGE_DAYS = 30
+
+const isoDay = (d) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+
+function defaultRange() {
+  const to = new Date()
+  const from = new Date(to)
+  from.setDate(from.getDate() - (DEFAULT_RANGE_DAYS - 1))
+  return { from: isoDay(from), to: isoDay(to) }
+}
 
 // Every panel on this page is one chart tall, so the chart height is what decides
 // whether the page clears the fold. Keep them in step. The expanded chart instead
@@ -360,17 +389,13 @@ export default function Analytics() {
   const lang = i18n.language
   const { entitlements } = usePlan()
   const full = entitlements?.features?.analytics === 'full' || entitlements?.plan === 'trial'
-  const [range, setRange] = useState({ from: '', to: '' })
+  const [range, setRange] = useState(defaultRange)
   const [expanded, setExpanded] = useState(null)
 
-  const { data: summary } = useQuery({
-    queryKey: ['analytics', 'summary'],
-    queryFn: async () => (await api.get('/analytics/summary')).data,
-  })
+  const { data: summary } = useSummary(range)
   const joins = useSeries('joins', range)
   const stamps = useSeries('stamps', range, full)
   const redemptions = useSeries('redemptions', range, full)
-  const wallet = useWalletSplit(range, full)
 
   const tsProps = {
     labelFormatter: (d) => longDay(d, lang),
@@ -380,7 +405,7 @@ export default function Analytics() {
 
   function preview(key) {
     const panel = PANELS[key]
-    if (panel.donut) return <ChartDonut data={walletPoints(wallet.data)} height={CHART_H} />
+    if (panel.donut) return <ChartDonut data={walletPoints(summary)} height={CHART_H} />
     const Chart = panel.Chart
     return (
       <Chart

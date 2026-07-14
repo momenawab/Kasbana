@@ -2663,7 +2663,13 @@ paths:
   /api/v1/analytics/summary:
     get:
       operationId: analytics_summary_retrieve
-      description: GET /analytics/summary — headline metrics for the merchant.
+      description: |-
+        GET /analytics/summary?from&to — headline metrics for the merchant.
+
+        With a range, the KPIs describe that window (see ``analytics.summary``). Without
+        one they are the lifetime totals, which is what the Overview page asks for — so
+        the two readings stay available side by side rather than one silently replacing
+        the other.
       tags:
       - analytics
       responses:

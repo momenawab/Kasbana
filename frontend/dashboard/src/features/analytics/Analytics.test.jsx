@@ -12,12 +12,17 @@ const POINTS = [
   { date: '2026-07-03', value: 10 },
 ]
 
+// The summary is range-scoped, so the fake varies with it: narrowing to July returns a
+// different enrollment count, which is how we prove the KPI tiles follow the filter.
+const JULY = 'from=2026-07-01'
+
 vi.mock('../../lib/api', () => ({
   default: {
     get: vi.fn((url) => {
       if (url.startsWith('/analytics/summary')) {
+        const enrollments = url.includes(JULY) ? 4 : 12
         return Promise.resolve({
-          data: { enrollments: 12, active_cards: 5, redemptions: 3, repeat_rate: 0.5, apple_count: 7, google_count: 3 },
+          data: { enrollments, active_cards: 5, redemptions: 3, repeat_rate: 0.5, apple_count: 7, google_count: 3 },
         })
       }
       if (url.startsWith('/analytics/wallet_split')) {
@@ -47,6 +52,7 @@ function renderPage() {
 const fromInputs = () => screen.getAllByLabelText('from')
 
 const urlsHit = () => api.get.mock.calls.map(([url]) => url)
+const hit = (re) => urlsHit().some((url) => re.test(url))
 
 beforeAll(async () => {
   await i18n.changeLanguage('en')
@@ -95,22 +101,32 @@ describe('<Analytics>', () => {
 
     fireEvent.click(screen.getByLabelText('Expand — Apple vs Google'))
 
-    await waitFor(() => expect(screen.getByRole('dialog')).toBeTruthy())
     // 7 Apple + 3 Google → 70% / 30% of 10. Each share shows twice: the stat tile
-    // and the table row.
-    expect(screen.getAllByText('70%').length).toBeGreaterThan(0)
+    // and the table row. The expanded donut fetches its own range, so wait for it.
+    await waitFor(() => expect(screen.getAllByText('70%').length).toBeGreaterThan(0))
     expect(screen.getAllByText('30%').length).toBeGreaterThan(0)
   })
 
-  it('scopes the wallet split to the page date range, not all time', async () => {
+  it('fills the date picker in, rather than leaving the applied range implicit', async () => {
     renderPage()
-    await waitFor(() => expect(screen.getByLabelText('Expand — Apple vs Google')).toBeTruthy())
+    await waitFor(() => expect(screen.getByLabelText('Expand — Joins')).toBeTruthy())
+
+    // A blank picker used to hide the fact that a 30-day window was already applied.
+    expect(fromInputs()[0].value).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+    // …and the KPI tiles ask for that same window, not for all-time totals.
+    expect(hit(/^\/analytics\/summary\?from=\d{4}-\d{2}-\d{2}&to=\d{4}-\d{2}-\d{2}$/)).toBe(true)
+  })
+
+  it('re-dates the KPI tiles with the page filter', async () => {
+    renderPage()
+    await waitFor(() => expect(screen.getByText('12')).toBeTruthy())
 
     fireEvent.change(fromInputs()[0], { target: { value: '2026-07-01' } })
 
-    await waitFor(() =>
-      expect(urlsHit()).toContain('/analytics/wallet_split?from=2026-07-01&to=')
-    )
+    // The Enrollments tile moves to the July figure the range now selects.
+    await waitFor(() => expect(screen.getByText('4')).toBeTruthy())
+    expect(screen.queryByText('12')).toBeNull()
+    expect(hit(/^\/analytics\/summary\?from=2026-07-01/)).toBe(true)
   })
 
   it('opens the expanded view on the range already chosen on the page', async () => {
@@ -137,7 +153,7 @@ describe('<Analytics>', () => {
 
     // The modal refetches on its own range …
     await waitFor(() =>
-      expect(urlsHit()).toContain('/analytics/timeseries?metric=joins&from=2026-06-15&to=')
+      expect(hit(/^\/analytics\/timeseries\?metric=joins&from=2026-06-15/)).toBe(true)
     )
     // … while the page's own filter is untouched.
     expect(fromInputs()[0].value).toBe('2026-07-01')
