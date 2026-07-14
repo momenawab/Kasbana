@@ -298,9 +298,6 @@ WALLET = {
     },
 }
 
-WALLET_AUTH_TOKEN_SECRET = env("WALLET_AUTH_TOKEN_SECRET", "")
-PASS_BARCODE_SECRET = env("PASS_BARCODE_SECRET", "")
-
 # ── Billing gateways (Phase 1.7 · contract §3.10) ─────────────────────────────
 # Paymob credentials. Unset locally/CI → the adapter runs in stub mode
 # (deterministic checkout URL, no network); real creds are wired on staging.

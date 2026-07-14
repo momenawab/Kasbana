@@ -1,5 +1,19 @@
 # Stampn / Kasbana — Finalize: Phased Build Plan
 
+> # ⛔ SUPERSEDED for planning — but still the cited spec for Phases 1–3
+>
+> **For what is left to ship, go to [`finalize-plan.md`](./finalize-plan.md).**
+>
+> Phases 1–3 here (branded registration themes + styled QR) **shipped**. This file
+> stays because seven `backend/branding/*.py` docstrings cite it by name
+> ("Phase 1 · finalize-phases") as the spec they were built from — deleting it
+> would orphan those references. Read it for *why the branding code looks the way
+> it does*, never for *what to build next*.
+>
+> Retired as a planning doc **2026-07-14** (Phase F).
+
+---
+
 > Turns [`finalize-missing.md`](./finalize-missing.md) into an ordered, buildable
 > roadmap. Each **build phase** is self-contained — it lists everything needed to
 > do it (backend, frontend, data, tests, definition-of-done) so it can be picked

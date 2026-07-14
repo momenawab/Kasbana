@@ -1,5 +1,19 @@
 # Stampn / Kasbana — Finalize: Missing Features & Remaining Work
 
+> # ⛔ SUPERSEDED — do not use this file
+>
+> **Go to [`finalize-plan.md`](./finalize-plan.md).** It is the single source of
+> truth for what is left to ship.
+>
+> This is an audit snapshot from **2026-07-03**. Its headline ask — the
+> personalized registration page + customizable QR — **shipped** (branded themes,
+> styled QR with logo, server poster PDF), as did everything else it lists.
+>
+> Kept as a historical snapshot because it is the spec the `backend/branding/*`
+> docstrings cite as "Phase 1 · finalize-phases". Retired **2026-07-14** (Phase F).
+
+---
+
 > Audit snapshot **2026-07-03**. Covers both apps — the **Merchant Dashboard**
 > (`app.stampn.net`, `frontend/dashboard`) and the **Admin Panel**
 > (`admin.stampn.net`, `frontend/admin`, backend `console` app, Phases 1–15 all

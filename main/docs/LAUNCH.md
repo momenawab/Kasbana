@@ -85,12 +85,14 @@ actually make it a *business*:
       links.
 - [ ] **First merchants / pilot** — 3–5 friendly cafés to run the live
       verification above *and* be your first references.
-- [ ] **Support channel** — WhatsApp/email/phone for "my stamp didn't land."
-      (WhatsApp integration is coded but dormant — decide: revive or remove.)
-- [ ] **Personalized Registration Page + Customizable QR** (team's stated next
-      feature) — the QR is currently a plain black square with no logo/branding.
-      Not a launch blocker, but it's the polish that makes merchants say yes.
-      See `finalize-missing.md` for the build shape.
+- [x] **Support channel** — ✅ shipped. Merchants reach support from inside the
+      dashboard (`/support`); messages land on that merchant's admin Support tab
+      and the reply goes out as a branded email. (The dormant WhatsApp channel was
+      **removed** — owner's call, dev commit `4e59644`. The merchant WhatsApp
+      *contact link* on passes stays.)
+- [x] **Personalized Registration Page + Customizable QR** — ✅ shipped. Branded
+      registration themes, styled QR with logo-in-QR, and the server-rendered
+      poster PDF are all live. See [`../../finalize-plan.md`](../../finalize-plan.md).
 
 ---
 
