@@ -415,3 +415,23 @@ def test_staff_detail_requires_owner(merchant):
     admin_client, _ = _client_for(Role.ADMIN, merchant)
     resp = admin_client.patch(f"/api/v1/staff/{staff.id}", {"role": "SCANNER"}, format="json")
     assert resp.status_code == 403
+
+
+# ── Analytics tier gating: full analytics is Growth+, summary stays basic ────
+def test_analytics_full_view_denied_on_starter_returns_402(auth_client, merchant):
+    from billing.services import activate_plan
+    from core.enums import PlanTier
+
+    activate_plan(merchant, PlanTier.STARTER)  # analytics = "basic"
+    resp = auth_client.get("/api/v1/analytics/timeseries?metric=stamps")
+    assert resp.status_code == 402
+    assert resp.json()["error"]["code"] == "PLAN_LIMIT"
+
+
+def test_analytics_summary_allowed_on_starter(auth_client, merchant):
+    from billing.services import activate_plan
+    from core.enums import PlanTier
+
+    activate_plan(merchant, PlanTier.STARTER)  # basic analytics = summary only
+    resp = auth_client.get("/api/v1/analytics/summary")
+    assert resp.status_code == 200

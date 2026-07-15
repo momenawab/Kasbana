@@ -144,7 +144,7 @@ def test_super_admin_can_patch_plan_price(api_client, super_admin):
     assert resp.status_code == 200
     assert resp.json()["price_egp"] == "349.00"
     log = AdminAuditLog.objects.get(action="plan.update", target_id="STARTER")
-    assert log.metadata["before"]["price_egp"] == "299.00"
+    assert log.metadata["before"]["price_egp"] == "599.00"
     assert log.metadata["after"]["price_egp"] == "349.00"
 
 

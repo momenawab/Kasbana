@@ -218,7 +218,43 @@ def test_automation_unknown_key_422(paid_merchant):
     assert resp.status_code == 422
 
 
+def test_starter_can_enable_welcome_but_not_engagement(merchant):
+    # Engagement automations are Growth+; `welcome` is free on every plan.
+    activate_plan(merchant, PlanTier.STARTER)
+    client, _ = _client_for(Role.ADMIN, merchant)
+
+    welcome = client.patch("/api/v1/automations/welcome", {"enabled": True}, format="json")
+    assert welcome.status_code == 200
+    assert welcome.json()["enabled"] is True
+
+    birthday = client.patch("/api/v1/automations/birthday", {"enabled": True}, format="json")
+    assert birthday.status_code == 402
+
+
 # ── automation triggers ───────────────────────────────────────────────────────
+def test_almost_there_fires_one_stamp_before_reward(merchant, no_cooldown):
+    """`almost_there` fires when a stamp lands the card exactly one short."""
+    from wallets.models import WalletMessage
+
+    Automation.objects.create(
+        merchant=merchant,
+        key=AutomationKey.ALMOST_THERE,
+        enabled=True,
+        template="One more!",
+    )
+    card = factories.CardFactory(merchant=merchant, stamps_required=2)
+    customer = factories.CustomerCardFactory(card=card, merchant=merchant)
+
+    client, _ = _client_for(Role.SCANNER, merchant)
+    resp = client.post(
+        "/api/v1/loyalty/stamp",
+        {"customer_card_id": str(customer.id), "delta": 1},
+        format="json",
+    )
+    assert resp.status_code == 200
+    assert WalletMessage.objects.filter(customer_card=customer, body="One more!").exists()
+
+
 def test_push_automation_fires_free_on_stamp(merchant, no_cooldown):
     """An enabled automation reaches the customer via the free wallet channel —
     no capability or quota required (works on a non-paid merchant)."""

@@ -23,7 +23,7 @@ from common.permissions import CanEngage
 from core.models import CustomerCard
 from core.tenancy import get_request_merchant, get_scoped
 from messaging import segments
-from messaging.enums import CampaignStatus
+from messaging.enums import AutomationKey, CampaignStatus
 from messaging.models import Automation, Campaign
 from messaging.serializers import (
     AUTOMATION_KEYS,
@@ -126,9 +126,11 @@ class AutomationDetailView(APIView):
 
         automation, _ = Automation.objects.get_or_create(merchant=merchant, key=key)
 
+        # `welcome` is transactional onboarding — free on every plan. Every other
+        # (engagement) automation is a Growth+ feature; only gate turning one on.
         enabling = data.get("enabled", automation.enabled) and not automation.enabled
-        if enabling:
-            self._enforce_automation_limit(merchant)
+        if enabling and key != AutomationKey.WELCOME:
+            self._enforce_engagement_automation(merchant)
 
         for field in ("enabled", "timing", "template"):
             if field in data:
@@ -137,16 +139,23 @@ class AutomationDetailView(APIView):
         return Response(AutomationSerializer(automation).data)
 
     @staticmethod
-    def _enforce_automation_limit(merchant) -> None:  # type: ignore[no-untyped-def]
+    def _enforce_engagement_automation(merchant) -> None:  # type: ignore[no-untyped-def]
+        """Engagement automations are Growth+. Starter's allowance is 0; the free
+        `welcome` automation is excluded from the count so it never consumes it."""
         sub = subscription_for(merchant)
         plan = sub.effective_plan()
         if plan is None:  # locked
             raise PlanLimit("Your plan does not allow automations.")
         allowance = (plan_limits_map().get(plan) or PLAN_LIMITS[plan])["automations"]
         assert isinstance(allowance, int)
-        enabled_count = Automation.objects.for_merchant(merchant).filter(enabled=True).count()
+        enabled_count = (
+            Automation.objects.for_merchant(merchant)
+            .filter(enabled=True)
+            .exclude(key=AutomationKey.WELCOME)
+            .count()
+        )
         if enabled_count >= allowance:
-            raise PlanLimit("Automation limit reached for your plan.")
+            raise PlanLimit("Automations are a Growth plan feature.")
 
 
 # ── One-off customer message ──────────────────────────────────────────────────

@@ -122,13 +122,16 @@ class StampView(APIView):
             # The ledger mutates a row-locked re-fetch, so refresh our instance.
             card.refresh_from_db(fields=["stamp_count", "last_event_at"])
 
-            # Engage automation (Phase 1.7): fire the reward-ready trigger inline
-            # the moment a stamp tips the card to its threshold. Best-effort — a
-            # disabled automation / missing capability / quota simply no-ops.
-            if ledger.is_reward_ready(card):
-                from messaging.tasks import fire_for_customer
+            # Engage automations (Phase 1.7): fire inline off the new balance.
+            # `reward_ready` the moment a stamp tips the card to its threshold;
+            # otherwise `almost_there` when it lands exactly one stamp short.
+            # Best-effort — a disabled automation simply no-ops.
+            from messaging.tasks import fire_for_customer
 
+            if ledger.is_reward_ready(card):
                 fire_for_customer(card.merchant, card, "reward_ready")
+            elif ledger.is_one_from_reward(card):
+                fire_for_customer(card.merchant, card, "almost_there")
 
             # Enqueues wallets.tasks.push_pass_update. Tests verify this is
             # *called*; a visible pass update on a real device needs Redis + a

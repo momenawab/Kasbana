@@ -98,6 +98,17 @@ class EnrollView(APIView):
         if phone and CustomerCard.objects.filter(card=card, customer_phone=phone).exists():
             raise AlreadyEnrolled()
 
+        # Plan gate (Phase: entitlements): a merchant at their customer ceiling
+        # can't take on new members. Checked *after* the already-enrolled
+        # short-circuit, so a returning customer — who consumes no new slot — is
+        # never blocked. Existing cards are never touched; only new joins refuse.
+        # A neutral message keeps the merchant's billing state off the public page.
+        from billing import entitlements
+        from common.errors import PlanLimit
+
+        if not entitlements.check(card.merchant, "max_customers"):
+            raise PlanLimit("This program isn't accepting new members right now.")
+
         try:
             with transaction.atomic():
                 customer_card = CustomerCard.objects.create(

@@ -209,3 +209,38 @@ def test_post_enroll_normalizes_phone_spaces(api_client, token):
     )
     assert resp.status_code == 201
     assert CustomerCard.objects.filter(customer_phone="+201234567890").exists()
+
+
+# ── Customer ceiling (max_customers) is enforced at enrollment ───────────────
+def test_post_enroll_blocked_when_merchant_locked_returns_402(api_client, card, token):
+    # A locked merchant (trial expired / unpaid) has every capability denied, so
+    # new joins are refused — but existing cards are untouched (none created).
+    from billing.services import lock
+
+    lock(card.merchant)
+    resp = api_client.post(
+        f"/api/v1/enroll/{token.token}",
+        {"customer_phone": "+201234567890", "consent": True},
+        format="json",
+    )
+    assert resp.status_code == 402
+    assert not CustomerCard.objects.filter(card=card).exists()
+
+
+def test_post_enroll_blocked_at_customer_ceiling_returns_402(api_client, card, token, monkeypatch):
+    # Free plan caps customers at 200; simulate a merchant sitting at the cap and
+    # confirm the ceiling refuses the next join rather than silently over-filling.
+    from billing import entitlements
+    from billing.services import activate_plan
+    from core.enums import PlanTier
+
+    activate_plan(card.merchant, PlanTier.FREE)
+    monkeypatch.setitem(entitlements._USAGE_COUNTERS, "max_customers", lambda m: 200)
+
+    resp = api_client.post(
+        f"/api/v1/enroll/{token.token}",
+        {"customer_phone": "+201234567890", "consent": True},
+        format="json",
+    )
+    assert resp.status_code == 402
+    assert not CustomerCard.objects.filter(card=card).exists()

@@ -20,6 +20,7 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 from billing.plans import (
+    DERIVED_CAPABILITIES,
     FEATURE_CAPABILITIES,
     LIMIT_CAPABILITIES,
     PLAN_LIMITS,
@@ -32,7 +33,7 @@ from core.models import Card, CustomerCard, Location, StaffUser
 if TYPE_CHECKING:
     from core.models import Merchant
 
-CAPABILITIES = LIMIT_CAPABILITIES | FEATURE_CAPABILITIES
+CAPABILITIES = LIMIT_CAPABILITIES | FEATURE_CAPABILITIES | DERIVED_CAPABILITIES
 
 # How to count live usage for each ``max_*`` capability (tenant-scoped).
 _USAGE_COUNTERS: dict[str, Callable[[Merchant], int]] = {
@@ -57,6 +58,8 @@ def check(merchant: Merchant, capability: str) -> bool:
     limits = plan_limits_map().get(plan) or PLAN_LIMITS[plan]
     if capability in FEATURE_CAPABILITIES:
         return bool(limits[capability])
+    if capability in DERIVED_CAPABILITIES:  # analytics_full: the plan's tier == "full"
+        return limits.get("analytics") == "full"
 
     cap = limits[capability]
     if cap is None:  # unlimited
@@ -101,6 +104,7 @@ def describe(merchant: Merchant) -> dict[str, object]:
             "api": bool(limits["api"]),
             "specialized_roles": bool(limits["specialized_roles"]),
             "custom_branding": bool(limits["custom_branding"]),
+            "referral": bool(limits["referral"]),
             "automations": limits["automations"],
             "analytics": limits["analytics"],
         },
