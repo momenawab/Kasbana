@@ -41,11 +41,13 @@ def test_subscription_for_is_idempotent(merchant):
 
 
 def test_trial_grants_growth_features(merchant):
-    # Trial = Growth-level: export/api/specialized_roles/custom_branding on.
+    # Trial = Growth-level: export/specialized_roles/custom_branding/referral on.
+    # API is no longer a ladder feature (bespoke Custom-only), so it stays off.
     assert entitlements.check(merchant, "export") is True
-    assert entitlements.check(merchant, "api") is True
+    assert entitlements.check(merchant, "api") is False
     assert entitlements.check(merchant, "specialized_roles") is True
     assert entitlements.check(merchant, "custom_branding") is True
+    assert entitlements.check(merchant, "referral") is True
 
 
 # ── Locked: expired trial / cancel ──────────────────────────────────────────
@@ -148,3 +150,39 @@ def test_create_card_within_trial_succeeds(auth_client, merchant, monkeypatch):
         format="json",
     )
     assert resp.status_code == 201
+
+
+# ── Referral is a Growth+ feature; only enabling it is gated ─────────────────
+def _card_client(merchant):
+    from rest_framework.test import APIClient
+    from rest_framework_simplejwt.tokens import RefreshToken
+
+    staff = factories.StaffUserFactory(merchant=merchant)
+    client = APIClient()
+    client.credentials(HTTP_AUTHORIZATION=f"Bearer {RefreshToken.for_user(staff.user).access_token}")
+    return client
+
+
+def test_referral_enable_denied_on_starter_returns_402(merchant):
+    services.activate_plan(merchant, PlanTier.STARTER)  # referral off
+    resp = _card_client(merchant).post(
+        "/api/v1/cards",
+        {"name": "Refer", "stamps_required": 5, "reward_title": "x", "referral_enabled": True},
+        format="json",
+    )
+    assert resp.status_code == 402
+    assert resp.json()["error"]["code"] == "PLAN_LIMIT"
+
+
+def test_referral_enable_allowed_on_growth(merchant, monkeypatch):
+    from wallets.tasks import sync_google_class
+
+    monkeypatch.setattr(sync_google_class, "delay", lambda card_id: None)
+    services.activate_plan(merchant, PlanTier.GROWTH)  # referral on
+    resp = _card_client(merchant).post(
+        "/api/v1/cards",
+        {"name": "Refer", "stamps_required": 5, "reward_title": "x", "referral_enabled": True},
+        format="json",
+    )
+    assert resp.status_code == 201
+    assert resp.json()["referral_enabled"] is True

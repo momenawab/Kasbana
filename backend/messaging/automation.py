@@ -22,6 +22,7 @@ from messaging.segments import LAPSED_DAYS
 
 _DEFAULT_TEMPLATES: dict[str, str] = {
     AutomationKey.REWARD_READY: "Your reward is ready — come redeem it!",
+    AutomationKey.ALMOST_THERE: "You're just one stamp away from your reward!",
     AutomationKey.EXPIRY: "Your stamps are expiring soon. Visit us to keep them!",
     AutomationKey.BIRTHDAY: "Happy birthday! Enjoy a treat on us 🎉",
     AutomationKey.WINBACK: "We miss you! Here's a little something to bring you back.",

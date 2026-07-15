@@ -154,6 +154,10 @@ class CardListCreateView(generics.ListCreateAPIView):
     def perform_create(self, serializer: BaseSerializer) -> None:
         merchant = get_request_merchant(self.request)
         entitlements.enforce(merchant, "max_cards")
+        # Referral is a Growth+ feature; only gate *enabling* it, so a plan
+        # downgrade never retro-breaks a card that already has it on.
+        if serializer.validated_data.get("referral_enabled"):
+            entitlements.enforce(merchant, "referral")
         card = serializer.save(merchant=merchant)
         _sync_primary_reward(card)
         _enqueue_google_sync(card)
@@ -171,6 +175,9 @@ class CardDetailView(generics.RetrieveUpdateAPIView):
         return _card_queryset(get_request_merchant(self.request))
 
     def perform_update(self, serializer: BaseSerializer) -> None:
+        # Gate only the transition to enabled; disabling is always allowed.
+        if serializer.validated_data.get("referral_enabled"):
+            entitlements.enforce(get_request_merchant(self.request), "referral")
         card = serializer.save()
         _sync_primary_reward(card)
         _enqueue_google_sync(card)
@@ -665,6 +672,7 @@ class AnalyticsTimeseriesView(APIView):
     @extend_schema(responses=TimeseriesResponseSerializer)
     def get(self, request: Request) -> Response:
         merchant = get_request_merchant(request)
+        entitlements.enforce(merchant, "analytics_full")
         metric = request.query_params.get("metric", "")
         from_date = _parse_date_param(request.query_params.get("from"))
         to_date = _parse_date_param(request.query_params.get("to"))
@@ -686,6 +694,7 @@ class AnalyticsWalletSplitView(APIView):
     @extend_schema(responses=WalletSplitResponseSerializer)
     def get(self, request: Request) -> Response:
         merchant = get_request_merchant(request)
+        entitlements.enforce(merchant, "analytics_full")
         from_date = _parse_date_param(request.query_params.get("from"))
         to_date = _parse_date_param(request.query_params.get("to"))
         return Response(analytics.wallet_split(merchant, from_date, to_date))
@@ -700,6 +709,7 @@ class AnalyticsRetentionView(APIView):
     @extend_schema(responses=RetentionResponseSerializer)
     def get(self, request: Request) -> Response:
         merchant = get_request_merchant(request)
+        entitlements.enforce(merchant, "analytics_full")
         from_date = _parse_date_param(request.query_params.get("from"))
         to_date = _parse_date_param(request.query_params.get("to"))
         return Response(analytics.retention(merchant, from_date, to_date))
@@ -714,6 +724,7 @@ class AnalyticsByLocationView(APIView):
     @extend_schema(responses=ByLocationResponseSerializer)
     def get(self, request: Request) -> Response:
         merchant = get_request_merchant(request)
+        entitlements.enforce(merchant, "analytics_full")
         from_date = _parse_date_param(request.query_params.get("from"))
         to_date = _parse_date_param(request.query_params.get("to"))
         return Response({"results": analytics.by_location(merchant, from_date, to_date)})

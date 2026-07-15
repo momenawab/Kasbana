@@ -40,7 +40,7 @@ def test_billing_state_during_trial(merchant):
     assert body["plan"] == "trial"
     assert body["trial_ends_at"] is not None
     # Trial = Growth-level access, so the trial price reflects Growth.
-    assert Decimal(str(body["price_egp"])) == Decimal("799")
+    assert Decimal(str(body["price_egp"])) == Decimal("999")
 
 
 def test_billing_state_requires_admin(merchant):
@@ -75,7 +75,7 @@ def test_subscribe_validates_plan(merchant):
 
 
 # ── webhook round-trip: trial → paid → cancel ─────────────────────────────────
-def _paymob_body(gateway_ref: str, *, success: bool, amount_cents: int = 79900):
+def _paymob_body(gateway_ref: str, *, success: bool, amount_cents: int = 99900):
     # DEBUG-mode webhooks skip HMAC, so the signature can be omitted.
     return json.dumps(
         {
@@ -110,7 +110,7 @@ def test_paymob_webhook_activates_plan(settings, merchant):
     # A paid invoice was recorded.
     invoice = Invoice.objects.get(merchant=merchant)
     assert invoice.status == "paid"
-    assert invoice.amount_egp == Decimal("799.00")
+    assert invoice.amount_egp == Decimal("999.00")
 
 
 def test_paymob_webhook_failed_payment_records_failed_invoice(settings, merchant):

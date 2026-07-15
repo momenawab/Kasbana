@@ -20,6 +20,7 @@ class CampaignStatus(models.TextChoices):
 
 class AutomationKey(models.TextChoices):
     REWARD_READY = "reward_ready", "Reward ready"
+    ALMOST_THERE = "almost_there", "Almost there"
     EXPIRY = "expiry", "Expiry"
     BIRTHDAY = "birthday", "Birthday"
     WINBACK = "winback", "Winback"

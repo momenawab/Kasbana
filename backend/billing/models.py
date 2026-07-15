@@ -56,6 +56,7 @@ class Plan(UUIDModel, TimeStampedModel):
     api = models.BooleanField(default=False)
     specialized_roles = models.BooleanField(default=False)
     custom_branding = models.BooleanField(default=False)
+    referral = models.BooleanField(default=False)
 
     automations = models.PositiveIntegerField(default=0)
     analytics = models.CharField(
@@ -79,6 +80,7 @@ class Plan(UUIDModel, TimeStampedModel):
             "api": self.api,
             "specialized_roles": self.specialized_roles,
             "custom_branding": self.custom_branding,
+            "referral": self.referral,
             "automations": self.automations,
             "analytics": self.analytics,
         }

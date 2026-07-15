@@ -156,7 +156,7 @@ def test_me_for_trial_merchant(merchant):
     # Trial gives Growth-level limits/features.
     assert ent["plan"] == "trial"
     assert ent["limits"]["max_cards"] == 10
-    assert ent["features"]["api"] is True
+    assert ent["features"]["api"] is False  # API left the ladder (Custom-only)
     assert ent["features"]["analytics"] == "full"
     assert ent["usage"]["cards"] == 0
 

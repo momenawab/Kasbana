@@ -42,6 +42,12 @@ def is_reward_ready(customer_card: CustomerCard) -> bool:
     return required > 0 and customer_card.stamp_count >= required
 
 
+def is_one_from_reward(customer_card: CustomerCard) -> bool:
+    """True when the card is exactly one stamp short of the reward threshold."""
+    required = customer_card.card.stamps_required
+    return required > 0 and customer_card.stamp_count == required - 1
+
+
 def record_enrollment(customer_card: CustomerCard) -> StampLedger:
     """Append the opening ENROLL event (delta 0) for a freshly enrolled card."""
     with transaction.atomic():

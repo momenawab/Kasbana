@@ -40,7 +40,14 @@ LIMIT_CAPABILITIES = frozenset({"max_cards", "max_locations", "max_staff", "max_
 # ``specialized_roles`` gates the Marketing/Designer staff roles; ``custom_branding``
 # gates custom join-page branding (the "Powered by Stampn" footer is mandatory on
 # every plan and cannot be removed). Both Growth+.
-FEATURE_CAPABILITIES = frozenset({"export", "api", "specialized_roles", "custom_branding"})
+FEATURE_CAPABILITIES = frozenset(
+    {"export", "api", "specialized_roles", "custom_branding", "referral"}
+)
+# Derived capabilities are computed from a non-boolean plan field, not a stored
+# flag. ``analytics_full`` is true when the plan's ``analytics`` tier is "full"
+# (Growth+); Starter/Free are "basic". It gates the deep analytics views
+# (timeseries/retention/wallet_split/by_location); the summary stays basic.
+DERIVED_CAPABILITIES = frozenset({"analytics_full"})
 
 # plan -> {capability: limit|flag}. ``None`` limit = unlimited.
 # ``automations`` (int) and ``analytics`` (basic|full) are display-only features
@@ -60,6 +67,7 @@ PLAN_LIMITS: dict[str, dict[str, int | bool | str | None]] = {
         "api": False,
         "specialized_roles": False,
         "custom_branding": False,
+        "referral": False,
         "automations": 0,
         "analytics": "basic",
     },
@@ -72,7 +80,10 @@ PLAN_LIMITS: dict[str, dict[str, int | bool | str | None]] = {
         "api": False,
         "specialized_roles": False,
         "custom_branding": False,
-        "automations": 2,
+        "referral": False,
+        # Engagement automations are a Growth+ feature; `welcome` is exempt (free
+        # on every plan). 0 here means Starter can enable no engagement automation.
+        "automations": 0,
         "analytics": "basic",
     },
     PlanTier.GROWTH: {
@@ -81,9 +92,11 @@ PLAN_LIMITS: dict[str, dict[str, int | bool | str | None]] = {
         "max_staff": 25,
         "max_customers": 20_000,
         "export": True,
-        "api": True,
+        # API is no longer a self-serve ladder feature — it's bespoke Custom-only.
+        "api": False,
         "specialized_roles": True,
         "custom_branding": True,
+        "referral": True,
         "automations": 5,
         "analytics": "full",
     },
@@ -93,9 +106,10 @@ PLAN_LIMITS: dict[str, dict[str, int | bool | str | None]] = {
         "max_staff": None,
         "max_customers": None,
         "export": True,
-        "api": True,
+        "api": False,
         "specialized_roles": True,
         "custom_branding": True,
+        "referral": True,
         "automations": 99,
         "analytics": "full",
     },
@@ -106,9 +120,9 @@ PLAN_LIMITS: dict[str, dict[str, int | bool | str | None]] = {
 # the trial converts to (GROWTH); CHAIN is custom-quoted (0 = "contact us").
 PLAN_PRICES_EGP: dict[str, Decimal] = {
     PlanTier.FREE: Decimal("0"),
-    PlanTier.STARTER: Decimal("299"),
-    PlanTier.GROWTH: Decimal("799"),
-    PlanTier.CHAIN: Decimal("0"),
+    PlanTier.STARTER: Decimal("599"),
+    PlanTier.GROWTH: Decimal("999"),
+    PlanTier.CHAIN: Decimal("2499"),
 }
 
 # Phase 3 — plan limits AND prices move to the DB (``billing.models.Plan``) so
