@@ -5,6 +5,13 @@
 // Business contact email (shown on the site + Web3Forms reply-to).
 export const CONTACT_EMAIL = 'contact@stampn.net'
 
+// Business phone + address (shown on the Contact page + footer; required for
+// the payment-gateway merchant profile).
+export const CONTACT_PHONE = '+201015425157'
+export const CONTACT_PHONE_DISPLAY = '+20 101 542 5157'
+export const BUSINESS_ADDRESS = 'Cairo, Egypt'
+export const BUSINESS_ADDRESS_AR = 'القاهرة، مصر'
+
 // Canonical domain, used for Open Graph / canonical tags.
 export const SITE_URL = 'https://stampn.net'
 

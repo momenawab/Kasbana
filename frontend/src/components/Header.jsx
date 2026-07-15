@@ -19,11 +19,14 @@ export default function Header() {
           <NavLink to={p('home')} end className="nav-link">
             {t.nav.home}
           </NavLink>
-          <NavLink to={p('support')} className="nav-link">
-            {t.nav.support}
+          <NavLink to={p('pricing')} className="nav-link">
+            {t.nav.pricing}
           </NavLink>
-          <NavLink to={p('privacy')} className="nav-link">
-            {t.nav.privacy}
+          <NavLink to={p('about')} className="nav-link">
+            {t.nav.about}
+          </NavLink>
+          <NavLink to={p('contact')} className="nav-link">
+            {t.nav.contact}
           </NavLink>
         </nav>
 

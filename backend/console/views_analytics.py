@@ -19,7 +19,8 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 from console import analytics_platform, analytics_revenue
-from console.permissions import AdminAPIView, IsAdminUser, IsFinanceAdmin
+from console.permissions import AdminAPIView, IsAdminUser, require
+from console.rbac import Permission
 from console.serializers_analytics import (
     PlatformAnalyticsSerializer,
     RevenueAnalyticsSerializer,
@@ -51,7 +52,7 @@ def _parse_range(params) -> tuple[date, date]:
 class RevenueAnalyticsView(AdminAPIView):
     """GET /analytics/revenue — Finance/Super-admin only."""
 
-    permission_classes = [IsAdminUser, IsFinanceAdmin]
+    permission_classes = [IsAdminUser, require(Permission.REVENUE_VIEW)]
 
     @extend_schema(
         parameters=[
@@ -69,7 +70,7 @@ class RevenueAnalyticsView(AdminAPIView):
 class RevenueExportView(AdminAPIView):
     """GET /analytics/revenue/export — monthly collected-revenue CSV (Finance)."""
 
-    permission_classes = [IsAdminUser, IsFinanceAdmin]
+    permission_classes = [IsAdminUser, require(Permission.REVENUE_VIEW)]
 
     @extend_schema(
         parameters=[

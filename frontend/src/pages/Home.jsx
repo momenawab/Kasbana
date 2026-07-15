@@ -16,6 +16,8 @@ export default function Home() {
   const { lang, t } = useLang()
   const h = t.home
   const pv = h.preview
+  const pb = h.pricingBand
+  const fmt = (n) => n.toLocaleString(lang === 'ar' ? 'ar-EG' : 'en-US')
 
   // Bento layout: large, small, small, large.
   const featureSpan = ['feature-lg', 'feature-sm', 'feature-sm', 'feature-lg']
@@ -153,6 +155,54 @@ export default function Home() {
               </article>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Pricing preview band — links to the full Pricing page */}
+      <section className="section">
+        <div className="container">
+          <div className="section-head">
+            <h2 className="section-title">{pb.title}</h2>
+            <p className="section-sub">{pb.sub}</p>
+          </div>
+
+          <div className="pricing-grid">
+            {t.pricing.plans.map((plan) => (
+              <div
+                key={plan.key}
+                className={`glass-panel pricing-card ${plan.popular ? 'is-popular' : ''}`}
+              >
+                {plan.popular && <span className="pricing-ribbon">{pb.popular}</span>}
+                <h3 className="pricing-name">{plan.name}</h3>
+                <p className="pricing-tagline">{plan.tagline}</p>
+                <div className="pricing-price">
+                  {plan.custom ? (
+                    <span className="pricing-amount pricing-amount-sm">{plan.priceLabel}</span>
+                  ) : (
+                    <>
+                      <span className="pricing-amount">{fmt(plan.monthly)}</span>
+                      <span className="pricing-unit">
+                        {t.pricing.currency} {pb.perMonth}
+                      </span>
+                    </>
+                  )}
+                </div>
+                <Link
+                  to={plan.custom ? PAGE_PATHS.contact[lang] : PAGE_PATHS.getStarted[lang]}
+                  className={`btn btn-block ${plan.popular ? 'btn-primary' : 'btn-glass'}`}
+                >
+                  {plan.custom ? t.pricing.contactCta : t.pricing.cta}
+                </Link>
+              </div>
+            ))}
+          </div>
+
+          <p className="pricing-note center">
+            <Link to={PAGE_PATHS.pricing[lang]} className="btn btn-glass">
+              {pb.seeAll}
+              <Icon name="arrow_forward" />
+            </Link>
+          </p>
         </div>
       </section>
     </>
