@@ -82,6 +82,14 @@ export const translations = {
         activityName: 'Sarah',
         activity: 'just earned a stamp',
       },
+      // Condensed pricing band linking to the full Pricing page.
+      pricingBand: {
+        title: 'Simple, transparent pricing',
+        sub: 'Plans that grow with you — from your first café to a full chain.',
+        perMonth: '/mo',
+        popular: 'Most popular',
+        seeAll: 'See full pricing',
+      },
     },
     support: {
       pill: "We're here to help",
@@ -450,6 +458,14 @@ export const translations = {
         rewardItem: 'قهوة مجانية',
         activityName: 'سارة',
         activity: 'أخدت ختم دلوقتي',
+      },
+      // شريط أسعار مختصر بيوصل لصفحة الأسعار الكاملة.
+      pricingBand: {
+        title: 'أسعار بسيطة وواضحة',
+        sub: 'باقات بتكبر معاك — من أول كافيه لحد سلسلة كاملة.',
+        perMonth: '/شهر',
+        popular: 'الأكثر شيوعًا',
+        seeAll: 'شوف كل الأسعار',
       },
     },
     support: {
