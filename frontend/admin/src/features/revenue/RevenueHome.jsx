@@ -27,11 +27,11 @@ import { num } from '../../lib/format'
 const FINANCE_ROLES = ['SUPER_ADMIN', 'FINANCE']
 
 const COLORS = {
-  brand: '#E0A23B',
-  info: '#3B9FE0',
-  success: '#2FBF87',
-  grid: '#2A3648',
-  axis: '#6B7A8D',
+  brand: '#845AEA',
+  info: '#6EA8F0',
+  success: '#4DB6A8',
+  grid: '#2F2A42',
+  axis: '#7C7891',
 }
 
 function egp(v) {
@@ -66,8 +66,8 @@ function ChartCard({ title, children }) {
 }
 
 const tooltipStyle = {
-  contentStyle: { background: '#1B2637', border: '1px solid #2A3648', borderRadius: 9, color: '#E6EAF0' },
-  labelStyle: { color: '#9AA7B8' },
+  contentStyle: { background: '#262238', border: '1px solid #2F2A42', borderRadius: 9, color: '#EDEBF5' },
+  labelStyle: { color: '#A9A3BE' },
 }
 
 export default function RevenueHome() {
@@ -119,7 +119,7 @@ export default function RevenueHome() {
           </label>
           <button
             onClick={() => downloadRevenueCsv(params)}
-            className="flex items-center gap-2 rounded-ctl bg-brand px-3 py-1.5 text-sm font-semibold text-bg hover:bg-brand-d"
+            className="flex items-center gap-2 rounded-ctl bg-brand px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-d"
           >
             <Download size={15} /> Export CSV
           </button>

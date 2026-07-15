@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ShieldCheck, Loader2, KeyRound } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import api, { normalizeError } from '../../lib/api'
 import { setTokens } from '../../lib/auth'
 
@@ -64,9 +64,7 @@ export default function Login() {
     <div className="flex min-h-screen items-center justify-center bg-bg p-4">
       <div className="w-full max-w-sm rounded-card border border-line bg-surface p-7 shadow-card">
         <div className="mb-6 flex flex-col items-center gap-2 text-center">
-          <div className="flex h-11 w-11 items-center justify-center rounded-ctl bg-brand-bg text-brand">
-            {stage === 'mfa' ? <KeyRound size={22} /> : <ShieldCheck size={22} />}
-          </div>
+          <img src="/logo.png" alt="Stampn" className="h-16 w-16 rounded-full" />
           <h1 className="font-head text-xl font-bold text-tx">Stampn Admin</h1>
           <p className="text-sm text-tx-3">Platform operations console</p>
         </div>
@@ -100,7 +98,7 @@ export default function Login() {
             <button
               type="submit"
               disabled={busy || !email || !password}
-              className="mt-1 inline-flex items-center justify-center gap-2 rounded-ctl bg-brand px-4 py-2 font-semibold text-bg transition hover:bg-brand-d disabled:opacity-60"
+              className="mt-1 inline-flex items-center justify-center gap-2 rounded-ctl bg-brand px-4 py-2 font-semibold text-white transition hover:bg-brand-d disabled:opacity-60"
             >
               {busy && <Loader2 size={16} className="animate-spin" />}
               Sign in
@@ -152,7 +150,7 @@ export default function Login() {
             <button
               type="submit"
               disabled={busy || code.trim().length < 6}
-              className="mt-1 inline-flex items-center justify-center gap-2 rounded-ctl bg-brand px-4 py-2 font-semibold text-bg transition hover:bg-brand-d disabled:opacity-60"
+              className="mt-1 inline-flex items-center justify-center gap-2 rounded-ctl bg-brand px-4 py-2 font-semibold text-white transition hover:bg-brand-d disabled:opacity-60"
             >
               {busy && <Loader2 size={16} className="animate-spin" />}
               {pending?.status === 'mfa_setup' ? 'Verify & enrol' : 'Verify'}

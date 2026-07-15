@@ -120,7 +120,7 @@ export default function AdminsTab() {
         <button
           type="submit"
           disabled={invite.isPending || !form.email}
-          className="inline-flex items-center gap-2 rounded-ctl bg-brand px-4 py-2 text-sm font-semibold text-bg hover:bg-brand-d disabled:opacity-60"
+          className="inline-flex items-center gap-2 rounded-ctl bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-d disabled:opacity-60"
         >
           <UserPlus size={16} /> Invite
         </button>

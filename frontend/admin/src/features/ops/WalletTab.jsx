@@ -28,7 +28,7 @@ export default function WalletTab({ canManage }) {
             onClick={() => setResolved(val)}
             className={
               'rounded-ctl px-3 py-1.5 text-xs font-semibold ' +
-              (resolved === val ? 'bg-brand text-bg' : 'bg-surface-2 text-tx-3 hover:text-tx')
+              (resolved === val ? 'bg-brand text-white' : 'bg-surface-2 text-tx-3 hover:text-tx')
             }
           >
             {label}

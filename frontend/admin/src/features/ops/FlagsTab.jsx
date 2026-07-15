@@ -84,7 +84,7 @@ export default function FlagsTab({ canManage }) {
           </label>
           <button
             type="submit"
-            className="flex items-center gap-1.5 rounded-ctl bg-brand px-3 py-2 text-sm font-semibold text-bg"
+            className="flex items-center gap-1.5 rounded-ctl bg-brand px-3 py-2 text-sm font-semibold text-white"
           >
             <Plus size={15} /> Add flag
           </button>

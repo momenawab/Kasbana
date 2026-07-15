@@ -71,7 +71,7 @@ export default function MerchantBillingTab({ merchantId }) {
           <button
             type="submit"
             disabled={create.isPending || !form.amount_egp}
-            className="rounded-ctl bg-brand px-4 py-2 text-sm font-semibold text-bg hover:bg-brand-d disabled:opacity-60"
+            className="rounded-ctl bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-d disabled:opacity-60"
           >
             Record invoice
           </button>

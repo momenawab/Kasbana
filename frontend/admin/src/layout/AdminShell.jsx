@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import {
   LayoutDashboard,
@@ -20,6 +21,8 @@ import {
   Lock,
   LogOut,
   Loader2,
+  Menu,
+  X,
 } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 
@@ -49,14 +52,63 @@ const NAV = [
 function itemClass({ isActive }) {
   return (
     'flex items-center gap-3 rounded-ctl px-3 py-2 text-sm transition ' +
-    (isActive ? 'bg-brand text-bg font-semibold' : 'text-tx-2 hover:bg-surface-2 hover:text-tx')
+    (isActive ? 'bg-brand text-white font-semibold' : 'text-tx-2 hover:bg-surface-2 hover:text-tx')
   )
 }
 
 const FINANCE_ROLES = ['SUPER_ADMIN', 'FINANCE']
 
+function Brand() {
+  return (
+    <div className="flex items-center gap-2 px-2 py-3">
+      <img src="/logo.png" alt="" className="h-8 w-8 rounded-full" />
+      <span className="font-head text-lg font-bold text-tx">
+        Stampn <span className="text-brand">Admin</span>
+      </span>
+    </div>
+  )
+}
+
+// Shared nav list — rendered in both the desktop sidebar and the mobile drawer.
+function NavList({ nav, onNavigate }) {
+  return (
+    <nav className="mt-2 flex flex-1 flex-col gap-1 overflow-y-auto">
+      {nav.map(({ to, key, Icon, end, ready }) => (
+        <NavLink
+          key={to}
+          to={to}
+          end={end}
+          className={itemClass}
+          onClick={(e) => {
+            if (!ready)
+              e.preventDefault() // placeholder until its phase ships
+            else onNavigate?.()
+          }}
+        >
+          <Icon size={18} />
+          <span className="flex-1">{key}</span>
+          {!ready && <span className="text-[10px] text-tx-3">soon</span>}
+        </NavLink>
+      ))}
+    </nav>
+  )
+}
+
+function SignOut({ logout }) {
+  return (
+    <button
+      onClick={logout}
+      className="mt-2 flex items-center gap-3 rounded-ctl px-3 py-2 text-sm text-tx-2 hover:bg-surface-2 hover:text-tx"
+    >
+      <LogOut size={18} />
+      Sign out
+    </button>
+  )
+}
+
 export default function AdminShell() {
   const { admin, role, isLoading, logout } = useAuth()
+  const [drawerOpen, setDrawerOpen] = useState(false)
 
   // Financials are Finance/Super-admin only — hide the Revenue nav for everyone
   // else (the route itself also guards, so a direct URL still won't leak data).
@@ -64,40 +116,42 @@ export default function AdminShell() {
 
   return (
     <div className="flex min-h-screen bg-bg">
-      {/* Sidebar */}
+      {/* Desktop sidebar */}
       <aside className="hidden w-60 flex-col border-r border-line bg-surface p-4 md:flex">
-        <div className="px-2 py-3 font-head text-lg font-bold text-tx">
-          Stampn <span className="text-brand">Admin</span>
-        </div>
-        <nav className="mt-2 flex flex-1 flex-col gap-1">
-          {nav.map(({ to, key, Icon, end, ready }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={end}
-              className={itemClass}
-              onClick={(e) => {
-                if (!ready) e.preventDefault() // placeholder until its phase ships
-              }}
-            >
-              <Icon size={18} />
-              <span className="flex-1">{key}</span>
-              {!ready && <span className="text-[10px] text-tx-3">soon</span>}
-            </NavLink>
-          ))}
-        </nav>
-        <button
-          onClick={logout}
-          className="mt-2 flex items-center gap-3 rounded-ctl px-3 py-2 text-sm text-tx-2 hover:bg-surface-2 hover:text-tx"
-        >
-          <LogOut size={18} />
-          Sign out
-        </button>
+        <Brand />
+        <NavList nav={nav} />
+        <SignOut logout={logout} />
       </aside>
 
-      {/* Main */}
-      <div className="flex flex-1 flex-col">
-        <header className="flex items-center justify-between border-b border-line bg-surface px-5 py-3">
+      {/* Mobile drawer */}
+      {drawerOpen && (
+        <div className="fixed inset-0 z-40 md:hidden" role="dialog" aria-modal="true">
+          <div
+            className="absolute inset-0 bg-black/60"
+            onClick={() => setDrawerOpen(false)}
+            aria-hidden="true"
+          />
+          <aside className="absolute inset-y-0 left-0 flex w-64 max-w-[82%] flex-col border-r border-line bg-surface p-4 shadow-pop">
+            <div className="flex items-center justify-between">
+              <Brand />
+              <button
+                onClick={() => setDrawerOpen(false)}
+                aria-label="Close menu"
+                className="rounded-ctl p-2 text-tx-2 hover:bg-surface-2 hover:text-tx"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <NavList nav={nav} onNavigate={() => setDrawerOpen(false)} />
+            <SignOut logout={logout} />
+          </aside>
+        </div>
+      )}
+
+      {/* Main column */}
+      <div className="flex min-w-0 flex-1 flex-col">
+        {/* Desktop header */}
+        <header className="hidden items-center justify-between border-b border-line bg-surface px-5 py-3 md:flex">
           <span className="text-sm text-tx-3">Platform operations</span>
           <div className="flex items-center gap-3 text-sm">
             {isLoading ? (
@@ -112,7 +166,32 @@ export default function AdminShell() {
             )}
           </div>
         </header>
-        <main className="flex-1 p-5">
+
+        {/* Mobile top bar */}
+        <header className="flex items-center justify-between gap-2 border-b border-line bg-surface px-4 py-3 md:hidden">
+          <button
+            onClick={() => setDrawerOpen(true)}
+            aria-label="Open menu"
+            className="rounded-ctl p-2 text-tx-2 hover:bg-surface-2 hover:text-tx"
+          >
+            <Menu size={22} />
+          </button>
+          <div className="flex items-center gap-2">
+            <img src="/logo.png" alt="" className="h-7 w-7 rounded-full" />
+            <span className="font-head text-base font-bold text-tx">
+              Stampn <span className="text-brand">Admin</span>
+            </span>
+          </div>
+          {admin?.role ? (
+            <span className="rounded-full bg-surface-2 px-2 py-0.5 text-xs text-brand">
+              {admin.role}
+            </span>
+          ) : (
+            <span className="w-8" />
+          )}
+        </header>
+
+        <main className="min-w-0 flex-1 p-4 sm:p-5">
           <Outlet />
         </main>
       </div>

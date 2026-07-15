@@ -79,7 +79,7 @@ export default function StepUpModal({ onClose, onConfirmed }) {
         <button
           type="submit"
           disabled={busy || !password}
-          className="mt-1 flex w-full items-center justify-center gap-2 rounded-ctl bg-brand px-4 py-2 font-semibold text-bg disabled:opacity-60"
+          className="mt-1 flex w-full items-center justify-center gap-2 rounded-ctl bg-brand px-4 py-2 font-semibold text-white disabled:opacity-60"
         >
           {busy && <Loader2 size={16} className="animate-spin" />}
           Confirm
