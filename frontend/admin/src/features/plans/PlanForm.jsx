@@ -8,6 +8,7 @@ const FEATURES = [
   ['api', 'API access'],
   ['specialized_roles', 'Marketing/Designer roles'],
   ['custom_branding', 'Custom branding'],
+  ['referral', 'Referral program'],
 ]
 
 const LIMITS = [
@@ -31,6 +32,7 @@ function blankFrom(plan) {
     api: plan?.api ?? false,
     specialized_roles: plan?.specialized_roles ?? false,
     custom_branding: plan?.custom_branding ?? false,
+    referral: plan?.referral ?? false,
     automations: plan?.automations ?? 0,
     analytics: plan?.analytics ?? 'basic',
   }
