@@ -176,6 +176,18 @@ def test_editing_plan_limit_changes_live_entitlements(api_client, super_admin, m
     assert entitlements.check(merchant, "api") is True
 
 
+def test_editing_referral_flag_gates_live(api_client, super_admin, merchant):
+    services.activate_plan(merchant, PlanTier.STARTER)
+    assert entitlements.check(merchant, "referral") is False  # Starter: no referral
+
+    resp = _bearer(api_client, super_admin).patch(
+        f"{PLANS}/STARTER", {"referral": True}, format="json"
+    )
+    assert resp.status_code == 200
+    assert resp.json()["referral"] is True
+    assert entitlements.check(merchant, "referral") is True
+
+
 def test_editing_plan_price_updates_the_checkout_price(api_client, super_admin):
     """Editing a price in the admin panel must change what checkout actually
     charges — the subscribe/billing flow reads ``plan_price`` (DB-backed)."""

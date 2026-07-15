@@ -24,6 +24,7 @@ class PlanSerializer(serializers.ModelSerializer):
             "api",
             "specialized_roles",
             "custom_branding",
+            "referral",
             "automations",
             "analytics",
             "created_at",
