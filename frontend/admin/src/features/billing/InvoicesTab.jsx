@@ -132,7 +132,7 @@ function InvoiceDetail({ id, canRetry, onClose }) {
         <button
           onClick={runRetry}
           disabled={retry.isPending}
-          className="w-fit rounded-ctl bg-brand px-4 py-2 text-sm font-semibold text-bg hover:bg-brand-d disabled:opacity-60"
+          className="w-fit rounded-ctl bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-d disabled:opacity-60"
         >
           Retry charge
         </button>

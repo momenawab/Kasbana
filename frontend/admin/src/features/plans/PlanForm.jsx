@@ -181,7 +181,7 @@ export default function PlanForm({ plan, onDone, onCancel }) {
         <button
           type="submit"
           disabled={save.isPending || !form.key || !form.name}
-          className="inline-flex items-center gap-2 rounded-ctl bg-brand px-4 py-2 text-sm font-semibold text-bg transition hover:bg-brand-d disabled:opacity-60"
+          className="inline-flex items-center gap-2 rounded-ctl bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-d disabled:opacity-60"
         >
           {save.isPending && <Loader2 size={16} className="animate-spin" />}
           {isNew ? 'Create plan' : 'Save changes'}

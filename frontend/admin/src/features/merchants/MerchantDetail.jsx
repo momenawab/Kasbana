@@ -91,7 +91,7 @@ export default function MerchantDetail() {
           ) : (
             <div
               className="flex h-12 w-12 items-center justify-center rounded-ctl font-head font-bold"
-              style={{ background: m.color_bg || '#26344A', color: m.color_fg || '#E6EAF0' }}
+              style={{ background: m.color_bg || '#332F45', color: m.color_fg || '#EDEBF5' }}
             >
               {m.name?.[0] || '?'}
             </div>
@@ -127,7 +127,7 @@ export default function MerchantDetail() {
                   'flex items-center gap-1.5 rounded-ctl border px-3 py-1.5 text-sm font-semibold disabled:opacity-60 ' +
                   (isSuspended
                     ? 'border-line text-tx-2 hover:border-success hover:text-success'
-                    : 'border-danger/50 text-danger hover:bg-danger hover:text-bg')
+                    : 'border-danger/50 text-danger hover:bg-danger hover:text-white')
                 }
               >
                 {isSuspended ? <ShieldCheck size={15} /> : <Ban size={15} />}

@@ -33,7 +33,7 @@ export default function JobsTab({ canManage }) {
             onClick={() => setStatus(f)}
             className={
               'rounded-ctl px-3 py-1.5 text-xs font-semibold ' +
-              (status === f ? 'bg-brand text-bg' : 'bg-surface-2 text-tx-3 hover:text-tx')
+              (status === f ? 'bg-brand text-white' : 'bg-surface-2 text-tx-3 hover:text-tx')
             }
           >
             {f || 'All'}

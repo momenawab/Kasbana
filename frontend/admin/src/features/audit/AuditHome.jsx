@@ -63,7 +63,7 @@ export default function AuditHome() {
         <Field label="To" type="date" value={draft.to} onChange={set('to')} />
         <button
           type="submit"
-          className="flex items-center gap-1.5 rounded-ctl bg-brand px-3 py-2 text-sm font-semibold text-bg"
+          className="flex items-center gap-1.5 rounded-ctl bg-brand px-3 py-2 text-sm font-semibold text-white"
         >
           <Search size={15} /> Filter
         </button>

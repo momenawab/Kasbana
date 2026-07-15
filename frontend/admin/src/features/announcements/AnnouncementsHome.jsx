@@ -171,7 +171,7 @@ function Composer() {
             <button
               onClick={() => createAndSend(true)}
               disabled={create.isPending || send.isPending}
-              className="flex items-center gap-1.5 rounded-ctl bg-brand px-4 py-2 text-sm font-semibold text-bg hover:bg-brand-d disabled:opacity-60"
+              className="flex items-center gap-1.5 rounded-ctl bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-d disabled:opacity-60"
             >
               <Send size={14} /> Send now
             </button>

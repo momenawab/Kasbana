@@ -39,7 +39,7 @@ export default function PlansList() {
         {canEdit && editing == null && (
           <button
             onClick={() => setEditing('new')}
-            className="inline-flex items-center gap-2 rounded-ctl bg-brand px-3 py-2 text-sm font-semibold text-bg hover:bg-brand-d"
+            className="inline-flex items-center gap-2 rounded-ctl bg-brand px-3 py-2 text-sm font-semibold text-white hover:bg-brand-d"
           >
             <Plus size={16} /> New plan
           </button>

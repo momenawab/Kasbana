@@ -175,7 +175,7 @@ export default function SubscriptionTab({ merchantId }) {
           </ul>
           <button
             onClick={forcePatch}
-            className="rounded-ctl bg-danger px-3 py-1.5 text-xs font-semibold text-bg hover:opacity-90"
+            className="rounded-ctl bg-danger px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90"
           >
             Downgrade anyway
           </button>
@@ -250,7 +250,7 @@ export default function SubscriptionTab({ merchantId }) {
             <button
               type="submit"
               disabled={busy || !reason}
-              className="w-fit rounded-ctl bg-brand px-4 py-2 text-sm font-semibold text-bg hover:bg-brand-d disabled:opacity-60"
+              className="w-fit rounded-ctl bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-d disabled:opacity-60"
             >
               Save changes
             </button>

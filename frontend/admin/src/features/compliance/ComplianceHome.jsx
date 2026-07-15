@@ -105,7 +105,7 @@ export default function ComplianceHome() {
             <button
               type="submit"
               disabled={update.isPending}
-              className="flex items-center gap-1.5 rounded-ctl bg-brand px-4 py-2 text-sm font-semibold text-bg disabled:opacity-60"
+              className="flex items-center gap-1.5 rounded-ctl bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
             >
               <Save size={15} /> Save policy
             </button>

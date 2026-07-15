@@ -143,7 +143,7 @@ export default function SupportTab({ merchantId, merchantName }) {
           <button
             onClick={viewAsMerchant}
             disabled={startImpersonation.isPending}
-            className="rounded-ctl bg-brand px-4 py-2 text-sm font-semibold text-bg hover:bg-brand-d disabled:opacity-60"
+            className="rounded-ctl bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-d disabled:opacity-60"
           >
             {startImpersonation.isPending ? 'Opening…' : `View as ${merchantName || 'merchant'}`}
           </button>
@@ -254,7 +254,7 @@ export default function SupportTab({ merchantId, merchantName }) {
           <button
             type="submit"
             disabled={addNote.isPending || !noteBody.trim()}
-            className="w-fit rounded-ctl bg-brand px-4 py-2 text-sm font-semibold text-bg hover:bg-brand-d disabled:opacity-60"
+            className="w-fit rounded-ctl bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-d disabled:opacity-60"
           >
             Add note
           </button>

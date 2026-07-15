@@ -69,8 +69,8 @@ function MaintenanceCard({ canManage }) {
             className={
               'flex items-center gap-1.5 rounded-ctl px-3 py-2 text-sm font-semibold disabled:opacity-60 ' +
               (on
-                ? 'bg-success text-bg'
-                : 'border border-danger/50 text-danger hover:bg-danger hover:text-bg')
+                ? 'bg-success text-white'
+                : 'border border-danger/50 text-danger hover:bg-danger hover:text-white')
             }
           >
             <Power size={15} /> {on ? 'Turn OFF' : 'Turn ON'}

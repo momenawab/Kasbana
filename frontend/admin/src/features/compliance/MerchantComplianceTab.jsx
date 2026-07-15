@@ -172,7 +172,7 @@ function DangerZone({ merchantId, slug, name }) {
         <button
           onClick={run}
           disabled={!ready || erase.isPending}
-          className="flex items-center gap-1.5 rounded-ctl border border-danger/50 px-3 py-2 text-sm font-semibold text-danger hover:bg-danger hover:text-bg disabled:cursor-not-allowed disabled:opacity-40"
+          className="flex items-center gap-1.5 rounded-ctl border border-danger/50 px-3 py-2 text-sm font-semibold text-danger hover:bg-danger hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
         >
           <Trash2 size={15} /> {erase.isPending ? 'Erasing…' : 'Erase merchant'}
         </button>
