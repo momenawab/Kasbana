@@ -4,8 +4,12 @@ import Layout from './components/Layout.jsx'
 
 // Lazy load pages for code splitting
 const Home = lazy(() => import('./pages/Home.jsx'))
+const Pricing = lazy(() => import('./pages/Pricing.jsx'))
+const About = lazy(() => import('./pages/About.jsx'))
+const Contact = lazy(() => import('./pages/Contact.jsx'))
 const Support = lazy(() => import('./pages/Support.jsx'))
 const Privacy = lazy(() => import('./pages/Privacy.jsx'))
+const Refund = lazy(() => import('./pages/Refund.jsx'))
 const GetStarted = lazy(() => import('./pages/GetStarted.jsx'))
 const NotFound = lazy(() => import('./pages/NotFound.jsx'))
 
@@ -24,8 +28,12 @@ export default function App() {
         {/* English site at "/" */}
         <Route path="/" element={<Layout lang="en" />}>
           <Route index element={<Home />} />
+          <Route path="pricing" element={<Pricing />} />
+          <Route path="about" element={<About />} />
+          <Route path="contact" element={<Contact />} />
           <Route path="support" element={<Support />} />
           <Route path="privacy" element={<Privacy />} />
+          <Route path="refund" element={<Refund />} />
           <Route path="get-started" element={<GetStarted />} />
           <Route path="*" element={<NotFound />} />
         </Route>
@@ -33,8 +41,12 @@ export default function App() {
         {/* Arabic site at "/ar" */}
         <Route path="/ar" element={<Layout lang="ar" />}>
           <Route index element={<Home />} />
+          <Route path="pricing" element={<Pricing />} />
+          <Route path="about" element={<About />} />
+          <Route path="contact" element={<Contact />} />
           <Route path="support" element={<Support />} />
           <Route path="privacy" element={<Privacy />} />
+          <Route path="refund" element={<Refund />} />
           <Route path="get-started" element={<GetStarted />} />
           <Route path="*" element={<NotFound />} />
         </Route>
