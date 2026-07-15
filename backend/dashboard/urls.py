@@ -8,11 +8,13 @@ from dashboard.views import (
     AnalyticsRetentionView,
     AnalyticsSummaryView,
     AnalyticsTimeseriesView,
+    AnalyticsWalletSplitView,
     CardDetailView,
     CardListCreateView,
     CardQRView,
     CardStatsView,
     CustomerDetailView,
+    CustomerExportView,
     CustomerListView,
     CustomerTimelineView,
     LocationDetailView,
@@ -29,6 +31,9 @@ from dashboard.views_announcements import (
 from dashboard.views_announcements import (
     AnnouncementReadView,
 )
+from dashboard.views_main_qr import MainQrRotateView, MainQrView
+from dashboard.views_support import MerchantSupportMessagesView
+from wallets.views import CardWalletDesignView, WalletTemplateListView
 
 urlpatterns = [
     # Cards
@@ -36,10 +41,25 @@ urlpatterns = [
     path("cards/<uuid:card_id>", CardDetailView.as_view(), name="card-detail"),
     path("cards/<uuid:card_id>/stats", CardStatsView.as_view(), name="card-stats"),
     path("cards/<uuid:card_id>/qr", CardQRView.as_view(), name="card-qr"),
+    # Wallet pass design (Apple/Google editable variables — notes 2-4)
+    path(
+        "cards/<uuid:card_id>/wallet-design",
+        CardWalletDesignView.as_view(),
+        name="card-wallet-design",
+    ),
+    # Main QR (one printed code, re-pointable at any program)
+    path("settings/main-qr", MainQrView.as_view(), name="main-qr"),
+    path("settings/main-qr/rotate", MainQrRotateView.as_view(), name="main-qr-rotate"),
+    # Merchant support (message the team; lands on the admin Support tab)
+    path("support/messages", MerchantSupportMessagesView.as_view(), name="support-messages"),
     # Uploads
     path("uploads", UploadView.as_view(), name="upload"),
+    # Wallet pass templates (layout-locked catalog — single source of truth)
+    path("wallet-templates", WalletTemplateListView.as_view(), name="wallet-templates"),
     # Customers
     path("customers", CustomerListView.as_view(), name="customer-list"),
+    # Static segment before the <uuid> detail route so it can never be shadowed.
+    path("customers/export", CustomerExportView.as_view(), name="customer-export"),
     path("customers/<uuid:customer_id>", CustomerDetailView.as_view(), name="customer-detail"),
     path(
         "customers/<uuid:customer_id>/timeline",
@@ -57,6 +77,11 @@ urlpatterns = [
     # Analytics
     path("analytics/summary", AnalyticsSummaryView.as_view(), name="analytics-summary"),
     path("analytics/timeseries", AnalyticsTimeseriesView.as_view(), name="analytics-timeseries"),
+    path(
+        "analytics/wallet_split",
+        AnalyticsWalletSplitView.as_view(),
+        name="analytics-wallet-split",
+    ),
     path("analytics/retention", AnalyticsRetentionView.as_view(), name="analytics-retention"),
     path("analytics/by_location", AnalyticsByLocationView.as_view(), name="analytics-by-location"),
     path("activity", ActivityFeedView.as_view(), name="activity"),

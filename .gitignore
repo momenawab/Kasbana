@@ -2,7 +2,20 @@
 **/node_modules/
 frontend/dist/
 frontend/dist-ssr/
+**/dist/
 *.local
+
+# ── Test artifacts ───────────────────────────────────────────────────────────
+# Backend coverage (pytest-cov)
+backend/.coverage
+backend/htmlcov/
+backend/coverage.xml
+.pytest_cache/
+# Playwright E2E (e2e/)
+e2e/test-results/
+e2e/playwright-report/
+e2e/blob-report/
+e2e/.cache/
 
 # ── Python / backend ─────────────────────────────────────────────────────────
 **/__pycache__/
@@ -17,7 +30,11 @@ backend/media/
 # ── Environment ──────────────────────────────────────────────────────────────
 **/.env
 **/.env.*
+# Templates only — these carry placeholders, never real values. Without the
+# second exception infra/.env.prod.example is ignored, and deploy.sh tells a
+# fresh server to "copy .env.prod.example and fill it" — a file that isn't there.
 !**/.env.example
+!**/.env.*.example
 
 # ── OS / editor ──────────────────────────────────────────────────────────────
 .DS_Store
@@ -29,3 +46,23 @@ npm-debug.log*
 
 # ── graphify working dir (committed copy lives in main/graphify/) ─────────────
 graphify-out/
+Group 2.png
+Group 2.svg
+PageSpeed Insightsdesk.mhtml
+PageSpeed Insightsmob.mhtml
+WhatsApp Image 2026-07-04 at 2.34.57 PM.jpeg
+WhatsApp Image 2026-07-04 at 2.35.10 PM.jpeg
+WhatsApp Image 2026-07-04 at 2.34.48 PM.jpeg
+main/docs/mockups/dashboard/direction-a.html
+main/docs/mockups/dashboard/direction-b.html
+main/docs/mockups/dashboard/direction-c.html
+main/docs/mockups/dashboard/index.html
+frontend/dashboard/public/TR_Add_to_Apple_Wallet_RGB_102121.svg
+.gitignore
+.kilo/kilo.jsonc
+.opencode/opencode.json
+
+# Playwright run artifacts
+test-results/
+e2e/test-results/
+e2e/playwright-report/

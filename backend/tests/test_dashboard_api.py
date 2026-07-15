@@ -7,12 +7,15 @@ the Google-class sync seam (faked — no Celery/broker required).
 
 from __future__ import annotations
 
+from datetime import timedelta
+
 import pytest
+from django.utils import timezone
 from rest_framework.test import APIClient
 
 from core import ledger
 from core.enums import CustomerCardStatus, Role, WalletPlatform
-from core.models import Card, Redemption, StaffUser, WalletRegistration
+from core.models import Card, Redemption, StaffUser, StampLedger, WalletRegistration
 from tests import factories
 
 pytestmark = pytest.mark.django_db
@@ -66,6 +69,11 @@ def test_create_card_sets_merchant_and_syncs_google(auth_client, merchant, googl
     assert card.merchant_id == merchant.id
     # Google class re-provision was enqueued for the new card.
     assert google_sync_calls == [str(card.id)]
+    # A primary Reward row is created so the redeem flow works (note 7).
+    reward = card.rewards.get()
+    assert reward.title == "Free latte"
+    assert reward.threshold == 8
+    assert reward.is_active is True
 
 
 def test_patch_card_updates_and_syncs(auth_client, merchant, google_sync_calls):
@@ -76,6 +84,8 @@ def test_patch_card_updates_and_syncs(auth_client, merchant, google_sync_calls):
     card.refresh_from_db()
     assert card.reward_title == "New"
     assert google_sync_calls == [str(card.id)]
+    # The primary Reward row tracks the card's reward title (note 7).
+    assert card.rewards.get().title == "New"
 
 
 def test_patch_other_merchant_card_is_404(auth_client):
@@ -227,6 +237,115 @@ def test_analytics_excludes_inactive_wallet_registrations(auth_client, merchant)
     )
     resp = auth_client.get("/api/v1/analytics/summary")
     assert resp.json()["apple_count"] == 0  # inactive registration not counted
+
+
+def test_analytics_summary_without_a_range_is_all_time(auth_client, merchant, card, reward):
+    """The Overview page asks with no range and must keep its lifetime totals."""
+    old = factories.CustomerCardFactory(card=card, merchant=merchant)
+    ledger.add_stamp(old)
+    StampLedger.objects.filter(customer_card=old).update(
+        created_at=timezone.now() - timedelta(days=400)
+    )
+
+    body = auth_client.get("/api/v1/analytics/summary").json()
+    # Counted even though its only activity is 400 days old.
+    assert body["enrollments"] == 1
+    assert body["active_cards"] == 1
+
+
+def test_analytics_summary_with_a_range_describes_that_window(auth_client, merchant, card, reward):
+    """Every KPI counts what happened inside the window (and matches the charts)."""
+    # inside: joined + stamped twice → a returning customer.
+    inside = factories.CustomerCardFactory(card=card, merchant=merchant)
+    ledger.record_enrollment(inside)
+    ledger.add_stamp(inside)
+    ledger.add_stamp(inside, force=True)
+
+    # one_stamp: active in the window, but not returning.
+    one_stamp = factories.CustomerCardFactory(card=card, merchant=merchant)
+    ledger.record_enrollment(one_stamp)
+    ledger.add_stamp(one_stamp)
+
+    # outside: all of its activity is backdated well before the window.
+    outside = factories.CustomerCardFactory(card=card, merchant=merchant)
+    ledger.record_enrollment(outside)
+    ledger.add_stamp(outside)
+    StampLedger.objects.filter(customer_card=outside).update(
+        created_at=timezone.now() - timedelta(days=400)
+    )
+
+    today = timezone.localdate()
+    body = auth_client.get(
+        f"/api/v1/analytics/summary?from={today - timedelta(days=7)}&to={today}"
+    ).json()
+
+    # `outside` is excluded everywhere: 2 joins, 2 cards active, 1 of them returning.
+    assert body["enrollments"] == 2
+    assert body["active_cards"] == 2
+    assert body["repeat_rate"] == pytest.approx(0.5)
+
+    # The enrollments tile agrees with the joins chart over the same range.
+    points = auth_client.get(
+        f"/api/v1/analytics/timeseries?metric=joins&from={today - timedelta(days=7)}&to={today}"
+    ).json()["points"]
+    assert sum(p["value"] for p in points) == body["enrollments"]
+
+
+def test_analytics_summary_range_counts_redemptions_in_the_window(
+    auth_client, merchant, card, reward
+):
+    cc = factories.CustomerCardFactory(card=card, merchant=merchant, stamp_count=10)
+    ledger.redeem_reward(cc, reward=reward)
+
+    today = timezone.localdate()
+    scoped = f"?from={today - timedelta(days=7)}&to={today}"
+    assert auth_client.get(f"/api/v1/analytics/summary{scoped}").json()["redemptions"] == 1
+
+    # Backdate it out of the window and the tile drops it.
+    StampLedger.objects.filter(customer_card=cc).update(
+        created_at=timezone.now() - timedelta(days=400)
+    )
+    assert auth_client.get(f"/api/v1/analytics/summary{scoped}").json()["redemptions"] == 0
+
+
+def test_analytics_summary_rejects_a_bad_date(auth_client):
+    assert auth_client.get("/api/v1/analytics/summary?from=nope").status_code == 400
+
+
+def test_analytics_wallet_split_honours_the_date_range(auth_client, merchant):
+    """Unlike /summary, the split counts only passes added inside the window."""
+    card = factories.CardFactory(merchant=merchant)
+    inside = factories.CustomerCardFactory(card=card, merchant=merchant)
+    outside = factories.CustomerCardFactory(card=card, merchant=merchant)
+
+    recent = WalletRegistration.objects.create(
+        customer_card=inside, platform=WalletPlatform.APPLE, is_active=True
+    )
+    stale = WalletRegistration.objects.create(
+        customer_card=outside, platform=WalletPlatform.GOOGLE, is_active=True
+    )
+    # created_at is auto_now_add, so backdate the second one past the window.
+    WalletRegistration.objects.filter(pk=stale.pk).update(
+        created_at=timezone.now() - timedelta(days=400)
+    )
+
+    today = timezone.localdate()
+    resp = auth_client.get(
+        f"/api/v1/analytics/wallet_split?from={today - timedelta(days=7)}&to={today}"
+    )
+    assert resp.status_code == 200
+    assert resp.json() == {"apple_count": 1, "google_count": 0}
+
+    # Widen the range and the backdated Google pass comes back into view.
+    resp = auth_client.get(
+        f"/api/v1/analytics/wallet_split?from={today - timedelta(days=500)}&to={today}"
+    )
+    assert resp.json() == {"apple_count": 1, "google_count": 1}
+    assert recent.is_active
+
+
+def test_analytics_wallet_split_rejects_a_bad_date(auth_client):
+    assert auth_client.get("/api/v1/analytics/wallet_split?from=nope").status_code == 400
 
 
 # ── extra coverage: untested branches ─────────────────────────────────────────

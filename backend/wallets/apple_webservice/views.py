@@ -121,6 +121,9 @@ def get_pass(request, pass_type_id, serial):
         pkpass = build_pkpass(cc)
     except AppleSigningError:
         return HttpResponse(status=503)
+    except Exception:
+        logger.exception("pkpass rebuild failed for %s", serial)
+        return HttpResponse(status=500)
 
     resp = HttpResponse(pkpass, content_type="application/vnd.apple.pkpass")
     resp["Last-Modified"] = timezone.now().strftime("%a, %d %b %Y %H:%M:%S GMT")
@@ -144,17 +147,27 @@ def log(request):
 @csrf_exempt
 def download_pass(request, customer_card_id):
     """Initial .pkpass download for the enrollment page (capability = UUID)."""
-    if request.method != "GET":
-        return HttpResponseNotAllowed(["GET"])
+    if request.method not in ("GET", "HEAD"):
+        return HttpResponseNotAllowed(["GET", "HEAD"])
     if not is_configured():
         return HttpResponse(status=503)
     cc = CustomerCard.objects.filter(id=customer_card_id).first()
     if cc is None:
         return HttpResponse(status=404)
+    # HEAD: some Safari download flows preflight; answer headers without building.
+    if request.method == "HEAD":
+        return HttpResponse(content_type="application/vnd.apple.pkpass")
     try:
         pkpass = build_pkpass(cc)
     except AppleSigningError:
         return HttpResponse(status=503)
-    resp = HttpResponse(pkpass, content_type="application/vnd.apple.pkpass")
-    resp["Content-Disposition"] = f'attachment; filename="stampn-{cc.id}.pkpass"'
-    return resp
+    except Exception:
+        # Never surface a pass-build error as an HTML 500 — iOS Safari shows
+        # "cannot download this file" for any non-pkpass body. Log for visibility.
+        logger.exception("pkpass build failed for %s", customer_card_id)
+        return HttpResponse(status=500)
+    # NO Content-Disposition: iOS Safari routes a pkpass carrying ANY disposition
+    # (attachment or inline) to its file downloader ("Safari cannot download this
+    # file"). With only the pkpass Content-Type, WebKit hands it straight to
+    # Wallet and shows the Add sheet (matches Apple's web-service spec).
+    return HttpResponse(pkpass, content_type="application/vnd.apple.pkpass")

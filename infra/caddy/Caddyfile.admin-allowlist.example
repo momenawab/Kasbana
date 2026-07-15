@@ -1,0 +1,48 @@
+# Admin edge IP-allowlist — Phase 15 (DRAFT / EXAMPLE, not active).
+#
+# The admin console is the highest-value attack surface in the system (full
+# cross-tenant + billing + impersonation). This snippet restricts the admin
+# endpoints to the team's known egress IPs at the edge, BEFORE a request ever
+# reaches Django — defence in depth on top of the app-layer MFA + RBAC.
+#
+# ── HOW TO ACTIVATE ─────────────────────────────────────────────────────────
+# 1. Collect the team's static egress IPs / office CIDR / VPN exit ranges.
+# 2. Replace the placeholders in the `admin_allowed` matcher below.
+# 3. Fold these blocks into infra/caddy/Caddyfile (merge the matcher into the
+#    api.stampn.net site block and the admin.stampn.net block), reload Caddy:
+#       docker compose -f infra/compose.prod.yml exec caddy caddy reload \
+#         --config /etc/caddy/Caddyfile
+# 4. VERIFY from an allowed IP AND from a disallowed one before you walk away —
+#    a wrong CIDR here locks the team out of the console. Keep SSH access as the
+#    recovery path (you can always reload Caddy from the box).
+#
+# NOTE: `remote_ip` sees Caddy's own view of the client. Because the API sits
+# behind this same Caddy, that is the real client IP here. If you ever put a
+# CDN/LB in front, switch to `client_ip` (trusted-proxy aware) instead.
+
+(admin_allowed) {
+	# ↓↓↓ REPLACE with the team's real IPs / CIDRs before activating ↓↓↓
+	@blocked not remote_ip 203.0.113.0/24 198.51.100.7 10.0.0.0/8
+	respond @blocked "Forbidden" 403
+}
+
+# Option A — lock the admin API paths on api.stampn.net:
+#   api.stampn.net {
+#       import admin_allowed_paths
+#       ...existing reverse_proxy...
+#   }
+(admin_allowed_paths) {
+	@admin_api path /api/admin/*
+	@admin_blocked {
+		path /api/admin/*
+		not remote_ip 203.0.113.0/24 198.51.100.7 10.0.0.0/8
+	}
+	respond @admin_blocked "Forbidden" 403
+}
+
+# Option B — lock the whole admin.stampn.net subdomain:
+#   admin.stampn.net {
+#       import admin_allowed
+#       encode zstd gzip
+#       ...existing config...
+#   }

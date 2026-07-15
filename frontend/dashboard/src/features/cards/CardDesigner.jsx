@@ -1,18 +1,27 @@
 // Card Designer (spec §14) — two-pane: left form, right live WalletPreview
 // (Apple⇄Google). Save draft (DRAFT) / Publish (ACTIVE) → POST or PATCH /cards.
 // Unsaved-changes guard; editing a published card warns it re-provisions passes.
-import { useEffect, useState } from 'react'
+//
+// Create and edit render the SAME fields. A new card opens straight into a blank
+// form (no preset picker), and the full wallet-design section is available before
+// the card exists — the design is held here and persisted right after POST, so a
+// merchant never has to save a card and then go back into it to finish designing.
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useQueryClient } from '@tanstack/react-query'
 import { useCard, useSaveCard } from './api'
+import { useEnrollTheme } from '../enroll-theme/api'
 import { useAuth } from '../../hooks/useAuth'
+import { usePlan } from '../../hooks/usePlan'
 import { useToast } from '../../hooks/useToast'
-import { normalizeError } from '../../lib/api'
+import api, { normalizeError } from '../../lib/api'
 import { Input, Textarea, Select } from '../../components/Field'
 import { Toggle } from '../../components/Toggle'
 import ColorPicker from '../../components/ColorPicker'
 import FileUpload from '../../components/FileUpload'
 import WalletPreview from '../../components/WalletPreview'
+import WalletDesignEditor, { DEFAULTS as DESIGN_DEFAULTS } from './WalletDesignEditor'
 import Button from '../../components/Button'
 import Skeleton from '../../components/Skeleton'
 
@@ -37,19 +46,37 @@ export default function CardDesigner() {
   const { id } = useParams()
   const isEdit = Boolean(id)
   const { merchant } = useAuth()
+  const { can } = usePlan()
+  const branded = can('custom_branding')
   const toast = useToast()
+  const qc = useQueryClient()
   const save = useSaveCard()
 
   const { data: existing, isLoading } = useCard(id)
   const [form, setForm] = useState(EMPTY)
+  // The wallet design. Only used on create — in edit the design editor owns and
+  // saves its own state against the existing card.
+  const [design, setDesign] = useState(DESIGN_DEFAULTS)
   const [dirty, setDirty] = useState(false)
   const [platform, setPlatform] = useState('APPLE')
   const [errors, setErrors] = useState({})
 
+  // "Collect birthday" is NOT a Card field — it lives in the registration theme's
+  // fields_config, the very switch the Enroll page editor writes. Reading the
+  // resolved theme gives the card's own override when editing, and the merchant
+  // default when creating (which is what the new card will inherit anyway).
+  const { data: theme } = useEnrollTheme(id)
+  const seeded = useRef(false)
+  useEffect(() => {
+    if (!theme || seeded.current) return
+    seeded.current = true // seed once, so a refetch can't stomp an unsaved toggle
+    setForm((f) => ({ ...f, collect_birthday: Boolean(theme.fields_config?.birthday?.show) }))
+  }, [theme])
+
   // Seed defaults from the merchant brand (create) or the loaded card (edit).
   useEffect(() => {
     if (isEdit && existing) {
-      setForm({ ...EMPTY, ...existing })
+      setForm((f) => ({ ...EMPTY, ...existing, collect_birthday: f.collect_birthday }))
     } else if (!isEdit) {
       setForm((f) => ({
         ...f,
@@ -76,6 +103,29 @@ export default function CardDesigner() {
     setDirty(true)
   }
   const setEvt = (key) => (e) => set(key)(e.target.value)
+  // The design editor is controlled on create; keep the unsaved-changes guard honest.
+  const changeDesign = (updater) => {
+    setDesign(updater)
+    setDirty(true)
+  }
+
+  // Birthday collection replaces the whole fields_config on PATCH, so merge onto the
+  // resolved config rather than sending `birthday` alone — that would silently wipe
+  // the merchant's phone/name/email settings.
+  async function persistBirthday(cardId) {
+    const base = theme?.fields_config || {}
+    if (Boolean(base.birthday?.show) === form.collect_birthday) return
+    await api.patch(`/cards/${cardId}/enroll-theme`, {
+      fields_config: {
+        ...base,
+        birthday: {
+          show: form.collect_birthday,
+          required: form.collect_birthday ? Boolean(base.birthday?.required) : false,
+        },
+      },
+    })
+    qc.invalidateQueries({ queryKey: ['enroll-theme'] })
+  }
 
   function validate() {
     const errs = {}
@@ -106,6 +156,25 @@ export default function CardDesigner() {
         status,
       }
       const card = await save.mutateAsync(payload)
+      // Both of these need the card to exist, so they land right after it does.
+      // Best-effort: a failure here must not lose the card the merchant just saved,
+      // so surface it and carry on rather than throwing the whole save away.
+      //
+      // The design is only persisted on create — in edit mode the design editor
+      // saves itself. It's premium (the endpoint enforces custom_branding), and on a
+      // free plan its controls are disabled anyway, so there is nothing to send.
+      if (!isEdit && branded) {
+        try {
+          await api.patch(`/cards/${card.id}/wallet-design`, design)
+        } catch {
+          toast.error(t('designer.stampSaveFailed'))
+        }
+      }
+      try {
+        await persistBirthday(card.id)
+      } catch {
+        toast.error(t('designer.birthdaySaveFailed'))
+      }
       setDirty(false)
       toast.success(status === 'ACTIVE' ? t('designer.published') : t('designer.savedDraft'))
       navigate(`/cards/${card.id}`)
@@ -128,7 +197,7 @@ export default function CardDesigner() {
   return (
     <div>
       <div className="mb-5 flex items-center justify-between">
-        <h1 className="font-head text-2xl font-bold text-ink">
+        <h1 className="font-head text-2xl font-bold text-tx">
           {isEdit ? t('designer.editTitle') : t('designer.newTitle')}
         </h1>
         <Button variant="ghost" onClick={guardedBack}>
@@ -137,14 +206,14 @@ export default function CardDesigner() {
       </div>
 
       {isEdit && existing?.status === 'ACTIVE' && (
-        <div className="mb-4 rounded-ctl bg-amber-bg px-4 py-2 text-sm text-amber-d">
+        <div className="mb-4 rounded-ctl bg-violet-bg px-4 py-2 text-sm text-violet-d">
           {t('designer.reprovisionWarning')}
         </div>
       )}
 
       <div className="grid gap-6 md:grid-cols-2">
         {/* Form */}
-        <div className="flex flex-col gap-4 rounded-card border border-line bg-white p-5">
+        <div className="flex flex-col gap-4 rounded-card border border-line bg-surface p-5">
           <Select
             name="type"
             label={t('designer.cardType')}
@@ -170,7 +239,7 @@ export default function CardDesigner() {
                 max={30}
                 value={form.stamps_required}
                 onChange={setEvt('stamps_required')}
-                className="flex-1 accent-amber"
+                className="flex-1 accent-violet"
               />
               <input
                 type="number"
@@ -200,14 +269,26 @@ export default function CardDesigner() {
           <FileUpload label={t('onboarding.logo')} onUploaded={set('logo_url')} />
           <FileUpload label={t('designer.heroImage')} onUploaded={set('hero_image_url')} />
           <div className="grid grid-cols-2 gap-3">
-            <ColorPicker label={t('onboarding.colorBg')} value={form.color_bg} onChange={set('color_bg')} />
-            <ColorPicker label={t('onboarding.colorFg')} value={form.color_fg} onChange={set('color_fg')} />
+            <ColorPicker
+              label={t('onboarding.colorBg')}
+              value={form.color_bg}
+              onChange={set('color_bg')}
+            />
+            <ColorPicker
+              label={t('onboarding.colorFg')}
+              value={form.color_fg}
+              onChange={set('color_fg')}
+            />
           </div>
-          <Toggle
-            checked={form.collect_birthday}
-            onChange={set('collect_birthday')}
-            label={t('designer.collectBirthday')}
-          />
+
+          <div>
+            <Toggle
+              checked={form.collect_birthday}
+              onChange={set('collect_birthday')}
+              label={t('designer.collectBirthday')}
+            />
+            <p className="mt-1 text-xs text-tx-3">{t('designer.collectBirthdayHint')}</p>
+          </div>
           <div>
             <Toggle
               checked={form.single_use}
@@ -225,7 +306,12 @@ export default function CardDesigner() {
             <p className="mt-1 text-xs text-tx-3">{t('designer.referralHint')}</p>
           </div>
           <div className="flex gap-2 pt-2">
-            <Button variant="ghost" onClick={() => persist('DRAFT')} loading={save.isPending} className="flex-1">
+            <Button
+              variant="ghost"
+              onClick={() => persist('DRAFT')}
+              loading={save.isPending}
+              className="flex-1"
+            >
               {t('designer.saveDraft')}
             </Button>
             <Button onClick={() => persist('ACTIVE')} loading={save.isPending} className="flex-1">
@@ -237,15 +323,26 @@ export default function CardDesigner() {
         {/* Live preview */}
         <div className="flex flex-col items-center gap-3 rounded-card bg-paper p-5">
           <div className="flex gap-2">
-            <Button size="sm" variant={platform === 'APPLE' ? 'primary' : 'ghost'} onClick={() => setPlatform('APPLE')}>
+            <Button
+              size="sm"
+              variant={platform === 'APPLE' ? 'primary' : 'ghost'}
+              onClick={() => setPlatform('APPLE')}
+            >
               Apple
             </Button>
-            <Button size="sm" variant={platform === 'GOOGLE' ? 'primary' : 'ghost'} onClick={() => setPlatform('GOOGLE')}>
+            <Button
+              size="sm"
+              variant={platform === 'GOOGLE' ? 'primary' : 'ghost'}
+              onClick={() => setPlatform('GOOGLE')}
+            >
               Google
             </Button>
           </div>
+          {/* Brand-level preview. The pass design has its own faithful preview in the
+              design section below, which is where the design is actually edited. */}
           <WalletPreview
             platform={platform}
+            cardType={form.type}
             logoUrl={form.logo_url}
             colorBg={form.color_bg}
             colorFg={form.color_fg}
@@ -257,6 +354,16 @@ export default function CardDesigner() {
           />
         </div>
       </div>
+
+      {/* Wallet pass design (notes 2-4) — present in BOTH modes. On create it is
+          controlled from here and saved straight after the card is created, so the
+          whole card can be designed in one pass. */}
+      <WalletDesignEditor
+        cardId={id}
+        card={{ ...form, merchantName: merchant?.name }}
+        value={isEdit ? undefined : design}
+        onChange={isEdit ? undefined : changeDesign}
+      />
     </div>
   )
 }

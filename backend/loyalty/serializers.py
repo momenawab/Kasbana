@@ -7,33 +7,23 @@ validate the wire format and never touch the ledger.
 
 from __future__ import annotations
 
-import uuid
-
 from rest_framework import serializers
-
-from core import constants
 
 
 class ScanRequestSerializer(serializers.Serializer):
     """POST /loyalty/scan request body.
 
-    ``code`` is the raw payload read from the customer's wallet QR/barcode:
-    ``{PASS_BARCODE_PREFIX}{customer_card.id.hex}`` (see ``wallets`` builders).
-    We validate the prefix + hex here and expose the parsed ``customer_card_id``
-    so the view only does tenant scoping — the wire format stays server-owned
-    (the cashier UI never has to know the prefix).
+    ``code`` is one of two things the cashier can supply:
+    - the raw wallet QR payload ``{PASS_BARCODE_PREFIX}{customer_card.id.hex}``
+      (scanned, or read by a HID barcode gun), or
+    - the short human code printed under the QR on the pass (see
+      ``wallets.shortcode``), typed by hand.
+
+    Resolution to a ``CustomerCard`` happens in the view because the short-code
+    lookup is tenant-scoped — this serializer only validates the wire shape.
     """
 
     code = serializers.CharField(max_length=64, trim_whitespace=True)
-
-    def validate_code(self, value: str) -> uuid.UUID:
-        prefix = constants.PASS_BARCODE_PREFIX
-        if not value.startswith(prefix):
-            raise serializers.ValidationError("Unrecognized wallet code.")
-        try:
-            return uuid.UUID(hex=value[len(prefix) :])
-        except ValueError as exc:
-            raise serializers.ValidationError("Unrecognized wallet code.") from exc
 
 
 class StampRequestSerializer(serializers.Serializer):
@@ -42,6 +32,9 @@ class StampRequestSerializer(serializers.Serializer):
     customer_card_id = serializers.UUIDField()
     # Contract default is 1; reject zero/negative so a stamp only ever adds.
     delta = serializers.IntegerField(required=False, default=1, min_value=1)
+    # Cashier confirmed a repeat stamp within the cooldown window — skip only the
+    # soft per-card cooldown (daily / per-staff limits still apply).
+    force = serializers.BooleanField(required=False, default=False)
 
 
 class StampResponseSerializer(serializers.Serializer):

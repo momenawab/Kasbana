@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from django.contrib.auth import get_user_model
@@ -14,6 +15,7 @@ from core.enums import Role
 from core.models import Merchant, StaffUser
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
 
 # ── Auth lifecycle ───────────────────────────────────────────────────────────
@@ -26,6 +28,8 @@ class SignupSerializer(serializers.Serializer):
     phone = serializers.CharField(max_length=20)  # E.164
     password = serializers.CharField(min_length=8, write_only=True)
     consent = serializers.BooleanField()
+    # Optional partner referral code (Phase E.1). Blank/unknown = no attribution.
+    referral_code = serializers.CharField(required=False, allow_blank=True, default="")
 
     def validate_consent(self, value: bool) -> bool:
         if not value:
@@ -51,6 +55,17 @@ class SignupSerializer(serializers.Serializer):
         s.save(update_fields=["contact_email", "contact_phone", "updated_at"])
 
         subscription_for(merchant)  # starts the 14-day trial
+
+        # Best-effort partner attribution (Phase E.1) — never block signup on it.
+        code = validated_data.get("referral_code", "")
+        if code:
+            try:
+                from partners.services import attribute_signup
+
+                attribute_signup(merchant, code)
+            except Exception:  # pragma: no cover - defensive
+                logger.exception("partner attribution failed for %s", merchant.id)
+
         return staff
 
 
@@ -76,13 +91,28 @@ class ContactSerializer(serializers.Serializer):
 class BusinessSettingsSerializer(serializers.Serializer):
     """PATCH /settings/business — partial update of branding + contact."""
 
-    name = serializers.CharField(max_length=120, required=False)
+    # Accepted but NOT settable: the business name is fixed at signup (see the view).
+    # It stays in the write shape so a client that echoes the whole form back gets a
+    # clear error on a real rename instead of a silent no-op on an unknown key.
+    name = serializers.CharField(
+        max_length=120,
+        required=False,
+        help_text="Read-only. Fixed at signup; changed only by support.",
+    )
     legal_name = serializers.CharField(max_length=160, required=False, allow_blank=True)
     logo_url = serializers.URLField(required=False, allow_blank=True, allow_null=True)
     color_bg = serializers.CharField(max_length=7, required=False, allow_blank=True)
     color_fg = serializers.CharField(max_length=7, required=False, allow_blank=True)
     contact = ContactSerializer(required=False)
     address = serializers.CharField(max_length=255, required=False, allow_blank=True)
+    # Pass-back contact + social links (each optional — shown on the wallet pass
+    # back only when filled in).
+    facebook_url = serializers.URLField(required=False, allow_blank=True)
+    instagram_url = serializers.URLField(required=False, allow_blank=True)
+    tiktok_url = serializers.URLField(required=False, allow_blank=True)
+    whatsapp = serializers.CharField(max_length=32, required=False, allow_blank=True)
+    terms_url = serializers.URLField(required=False, allow_blank=True)
+    branches = serializers.CharField(required=False, allow_blank=True)
     # Branded enrollment copy (custom_branding plans only — enforced in the view).
     enroll_headline = serializers.CharField(max_length=80, required=False, allow_blank=True)
     enroll_tagline = serializers.CharField(max_length=160, required=False, allow_blank=True)
@@ -115,18 +145,35 @@ class OkSerializer(serializers.Serializer):
     ok = serializers.BooleanField()
 
 
+class PasswordChangeOutSerializer(serializers.Serializer):
+    """A changed password re-issues the caller's tokens (all sessions revoked)."""
+
+    ok = serializers.BooleanField()
+    access = serializers.CharField()
+    refresh = serializers.CharField()
+
+
 class MerchantOutSerializer(serializers.Serializer):
     id = serializers.UUIDField()
     name = serializers.CharField()
+    legal_name = serializers.CharField(allow_blank=True)
     slug = serializers.CharField()
     status = serializers.ChoiceField(choices=["trial", "active", "suspended"])
     plan = serializers.ChoiceField(choices=["trial", "starter", "growth", "chain"])
     trial_ends_at = serializers.DateTimeField(allow_null=True)
     logo_url = serializers.URLField(allow_null=True)
+    address = serializers.CharField(allow_blank=True)
     color_bg = serializers.CharField(allow_blank=True)
     color_fg = serializers.CharField(allow_blank=True)
     enroll_headline = serializers.CharField(allow_blank=True)
     enroll_tagline = serializers.CharField(allow_blank=True)
+    phone = serializers.CharField(allow_blank=True)
+    facebook_url = serializers.CharField(allow_blank=True)
+    instagram_url = serializers.CharField(allow_blank=True)
+    tiktok_url = serializers.CharField(allow_blank=True)
+    whatsapp = serializers.CharField(allow_blank=True)
+    terms_url = serializers.CharField(allow_blank=True)
+    branches = serializers.CharField(allow_blank=True)
 
 
 class EntitlementsOutSerializer(serializers.Serializer):

@@ -8,9 +8,18 @@ Wallet web service requires it).
 from __future__ import annotations
 
 from .base import *  # noqa: F401,F403
-from .base import env_bool
+from .base import env, env_bool
 
 DEBUG = False
+
+# Structured JSON logs in production (base.py defaults to console for local dev),
+# unless an operator explicitly overrides LOG_FORMAT.
+if env("LOG_FORMAT", "json") == "json":
+    LOGGING["handlers"]["default"]["formatter"] = "json"  # type: ignore[index]  # noqa: F405
+
+# Real SMTP in production (Hostinger). Host/port/user default from base.py; the
+# password MUST be provided via the EMAIL_HOST_PASSWORD env var / server secret.
+EMAIL_BACKEND = env("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
 
 SECURE_CONTENT_TYPE_NOSNIFF = True
 

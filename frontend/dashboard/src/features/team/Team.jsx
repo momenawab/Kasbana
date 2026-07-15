@@ -95,7 +95,7 @@ export default function Team() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="font-head text-2xl font-bold text-ink">{t('team.title')}</h1>
+        <h1 className="font-head text-2xl font-bold text-tx">{t('team.title')}</h1>
         <Button iconStart={UserPlus} onClick={openInvite} disabled={atLimit('max_staff')}>
           {t('team.invite')}
         </Button>
@@ -105,7 +105,7 @@ export default function Team() {
         columns={columns}
         rows={staff}
         loading={isLoading}
-        emptyState={<div className="rounded-card border border-line bg-white p-8 text-center text-tx-3"><Users size={28} className="mx-auto mb-2" />{t('team.empty')}</div>}
+        emptyState={<div className="rounded-card border border-line bg-surface p-8 text-center text-tx-3"><Users size={28} className="mx-auto mb-2" />{t('team.empty')}</div>}
       />
 
       <Modal

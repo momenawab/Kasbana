@@ -108,8 +108,8 @@ export default function Onboarding() {
   return (
     <div className="mx-auto max-w-3xl">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="font-head text-2xl font-bold text-ink">{t('onboarding.title')}</h1>
-        <button onClick={() => navigate('/')} className="text-sm text-tx-2 hover:text-ink">
+        <h1 className="font-head text-2xl font-bold text-tx">{t('onboarding.title')}</h1>
+        <button onClick={() => navigate('/')} className="text-sm text-tx-2 hover:text-tx">
           {t('onboarding.skip')}
         </button>
       </div>
@@ -119,10 +119,10 @@ export default function Onboarding() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
-        <div className="rounded-card border border-line bg-white p-5">
+        <div className="rounded-card border border-line bg-surface p-5">
           {step === 0 && (
             <div className="flex flex-col gap-4">
-              <h2 className="font-head font-semibold text-ink">{t('onboarding.brandingTitle')}</h2>
+              <h2 className="font-head font-semibold text-tx">{t('onboarding.brandingTitle')}</h2>
               <FileUpload label={t('onboarding.logo')} onUploaded={setLogoUrl} />
               <ColorPicker label={t('onboarding.colorBg')} value={colorBg} onChange={setColorBg} />
               <ColorPicker label={t('onboarding.colorFg')} value={colorFg} onChange={setColorFg} />
@@ -134,7 +134,7 @@ export default function Onboarding() {
 
           {step === 1 && (
             <div className="flex flex-col gap-4">
-              <h2 className="font-head font-semibold text-ink">{t('onboarding.cardTitle')}</h2>
+              <h2 className="font-head font-semibold text-tx">{t('onboarding.cardTitle')}</h2>
               <Input
                 label={t('onboarding.cardName')}
                 value={cardName}
@@ -166,7 +166,7 @@ export default function Onboarding() {
 
           {step === 2 && (
             <div className="flex flex-col items-center gap-4 text-center">
-              <h2 className="font-head font-semibold text-ink">{t('onboarding.doneTitle')}</h2>
+              <h2 className="font-head font-semibold text-tx">{t('onboarding.doneTitle')}</h2>
               <p className="text-sm text-tx-2">{t('onboarding.doneBody')}</p>
               {qr?.join_url && <QrBlock value={qr.join_url} />}
               <Button onClick={() => navigate('/')} className="w-full">

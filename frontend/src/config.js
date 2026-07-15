@@ -14,6 +14,12 @@ export const DASHBOARD_URL = import.meta.env.VITE_DASHBOARD_URL || 'https://app.
 export const DASHBOARD_LOGIN_URL = `${DASHBOARD_URL}/login`
 export const DASHBOARD_SIGNUP_URL = `${DASHBOARD_URL}/signup`
 
+// Backend API (public endpoints only, e.g. the "Get started" lead form).
+// Override in dev with VITE_API_URL=http://localhost:8000.
+export const API_URL = import.meta.env.VITE_API_URL || 'https://api.stampn.net'
+export const LEADS_ENDPOINT = `${API_URL}/api/v1/leads`
+export const CONTACT_ENDPOINT = `${API_URL}/api/v1/contact`
+
 // Brand
 export const BRAND_NAME = 'Stampn'
 export const BRAND_NAME_AR = 'Stampn'

@@ -66,6 +66,22 @@ ENROLL_BASE_URL = env("ENROLL_BASE_URL", "https://app.stampn.net")
 # Phase 6) point here.
 DASHBOARD_BASE_URL = env("DASHBOARD_BASE_URL", "https://app.stampn.net")
 
+# ── Email (SMTP) ──────────────────────────────────────────────────────────────
+# Outbound mail: password-reset / invite links and admin replies to contact
+# messages. All values are env-driven (see .env.example). The default backend is
+# the console backend, which prints emails to stdout and never sends or fails —
+# safe for local dev and CI. Production overrides EMAIL_BACKEND to real SMTP in
+# prod.py; set EMAIL_HOST_PASSWORD as a secret on the server (never commit it).
+EMAIL_BACKEND = env("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
+EMAIL_HOST = env("EMAIL_HOST", "smtp.hostinger.com")
+EMAIL_PORT = int(env("EMAIL_PORT", "465") or "465")
+EMAIL_USE_SSL = env_bool("EMAIL_USE_SSL", True)
+EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", False)
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", "contact@stampn.net")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", "")
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", "Stampn Support <contact@stampn.net>")
+EMAIL_TIMEOUT = int(env("EMAIL_TIMEOUT", "20") or "20")
+
 # ── Applications ──────────────────────────────────────────────────────────────
 DJANGO_APPS = [
     "django.contrib.admin",
@@ -81,6 +97,10 @@ THIRD_PARTY_APPS = [
     "drf_spectacular",
     "corsheaders",
     "django_celery_beat",
+    "django_celery_results",  # queryable TaskResult table for the ops task monitor (Phase 14)
+    # Tracks issued refresh tokens (OutstandingToken) so a password change can
+    # blacklist every existing session. Ships its own migrations.
+    "rest_framework_simplejwt.token_blacklist",
 ]
 
 # All persistent models live in ``core`` (contract §3.4). The other apps own
@@ -95,12 +115,15 @@ LOCAL_APPS = [
     "dashboard",
     "billing",
     "messaging",
+    "branding",  # registration-page theme + QR styling (finalize Phase 1)
     "console",  # platform admin panel (separate auth boundary)
+    "partners",  # merchant-referral program (Phase E.1)
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
 MIDDLEWARE = [
+    "common.middleware.RequestIDMiddleware",  # first: correlation id for all logs
     "corsheaders.middleware.CorsMiddleware",  # before CommonMiddleware
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",  # serve static behind Caddy
@@ -109,6 +132,7 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "common.middleware.StaffContextMiddleware",  # attaches request.staff
+    "common.middleware.MaintenanceModeMiddleware",  # 503s merchant API in maintenance (Phase 14)
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -214,6 +238,10 @@ REST_FRAMEWORK = {
         "auth": env("THROTTLE_AUTH", "20/min"),
         "webhook": env("THROTTLE_WEBHOOK", "120/min"),
         "admin_auth": env("THROTTLE_ADMIN_AUTH", "10/min"),
+        # Public "Get started" lead intake from the marketing site.
+        "lead_intake": env("THROTTLE_LEAD_INTAKE", "10/min"),
+        # Logged-in merchant opening a support message from the dashboard.
+        "support_message": env("THROTTLE_SUPPORT_MESSAGE", "10/min"),
     },
 }
 
@@ -240,8 +268,13 @@ SIMPLE_JWT = {
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "Stampn API",
-    "DESCRIPTION": "Digital loyalty & wallet-pass platform — v1 API.",
-    "VERSION": "1.0.0",
+    "DESCRIPTION": (
+        "Digital loyalty & wallet-pass platform. Merchant API under `/api/v1` and "
+        "the admin console under `/api/admin/v1`. This document is generated from "
+        "the live code by drf-spectacular — `contracts/openapi.yaml` is the "
+        "committed snapshot and CI fails if it drifts from the served schema."
+    ),
+    "VERSION": "1.2.0",
     "SERVE_INCLUDE_SCHEMA": False,
     "SCHEMA_PATH_PREFIX": r"/api/v1",
     "ENUM_NAME_OVERRIDES": {
@@ -265,11 +298,8 @@ WALLET = {
     },
 }
 
-WALLET_AUTH_TOKEN_SECRET = env("WALLET_AUTH_TOKEN_SECRET", "")
-PASS_BARCODE_SECRET = env("PASS_BARCODE_SECRET", "")
-
 # ── Billing gateways (Phase 1.7 · contract §3.10) ─────────────────────────────
-# Paymob/Fawry credentials. Unset locally/CI → the adapters run in stub mode
+# Paymob credentials. Unset locally/CI → the adapter runs in stub mode
 # (deterministic checkout URL, no network); real creds are wired on staging.
 BILLING = {
     "PAYMOB": {
@@ -277,19 +307,6 @@ BILLING = {
         "HMAC_SECRET": env("PAYMOB_HMAC_SECRET", ""),
         "INTEGRATION_ID": env("PAYMOB_INTEGRATION_ID", ""),
         "IFRAME_ID": env("PAYMOB_IFRAME_ID", ""),
-    },
-    "FAWRY": {
-        "MERCHANT_CODE": env("FAWRY_MERCHANT_CODE", ""),
-        "SECURITY_KEY": env("FAWRY_SECURITY_KEY", ""),
-    },
-}
-
-# ── Messaging (Phase 1.7 · contract §3.10) ────────────────────────────────────
-# WhatsApp Business (Cloud) API. Unset → ``WhatsAppClient`` runs in stub mode.
-MESSAGING = {
-    "WHATSAPP": {
-        "API_TOKEN": env("WHATSAPP_API_TOKEN", ""),
-        "PHONE_ID": env("WHATSAPP_PHONE_ID", ""),
     },
 }
 
@@ -299,13 +316,38 @@ MESSAGING = {
 # reachable over HTTPS for Google to fetch it.
 WALLET_DEFAULT_LOGO_URL = env("WALLET_DEFAULT_LOGO_URL", "") or f"{BASE_URL}/static/wallet/logo.png"
 
+# Platform (Kasbana) watermark/logo rendered at the bottom-left of every wallet
+# pass — the "Powered by" branding slot. Leave blank to render a drawn
+# PLACEHOLDER badge (the slot is wired and ready; drop the real asset in here).
+# Must be a local /uploads URL (read via _local_media_bytes — no SSRF).
+WALLET_PLATFORM_LOGO_URL = env("WALLET_PLATFORM_LOGO_URL", "")
+
+# Platform label shown as Apple ``logoText`` beside the top-left brand logo
+# ("[BrandLogo] Stampn"). Apple store cards have no right-side image slot, so the
+# platform attribution rides here as text. Blank → no platform label.
+WALLET_PLATFORM_LABEL = env("WALLET_PLATFORM_LABEL", "Stampn")
+
 # Mirror selected contract constants into settings for callers that read them
 # from settings (contract §3.10).
 STAMP_COOLDOWN_SECONDS = constants.STAMP_COOLDOWN_SECONDS
 
 # ── Celery (contract §3.9) ────────────────────────────────────────────────────
 CELERY_BROKER_URL = env("CELERY_BROKER_URL") or env("REDIS_URL", "redis://localhost:6379/0")
-CELERY_RESULT_BACKEND = env("CELERY_RESULT_BACKEND") or env("REDIS_URL", "redis://localhost:6379/1")
+# Fail fast when the broker is unreachable so a best-effort enqueue (e.g. the
+# live wallet-pass update on a till stamp) can never hang the web request or its
+# open DB transaction until gunicorn times out (which surfaced as a browser
+# "network error"). ``wallets.service._enqueue`` catches the resulting error.
+CELERY_BROKER_TRANSPORT_OPTIONS = {"socket_timeout": 2, "socket_connect_timeout": 2}
+CELERY_BROKER_CONNECTION_TIMEOUT = 2
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = False
+# Don't retry a publish when the broker is down — fail fast so the caller's
+# best-effort enqueue returns immediately instead of retrying for seconds.
+CELERY_TASK_PUBLISH_RETRY = False
+# Results land in Postgres (django_celery_results) so the Phase 14 ops task monitor
+# can query/retry them; nothing reads results synchronously, so this is safe.
+# RESULT_EXTENDED stores the task name + args, which the retry action re-enqueues.
+CELERY_RESULT_BACKEND = env("CELERY_RESULT_BACKEND") or "django-db"
+CELERY_RESULT_EXTENDED = True
 CELERY_TASK_DEFAULT_QUEUE = "default"
 CELERY_TASK_QUEUES: dict[str, dict] = {
     "default": {},
@@ -323,6 +365,13 @@ CELERY_BEAT_SCHEDULE = {
     # Lock merchants whose 14-day trial elapsed without converting (Phase 1.4).
     "billing-expire-trials": {
         "task": "billing.tasks.expire_trials",
+        "schedule": 3600.0,  # hourly
+    },
+    # Lock subs whose period-end cancel has lapsed (note 6 — cancel keeps access
+    # until the period ends). effective_plan already locks lazily; this tidies
+    # the stored status so queries/dashboard reflect the cancellation.
+    "billing-expire-scheduled-cancels": {
+        "task": "billing.tasks.expire_scheduled_cancellations",
         "schedule": 3600.0,  # hourly
     },
     # Fire date-driven engage automations (birthday/expiry/winback) (Phase 1.7).
@@ -343,6 +392,40 @@ CELERY_BEAT_SCHEDULE = {
 }
 CELERY_TASK_ACKS_LATE = True
 CELERY_TIMEZONE = TIME_ZONE
+
+# ── Structured logging (Phase D) ──────────────────────────────────────────────
+# JSON logs (one object per line) with a request-id correlation field, so prod
+# logs are queryable. Format is env-controlled: `console` (human-readable) is the
+# default for local dev; prod sets LOG_FORMAT=json. Both attach RequestIDFilter.
+LOG_LEVEL = env("LOG_LEVEL", "INFO")
+LOG_FORMAT = env("LOG_FORMAT", "console")  # "json" in prod
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "filters": {
+        "request_id": {"()": "common.logging.RequestIDFilter"},
+    },
+    "formatters": {
+        "json": {"()": "common.logging.JSONFormatter"},
+        "console": {
+            "format": "%(asctime)s %(levelname)-7s [%(request_id)s] %(name)s: %(message)s",
+        },
+    },
+    "handlers": {
+        "default": {
+            "class": "logging.StreamHandler",
+            "filters": ["request_id"],
+            "formatter": "json" if LOG_FORMAT == "json" else "console",
+        },
+    },
+    "root": {"handlers": ["default"], "level": LOG_LEVEL},
+    "loggers": {
+        # Django's request logger duplicates 4xx/5xx we already surface; keep it
+        # at ERROR so the JSON stream isn't noisy with WARNING 404s.
+        "django.request": {"level": "ERROR", "handlers": ["default"], "propagate": False},
+    },
+}
 
 # ── Observability — Sentry (Phase 5) ──────────────────────────────────────────
 # No-op unless SENTRY_DSN is set, so dev/CI stay silent. In prod the DSN comes

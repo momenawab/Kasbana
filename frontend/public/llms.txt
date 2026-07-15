@@ -1,0 +1,32 @@
+# Stampn
+
+> Stampn is a digital loyalty and rewards platform for cafés, restaurants, salons, gyms, and shops. Customers add stamp cards and points cards straight to Apple Wallet and Google Wallet — no app download required. Built Arabic-first for Egypt and the region.
+
+Stampn is currently pre-launch. The public marketing site introduces the product and lets businesses join the launch waitlist. Businesses that join get free white-glove setup, priority onboarding, and founding-member pricing.
+
+## Key facts
+
+- Product: digital loyalty cards (stamp cards + points programs) delivered to Apple Wallet and Google Wallet.
+- No customer app: customers tap "Add to Wallet" — nothing to download or install.
+- Merchant dashboard: businesses issue stamps, hand out rewards, and push instant card updates to customers' lock screens.
+- Audience: cafés, restaurants, salons, gyms, and retail shops in Egypt and the wider region.
+- Languages: English and Arabic (Arabic-first). English site at "/", Arabic site at "/ar".
+- Status: pre-launch; onboarding a first wave of businesses via the waitlist.
+
+## Pages
+
+- [Home](https://stampn.net/): What Stampn is and how it works.
+- [Get started / Join the waitlist](https://stampn.net/get-started): Reserve a spot — leave name, email, phone, and business name; the team reaches out within one day.
+- [Support / Contact](https://stampn.net/support): Send a message; the team replies by email.
+- [Privacy Policy](https://stampn.net/privacy): What data the site collects and how it is used.
+
+## Arabic pages
+
+- [الرئيسية](https://stampn.net/ar)
+- [ابدأ الآن — انضم لقائمة الانتظار](https://stampn.net/ar/get-started)
+- [الدعم / تواصل معنا](https://stampn.net/ar/support)
+- [سياسة الخصوصية](https://stampn.net/ar/privacy)
+
+## Contact
+
+- Email: contact@stampn.net

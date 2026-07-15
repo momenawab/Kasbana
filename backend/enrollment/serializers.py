@@ -6,6 +6,8 @@ import re
 
 from rest_framework import serializers
 
+from branding.serializers import EnrollThemeSerializer
+
 # E.164: optional +, leading non-zero, 7–14 more digits.
 _E164 = re.compile(r"^\+?[1-9]\d{7,14}$")
 
@@ -20,16 +22,23 @@ class EnrollLandingSerializer(serializers.Serializer):
     color_bg = serializers.CharField(allow_blank=True)
     color_fg = serializers.CharField(allow_blank=True)
     logo_url = serializers.CharField(allow_blank=True)
-    # Branded enrollment (custom_branding): custom copy + white-label toggle.
+    # Branded enrollment (custom_branding): custom copy.
     headline = serializers.CharField(allow_blank=True)
     tagline = serializers.CharField(allow_blank=True)
+    # Always true — the footer is mandatory on every plan.
     show_powered_by = serializers.BooleanField()
+    # Resolved registration theme (finalize Phase 1) — stock look on free plans.
+    theme = EnrollThemeSerializer()
 
 
 class EnrollRequestSerializer(serializers.Serializer):
     """POST /enroll/{token} request body."""
 
-    customer_phone = serializers.CharField(max_length=20)
+    # Optional like every other field — the merchant's fields_config decides what
+    # the join form actually demands (the form enforces it, as it does for the rest).
+    customer_phone = serializers.CharField(
+        max_length=20, required=False, allow_blank=True, default=""
+    )
     customer_name = serializers.CharField(
         max_length=120, required=False, allow_blank=True, default=""
     )
@@ -41,6 +50,8 @@ class EnrollRequestSerializer(serializers.Serializer):
 
     def validate_customer_phone(self, value: str) -> str:
         normalized = value.strip().replace(" ", "")
+        if not normalized:  # phone turned off on this join form
+            return ""
         if not _E164.match(normalized):
             raise serializers.ValidationError("Enter a valid phone number in E.164 format.")
         return normalized

@@ -80,6 +80,23 @@ def test_stamp_cooldown_returns_429(auth_client, customer_card):
     assert second.json()["error"]["code"] == "COOLDOWN_ACTIVE"
 
 
+def test_stamp_force_bypasses_cooldown(auth_client, customer_card):
+    """A cashier-confirmed repeat stamp (force=true) skips the soft cooldown."""
+    first = auth_client.post(STAMP_URL, {"customer_card_id": str(customer_card.id)}, format="json")
+    assert first.status_code == 200
+    # Unforced retry is blocked...
+    blocked = auth_client.post(
+        STAMP_URL, {"customer_card_id": str(customer_card.id)}, format="json"
+    )
+    assert blocked.status_code == 429
+    # ...but force=true goes through and increments the balance.
+    forced = auth_client.post(
+        STAMP_URL, {"customer_card_id": str(customer_card.id), "force": True}, format="json"
+    )
+    assert forced.status_code == 200
+    assert forced.json()["stamp_count"] == 2
+
+
 def test_stamp_rejects_zero_delta(auth_client, customer_card):
     resp = auth_client.post(
         STAMP_URL, {"customer_card_id": str(customer_card.id), "delta": 0}, format="json"
@@ -273,11 +290,39 @@ def test_scan_is_read_only(auth_client, customer_card, push_calls):
     assert push_calls == []  # nor pushes a pass update
 
 
-def test_scan_malformed_code_is_422(auth_client):
-    resp = auth_client.post(SCAN_URL, {"code": "not-a-wallet-code"}, format="json")
+def test_scan_empty_code_is_422(auth_client):
+    resp = auth_client.post(SCAN_URL, {"code": ""}, format="json")
     assert resp.status_code == 400
     assert resp.json()["error"]["code"] == "VALIDATION_ERROR"
     assert "code" in resp.json()["error"]["fields"]
+
+
+def test_scan_unknown_code_is_404(auth_client):
+    # A non-WLA string is treated as a short human code; an unknown one misses.
+    resp = auth_client.post(SCAN_URL, {"code": "ZZZZZZ"}, format="json")
+    assert resp.status_code == 404
+    assert resp.json()["error"]["code"] == "NOT_FOUND"
+
+
+def test_scan_resolves_by_short_code(auth_client, customer_card):
+    """Note 1: the short code under the QR resolves the same card as the QR."""
+    from wallets.shortcode import code_for
+
+    code = code_for(customer_card)
+    # Typed lower-case + spaces should still resolve (normalized server-side).
+    resp = auth_client.post(SCAN_URL, {"code": f" {code.lower()} "}, format="json")
+    assert resp.status_code == 200
+    assert resp.json()["customer_card_id"] == str(customer_card.id)
+
+
+def test_scan_short_code_is_tenant_scoped(auth_client):
+    """Another merchant's short code must not resolve (404)."""
+    from wallets.shortcode import code_for
+
+    other = factories.CustomerCardFactory()  # different merchant
+    resp = auth_client.post(SCAN_URL, {"code": code_for(other)}, format="json")
+    assert resp.status_code == 404
+    assert resp.json()["error"]["code"] == "NOT_FOUND"
 
 
 def test_scan_other_merchant_card_is_404(auth_client):

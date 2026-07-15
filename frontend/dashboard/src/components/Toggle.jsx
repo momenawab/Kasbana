@@ -13,7 +13,7 @@ export function Toggle({ checked, onChange, label, disabled = false }) {
         }`}
       >
         <span
-          className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all ${
+          className={`absolute top-0.5 h-5 w-5 rounded-full bg-surface transition-all ${
             checked ? 'start-[22px]' : 'start-0.5'
           }`}
         />
@@ -31,7 +31,7 @@ export function Checkbox({ checked, onChange, label, disabled = false }) {
         checked={checked}
         disabled={disabled}
         onChange={(e) => onChange(e.target.checked)}
-        className="h-4 w-4 rounded border-line text-amber focus:ring-amber"
+        className="h-4 w-4 rounded border-line text-violet focus:ring-violet"
       />
       {label && <span className="text-sm text-tx">{label}</span>}
     </label>

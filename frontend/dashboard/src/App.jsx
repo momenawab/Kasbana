@@ -15,6 +15,9 @@ import CardDesigner from './features/cards/CardDesigner'
 import CardDetail from './features/cards/CardDetail'
 import Poster from './features/cards/Poster'
 import EnrollQr from './features/cards/EnrollQr'
+import MainQr from './features/main-qr/MainQr'
+import Support from './features/support/Support'
+import EnrollThemePage from './features/enroll-theme/EnrollThemePage'
 import CustomersList from './features/customers/CustomersList'
 import CustomerProfile from './features/customers/CustomerProfile'
 import Analytics from './features/analytics/Analytics'
@@ -26,12 +29,14 @@ import Team from './features/team/Team'
 import Billing from './features/billing/Billing'
 import Settings from './features/settings/Settings'
 import Gallery from './routes/Gallery'
+import { PassGallery } from './wallet-pass'
 
 export default function App() {
   return (
     <Routes>
       {/* Public */}
       <Route path="/__gallery" element={<Gallery />} />
+      <Route path="/__passes" element={<PassGallery />} />
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
       <Route path="/forgot" element={<Forgot />} />
@@ -55,7 +60,9 @@ export default function App() {
         <Route path="/cards/:id" element={<CardDetail />} />
         <Route path="/cards/:id/edit" element={<CardDesigner />} />
         <Route path="/cards/:id/qr" element={<EnrollQr />} />
+        <Route path="/cards/:id/enroll-page" element={<EnrollThemePage />} />
         <Route path="/cards/:id/poster" element={<Poster />} />
+        <Route path="/main-qr" element={<MainQr />} />
         <Route path="/customers" element={<CustomersList />} />
         <Route path="/customers/:id" element={<CustomerProfile />} />
         <Route path="/analytics" element={<Analytics />} />
@@ -67,6 +74,7 @@ export default function App() {
         <Route path="/team" element={<Team />} />
         <Route path="/billing" element={<Billing />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/support" element={<Support />} />
         <Route path="/onboarding" element={<Onboarding />} />
       </Route>
 

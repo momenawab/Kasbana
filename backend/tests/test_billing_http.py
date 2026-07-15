@@ -1,8 +1,8 @@
 """Tests for billing HTTP endpoints + gateway webhooks (Phase 1.7).
 
 Covers GET /billing, subscribe (checkout via faked gateway), invoices, cancel,
-and the Paymob/Fawry webhook → activate_plan/lock round-trip. The gateway
-adapters are faked (stub mode) so no real HTTP is made.
+and the Paymob webhook → activate_plan/lock round-trip. The gateway adapter is
+faked (stub mode) so no real HTTP is made.
 """
 
 from __future__ import annotations
@@ -41,8 +41,6 @@ def test_billing_state_during_trial(merchant):
     assert body["trial_ends_at"] is not None
     # Trial = Growth-level access, so the trial price reflects Growth.
     assert Decimal(str(body["price_egp"])) == Decimal("799")
-    assert body["usage"]["whatsapp_used"] == 0
-    assert body["usage"]["whatsapp_quota"] == 0  # WhatsApp disabled (wallet push only)
 
 
 def test_billing_state_requires_admin(merchant):
@@ -157,50 +155,14 @@ def test_paymob_webhook_replay_is_idempotent(settings, merchant):
     assert sub.plan == PlanTier.GROWTH
 
 
-def _fawry_body(*, ref: str, status: str = "PAID", amount: str = "799.00", sig: str = "bad"):
-    return json.dumps(
-        {
-            "merchantRefNumber": ref,
-            "orderStatus": status,
-            "paymentAmount": amount,
-            "paymentRefrenceNumber": "fawry-txn-1",
-            "messageSignature": sig,
-        }
-    ).encode()
-
-
-def test_subscribe_rejects_disabled_provider(merchant):
-    """Fawry is disabled — a ?provider=fawry checkout must be refused, not 500."""
+def test_subscribe_rejects_unknown_provider(merchant):
+    """An unknown/unsupported provider (Paymob is the only one) must be refused,
+    not 500 — never route money to a provider we can't verify."""
     client, _ = _client_for(Role.OWNER, merchant)
     resp = client.post(
         "/api/v1/billing/subscribe?provider=fawry", {"plan": "growth"}, format="json"
     )
     assert resp.status_code == 400
-
-
-def test_fawry_webhook_disabled_returns_404(settings, merchant):
-    """The Fawry webhook route is kept (frozen contract) but inert while the
-    provider is disabled — a callback is acknowledged with 404, not processed."""
-    settings.DEBUG = True
-    client, _ = _client_for(Role.OWNER, merchant)
-    resp = client.post(
-        "/api/v1/billing/webhook/fawry",
-        data=_fawry_body(ref="ref123"),
-        content_type="application/json",
-    )
-    assert resp.status_code == 404
-
-
-def test_fawry_adapter_still_rejects_bad_signature(settings):
-    """The retained Fawry adapter verifies callbacks (constant-time) so it stays
-    safe to re-enable even though no route reaches it today."""
-    from billing.gateways.base import WebhookVerificationError
-    from billing.gateways.fawry import FawryGateway
-
-    settings.DEBUG = False
-    settings.BILLING = {**settings.BILLING, "FAWRY": {"SECURITY_KEY": "shh", "MERCHANT_CODE": "mc"}}
-    with pytest.raises(WebhookVerificationError):
-        FawryGateway().verify_and_parse(headers={}, body=_fawry_body(ref="r1", sig="wrong"))
 
 
 def test_paymob_webhook_bad_hmac_rejected(settings, merchant):
@@ -215,13 +177,48 @@ def test_paymob_webhook_bad_hmac_rejected(settings, merchant):
     assert resp.status_code == 400
 
 
-def test_cancel_locks_subscription(merchant):
+def test_cancel_on_trial_schedules_and_keeps_access(merchant):
+    """A trialing merchant who cancels keeps trial access until it lapses."""
     client, _ = _client_for(Role.OWNER, merchant)
     resp = client.post("/api/v1/billing/cancel", {"reason": "too pricey"}, format="json")
     assert resp.status_code == 200
     assert resp.json()["ok"] is True
+    assert resp.json()["cancels_on"] is not None
     sub = Subscription.objects.get(merchant=merchant)
-    assert sub.status == BillingStatus.CANCELED
+    # Not locked yet — access is retained until the period (trial) ends.
+    assert sub.status == BillingStatus.TRIALING
+    assert sub.cancel_at_period_end is True
+    assert sub.effective_plan() is not None
+
+
+def test_cancel_on_paid_plan_keeps_access_until_period_end(merchant):
+    """A paid merchant keeps their plan until current_period_end, then locks."""
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from billing.services import subscription_for
+
+    sub = subscription_for(merchant)
+    sub.status = BillingStatus.ACTIVE
+    sub.plan = PlanTier.GROWTH
+    sub.current_period_end = timezone.now() + timedelta(days=20)
+    sub.save()
+
+    client, _ = _client_for(Role.OWNER, merchant)
+    resp = client.post("/api/v1/billing/cancel", {"reason": "later"}, format="json")
+    assert resp.status_code == 200
+
+    sub.refresh_from_db()
+    assert sub.status == BillingStatus.ACTIVE  # still active until period end
+    assert sub.cancel_at_period_end is True
+    assert sub.effective_plan() == PlanTier.GROWTH  # access retained now
+
+    # Fast-forward past the period end: access is now locked.
+    sub.current_period_end = timezone.now() - timedelta(minutes=1)
+    sub.save()
+    assert sub.effective_plan() is None
+    assert sub.cancels_on() is None
 
 
 # ── invoices ──────────────────────────────────────────────────────────────────

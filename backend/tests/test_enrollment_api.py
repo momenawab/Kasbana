@@ -27,8 +27,8 @@ def test_get_landing_returns_program_details(api_client, card, token):
 
 
 def test_landing_shows_powered_by_without_custom_branding(api_client, card, token):
-    # A trial merchant = Growth-level = has custom_branding, so it's white-label.
-    # Force a non-branded plan: activate Starter (custom_branding off).
+    # A trial merchant = Growth-level = has custom_branding. Force a non-branded
+    # plan: activate Starter (custom_branding off).
     from billing.services import activate_plan
     from core.enums import PlanTier
 
@@ -38,7 +38,8 @@ def test_landing_shows_powered_by_without_custom_branding(api_client, card, toke
     assert body["headline"] == ""
 
 
-def test_landing_uses_custom_copy_and_hides_powered_by_when_branded(api_client, card, token):
+def test_landing_uses_custom_copy_but_still_shows_powered_by_when_branded(api_client, card, token):
+    # The footer is mandatory: even a custom_branding plan cannot suppress it.
     from accounts.services import settings_for
     from billing.services import activate_plan
     from core.enums import PlanTier
@@ -50,7 +51,7 @@ def test_landing_uses_custom_copy_and_hides_powered_by_when_branded(api_client, 
     s.save()
 
     body = api_client.get(f"/api/v1/enroll/{token.token}").json()
-    assert body["show_powered_by"] is False
+    assert body["show_powered_by"] is True
     assert body["headline"] == "Welcome to Cairo Coffee ☕"
     assert body["tagline"] == "Collect stamps, earn free drinks."
 
@@ -175,6 +176,29 @@ def test_post_enroll_duplicate_phone_conflicts(api_client, card, token):
     assert second.json()["error"]["code"] == "ALREADY_ENROLLED"
     # Only one card created.
     assert CustomerCard.objects.filter(card=card, customer_phone="+201234567890").count() == 1
+
+
+def test_post_enroll_without_phone_is_allowed(api_client, card, token):
+    # Phone is optional now (the merchant's fields_config decides). Omitting it
+    # must still mint a card — the member just lives in their wallet pass.
+    resp = api_client.post(
+        f"/api/v1/enroll/{token.token}", {"consent": True, "customer_name": "Nour"}, format="json"
+    )
+    assert resp.status_code == 201
+    assert CustomerCard.objects.filter(card=card, customer_phone="").count() == 1
+
+
+def test_two_phoneless_members_can_both_join(api_client, card, token):
+    # Regression: uniqueness is partial. If it applied to blank phones, the second
+    # phone-less person to join a program would collide on "" and be turned away.
+    first = api_client.post(
+        f"/api/v1/enroll/{token.token}", {"consent": True, "customer_name": "A"}, format="json"
+    )
+    second = api_client.post(
+        f"/api/v1/enroll/{token.token}", {"consent": True, "customer_name": "B"}, format="json"
+    )
+    assert (first.status_code, second.status_code) == (201, 201)
+    assert CustomerCard.objects.filter(card=card, customer_phone="").count() == 2
 
 
 def test_post_enroll_normalizes_phone_spaces(api_client, token):

@@ -1,5 +1,16 @@
 import { useState } from 'react'
-import { Loader2, Eye, KeyRound, Mail, Unplug, MessageSquare } from 'lucide-react'
+import {
+  Loader2,
+  Eye,
+  KeyRound,
+  Mail,
+  Unplug,
+  MessageSquare,
+  Inbox,
+  Reply,
+  Send,
+  X,
+} from 'lucide-react'
 import {
   useSupportNotes,
   useAddSupportNote,
@@ -8,11 +19,16 @@ import {
   useSendPasswordReset,
   useResendInvite,
   useClearStuckCheckout,
+  useMerchantMessages,
+  useReplyMerchantMessage,
 } from './api'
 import { useAuth } from '../../hooks/useAuth'
 import Badge from '../../components/Badge'
 import { normalizeError } from '../../lib/api'
 import { fromNow, shortDate } from '../../lib/format'
+
+const MSG_TONE = { new: 'info', read: 'neutral', replied: 'success' }
+const MSG_LABEL = { new: 'New', read: 'Read', replied: 'Replied' }
 
 const SUPPORT_ROLES = ['SUPER_ADMIN', 'SUPPORT']
 // Where the merchant dashboard lives — the impersonation token is handed off via
@@ -37,6 +53,8 @@ export default function SupportTab({ merchantId, merchantName }) {
 
   const notes = useSupportNotes(merchantId)
   const addNote = useAddSupportNote(merchantId)
+  const messages = useMerchantMessages(merchantId)
+  const replyMessage = useReplyMerchantMessage(merchantId)
   const impersonations = useImpersonations(merchantId)
   const startImpersonation = useStartImpersonation(merchantId)
   const sendReset = useSendPasswordReset(merchantId)
@@ -59,7 +77,10 @@ export default function SupportTab({ merchantId, merchantName }) {
       const res = await startImpersonation.mutateAsync({ reason })
       const url = `${DASHBOARD_URL}/#impersonate=${encodeURIComponent(res.access)}`
       window.open(url, '_blank', 'noopener')
-      flash('info', `Opened a view-as session as ${res.target_email} (expires ${shortDate(res.expires_at)}).`)
+      flash(
+        'info',
+        `Opened a view-as session as ${res.target_email} (expires ${shortDate(res.expires_at)}).`
+      )
     } catch (err) {
       flash('danger', normalizeError(err).message)
     }
@@ -87,10 +108,13 @@ export default function SupportTab({ merchantId, merchantName }) {
 
   if (!canAct) {
     return (
-      <div className="rounded-card border border-line bg-surface p-6 text-sm text-tx-3">
-        Support tools (impersonation, account actions, notes) are available to Support and
-        Super-admin roles. You can view the notes thread and activity timeline.
-        <NotesThread notes={notes} readOnly />
+      <div className="flex flex-col gap-4">
+        <MerchantMessages messages={messages} reply={replyMessage} />
+        <div className="rounded-card border border-line bg-surface p-6 text-sm text-tx-3">
+          Support tools (impersonation, account actions, notes) are available to Support and
+          Super-admin roles. You can view the messages, notes thread, and activity timeline.
+          <NotesThread notes={notes} readOnly />
+        </div>
       </div>
     )
   }
@@ -99,7 +123,11 @@ export default function SupportTab({ merchantId, merchantName }) {
     <div className="flex flex-col gap-4">
       {banner && (
         <div className="rounded-card border border-line bg-surface p-3 text-sm">
-          <Badge tone={banner.tone === 'danger' ? 'danger' : banner.tone === 'success' ? 'success' : 'info'}>
+          <Badge
+            tone={
+              banner.tone === 'danger' ? 'danger' : banner.tone === 'success' ? 'success' : 'info'
+            }
+          >
             {banner.tone === 'danger' ? 'Error' : 'Done'}
           </Badge>
           <span className="ml-2 text-tx-2">{banner.text}</span>
@@ -109,8 +137,8 @@ export default function SupportTab({ merchantId, merchantName }) {
       <div className="grid gap-3 md:grid-cols-2">
         <ActionCard icon={Eye} title="View as merchant">
           <p className="mb-3 text-xs text-tx-3">
-            Opens the merchant dashboard in a time-limited, fully audited session with a
-            persistent banner. Never for billing actions.
+            Opens the merchant dashboard in a time-limited, fully audited session with a persistent
+            banner. Never for billing actions.
           </p>
           <button
             onClick={viewAsMerchant}
@@ -122,11 +150,11 @@ export default function SupportTab({ merchantId, merchantName }) {
         </ActionCard>
 
         <ActionCard icon={KeyRound} title="Send password reset">
-          <p className="mb-3 text-xs text-tx-3">
-            Emails the merchant owner a 1-hour reset link.
-          </p>
+          <p className="mb-3 text-xs text-tx-3">Emails the merchant owner a 1-hour reset link.</p>
           <button
-            onClick={() => runAction(sendReset, undefined, 'Password reset email sent to the owner.')}
+            onClick={() =>
+              runAction(sendReset, undefined, 'Password reset email sent to the owner.')
+            }
             disabled={sendReset.isPending}
             className="rounded-ctl border border-line bg-surface-2 px-4 py-2 text-sm font-semibold text-tx hover:border-brand disabled:opacity-60"
           >
@@ -145,9 +173,11 @@ export default function SupportTab({ merchantId, merchantName }) {
             />
             <button
               onClick={() =>
-                runAction(resendInvite, { email: inviteEmail }, 'Invite re-sent and its expiry refreshed.').then(
-                  () => setInviteEmail('')
-                )
+                runAction(
+                  resendInvite,
+                  { email: inviteEmail },
+                  'Invite re-sent and its expiry refreshed.'
+                ).then(() => setInviteEmail(''))
               }
               disabled={resendInvite.isPending || !inviteEmail}
               className="rounded-ctl border border-line bg-surface-2 px-4 py-2 text-sm font-semibold text-tx hover:border-brand disabled:opacity-60"
@@ -184,13 +214,18 @@ export default function SupportTab({ merchantId, merchantName }) {
         ) : (
           <ul className="flex flex-col gap-2 text-sm">
             {impersonations.data.map((s) => (
-              <li key={s.id} className="flex items-center justify-between border-b border-line/60 pb-2 last:border-0">
+              <li
+                key={s.id}
+                className="flex items-center justify-between border-b border-line/60 pb-2 last:border-0"
+              >
                 <span className="text-tx-2">
                   {s.admin_email} → {s.target_email}
                   <span className="ml-2 text-xs text-tx-3">{s.reason}</span>
                 </span>
                 <span className="flex items-center gap-2">
-                  <Badge tone={s.active ? 'info' : 'neutral'}>{s.active ? 'active' : 'ended'}</Badge>
+                  <Badge tone={s.active ? 'info' : 'neutral'}>
+                    {s.active ? 'active' : 'ended'}
+                  </Badge>
                   <span className="text-xs text-tx-3">{fromNow(s.created_at)}</span>
                 </span>
               </li>
@@ -198,6 +233,9 @@ export default function SupportTab({ merchantId, merchantName }) {
           </ul>
         )}
       </div>
+
+      {/* Messages the merchant sent from its dashboard support form */}
+      <MerchantMessages messages={messages} reply={replyMessage} />
 
       {/* Notes thread */}
       <div className="rounded-card border border-line bg-surface p-4">
@@ -227,11 +265,118 @@ export default function SupportTab({ merchantId, merchantName }) {
   )
 }
 
+function MerchantMessages({ messages, reply }) {
+  return (
+    <div className="rounded-card border border-line bg-surface p-4">
+      <div className="mb-3 flex items-center gap-2 text-tx">
+        <Inbox size={16} className="text-tx-3" />
+        <h3 className="font-head text-sm font-semibold">Messages from merchant</h3>
+      </div>
+      {messages.isLoading ? (
+        <Loader2 size={16} className="animate-spin text-tx-3" />
+      ) : (messages.data ?? []).length === 0 ? (
+        <p className="text-sm text-tx-3">No messages from this merchant yet.</p>
+      ) : (
+        <ul className="flex flex-col gap-3">
+          {messages.data.map((m) => (
+            <MerchantMessageRow key={m.id} m={m} reply={reply} />
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+function MerchantMessageRow({ m, reply }) {
+  const [open, setOpen] = useState(false)
+  const [text, setText] = useState('')
+
+  const replyError = reply.isError
+    ? reply.error?.response?.data?.error?.message || 'Could not send the email. Please try again.'
+    : null
+
+  async function send() {
+    if (!text.trim()) return
+    try {
+      await reply.mutateAsync({ id: m.id, message: text.trim() })
+      setText('')
+      setOpen(false)
+    } catch {
+      // surfaced inline via replyError
+    }
+  }
+
+  return (
+    <li className="border-b border-line/60 pb-3 last:border-0">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <Badge tone={MSG_TONE[m.status] ?? 'neutral'}>{MSG_LABEL[m.status] ?? m.status}</Badge>
+            <span className="truncate font-semibold text-tx">{m.subject}</span>
+          </div>
+          <span className="text-xs text-tx-3">
+            {m.name} · {fromNow(m.created_at)}
+          </span>
+        </div>
+        <button
+          onClick={() => setOpen((v) => !v)}
+          className="flex shrink-0 items-center gap-1 rounded-ctl border border-line px-3 py-1.5 text-sm text-tx-2 hover:border-brand hover:text-brand"
+        >
+          <Reply size={14} /> Reply
+        </button>
+      </div>
+      <p className="mt-2 whitespace-pre-wrap text-sm text-tx-2">{m.message}</p>
+
+      {open && (
+        <div className="mt-3 border-t border-line pt-3">
+          <label className="mb-1 block text-xs font-semibold text-tx-3">
+            Reply to {m.name} — they&apos;ll receive the branded Stampn email.
+          </label>
+          <textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            rows={4}
+            placeholder="Write your reply…"
+            className="w-full rounded-ctl border border-line bg-surface-2 p-3 text-sm text-tx outline-none focus:border-brand"
+          />
+          {replyError && <p className="mt-1 text-xs text-danger">{replyError}</p>}
+          <div className="mt-2 flex justify-end gap-2">
+            <button
+              onClick={() => {
+                setOpen(false)
+                setText('')
+                reply.reset()
+              }}
+              className="flex items-center gap-1 rounded-ctl border border-line px-3 py-1.5 text-sm text-tx-2 hover:text-tx"
+            >
+              <X size={14} /> Cancel
+            </button>
+            <button
+              onClick={send}
+              disabled={reply.isPending || !text.trim()}
+              className="flex items-center gap-1 rounded-ctl bg-brand px-4 py-1.5 text-sm font-semibold text-white hover:bg-brand-d disabled:opacity-60"
+            >
+              {reply.isPending ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <Send size={14} />
+              )}
+              Send reply
+            </button>
+          </div>
+        </div>
+      )}
+    </li>
+  )
+}
+
 function NotesThread({ notes, readOnly }) {
   if (notes.isLoading) return <Loader2 size={16} className="animate-spin text-tx-3" />
   const rows = notes.data ?? []
   if (rows.length === 0) {
-    return <p className={readOnly ? 'mt-3 text-sm text-tx-3' : 'text-sm text-tx-3'}>No notes yet.</p>
+    return (
+      <p className={readOnly ? 'mt-3 text-sm text-tx-3' : 'text-sm text-tx-3'}>No notes yet.</p>
+    )
   }
   return (
     <ul className={'flex flex-col gap-3' + (readOnly ? ' mt-3' : '')}>

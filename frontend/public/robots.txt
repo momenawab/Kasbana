@@ -1,0 +1,16 @@
+# Stampn — https://stampn.net
+# Everything here is public marketing content; let search engines index it all.
+User-agent: *
+Allow: /
+
+# AI crawlers are welcome too (see /llms.txt for a guided summary).
+User-agent: GPTBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+Sitemap: https://stampn.net/sitemap.xml

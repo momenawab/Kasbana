@@ -64,5 +64,10 @@ jobs:
         env:
           DJANGO_SETTINGS_MODULE: config.settings.dev
 
-      - name: Pytest
-        run: pytest
+      - name: OpenAPI contract is in sync
+        run: python manage.py check_openapi
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings.dev
+
+      - name: Pytest (with coverage)
+        run: pytest --cov=. --cov-report=term-missing:skip-covered --cov-report=xml

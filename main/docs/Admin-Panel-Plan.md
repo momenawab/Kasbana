@@ -725,8 +725,33 @@ plans; a Read-only admin can't mutate anything; matrix is the single source of t
 
 ---
 
-## Phase 13 — Audit Log Viewer & Compliance (PDPL)
+## Phase 13 — Audit Log Viewer & Compliance (PDPL) — ✅ DONE
 **Goal:** answer "who did what?" and honor data-protection obligations.
+
+**Shipped:** **Audit viewer** over the append-only `AdminAuditLog` spine —
+`GET /audit` (filter by actor email / action / target-type / target-id / date
+range, cursor-paginated) + `GET /audit/export` (filtered CSV). Both are reads,
+so they stay open to any active admin (auditing is precisely Read-only's job) —
+nothing here mutates. **Compliance** tools, all super-admin-only (three new
+matrix keys `COMPLIANCE_EXPORT` / `COMPLIANCE_DELETE` / `RETENTION_MANAGE`, held
+implicitly by super-admin and by no other role): per-merchant **data export**
+(`GET /merchants/{id}/export` — a lossless JSON bundle of every stored record,
+audited because it carries PII); **right-to-be-forgotten** (`DELETE
+/merchants/{id}/erase` — requires typing the exact slug + a reason, snapshots the
+row counts into the audit trail *before* the single `merchant.delete()` that
+cascades to customers/cards/ledger/wallets/invoices, wrapped in a transaction);
+**consent records** (`GET /merchants/{id}/consent` — the customers' PDPL
+`consent_at`, any admin); and a global **retention policy** (`GET` any admin /
+`PATCH` super-admin, audited) — a `RetentionPolicy` singleton storing per-domain
+day windows (0 = keep forever). Automated purging is deferred (declared now,
+enforced later — same pattern as MFA in Phase 12). Frontend: **Audit Log**
+screen (filters, load-more, before/after detail drawer, CSV export), a
+**Compliance** screen (retention policy editor, super-only), and a per-merchant
+**Compliance** tab on the merchant detail (export, consent table, danger-zone
+typed-confirm erase). 17 new backend tests (filters, export, super-only gating,
+typed-confirm + cascade + pre-delete audit snapshot, consent read, retention
+read/write + negative rejection); 422 backend tests green;
+ruff/black/mypy/spectacular clean; admin lint/build clean.
 
 **Backend**
 - Audit **viewer** API: search/filter the `AdminAuditLog` by admin/action/target/
@@ -749,8 +774,35 @@ merchant's data can be exported or fully deleted on request.
 
 ---
 
-## Phase 14 — Platform Operations, Health & Config
+## Phase 14 — Platform Operations, Health & Config — ✅ DONE
 **Goal:** run the machine — health, jobs, integrations, feature flags, settings.
+
+**Shipped:** new `OPS_MANAGE` matrix key held by **Engineering + super-admin**
+(Engineering's first permission — it is now MFA-required alongside the other
+privileged roles). **Health** (`GET /ops/health`, any admin) runs *real*
+best-effort probes — DB `SELECT 1`, cache round-trip, Celery worker ping, per-
+queue Redis backlog, Sentry-configured flag — each degrading to an honest red
+tile, never fabricated. **Feature flags** (`FeatureFlag` + per-merchant
+`FeatureFlagOverride`, console-owned) with a `console.flags.flag_enabled(key,
+merchant)` resolver (override wins over the global default; unknown → off) that
+runtime reads via a lazy import; CRUD + toggle + override endpoints. **Platform
+settings** (`PlatformSetting` key/JSON) and **maintenance mode** (`GET/PATCH
+/ops/maintenance`) enforced by `MaintenanceModeMiddleware`, which 503s merchant
+API traffic while leaving `/api/admin/` + health reachable (state briefly cached,
+refreshed on write). **Observability**: added `django_celery_results` (result
+backend → Postgres, nothing reads results synchronously) for a queryable **task
+monitor** + retry (`ops/tasks`, re-enqueue by name+args); a **webhook delivery
+log** (`billing.WebhookDelivery`, recorded by the Paymob/Fawry webhook views with
+a signature-free replayable payload) + replay; and a **wallet-sync failure log**
+(`wallets.WalletSyncFailure`, recorded by the provision/push tasks on error) +
+re-provision. New models live in their owning app (billing/wallets/console), not
+the frozen `core`. Frontend **Operations** dashboard: Health tiles, Feature Flags
+manager (toggle + per-merchant overrides), Settings + maintenance toggle, Jobs
+monitor + retry, Webhooks log + replay, Wallet Sync failures + re-provision —
+mutating actions shown only to Engineering/super. 20 new backend tests (health,
+flag resolver + override, settings, maintenance + middleware 503, task retry +
+unparseable-args guard, webhook replay, wallet re-provision, OPS_MANAGE gating);
+442 backend tests green; ruff/black/mypy/spectacular clean; admin lint/build clean.
 
 **Backend**
 - **Health**: API/DB/Redis/Celery status, queue depth, failed-task list
@@ -774,8 +826,39 @@ failed jobs / re-provision passes, and flip feature flags without a deploy.
 
 ---
 
-## Phase 15 — Hardening, Security & Launch
+## Phase 15 — Hardening, Security & Launch — ✅ DONE (code); launch items owner-assigned
 **Goal:** make the admin panel production-safe and launch it.
+
+**Shipped (code):** **MFA/TOTP** — enrolment (`pyotp`, SVG QR), a login TOTP gate,
+and **forced enrolment** for privileged roles via a scoped `mfa_setup` pending
+token (correct password → must enrol → never locked out); the auth layer rejects
+pending tokens on every real endpoint. **Sessions** — a new `AdminSession` per
+login; access + refresh carry a `sid` checked on every request (revoke = instant
+kill); refresh **rotation with reuse-detection** (`refresh_epoch`; a replayed
+refresh revokes the session); device/session list, per-session revoke, and "log
+out everywhere". **Step-up** re-auth (password + TOTP) guards the irreversible
+merchant-erase (`STEP_UP_REQUIRED`; 5-min freshness window). **Brute-force
+lockout** (5 fails → 15-min lock) atop the `admin_auth` 10/min throttle.
+**Super-admin Reset-MFA** recovery path (clears TOTP + revokes the target's
+sessions). **Frontend**: two-step MFA login (challenge + forced-setup QR),
+**Security** screen (session/device list, log-out-everywhere, voluntary 2FA
+enrolment), a reusable **step-up modal** wired into erase, and the **Sentry**
+browser SDK (guarded by `VITE_SENTRY_DSN`, tagged `app:admin-console`).
+**Security test suite** green: auth-boundary, permission-matrix, MFA gate,
+lockout, session revoke, refresh reuse-detection, step-up, audit-completeness
+(16 new tests; 458 backend tests total). ruff/black/mypy/spectacular clean; admin
+lint/build clean.
+
+**Drafted for the team (owner-assigned, see `Admin-Launch-Checklist.md`):** edge
+IP-allowlist (`infra/caddy/Caddyfile.admin-allowlist.example`, placeholder IPs —
+kept as a separate example so untested rules can't lock the team out); the
+compromised-admin **incident runbook** (`Admin-Incident-Runbook.md`); and the
+**launch checklist** itself. Remaining before public launch: fill the allowlist
+IPs + activate, set `VITE_SENTRY_DSN`, manual pentest pass, dependency audit,
+backup-restore test, analytics load-test, and eng-lead sign-off.
+
+> **Deploy note:** existing admin tokens (pre-Phase-15, no `sid`) are rejected
+> once — every admin re-logs in and privileged roles enrol MFA on that login.
 
 **Scope**
 - **MFA/2FA enforced** (TOTP) for all admins (mandatory for privileged roles).

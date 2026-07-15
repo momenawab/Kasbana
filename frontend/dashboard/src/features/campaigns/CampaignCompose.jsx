@@ -28,7 +28,6 @@ export default function CampaignCompose() {
     }
     try {
       await create.mutateAsync({
-        channel: 'PUSH',
         audience: audience || 'all',
         message: text,
         schedule_at: scheduleAt || null,
@@ -47,8 +46,8 @@ export default function CampaignCompose() {
         {t('onboarding.back')}
       </Button>
 
-      <div className="flex flex-col gap-4 rounded-card border border-line bg-white p-5">
-        <h1 className="font-head text-2xl font-bold text-ink">{t('compose.title')}</h1>
+      <div className="flex flex-col gap-4 rounded-card border border-line bg-surface p-5">
+        <h1 className="font-head text-2xl font-bold text-tx">{t('compose.title')}</h1>
 
         <Select
           name="audience"

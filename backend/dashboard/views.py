@@ -11,6 +11,7 @@ Every queryset is scoped to the caller's merchant via ``for_merchant`` /
 
 from __future__ import annotations
 
+import csv
 import re
 from datetime import date, timedelta
 from pathlib import Path
@@ -18,7 +19,9 @@ from typing import Any
 
 from django.conf import settings
 from django.db.models import Count, F, Prefetch, Q, QuerySet
+from django.http import StreamingHttpResponse
 from django.utils import timezone
+from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema
 from rest_framework import generics, status
 from rest_framework.exceptions import ValidationError
@@ -44,6 +47,7 @@ from core.models import (
     CustomerCard,
     Location,
     Redemption,
+    Reward,
     StaffUser,
     StampLedger,
     WalletRegistration,
@@ -69,6 +73,7 @@ from dashboard.serializers import (
     TimeseriesResponseSerializer,
     UploadRequestSerializer,
     UploadSerializer,
+    WalletSplitResponseSerializer,
 )
 
 
@@ -77,6 +82,36 @@ def _enqueue_google_sync(card: Card) -> None:
     from wallets.tasks import sync_google_class
 
     sync_google_class.delay(str(card.id))
+
+
+def _sync_primary_reward(card: Card) -> None:
+    """Mirror the card's reward fields into a ``Reward`` row so redeem works.
+
+    The single-reward card flow stores its reward on the ``Card`` itself, but the
+    ledger records a ``Redemption`` against a ``Reward`` *row* and the till gates
+    the redeem button on ``reward_id`` (from those rows). Without this sync no row
+    ever exists → ``reward_id`` is null → "Give reward" stays disabled even when
+    the card is full. Keep exactly one active primary reward at
+    ``threshold = stamps_required`` (matches ``ledger.is_reward_ready``).
+    """
+    if not card.reward_title:
+        card.rewards.update(is_active=False)  # reward cleared — nothing to redeem
+        return
+    reward = card.rewards.order_by("threshold", "created_at").first()
+    if reward is None:
+        Reward.objects.create(
+            card=card,
+            title=card.reward_title,
+            description=card.reward_description,
+            threshold=card.stamps_required,
+            is_active=True,
+        )
+    else:
+        reward.title = card.reward_title
+        reward.description = card.reward_description
+        reward.threshold = card.stamps_required
+        reward.is_active = True
+        reward.save(update_fields=["title", "description", "threshold", "is_active"])
 
 
 _SPECIALIZED_ROLES = {Role.MARKETING, Role.DESIGNER}
@@ -120,6 +155,7 @@ class CardListCreateView(generics.ListCreateAPIView):
         merchant = get_request_merchant(self.request)
         entitlements.enforce(merchant, "max_cards")
         card = serializer.save(merchant=merchant)
+        _sync_primary_reward(card)
         _enqueue_google_sync(card)
 
 
@@ -136,6 +172,7 @@ class CardDetailView(generics.RetrieveUpdateAPIView):
 
     def perform_update(self, serializer: BaseSerializer) -> None:
         card = serializer.save()
+        _sync_primary_reward(card)
         _enqueue_google_sync(card)
 
 
@@ -187,6 +224,7 @@ class CardQRView(APIView):
 
     @extend_schema(responses=CardQRSerializer)
     def get(self, request: Request, card_id: str) -> Response:
+        from dashboard.qr_assets import build_qr_assets
         from enrollment.tokens import get_or_issue_enrollment_token
 
         card = get_scoped(Card, request, pk=card_id)
@@ -196,18 +234,8 @@ class CardQRView(APIView):
         # then calls the API — not the raw API endpoint.
         join_url = f"{settings.ENROLL_BASE_URL}/enroll/{token.token}"
 
-        try:
-            import qrcode
-            from qrcode.image.svg import SvgImage
-
-            qr = qrcode.QRCode(box_size=6, border=2)
-            qr.add_data(join_url)
-            qr.make(fit=True)
-            svg = qr.make_image(image_factory=SvgImage).to_string().decode("utf-8")
-        except Exception:  # pragma: no cover - QR library unavailable
-            svg = ""
-
-        return Response({"join_url": join_url, "qr_svg": svg, "poster_pdf_url": ""})
+        merchant = get_request_merchant(request)
+        return Response(build_qr_assets(request, merchant, card, join_url))
 
 
 # ── Uploads ───────────────────────────────────────────────────────────────────
@@ -379,6 +407,32 @@ class StaffDetailView(generics.RetrieveUpdateAPIView):
 
 
 # ── Customers ─────────────────────────────────────────────────────────────────
+def filter_customers(qs: QuerySet[CustomerCard], params: Any) -> QuerySet[CustomerCard]:
+    """Apply the shared /customers query filters (card/status/phone/location/
+    search/segment) to ``qs``. One source of truth for the list view and the CSV
+    export so a filtered export matches exactly what the table shows."""
+    if card_id := params.get("card"):
+        qs = qs.filter(card_id=card_id)
+    if status_ := params.get("status"):
+        qs = qs.filter(status=status_)
+    if phone := params.get("phone"):
+        qs = qs.filter(customer_phone__icontains=phone)
+    if location_id := params.get("location"):
+        qs = qs.filter(
+            Q(ledger_entries__location_id=location_id) | Q(redemptions__location_id=location_id)
+        ).distinct()
+    if search := params.get("search"):
+        qs = qs.filter(Q(customer_name__icontains=search) | Q(customer_phone__icontains=search))
+    if segment := params.get("segment"):
+        today = timezone.localdate()
+        if segment == "lapsed":
+            cutoff = today - timedelta(days=30)
+            qs = qs.filter(Q(last_event_at__isnull=True) | Q(last_event_at__date__lt=cutoff))
+        elif segment == "reward_ready":
+            qs = qs.filter(stamp_count__gte=F("card__stamps_required"))
+    return qs
+
+
 class CustomerListView(generics.ListAPIView):
     """GET /customers — CustomerCard list, filterable."""
 
@@ -402,29 +456,75 @@ class CustomerListView(generics.ListAPIView):
             )
             .order_by("-created_at")
         )
+        return filter_customers(qs, self.request.query_params)
 
-        params = self.request.query_params
-        if card_id := params.get("card"):
-            qs = qs.filter(card_id=card_id)
-        if status_ := params.get("status"):
-            qs = qs.filter(status=status_)
-        if phone := params.get("phone"):
-            qs = qs.filter(customer_phone__icontains=phone)
-        if location_id := params.get("location"):
-            qs = qs.filter(
-                Q(ledger_entries__location_id=location_id) | Q(redemptions__location_id=location_id)
-            ).distinct()
-        if search := params.get("search"):
-            qs = qs.filter(Q(customer_name__icontains=search) | Q(customer_phone__icontains=search))
-        if segment := params.get("segment"):
-            today = timezone.localdate()
-            if segment == "lapsed":
-                cutoff = today - timedelta(days=30)
-                qs = qs.filter(Q(last_event_at__isnull=True) | Q(last_event_at__date__lt=cutoff))
-            elif segment == "reward_ready":
-                qs = qs.filter(stamp_count__gte=F("card__stamps_required"))
 
-        return qs
+class CustomerExportView(APIView):
+    """GET /customers/export — the (filtered) customer list as a CSV download.
+
+    Gated behind the ``export`` entitlement (Starter+), so a free/locked merchant
+    gets 402 → the dashboard opens the UpgradeDrawer. Honours the same filters as
+    the list, and streams rows so a large book of customers never buffers wholly
+    in memory.
+    """
+
+    permission_classes = [CanEngage]
+
+    _COLUMNS = [
+        "customer_name",
+        "customer_phone",
+        "customer_email",
+        "card_name",
+        "stamp_count",
+        "stamps_required",
+        "status",
+        "enrolled_at",
+        "last_event_at",
+    ]
+
+    @extend_schema(responses={(200, "text/csv"): OpenApiTypes.BINARY})
+    def get(self, request: Request) -> StreamingHttpResponse:
+        merchant = get_request_merchant(request)
+        entitlements.enforce(merchant, "export")
+
+        qs = filter_customers(
+            CustomerCard.objects.for_merchant(merchant).select_related("card"),
+            request.query_params,
+        ).order_by("-created_at")
+
+        # csv.writer needs a file-like object; this pseudo-buffer just hands each
+        # formatted row straight back to the streaming generator (Django docs
+        # "Streaming large CSV files" pattern) so nothing accumulates.
+        class _Echo:
+            def write(self, value: str) -> str:
+                return value
+
+        writer = csv.writer(_Echo())
+
+        def rows() -> Any:
+            # UTF-8 BOM first so Excel opens Arabic names (this is an Arabic-market
+            # product) as UTF-8 instead of the locale ANSI codepage (mojibake).
+            yield "﻿"
+            yield writer.writerow(self._COLUMNS)
+            for c in qs.iterator():
+                yield writer.writerow(
+                    [
+                        c.customer_name or "",
+                        c.customer_phone or "",
+                        c.customer_email or "",
+                        c.card.name,
+                        c.stamp_count,
+                        c.card.stamps_required,
+                        c.status,
+                        c.enrolled_at.isoformat() if c.enrolled_at else "",
+                        c.last_event_at.isoformat() if c.last_event_at else "",
+                    ]
+                )
+
+        stamp = timezone.now().strftime("%Y%m%d")
+        response = StreamingHttpResponse(rows(), content_type="text/csv; charset=utf-8")
+        response["Content-Disposition"] = f'attachment; filename="customers_{stamp}.csv"'
+        return response
 
 
 class CustomerDetailView(generics.RetrieveDestroyAPIView):
@@ -489,14 +589,38 @@ class CustomerTimelineView(APIView):
 
 
 # ── Analytics ─────────────────────────────────────────────────────────────────
+def _parse_date_param(value: str | None) -> date | None:
+    if not value:
+        return None
+    try:
+        return date.fromisoformat(value)
+    except ValueError as exc:
+        raise ValidationError(
+            {"date": ["Invalid date format. Use ISO 8601 (YYYY-MM-DD)."]}
+        ) from exc
+
+
 class AnalyticsSummaryView(APIView):
-    """GET /analytics/summary — headline metrics for the merchant."""
+    """GET /analytics/summary?from&to — headline metrics for the merchant.
+
+    With a range, the KPIs describe that window (see ``analytics.summary``). Without
+    one they are the lifetime totals, which is what the Overview page asks for — so
+    the two readings stay available side by side rather than one silently replacing
+    the other.
+    """
 
     permission_classes = [CanViewInsights]
 
     @extend_schema(responses=AnalyticsSummarySerializer)
     def get(self, request: Request) -> Response:
         merchant = get_request_merchant(request)
+
+        from_date = _parse_date_param(request.query_params.get("from"))
+        to_date = _parse_date_param(request.query_params.get("to"))
+        if from_date or to_date:
+            windowed = analytics.summary(merchant, from_date, to_date)
+            return Response(AnalyticsSummarySerializer(windowed).data)
+
         customers = CustomerCard.objects.for_merchant(merchant)
 
         enrollments = customers.count()
@@ -532,17 +656,6 @@ class AnalyticsSummaryView(APIView):
         return Response(AnalyticsSummarySerializer(payload).data)
 
 
-def _parse_date_param(value: str | None) -> date | None:
-    if not value:
-        return None
-    try:
-        return date.fromisoformat(value)
-    except ValueError as exc:
-        raise ValidationError(
-            {"date": ["Invalid date format. Use ISO 8601 (YYYY-MM-DD)."]}
-        ) from exc
-
-
 class AnalyticsTimeseriesView(APIView):
     """GET /analytics/timeseries?from&to&metric=&location=."""
 
@@ -562,6 +675,20 @@ class AnalyticsTimeseriesView(APIView):
 
         points = analytics.timeseries(merchant, metric, from_date, to_date, location_id)
         return Response({"points": points})
+
+
+class AnalyticsWalletSplitView(APIView):
+    """GET /analytics/wallet_split?from&to."""
+
+    permission_classes = [CanViewInsights]
+    serializer_class = WalletSplitResponseSerializer
+
+    @extend_schema(responses=WalletSplitResponseSerializer)
+    def get(self, request: Request) -> Response:
+        merchant = get_request_merchant(request)
+        from_date = _parse_date_param(request.query_params.get("from"))
+        to_date = _parse_date_param(request.query_params.get("to"))
+        return Response(analytics.wallet_split(merchant, from_date, to_date))
 
 
 class AnalyticsRetentionView(APIView):

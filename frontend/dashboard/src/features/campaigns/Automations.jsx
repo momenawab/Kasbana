@@ -1,4 +1,4 @@
-// Automations (spec §14) — 5 lifecycle automations, each a Toggle + channel.
+// Automations (spec §14) — 5 lifecycle automations, each a Toggle (wallet push).
 // Enabling beyond features.automations opens the UpgradeDrawer.
 import { useTranslation } from 'react-i18next'
 import { Zap } from 'lucide-react'
@@ -8,7 +8,6 @@ import { useToast } from '../../hooks/useToast'
 import { normalizeError } from '../../lib/api'
 import { gating } from '../../lib/gating'
 import { Toggle } from '../../components/Toggle'
-import Badge from '../../components/Badge'
 import Skeleton from '../../components/Skeleton'
 
 const KEYS = ['reward_ready', 'expiry', 'birthday', 'winback', 'welcome']
@@ -37,7 +36,6 @@ export default function Automations() {
       await update.mutateAsync({
         key,
         enabled: turningOn,
-        channel: current?.channel || 'PUSH',
         timing: current?.timing || '',
         template: current?.template || '',
       })
@@ -50,25 +48,24 @@ export default function Automations() {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="font-head text-2xl font-bold text-ink">{t('automations.title')}</h1>
+      <h1 className="font-head text-2xl font-bold text-tx">{t('automations.title')}</h1>
       <p className="text-sm text-tx-2">{t('automations.subtitle')}</p>
 
       <div className="flex flex-col gap-3">
         {KEYS.map((key) => {
           const a = byKey[key]
           return (
-            <div key={key} className="flex items-center justify-between rounded-card border border-line bg-white p-4">
+            <div key={key} className="flex items-center justify-between rounded-card border border-line bg-surface p-4">
               <div className="flex items-center gap-3">
-                <span className="flex h-9 w-9 items-center justify-center rounded-ctl bg-amber-bg text-amber-d">
+                <span className="flex h-9 w-9 items-center justify-center rounded-ctl bg-violet-bg text-violet-d">
                   <Zap size={18} />
                 </span>
                 <div>
-                  <div className="font-head font-semibold text-ink">{t(`automations.key.${key}`)}</div>
+                  <div className="font-head font-semibold text-tx">{t(`automations.key.${key}`)}</div>
                   <div className="text-xs text-tx-3">{t(`automations.desc.${key}`)}</div>
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                {a?.channel && <Badge tone="neutral">{a.channel}</Badge>}
                 <Toggle checked={Boolean(a?.enabled)} onChange={() => toggle(key, a)} />
               </div>
             </div>

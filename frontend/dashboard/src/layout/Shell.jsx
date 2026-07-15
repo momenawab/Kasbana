@@ -33,7 +33,7 @@ export default function Shell() {
   if (status === 'suspended') {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-paper p-6 text-center">
-        <h1 className="font-head text-2xl font-bold text-ink">{t('suspended.title')}</h1>
+        <h1 className="font-head text-2xl font-bold text-tx">{t('suspended.title')}</h1>
         <p className="max-w-md text-tx-2">{t('suspended.body')}</p>
       </div>
     )
@@ -72,21 +72,23 @@ export default function Shell() {
         )}
 
         {trialing && !softLocked && (
-          <div className="flex items-center justify-between gap-3 bg-ink px-4 py-2 text-sm text-white">
+          <div className="flex items-center justify-between gap-3 bg-slate px-4 py-2 text-sm text-white">
             <span>{t('trial.banner', { count: arDigits(daysLeft, lang) })}</span>
-            <Link to="/billing" className="rounded-ctl bg-amber px-3 py-1 text-ink font-semibold">
+            <Link to="/billing" className="rounded-ctl bg-violet px-3 py-1 text-white font-semibold">
               {t('trial.cta')}
             </Link>
           </div>
         )}
 
-        <main className="relative flex-1 p-4 pb-20 md:pb-4">
-          <Outlet />
+        <main className="theme-t relative flex-1 p-4 pb-24 sm:p-6 lg:p-8 md:pb-8">
+          <div className="mx-auto w-full max-w-[1400px]">
+            <Outlet />
+          </div>
 
           {softLocked && (
             <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 bg-paper/80 backdrop-blur-sm">
               <p className="text-tx-2">{t('trial.expired')}</p>
-              <Link to="/billing" className="rounded-ctl bg-amber px-4 py-2 text-ink font-semibold">
+              <Link to="/billing" className="rounded-ctl bg-violet px-4 py-2 text-white font-semibold">
                 {t('trial.expiredCta')}
               </Link>
             </div>

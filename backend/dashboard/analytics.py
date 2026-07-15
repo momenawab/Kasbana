@@ -14,8 +14,15 @@ from django.db.models import Count, Min
 from django.db.models.functions import TruncDate
 from django.utils import timezone
 
-from core.enums import CustomerCardStatus, LedgerEvent
-from core.models import CustomerCard, Location, Merchant, Redemption, StampLedger
+from core.enums import CustomerCardStatus, LedgerEvent, WalletPlatform
+from core.models import (
+    CustomerCard,
+    Location,
+    Merchant,
+    Redemption,
+    StampLedger,
+    WalletRegistration,
+)
 
 DEFAULT_RANGE_DAYS = 30
 
@@ -74,6 +81,73 @@ def timeseries(
         points.append({"date": cursor.isoformat(), "value": buckets.get(cursor, 0)})
         cursor += timedelta(days=1)
     return points
+
+
+def summary(
+    merchant: Merchant,
+    from_date: date | None = None,
+    to_date: date | None = None,
+) -> dict[str, Any]:
+    """Headline KPIs for one window — what happened between the two dates.
+
+    Every figure counts ledger events inside the range, so the enrollments and
+    redemptions tiles agree exactly with the charts below them, which read the same
+    events. Two definitions only make sense windowed, and differ from the all-time
+    view the Overview page asks for (``AnalyticsSummaryView`` with no range):
+
+    - ``active_cards`` = cards that saw *any* event in the window, not a live total
+      of every active card.
+    - ``repeat_rate`` = of those, the share stamped more than once in the window.
+    """
+    from_date, to_date = _date_range(from_date, to_date)
+    events = _ledger_qs(merchant, from_date, to_date)
+
+    active_cards = events.values("customer_card_id").distinct().count()
+    returning = (
+        events.filter(event_type=LedgerEvent.STAMP)
+        .values("customer_card_id")
+        .annotate(stamps=Count("id"))
+        .filter(stamps__gte=2)
+        .count()
+    )
+
+    return {
+        "enrollments": events.filter(event_type=LedgerEvent.ENROLL).count(),
+        "active_cards": active_cards,
+        "redemptions": events.filter(event_type=LedgerEvent.REDEEM).count(),
+        "repeat_rate": round(returning / active_cards, 4) if active_cards else 0.0,
+        **wallet_split(merchant, from_date, to_date),
+    }
+
+
+def wallet_split(
+    merchant: Merchant,
+    from_date: date | None = None,
+    to_date: date | None = None,
+) -> dict[str, int]:
+    """Active wallet registrations by platform, for passes added in the window.
+
+    ``/analytics/summary`` reports the same two counts all-time; this one honours
+    the dashboard's date filter, so the Apple-vs-Google chart moves with the rest
+    of the page.
+    """
+    from_date, to_date = _date_range(from_date, to_date)
+
+    counts = {
+        row["platform"]: row["value"]
+        for row in WalletRegistration.objects.filter(
+            customer_card__merchant=merchant,
+            is_active=True,
+            created_at__date__gte=from_date,
+            created_at__date__lte=to_date,
+        )
+        .values("platform")
+        .annotate(value=Count("id"))
+    }
+    return {
+        "apple_count": counts.get(WalletPlatform.APPLE, 0),
+        "google_count": counts.get(WalletPlatform.GOOGLE, 0),
+    }
 
 
 def retention(

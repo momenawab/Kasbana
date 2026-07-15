@@ -6,7 +6,6 @@ from django.urls import path
 from billing.views import (
     BillingStateView,
     CancelView,
-    FawryWebhookView,
     InvoiceListView,
     PaymobWebhookView,
     SubscribeView,
@@ -18,5 +17,4 @@ urlpatterns = [
     path("billing/invoices", InvoiceListView.as_view(), name="billing-invoices"),
     path("billing/cancel", CancelView.as_view(), name="billing-cancel"),
     path("billing/webhook/paymob", PaymobWebhookView.as_view(), name="billing-webhook-paymob"),
-    path("billing/webhook/fawry", FawryWebhookView.as_view(), name="billing-webhook-fawry"),
 ]

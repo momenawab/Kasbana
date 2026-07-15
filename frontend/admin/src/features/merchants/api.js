@@ -48,7 +48,8 @@ function useSubscriptionMutation(merchantId, path) {
 export function useUpdateSubscription(merchantId) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (body) => (await api.patch(`/merchants/${merchantId}/subscription`, body)).data,
+    mutationFn: async (body) =>
+      (await api.patch(`/merchants/${merchantId}/subscription`, body)).data,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['subscription', merchantId] })
       qc.invalidateQueries({ queryKey: ['subscription-audit', merchantId] })
@@ -109,8 +110,7 @@ export function useImpersonations(merchantId) {
 export function useStartImpersonation(merchantId) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (body) =>
-      (await api.post(`/merchants/${merchantId}/impersonate`, body)).data,
+    mutationFn: async (body) => (await api.post(`/merchants/${merchantId}/impersonate`, body)).data,
     onSuccess: () => qc.invalidateQueries({ queryKey: ['impersonations', merchantId] }),
   })
 }
@@ -134,4 +134,23 @@ export function useResendInvite(merchantId) {
 
 export function useClearStuckCheckout(merchantId) {
   return useSupportAction(merchantId, 'clear-stuck-checkout')
+}
+
+// Messages this merchant sent from its dashboard support form.
+export function useMerchantMessages(merchantId) {
+  return useQuery({
+    queryKey: ['merchant-messages', merchantId],
+    queryFn: async () => (await api.get(`/merchants/${merchantId}/support/messages`)).data,
+    enabled: Boolean(merchantId),
+  })
+}
+
+// Reply reuses the global message endpoint but refreshes this merchant's thread.
+export function useReplyMerchantMessage(merchantId) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, message }) =>
+      (await api.post(`/messages/${id}/reply`, { message })).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['merchant-messages', merchantId] }),
+  })
 }

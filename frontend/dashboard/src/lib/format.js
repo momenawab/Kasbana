@@ -32,3 +32,13 @@ export function fromNow(date, lang) {
 export function daysUntil(date) {
   return Math.max(0, dayjs(date).diff(dayjs(), 'day'))
 }
+
+/** Localized absolute date, e.g. "5 Aug 2026" / "٥ أغسطس ٢٠٢٦". */
+export function fmtDate(date, lang) {
+  if (!date) return ''
+  return new Intl.DateTimeFormat(lang === 'ar' ? 'ar-EG' : 'en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  }).format(new Date(date))
+}

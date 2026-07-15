@@ -52,7 +52,6 @@ class Plan(UUIDModel, TimeStampedModel):
     max_staff = models.PositiveIntegerField(null=True, blank=True)
     max_customers = models.PositiveIntegerField(null=True, blank=True)
 
-    whatsapp = models.BooleanField(default=False)
     export = models.BooleanField(default=False)
     api = models.BooleanField(default=False)
     specialized_roles = models.BooleanField(default=False)
@@ -62,7 +61,6 @@ class Plan(UUIDModel, TimeStampedModel):
     analytics = models.CharField(
         max_length=8, choices=AnalyticsTier.choices, default=AnalyticsTier.BASIC
     )
-    whatsapp_quota = models.PositiveIntegerField(null=True, blank=True)
 
     class Meta:
         ordering = ["price_egp", "key"]
@@ -77,14 +75,12 @@ class Plan(UUIDModel, TimeStampedModel):
             "max_locations": self.max_locations,
             "max_staff": self.max_staff,
             "max_customers": self.max_customers,
-            "whatsapp": self.whatsapp,
             "export": self.export,
             "api": self.api,
             "specialized_roles": self.specialized_roles,
             "custom_branding": self.custom_branding,
             "automations": self.automations,
             "analytics": self.analytics,
-            "whatsapp_quota": self.whatsapp_quota,
         }
 
 
@@ -100,12 +96,17 @@ class Subscription(UUIDModel, TimeStampedModel):
     )
     trial_ends_at = models.DateTimeField(null=True, blank=True, default=default_trial_end)
     current_period_end = models.DateTimeField(null=True, blank=True)
-    # Gateway linkage (Paymob / Fawry) — filled by the webhook handlers.
+    # Gateway linkage (Paymob) — filled by the webhook handlers.
     provider = models.CharField(max_length=16, blank=True)
     gateway_ref = models.CharField(max_length=128, blank=True)
     # The plan a pending checkout will convert to, recorded at ``subscribe`` time
     # so the webhook (which only carries a gateway ref) knows what to activate.
     pending_plan = models.CharField(max_length=16, choices=PlanTier.choices, blank=True)
+    # Merchant-initiated cancellation that keeps access until the paid period
+    # ends (contract "cancel = retain until period end"). While True the sub
+    # stays ACTIVE and fully entitled until ``current_period_end``; after that
+    # ``effective_plan`` locks it. Cleared on any re-subscribe (``activate_plan``).
+    cancel_at_period_end = models.BooleanField(default=False)
 
     # ── Admin manual-control fields (Phase 4) ───────────────────────────────
     # ``comp``: free access granted by an admin — access resolves at ``plan``
@@ -118,6 +119,11 @@ class Subscription(UUIDModel, TimeStampedModel):
     override_plan = models.CharField(max_length=16, choices=PlanTier.choices, blank=True)
     override_expires_at = models.DateTimeField(null=True, blank=True)
     notes = models.TextField(blank=True)
+
+    class Meta:
+        # Platform analytics counts subscriptions by status (active / trialing /
+        # past_due / churned) on every dashboard load — index the status column.
+        indexes = [models.Index(fields=["status"])]
 
     def __str__(self) -> str:
         return f"{self.merchant_id} · {self.status} · {self.plan}"
@@ -136,6 +142,20 @@ class Subscription(UUIDModel, TimeStampedModel):
             self.override_expires_at is None or self.override_expires_at > now
         )
 
+    def cancels_on(self, now: datetime | None = None) -> datetime | None:
+        """The date a scheduled cancellation takes effect, or ``None``.
+
+        Set only while a merchant-initiated period-end cancel is pending and the
+        period hasn't lapsed yet — drives the "cancels on <date>" UI. Once the
+        date passes, ``effective_plan`` locks the sub and this returns ``None``.
+        A paid sub runs out at ``current_period_end``; a trial at ``trial_ends_at``.
+        """
+        now = now or timezone.now()
+        if not self.cancel_at_period_end:
+            return None
+        end = self.current_period_end if self.status == BillingStatus.ACTIVE else self.trial_ends_at
+        return end if end is not None and end > now else None
+
     def effective_plan(self, now: datetime | None = None) -> str | None:
         """The plan whose limits apply right now, or ``None`` when locked.
 
@@ -143,7 +163,8 @@ class Subscription(UUIDModel, TimeStampedModel):
         - ``comp`` -> the stored ``plan``, regardless of status;
         - TRIALING + not expired -> ``TRIAL_PLAN`` (full Growth-level access);
         - TRIALING + expired      -> locked (``None``) — trial ended unconverted;
-        - ACTIVE                  -> the paid ``plan``;
+        - ACTIVE                  -> the paid ``plan`` (until a scheduled
+          period-end cancel lapses, then locked — access retained meanwhile);
         - PAST_DUE / CANCELED / LOCKED -> locked (``None``), data retained.
         """
         now = now or timezone.now()
@@ -154,6 +175,13 @@ class Subscription(UUIDModel, TimeStampedModel):
         if self.status == BillingStatus.TRIALING:
             return TRIAL_PLAN if self.trial_active(now) else None
         if self.status == BillingStatus.ACTIVE:
+            # A period-end cancel keeps access until the period lapses, then locks.
+            if (
+                self.cancel_at_period_end
+                and self.current_period_end is not None
+                and now >= self.current_period_end
+            ):
+                return None
             return self.plan
         return None
 
@@ -170,7 +198,7 @@ class Invoice(UUIDModel, TimeStampedModel):
     """A billing invoice, created by the gateway webhook on a successful charge.
 
     Tenant-scoped via ``merchant``; ``gateway_ref`` links it back to the
-    Paymob/Fawry transaction so webhook replays are idempotent.
+    Paymob transaction so webhook replays are idempotent.
     """
 
     merchant = models.ForeignKey(Merchant, on_delete=models.CASCADE, related_name="invoices")
@@ -190,7 +218,13 @@ class Invoice(UUIDModel, TimeStampedModel):
 
     class Meta:
         ordering = ["-issued_at"]
-        indexes = [models.Index(fields=["merchant", "-issued_at"])]
+        indexes = [
+            models.Index(fields=["merchant", "-issued_at"]),
+            # Revenue analytics scans PAID invoices by issue date cross-tenant
+            # (MRR, month buckets, payer set) — the merchant-leading index above
+            # can't serve those, so index (status, issued_at) too.
+            models.Index(fields=["status", "issued_at"]),
+        ]
         constraints = [
             # DB-level guarantee that a replayed (or concurrent duplicate) webhook
             # can't create a second invoice for the same gateway transaction.
@@ -204,6 +238,25 @@ class Invoice(UUIDModel, TimeStampedModel):
 
     def __str__(self) -> str:
         return f"{self.merchant_id} · {self.amount_egp} EGP · {self.status}"
+
+
+class CouponGroup(UUIDModel, TimeStampedModel):
+    """A named grouping over individually-created coupons (Phase 11 deferral).
+
+    Purely organisational — coupons work exactly as before whether grouped or
+    not. A coupon's ``group`` is optional and ``SET_NULL`` on delete, so removing
+    a group never removes its coupons; they simply become ungrouped again.
+    """
+
+    name = models.CharField(max_length=80)
+    description = models.TextField(blank=True)
+    active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return self.name
 
 
 class Coupon(UUIDModel, TimeStampedModel):
@@ -230,6 +283,15 @@ class Coupon(UUIDModel, TimeStampedModel):
     expires_at = models.DateTimeField(null=True, blank=True)
     active = models.BooleanField(default=True)
     redemption_count = models.IntegerField(default=0)  # denormalised for cap checks
+    # Optional organisational grouping (Phase 11 deferral). Blank/null = ungrouped,
+    # today's behaviour. SET_NULL so deleting a group never deletes its coupons.
+    group = models.ForeignKey(
+        CouponGroup,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="coupons",
+    )
 
     class Meta:
         ordering = ["-created_at"]
@@ -255,3 +317,40 @@ class CouponRedemption(UUIDModel):
 
     def __str__(self) -> str:
         return f"{self.coupon_id} → {self.merchant_id}"
+
+
+class WebhookDelivery(UUIDModel, TimeStampedModel):
+    """A received gateway webhook (Phase 14 ops log).
+
+    Recorded by the webhook views so the ops console can inspect deliveries and
+    replay a failed one. ``payload`` holds the parsed event fields (not the raw
+    signed body), which is all ``apply_webhook_event`` needs for a replay.
+    Recording never blocks the webhook ack — write failures are swallowed.
+    """
+
+    class Status(models.TextChoices):
+        PROCESSED = "processed", "Processed"
+        NO_MERCHANT = "no_merchant", "No merchant matched"
+        INVALID = "invalid", "Invalid signature"
+        DISABLED = "disabled", "Provider disabled"
+        FAILED = "failed", "Processing failed"
+
+    provider = models.CharField(max_length=16)
+    kind = models.CharField(max_length=24, blank=True)  # success/failed/canceled/ignored
+    gateway_ref = models.CharField(max_length=128, blank=True)
+    # Not an FK: the merchant may be gone (erased) but we still keep the log row.
+    merchant_id_hint = models.CharField(max_length=64, blank=True)
+    status = models.CharField(max_length=16, choices=Status.choices)
+    payload = models.JSONField(default=dict, blank=True)  # parsed event fields, for replay
+    error = models.CharField(max_length=500, blank=True)
+    processed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["provider", "-created_at"]),
+            models.Index(fields=["status", "-created_at"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.provider} · {self.kind or '?'} · {self.status}"

@@ -1,6 +1,8 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import {
   LayoutDashboard,
+  UserPlus,
+  MessageSquare,
   Building2,
   CreditCard,
   Receipt,
@@ -10,9 +12,12 @@ import {
   Workflow,
   Megaphone,
   Ticket,
+  Handshake,
   Users2,
   ScrollText,
+  ShieldAlert,
   Activity,
+  Lock,
   LogOut,
   Loader2,
 } from 'lucide-react'
@@ -22,6 +27,8 @@ import { useAuth } from '../hooks/useAuth'
 // Overview; the rest are placeholders so the map of the console is visible.
 const NAV = [
   { to: '/', key: 'Overview', Icon: LayoutDashboard, end: true, ready: true },
+  { to: '/leads', key: 'Leads', Icon: UserPlus, ready: true },
+  { to: '/messages', key: 'Messages', Icon: MessageSquare, ready: true },
   { to: '/merchants', key: 'Merchants', Icon: Building2, ready: true },
   { to: '/plans', key: 'Plans', Icon: CreditCard, ready: true },
   { to: '/billing', key: 'Billing', Icon: Receipt, ready: true },
@@ -31,9 +38,12 @@ const NAV = [
   { to: '/lifecycle', key: 'Lifecycle', Icon: Workflow, ready: true },
   { to: '/announcements', key: 'Announcements', Icon: Megaphone, ready: true },
   { to: '/promotions', key: 'Promotions', Icon: Ticket, ready: true },
+  { to: '/partners', key: 'Partners', Icon: Handshake, ready: true },
   { to: '/team', key: 'Admin Team', Icon: Users2, ready: true },
-  { to: '/audit', key: 'Audit Log', Icon: ScrollText, phase: 13 },
-  { to: '/ops', key: 'Operations', Icon: Activity, phase: 14 },
+  { to: '/audit', key: 'Audit Log', Icon: ScrollText, ready: true },
+  { to: '/compliance', key: 'Compliance', Icon: ShieldAlert, ready: true },
+  { to: '/ops', key: 'Operations', Icon: Activity, ready: true },
+  { to: '/security', key: 'Security', Icon: Lock, ready: true },
 ]
 
 function itemClass({ isActive }) {

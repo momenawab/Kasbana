@@ -47,7 +47,7 @@ export default function Reset() {
     <AuthLayout
       title={t('reset.title')}
       footer={
-        <Link to="/login" className="font-semibold text-amber-d">
+        <Link to="/login" className="font-semibold text-violet-d">
           {t('login.title')}
         </Link>
       }

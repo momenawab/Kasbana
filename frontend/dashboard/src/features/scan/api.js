@@ -9,9 +9,17 @@ export function useScanActions() {
     mutationFn: async (code) => (await api.post('/loyalty/scan', { code })).data,
   })
   const stamp = useMutation({
-    mutationFn: async ({ customerCardId, delta = 1 }) =>
-      (await api.post('/loyalty/stamp', { customer_card_id: customerCardId, delta }, idempotent()))
-        .data,
+    mutationFn: async ({ customerCardId, delta = 1, force = false }) =>
+      (
+        await api.post(
+          '/loyalty/stamp',
+          // Coerce force to a real boolean: a stray truthy value (e.g. a click
+          // event passed as the arg) would otherwise crash JSON serialization
+          // and surface as a bogus "network error".
+          { customer_card_id: customerCardId, delta, force: Boolean(force) },
+          idempotent()
+        )
+      ).data,
   })
   const redeem = useMutation({
     mutationFn: async ({ customerCardId, rewardId }) =>

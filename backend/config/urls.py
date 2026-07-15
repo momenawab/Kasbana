@@ -39,10 +39,14 @@ api_v1: list = [
     path("loyalty/", include("loyalty.urls")),
     # Dashboard (Phase 3)
     path("", include("dashboard.urls")),
+    # Registration-page theme + QR styling (finalize Phase 1)
+    path("", include("branding.urls")),
     # Billing (Phase 1.7 — You)
     path("", include("billing.urls")),
     # Messaging / Engage (Phase 1.7 — You)
     path("", include("messaging.urls")),
+    # Public marketing "Get started" lead intake (unauthenticated).
+    path("", include("console.public_urls")),
 ]
 
 urlpatterns = [

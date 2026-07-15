@@ -3,6 +3,7 @@
 from django.urls import path
 
 from accounts.views import (
+    AccountExportView,
     ForgotView,
     InviteView,
     MeView,
@@ -26,4 +27,5 @@ urlpatterns = [
         PasswordChangeView.as_view(),
         name="settings-account-password",
     ),
+    path("settings/account/export", AccountExportView.as_view(), name="settings-account-export"),
 ]

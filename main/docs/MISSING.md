@@ -1,5 +1,22 @@
 # Stampn — What's Missing / Remaining
 
+> # ⛔ SUPERSEDED — do not use this file
+>
+> **Go to [`finalize-plan.md`](../../finalize-plan.md)** (repo root). It is the
+> single source of truth for what is left to ship.
+>
+> This snapshot is from **2026-07-01** and is now wrong in ways that matter: the
+> features it lists as missing (branded registration page + styled QR, merchant
+> support, main QR, wallet templates) have all since shipped, and WhatsApp/Fawry
+> — which it treats as live-but-dormant — were deleted.
+>
+> Kept only as a historical snapshot. Retired **2026-07-14** (Phase F).
+
+---
+
+<details>
+<summary>Historical content (2026-07-01) — expand only if you need the archaeology</summary>
+
 > Snapshot **2026-07-01**. Everything in the product roadmap (Phases 1–3) is
 > shipped to prod **except tiered cards** (deferred). This doc is the honest list
 > of what's *not* done: verification gaps, hardening, and deferred features.
@@ -88,3 +105,5 @@ messaging, scheduled campaigns, advanced segments, printable poster, single-use
 cards, branded enrollment, referrals, points cards, rate-limiting, off-box
 backups. **208 backend tests green.** Backend + dashboard deploy in lockstep from
 `prod`; Google Wallet live, Sentry live.
+
+</details>

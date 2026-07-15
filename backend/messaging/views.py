@@ -1,9 +1,9 @@
 """Engage + messaging endpoints (contract §3.6 · Phase 1.7).
 
 Campaigns (list / create+send-or-schedule), computed segments, automations
-(list / toggle), and the one-off ``POST /customers/{id}/message``. WhatsApp is
-gated by the ``whatsapp`` capability *and* the monthly quota (402); the
-automation enabled-count is gated by the plan's ``automations`` allowance.
+(list / toggle), and the one-off ``POST /customers/{id}/message``. Delivery is
+the free wallet push channel; the automation enabled-count is gated by the
+plan's ``automations`` allowance.
 """
 
 from __future__ import annotations
@@ -16,15 +16,14 @@ from rest_framework.response import Response
 from rest_framework.serializers import BaseSerializer
 from rest_framework.views import APIView
 
-from billing import entitlements
 from billing.plans import PLAN_LIMITS, plan_limits_map
 from billing.services import subscription_for
 from common.errors import PlanLimit, UnprocessableEntity
 from common.permissions import CanEngage
 from core.models import CustomerCard
 from core.tenancy import get_request_merchant, get_scoped
-from messaging import metering, segments
-from messaging.enums import CampaignStatus, MessageChannel
+from messaging import segments
+from messaging.enums import CampaignStatus
 from messaging.models import Automation, Campaign
 from messaging.serializers import (
     AUTOMATION_KEYS,
@@ -35,10 +34,6 @@ from messaging.serializers import (
     CustomerMessageSerializer,
     SegmentSerializer,
 )
-
-
-def _wants_whatsapp(channel: str) -> bool:
-    return channel in (MessageChannel.WHATSAPP, MessageChannel.BOTH)
 
 
 # ── Campaigns ─────────────────────────────────────────────────────────────────
@@ -59,16 +54,10 @@ class CampaignListCreateView(generics.ListCreateAPIView):
         data = body.validated_data
         merchant = get_request_merchant(request)
 
-        recipients = segments.resolve(merchant, data["audience"])
-        if _wants_whatsapp(data["channel"]):
-            entitlements.enforce(merchant, "whatsapp")
-            metering.ensure_quota(merchant, count=recipients.count())
-
         schedule_at = data.get("schedule_at")
         scheduled = bool(schedule_at and schedule_at > timezone.now())
         campaign = Campaign.objects.create(
             merchant=merchant,
-            channel=data["channel"],
             audience=data["audience"],
             message=data["message"],
             schedule_at=schedule_at,
@@ -113,15 +102,7 @@ class AutomationListView(APIView):
         for key in AUTOMATION_KEYS:
             automation = existing.get(key)
             if automation is None:
-                results.append(
-                    {
-                        "key": key,
-                        "enabled": False,
-                        "channel": MessageChannel.PUSH,
-                        "timing": "",
-                        "template": "",
-                    }
-                )
+                results.append({"key": key, "enabled": False, "timing": "", "template": ""})
             else:
                 results.append(AutomationSerializer(automation).data)
         return Response({"results": results})
@@ -143,15 +124,13 @@ class AutomationDetailView(APIView):
         body.is_valid(raise_exception=True)
         data = body.validated_data
 
-        automation, _ = Automation.objects.get_or_create(
-            merchant=merchant, key=key, defaults={"channel": MessageChannel.PUSH}
-        )
+        automation, _ = Automation.objects.get_or_create(merchant=merchant, key=key)
 
         enabling = data.get("enabled", automation.enabled) and not automation.enabled
         if enabling:
             self._enforce_automation_limit(merchant)
 
-        for field in ("enabled", "channel", "timing", "template"):
+        for field in ("enabled", "timing", "template"):
             if field in data:
                 setattr(automation, field, data[field])
         automation.save()
@@ -172,7 +151,7 @@ class AutomationDetailView(APIView):
 
 # ── One-off customer message ──────────────────────────────────────────────────
 class CustomerMessageView(APIView):
-    """POST /customers/{id}/message — send a one-off PUSH/WhatsApp message."""
+    """POST /customers/{id}/message — send a one-off wallet push message."""
 
     permission_classes = [CanEngage]
     serializer_class = CustomerMessageSerializer
@@ -181,22 +160,11 @@ class CustomerMessageView(APIView):
     def post(self, request: Request, customer_id: str) -> Response:
         body = CustomerMessageSerializer(data=request.data)
         body.is_valid(raise_exception=True)
-        channel = body.validated_data["channel"]
         text = body.validated_data["text"]
 
-        merchant = get_request_merchant(request)
         customer = get_scoped(CustomerCard, request, pk=customer_id)
+        # Free wallet notification (Apple changeMessage + Google addMessage).
+        from wallets import service as wallet
 
-        if channel in (MessageChannel.WHATSAPP, MessageChannel.BOTH):
-            entitlements.enforce(merchant, "whatsapp")
-            metering.ensure_quota(merchant, count=1)
-            from messaging.tasks import send_whatsapp
-
-            send_whatsapp.delay(str(customer.id), text)
-        if channel in (MessageChannel.PUSH, MessageChannel.BOTH):
-            # Free wallet notification (Apple changeMessage + Google addMessage).
-            from wallets import service as wallet
-
-            wallet.push_message(customer, text)
-
+        wallet.push_message(customer, text)
         return Response({"ok": True})

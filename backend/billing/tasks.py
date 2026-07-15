@@ -21,3 +21,19 @@ def expire_trials() -> int:
         status=BillingStatus.TRIALING, trial_ends_at__lte=timezone.now()
     ).update(status=BillingStatus.LOCKED)
     return locked
+
+
+@shared_task(queue="default")
+def expire_scheduled_cancellations() -> int:
+    """Flip period-end cancels to CANCELED once the paid period has lapsed.
+
+    ``Subscription.effective_plan`` already locks these lazily on read, so this
+    is a persistence/bookkeeping pass — it makes the cancellation visible in
+    queries and the dashboard instead of only computed at access-check time.
+    """
+    canceled = Subscription.objects.filter(
+        status=BillingStatus.ACTIVE,
+        cancel_at_period_end=True,
+        current_period_end__lte=timezone.now(),
+    ).update(status=BillingStatus.CANCELED, cancel_at_period_end=False)
+    return canceled

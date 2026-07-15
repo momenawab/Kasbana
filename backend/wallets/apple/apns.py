@@ -10,6 +10,7 @@ from __future__ import annotations
 import logging
 import ssl
 import tempfile
+import time
 
 import httpx
 
@@ -19,6 +20,16 @@ logger = logging.getLogger(__name__)
 
 _PROD = "https://api.push.apple.com"
 _SANDBOX = "https://api.sandbox.push.apple.com"
+
+# How long APNs should keep trying to deliver a pass-update push if the device
+# is offline/locked (seconds). Without an expiration, APNs treats the push as
+# expire-on-first-attempt and silently drops it for an unreachable device — so a
+# customer whose phone was asleep would only see the update on the *next* refresh
+# trigger (the "message is delayed" symptom, note 5). One hour of store-and-retry
+# lets a phone that comes back online shortly after still pull the fresh pass.
+# (This does not defeat iOS's own background-refresh throttling, which is
+# Apple-side and outside our control.)
+_APNS_EXPIRATION_WINDOW = 3600
 
 
 def _client_ssl_context() -> ssl.SSLContext | None:
@@ -60,7 +71,12 @@ def push_empty(push_tokens: list[str]) -> int:
         return 0
 
     base = _SANDBOX if apns_use_sandbox() else _PROD
-    headers = {"apns-topic": pass_type_id(), "apns-push-type": "background"}
+    headers = {
+        "apns-topic": pass_type_id(),
+        "apns-push-type": "background",
+        # Store-and-retry for up to an hour instead of drop-on-first-attempt.
+        "apns-expiration": str(int(time.time()) + _APNS_EXPIRATION_WINDOW),
+    }
     sent = 0
     try:
         with httpx.Client(http2=True, verify=ctx, timeout=15) as client:

@@ -29,11 +29,15 @@ class AdminUser(UUIDModel, TimeStampedModel):
     password = models.CharField(max_length=128)  # Django-hashed
     role = models.CharField(max_length=20, choices=AdminRole.choices, default=AdminRole.READ_ONLY)
     is_active = models.BooleanField(default=True)
-    # MFA scaffold — populated/enforced in Phase 15.
+    # MFA (TOTP) — enrolled + enforced in Phase 15. ``mfa_secret`` is the base32
+    # TOTP seed; ``mfa_enabled`` flips true only after a code is verified.
     mfa_secret = models.CharField(max_length=64, blank=True)
     mfa_enabled = models.BooleanField(default=False)
     last_login_at = models.DateTimeField(null=True, blank=True)
     last_login_ip = models.GenericIPAddressField(null=True, blank=True)
+    # Brute-force lockout (Phase 15): consecutive password failures + a lock window.
+    failed_login_count = models.IntegerField(default=0)
+    locked_until = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["email"]
@@ -61,6 +65,35 @@ class AdminUser(UUIDModel, TimeStampedModel):
     @property
     def is_anonymous(self) -> bool:
         return False
+
+
+class AdminSession(UUIDModel, TimeStampedModel):
+    """One admin login session (Phase 15) — the backing for device/session list,
+    "log out everywhere", refresh rotation, and step-up re-auth.
+
+    The session ``id`` is the ``sid`` embedded in the admin's access + refresh
+    tokens. Every authenticated request checks the session is still active, so
+    revoking a row kills its tokens immediately. ``refresh_epoch`` increments on
+    each refresh so a replayed (stolen) refresh token is detected and the session
+    is revoked. ``last_auth_at`` timestamps the last full credential proof (login
+    or step-up), which sensitive actions require to be recent.
+    """
+
+    admin = models.ForeignKey(AdminUser, on_delete=models.CASCADE, related_name="sessions")
+    refresh_epoch = models.IntegerField(default=0)  # rotation / reuse-detection counter
+    user_agent = models.CharField(max_length=256, blank=True)
+    ip = models.GenericIPAddressField(null=True, blank=True)
+    last_seen_at = models.DateTimeField(null=True, blank=True)
+    last_auth_at = models.DateTimeField(null=True, blank=True)  # login / step-up proof
+    revoked = models.BooleanField(default=False)
+    revoked_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [models.Index(fields=["admin", "revoked", "-created_at"])]
+
+    def __str__(self) -> str:
+        return f"session({self.admin_id}) {'revoked' if self.revoked else 'active'}"
 
 
 class MerchantAdminMeta(UUIDModel, TimeStampedModel):
@@ -289,3 +322,168 @@ class AdminAuditLog(models.Model):
 
     def __str__(self) -> str:
         return f"{self.actor_email} · {self.action} · {self.created_at:%Y-%m-%d %H:%M}"
+
+
+class RetentionPolicy(UUIDModel, TimeStampedModel):
+    """Platform-wide data-retention policy (Phase 13, PDPL).
+
+    A single global row — read/written through ``current()``. Phase 13 *stores*
+    and surfaces the policy; automatic enforcement (purging data past these
+    windows) is deferred to a later phase — exactly like MFA in Phase 12, which
+    is declared here and enforced later. A window of ``0`` means "keep
+    indefinitely" (no automatic purge), which is the safe default.
+    """
+
+    # Retention windows in days; 0 = keep indefinitely.
+    inactive_customer_days = models.IntegerField(default=0)  # cards with no activity
+    closed_merchant_days = models.IntegerField(default=0)  # churned/closed merchant data
+    audit_log_days = models.IntegerField(default=0)  # admin audit trail
+    notes = models.TextField(blank=True)
+    # Who last saved the policy (denormalised email survives an admin delete).
+    updated_by = models.ForeignKey(
+        AdminUser, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    updated_by_email = models.EmailField(blank=True)
+
+    class Meta:
+        verbose_name_plural = "retention policies"
+
+    @classmethod
+    def current(cls) -> RetentionPolicy:
+        """The one global policy row, created lazily with safe defaults."""
+        return cls.objects.first() or cls.objects.create()
+
+    def __str__(self) -> str:
+        return (
+            f"RetentionPolicy(inactive={self.inactive_customer_days}d, "
+            f"audit={self.audit_log_days}d)"
+        )
+
+
+class FeatureFlag(UUIDModel, TimeStampedModel):
+    """A platform feature toggle (Phase 14) — flip behaviour without a deploy.
+
+    ``enabled`` is the global default; per-merchant exceptions live in
+    ``FeatureFlagOverride``. Runtime reads the resolved value via
+    ``console.flags.flag_enabled(key, merchant)`` (a lazy import, so low-level
+    apps don't take a load-time dependency on the console).
+    """
+
+    key = models.SlugField(max_length=64, unique=True)  # e.g. "whatsapp_channel"
+    label = models.CharField(max_length=120, blank=True)
+    description = models.TextField(blank=True)
+    enabled = models.BooleanField(default=False)
+    updated_by_email = models.EmailField(blank=True)
+
+    class Meta:
+        ordering = ["key"]
+
+    def __str__(self) -> str:
+        return f"{self.key}={'on' if self.enabled else 'off'}"
+
+
+class FeatureFlagOverride(UUIDModel, TimeStampedModel):
+    """A per-merchant override of a ``FeatureFlag``'s global default."""
+
+    flag = models.ForeignKey(FeatureFlag, on_delete=models.CASCADE, related_name="overrides")
+    merchant = models.ForeignKey(
+        Merchant, on_delete=models.CASCADE, related_name="feature_flag_overrides"
+    )
+    enabled = models.BooleanField()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["flag", "merchant"], name="uniq_flag_merchant")
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.flag.key}[{self.merchant_id}]={'on' if self.enabled else 'off'}"
+
+
+class PlatformSetting(UUIDModel, TimeStampedModel):
+    """Global key/value config (Phase 14). ``value`` is JSON. Well-known keys:
+    ``maintenance_mode`` -> ``{"enabled": bool, "message": str}`` (enforced by
+    ``common.middleware.MaintenanceModeMiddleware``)."""
+
+    key = models.SlugField(max_length=64, unique=True)
+    value = models.JSONField(default=dict, blank=True)
+    description = models.TextField(blank=True)
+    updated_by_email = models.EmailField(blank=True)
+
+    class Meta:
+        ordering = ["key"]
+
+    def __str__(self) -> str:
+        return f"setting({self.key})"
+
+
+class Lead(UUIDModel, TimeStampedModel):
+    """An inbound "Get started" lead from the public marketing site.
+
+    The marketing site's Get-started form (name / email / phone / business)
+    POSTs here anonymously; the sales team then works the list from the admin
+    console (Leads section). No merchant linkage — a lead exists *before* signup.
+    """
+
+    class Status(models.TextChoices):
+        NEW = "new", "New"
+        CONTACTED = "contacted", "Contacted"
+
+    name = models.CharField(max_length=120)
+    email = models.EmailField()
+    phone = models.CharField(max_length=40)
+    business_name = models.CharField(max_length=160)
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.NEW)
+    contacted_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return f"lead({self.business_name} · {self.email})"
+
+
+class ContactMessage(UUIDModel, TimeStampedModel):
+    """An inbound support/contact message.
+
+    Two sources feed one queue: the public marketing "Let's talk" form (anonymous,
+    ``source=marketing``, ``merchant`` null) and a logged-in merchant's dashboard
+    support form (``source=dashboard``, ``merchant`` set). The team works both from
+    the admin console — the global Messages inbox and, for dashboard messages, the
+    merchant's Support tab. Kept separate from ``Lead`` because a contact message
+    is a support enquiry, not a sales lead.
+    """
+
+    class Status(models.TextChoices):
+        NEW = "new", "New"
+        READ = "read", "Read"
+        REPLIED = "replied", "Replied"
+
+    class Source(models.TextChoices):
+        MARKETING = "marketing", "Marketing site"
+        DASHBOARD = "dashboard", "Merchant dashboard"
+
+    name = models.CharField(max_length=120)
+    email = models.EmailField()
+    subject = models.CharField(max_length=200)
+    message = models.TextField()
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.NEW)
+    # Dashboard messages carry the sending merchant so they surface on its Support
+    # tab. SET_NULL (not CASCADE): deleting a merchant must not erase the support
+    # history the team may still need. Marketing messages leave this null.
+    source = models.CharField(max_length=16, choices=Source.choices, default=Source.MARKETING)
+    merchant = models.ForeignKey(
+        "core.Merchant",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="contact_messages",
+    )
+    read_at = models.DateTimeField(null=True, blank=True)
+    replied_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return f"message({self.subject} · {self.email})"

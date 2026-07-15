@@ -2,8 +2,11 @@
 -r requirements.txt
 
 # --- Quality (DoD: ruff + black + mypy clean) ---
-ruff>=0.6
-black>=24.8
+# ruff/black are pinned with an upper bound: they are unpinned formatters, and a
+# new release reformatting an untouched file (e.g. import ordering) turns CI red
+# with no code change. Bump deliberately.
+ruff>=0.6,<0.16
+black>=24.8,<27
 mypy>=1.11
 django-stubs[compatible-mypy]>=5.0
 djangorestframework-stubs>=3.15
@@ -11,4 +14,5 @@ djangorestframework-stubs>=3.15
 # --- Tests ---
 pytest>=8.3
 pytest-django>=4.9
+pytest-cov>=5.0
 factory_boy>=3.3

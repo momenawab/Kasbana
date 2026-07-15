@@ -1,8 +1,8 @@
 import { Loader2 } from 'lucide-react'
 
 const VARIANTS = {
-  primary: 'bg-amber text-ink hover:bg-amber-d',
-  secondary: 'bg-ink text-white hover:bg-ink-2',
+  primary: 'bg-violet text-white hover:bg-violet-d',
+  secondary: 'bg-tx text-paper hover:opacity-90',
   ghost: 'bg-transparent text-tx hover:bg-paper border border-line',
   danger: 'bg-danger text-white hover:opacity-90',
 }

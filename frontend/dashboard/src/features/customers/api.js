@@ -13,6 +13,18 @@ export function useCustomers(params = {}) {
   })
 }
 
+// Server-side CSV export (Phase 3). Streams the *full* filtered customer book
+// (not just the loaded page) and is gated by the `export` entitlement server-side.
+// NB: responseType 'blob' means the api interceptor can't read a JSON error body,
+// so the caller must handle a 402 (PLAN_LIMIT) itself. Returns a Blob to download.
+export async function exportCustomersCsv(params = {}) {
+  const qs = new URLSearchParams(
+    Object.entries(params).filter(([, v]) => v != null && v !== '')
+  ).toString()
+  const res = await api.get(`/customers/export${qs ? `?${qs}` : ''}`, { responseType: 'blob' })
+  return res.data
+}
+
 export function useCustomer(id) {
   return useQuery({
     queryKey: ['customers', id],

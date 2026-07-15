@@ -1,31 +1,27 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import Seo from '../components/Seo.jsx'
-import { CONTACT_EMAIL } from '../config.js'
-import { useLang } from '../i18n/index.js'
+import { CONTACT_EMAIL, CONTACT_ENDPOINT } from '../config.js'
+import { useLang, PAGE_PATHS } from '../i18n/index.js'
+
+// Material Symbols icon (decorative by default).
+function Icon({ name, className = '' }) {
+  return (
+    <span className={`ms ${className}`} aria-hidden="true">
+      {name}
+    </span>
+  )
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Web3Forms: sign up (free) at https://web3forms.com, paste your access key
-// below. The destination email is the address you register there — that's where
-// every submission from this form is delivered. No backend server required.
-// ─────────────────────────────────────────────────────────────────────────────
-const WEB3FORMS_ACCESS_KEY = 'YOUR_WEB3FORMS_ACCESS_KEY'
-
-// ── Formspree alternative ────────────────────────────────────────────────────
-// Prefer Formspree? Create a form at https://formspree.io to get an endpoint
-// like https://formspree.io/f/abcdwxyz, then POST the same JSON body to it:
-//
-//   const FORMSPREE_ENDPOINT = 'https://formspree.io/f/YOUR_FORM_ID'
-//   const res = await fetch(FORMSPREE_ENDPOINT, {
-//     method: 'POST',
-//     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-//     body: JSON.stringify({ name, email, subject, message }),
-//   })
+// The contact form POSTs to our own backend (/api/v1/contact). Messages land in
+// the admin console (Messages section). No third-party form service.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const EMPTY = { name: '', email: '', subject: '', message: '', botcheck: '' }
 
 export default function Support() {
-  const { t } = useLang()
+  const { lang, t } = useLang()
   const s = t.support
 
   const [form, setForm] = useState(EMPTY)
@@ -74,32 +70,27 @@ export default function Support() {
     setStatus('submitting')
 
     try {
-      const res = await fetch('https://api.web3forms.com/submit', {
+      const res = await fetch(CONTACT_ENDPOINT, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Accept: 'application/json',
         },
         body: JSON.stringify({
-          access_key: WEB3FORMS_ACCESS_KEY,
           name: form.name,
           email: form.email,
           subject: form.subject,
           message: form.message,
           botcheck: form.botcheck,
-          from_name: 'Stampn Support Form',
         }),
       })
 
-      const data = await res.json()
-
-      if (data.success) {
+      if (res.ok) {
         setStatus('success')
-        setFeedback(s.success)
         setForm(EMPTY)
       } else {
         setStatus('error')
-        setFeedback(data.message || s.errors.generic)
+        setFeedback(s.errors.generic)
       }
     } catch (err) {
       setStatus('error')
@@ -111,123 +102,171 @@ export default function Support() {
     <>
       <Seo page="support" />
 
-      <section className="section">
-        <div className="container container-narrow">
-          <h1 className="page-title">{s.title}</h1>
-          <p className="page-lead">{s.lead}</p>
-          <p className="page-meta">
-            {s.meta} <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
-          </p>
+      <section className="waitlist">
+        <div className="hero-aurora" aria-hidden="true" />
+        <div className="ambient-orb orb-purple" aria-hidden="true" />
+        <div className="ambient-orb orb-cyan" aria-hidden="true" />
 
-          <form className="form" onSubmit={handleSubmit} noValidate>
-            {/* Honeypot field — hidden from people, tempting to bots. */}
-            <input
-              type="text"
-              name="botcheck"
-              value={form.botcheck}
-              onChange={handleChange}
-              className="hp-field"
-              tabIndex="-1"
-              autoComplete="off"
-              aria-hidden="true"
-            />
+        <div className="container waitlist-grid">
+          {/* Left: the pitch */}
+          <div className="waitlist-pitch">
+            <span className="pill">
+              <Icon name="chat_bubble" className="pill-icon" />
+              {s.pill}
+            </span>
 
-            <div className="field">
-              <label htmlFor="name">{s.labels.name}</label>
-              <input
-                id="name"
-                name="name"
-                type="text"
-                value={form.name}
-                onChange={handleChange}
-                autoComplete="name"
-                required
-                aria-invalid={errors.name ? 'true' : 'false'}
-                aria-describedby={errors.name ? 'name-error' : undefined}
-              />
-              {errors.name && (
-                <span className="field-error" id="name-error">
-                  {errors.name}
-                </span>
-              )}
-            </div>
+            <h1 className="waitlist-title">
+              {s.title} <span className="text-gradient">{s.titleAccent}</span>
+            </h1>
 
-            <div className="field">
-              <label htmlFor="email">{s.labels.email}</label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                value={form.email}
-                onChange={handleChange}
-                autoComplete="email"
-                required
-                aria-invalid={errors.email ? 'true' : 'false'}
-                aria-describedby={errors.email ? 'email-error' : undefined}
-              />
-              {errors.email && (
-                <span className="field-error" id="email-error">
-                  {errors.email}
-                </span>
-              )}
-            </div>
+            <p className="waitlist-lead">{s.lead}</p>
 
-            <div className="field">
-              <label htmlFor="subject">{s.labels.subject}</label>
-              <input
-                id="subject"
-                name="subject"
-                type="text"
-                value={form.subject}
-                onChange={handleChange}
-                required
-                aria-invalid={errors.subject ? 'true' : 'false'}
-                aria-describedby={errors.subject ? 'subject-error' : undefined}
-              />
-              {errors.subject && (
-                <span className="field-error" id="subject-error">
-                  {errors.subject}
-                </span>
-              )}
-            </div>
+            <ul className="waitlist-benefits">
+              {s.points.map((pt) => (
+                <li className="waitlist-benefit" key={pt.text}>
+                  <Icon name={pt.icon} />
+                  <span>{pt.text}</span>
+                </li>
+              ))}
+            </ul>
 
-            <div className="field">
-              <label htmlFor="message">{s.labels.message}</label>
-              <textarea
-                id="message"
-                name="message"
-                rows="6"
-                value={form.message}
-                onChange={handleChange}
-                required
-                aria-invalid={errors.message ? 'true' : 'false'}
-                aria-describedby={errors.message ? 'message-error' : undefined}
-              />
-              {errors.message && (
-                <span className="field-error" id="message-error">
-                  {errors.message}
-                </span>
-              )}
-            </div>
+            <p className="waitlist-email">
+              {s.emailLabel}{' '}
+              <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>
+            </p>
+          </div>
 
-            <button
-              type="submit"
-              className="btn btn-primary btn-block"
-              disabled={status === 'submitting'}
-            >
-              {status === 'submitting' ? s.submitting : s.submit}
-            </button>
+          {/* Right: the contact card (form → confirmation on success) */}
+          <div className="glass-panel waitlist-card">
+            {status === 'success' ? (
+              <div className="waitlist-success" role="status" aria-live="polite">
+                <div className="success-badge">
+                  <Icon name="check" />
+                </div>
+                <h2 className="success-title">{s.success.title}</h2>
+                <p className="success-body">{s.success.body}</p>
+                <p className="success-note">{s.success.note}</p>
+                <Link to={PAGE_PATHS.home[lang]} className="btn btn-glass">
+                  {s.success.back}
+                </Link>
+              </div>
+            ) : (
+              <>
+                <div className="waitlist-card-head">
+                  <h2 className="waitlist-card-title">{s.cardTitle}</h2>
+                  <p className="waitlist-card-sub">{s.cardSub}</p>
+                </div>
 
-            {/* Inline status — polite live region, no alert(), no reload. */}
-            <div className="form-status" role="status" aria-live="polite">
-              {status === 'success' && feedback && (
-                <p className="status-success">{feedback}</p>
-              )}
-              {status === 'error' && feedback && (
-                <p className="status-error">{feedback}</p>
-              )}
-            </div>
-          </form>
+                <form className="form" onSubmit={handleSubmit} noValidate>
+                  {/* Honeypot field — hidden from people, tempting to bots. */}
+                  <input
+                    type="text"
+                    name="botcheck"
+                    value={form.botcheck}
+                    onChange={handleChange}
+                    className="hp-field"
+                    tabIndex="-1"
+                    autoComplete="off"
+                    aria-hidden="true"
+                  />
+
+                  <div className="field">
+                    <label htmlFor="name">{s.labels.name}</label>
+                    <input
+                      id="name"
+                      name="name"
+                      type="text"
+                      value={form.name}
+                      onChange={handleChange}
+                      autoComplete="name"
+                      required
+                      aria-invalid={errors.name ? 'true' : 'false'}
+                      aria-describedby={errors.name ? 'name-error' : undefined}
+                    />
+                    {errors.name && (
+                      <span className="field-error" id="name-error">
+                        {errors.name}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="field">
+                    <label htmlFor="email">{s.labels.email}</label>
+                    <input
+                      id="email"
+                      name="email"
+                      type="email"
+                      value={form.email}
+                      onChange={handleChange}
+                      autoComplete="email"
+                      required
+                      aria-invalid={errors.email ? 'true' : 'false'}
+                      aria-describedby={errors.email ? 'email-error' : undefined}
+                    />
+                    {errors.email && (
+                      <span className="field-error" id="email-error">
+                        {errors.email}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="field">
+                    <label htmlFor="subject">{s.labels.subject}</label>
+                    <input
+                      id="subject"
+                      name="subject"
+                      type="text"
+                      value={form.subject}
+                      onChange={handleChange}
+                      required
+                      aria-invalid={errors.subject ? 'true' : 'false'}
+                      aria-describedby={errors.subject ? 'subject-error' : undefined}
+                    />
+                    {errors.subject && (
+                      <span className="field-error" id="subject-error">
+                        {errors.subject}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="field">
+                    <label htmlFor="message">{s.labels.message}</label>
+                    <textarea
+                      id="message"
+                      name="message"
+                      rows="5"
+                      value={form.message}
+                      onChange={handleChange}
+                      required
+                      aria-invalid={errors.message ? 'true' : 'false'}
+                      aria-describedby={errors.message ? 'message-error' : undefined}
+                    />
+                    {errors.message && (
+                      <span className="field-error" id="message-error">
+                        {errors.message}
+                      </span>
+                    )}
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="btn btn-primary btn-block"
+                    disabled={status === 'submitting'}
+                  >
+                    {status === 'submitting' ? s.submitting : s.submit}
+                    {status !== 'submitting' && <Icon name="send" />}
+                  </button>
+
+                  {/* Inline error — polite live region, no alert(), no reload. */}
+                  <div className="form-status" role="status" aria-live="polite">
+                    {status === 'error' && feedback && (
+                      <p className="status-error">{feedback}</p>
+                    )}
+                  </div>
+                </form>
+              </>
+            )}
+          </div>
         </div>
       </section>
     </>

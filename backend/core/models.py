@@ -128,7 +128,9 @@ class CustomerCard(UUIDModel, TimeStampedModel):
     merchant = models.ForeignKey(
         Merchant, on_delete=models.CASCADE, related_name="customer_cards"
     )  # denormalized for scoping
-    customer_phone = models.CharField(max_length=20)  # E.164
+    # E.164. Blank when the merchant made phone optional on the join form — such a
+    # member exists only as their wallet pass (no dedupe, no recovery); see Meta.
+    customer_phone = models.CharField(max_length=20, blank=True)
     customer_name = models.CharField(max_length=120, blank=True)
     customer_email = models.EmailField(blank=True)
     birthday = models.DateField(null=True, blank=True)
@@ -147,13 +149,18 @@ class CustomerCard(UUIDModel, TimeStampedModel):
 
     class Meta:
         constraints = [
+            # One card per phone per program — but only for members who gave one.
+            # Without the condition every phone-less member would collide on "",
+            # so the second one to join a program could never enroll.
             models.UniqueConstraint(
-                fields=["card", "customer_phone"], name="uniq_card_customer_phone"
+                fields=["card", "customer_phone"],
+                condition=~models.Q(customer_phone=""),
+                name="uniq_card_customer_phone",
             )
         ]
 
     def __str__(self) -> str:
-        return f"{self.customer_phone} · {self.card}"
+        return f"{self.customer_phone or self.customer_name or self.id} · {self.card}"
 
 
 class StampLedger(UUIDModel):

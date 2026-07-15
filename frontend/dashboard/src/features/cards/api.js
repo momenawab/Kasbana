@@ -30,9 +30,33 @@ export function useSaveCard() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async ({ id, ...body }) =>
-      id
-        ? (await api.patch(`/cards/${id}`, body)).data
-        : (await api.post('/cards', body)).data,
+      id ? (await api.patch(`/cards/${id}`, body)).data : (await api.post('/cards', body)).data,
     onSuccess: () => qc.invalidateQueries({ queryKey: ['cards'] }),
+  })
+}
+
+// Editable Apple/Google pass design (notes 2-4 + templates).
+export function useWalletDesign(id) {
+  return useQuery({
+    queryKey: ['cards', id, 'wallet-design'],
+    queryFn: async () => (await api.get(`/cards/${id}/wallet-design`)).data,
+    enabled: Boolean(id),
+  })
+}
+
+export function useSaveWalletDesign(id) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (body) => (await api.patch(`/cards/${id}/wallet-design`, body)).data,
+    onSuccess: (data) => qc.setQueryData(['cards', id, 'wallet-design'], data),
+  })
+}
+
+// Layout-locked template catalog (single source of truth with the backend).
+export function useWalletTemplates() {
+  return useQuery({
+    queryKey: ['wallet-templates'],
+    queryFn: async () => (await api.get('/wallet-templates')).data,
+    staleTime: Infinity,
   })
 }

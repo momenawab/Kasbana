@@ -51,7 +51,7 @@ export default function Login() {
       title={t('login.title')}
       footer={
         <span>
-          {t('login.noAccount')} <Link to="/signup" className="text-amber-d font-semibold">{t('login.signup')}</Link>
+          {t('login.noAccount')} <Link to="/signup" className="text-violet-d font-semibold">{t('login.signup')}</Link>
         </span>
       }
     >
@@ -76,7 +76,7 @@ export default function Login() {
             onChange={(v) => setValue('remember', v)}
             label={t('login.remember')}
           />
-          <Link to="/forgot" className="text-sm text-amber-d">
+          <Link to="/forgot" className="text-sm text-violet-d">
             {t('login.forgot')}
           </Link>
         </div>

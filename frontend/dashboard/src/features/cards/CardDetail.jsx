@@ -12,7 +12,7 @@ import Badge from '../../components/Badge'
 import Button from '../../components/Button'
 import Skeleton from '../../components/Skeleton'
 
-const STATUS_TONE = { ACTIVE: 'teal', DRAFT: 'amber', ARCHIVED: 'neutral' }
+const STATUS_TONE = { ACTIVE: 'teal', DRAFT: 'violet', ARCHIVED: 'neutral' }
 
 export default function CardDetail() {
   const { t } = useTranslation()
@@ -32,7 +32,7 @@ export default function CardDetail() {
     <div>
       <div className="mb-5 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <h1 className="font-head text-2xl font-bold text-ink">{card.name}</h1>
+          <h1 className="font-head text-2xl font-bold text-tx">{card.name}</h1>
           <Badge tone={STATUS_TONE[card.status] || 'neutral'}>
             {t(`cards.status.${card.status}`)}
           </Badge>
@@ -64,15 +64,15 @@ export default function CardDetail() {
 
         <div className="lg:col-span-2">
           <div className="grid gap-4 sm:grid-cols-2">
-            <KpiTile label={t('detail.holders')} value={stats?.holders ?? card.holders ?? 0} icon={Users} tone="amber" />
+            <KpiTile label={t('detail.holders')} value={stats?.holders ?? card.holders ?? 0} icon={Users} tone="violet" />
             <KpiTile label={t('detail.stampsIssued')} value={stats?.stamps_issued ?? card.stamps_issued ?? 0} icon={Stamp} tone="teal" />
-            <KpiTile label={t('detail.rewardsRedeemed')} value={stats?.rewards_redeemed ?? card.rewards_redeemed ?? 0} icon={Gift} tone="clay" />
-            <KpiTile label={t('detail.completion')} value={`${pct}%`} tone="ink" />
+            <KpiTile label={t('detail.rewardsRedeemed')} value={stats?.rewards_redeemed ?? card.rewards_redeemed ?? 0} icon={Gift} tone="fuchsia" />
+            <KpiTile label={t('detail.completion')} value={`${pct}%`} tone="slate" />
           </div>
 
           {(stats?.apple_count != null || stats?.google_count != null) && (
-            <div className="mt-4 rounded-card border border-line bg-white p-4">
-              <h3 className="mb-2 font-head font-semibold text-ink">{t('detail.walletSplit')}</h3>
+            <div className="mt-4 rounded-card border border-line bg-surface p-4">
+              <h3 className="mb-2 font-head font-semibold text-tx">{t('detail.walletSplit')}</h3>
               <ChartDonut
                 data={[
                   { name: 'Apple', value: stats?.apple_count ?? 0 },

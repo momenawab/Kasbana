@@ -1,12 +1,13 @@
 """Billing services (Phase 1.4) — subscription lifecycle helpers.
 
 Pure functions the webhook handlers and the entitlements engine call. The
-gateway adapters (Paymob/Fawry) are deferred to the payments slice; these
+gateway adapters (Paymob) are deferred to the payments slice; these
 helpers express the state transitions independent of any provider.
 """
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import TYPE_CHECKING
@@ -20,6 +21,8 @@ from core.models import Merchant
 
 if TYPE_CHECKING:
     from billing.gateways.base import CheckoutSession, WebhookEvent
+
+logger = logging.getLogger(__name__)
 
 
 def subscription_for(merchant: Merchant) -> Subscription:
@@ -49,6 +52,7 @@ def activate_plan(
     sub = subscription_for(merchant)
     sub.plan = plan
     sub.status = BillingStatus.ACTIVE
+    sub.cancel_at_period_end = False  # a new/renewed subscription clears any pending cancel
     if provider:
         sub.provider = provider
     if gateway_ref:
@@ -89,6 +93,28 @@ def lock(merchant: Merchant, *, status: str = BillingStatus.LOCKED) -> Subscript
 
 
 @transaction.atomic
+def schedule_cancel(merchant: Merchant) -> Subscription:
+    """Merchant-initiated cancel that keeps access until the period ends.
+
+    The sub stays ACTIVE and fully entitled until ``current_period_end``; after
+    that ``Subscription.effective_plan`` locks it (lazy — no cron needed, though
+    ``expire_scheduled_cancellations`` tidies the stored status). If there is no
+    paid period to run out (no ``current_period_end`` on an active plan), there
+    is nothing to wait for, so lock immediately. A trial is left to expire on its
+    own ``trial_ends_at`` — we only flag the intent so it won't be reactivated.
+    """
+    sub = subscription_for(merchant)
+    if sub.status == BillingStatus.ACTIVE and sub.current_period_end is None:
+        sub.status = BillingStatus.CANCELED
+        sub.cancel_at_period_end = False
+        sub.save(update_fields=["status", "cancel_at_period_end", "updated_at"])
+        return sub
+    sub.cancel_at_period_end = True
+    sub.save(update_fields=["cancel_at_period_end", "updated_at"])
+    return sub
+
+
+@transaction.atomic
 def unlock(merchant: Merchant) -> Subscription:
     """Resume paid access on the stored plan (admin — opposite of ``lock``)."""
     sub = subscription_for(merchant)
@@ -113,6 +139,36 @@ def set_comp(merchant: Merchant, on: bool) -> Subscription:
     sub = subscription_for(merchant)
     sub.comp = on
     sub.save(update_fields=["comp", "updated_at"])
+    return sub
+
+
+def _add_months(dt: datetime, months: int) -> datetime:
+    """Add ``months`` calendar months to ``dt``, clamping the day (stdlib only)."""
+    import calendar
+
+    total = dt.month - 1 + months
+    year = dt.year + total // 12
+    month = total % 12 + 1
+    day = min(dt.day, calendar.monthrange(year, month)[1])
+    return dt.replace(year=year, month=month, day=day)
+
+
+@transaction.atomic
+def grant_free_months(merchant: Merchant, months: int) -> Subscription:
+    """Grant ``months`` of free paid access by pushing ``current_period_end``
+    forward that many calendar months from the later of now / the existing period
+    end. A no-op for ``months <= 0``. This is the "free months" primitive the
+    referral program (Phase E.1) comps both sides with — distinct from
+    ``set_comp`` (unbounded) and ``extend_trial`` (trial, in days)."""
+    sub = subscription_for(merchant)
+    if months <= 0:
+        return sub
+    now = timezone.now()
+    base = sub.current_period_end
+    if base is None or base < now:
+        base = now
+    sub.current_period_end = _add_months(base, months)
+    sub.save(update_fields=["current_period_end", "updated_at"])
     return sub
 
 
@@ -235,6 +291,17 @@ def apply_webhook_event(event: WebhookEvent) -> Subscription | None:
         sub = activate_plan(merchant, plan, provider=event.provider, gateway_ref=event.gateway_ref)
         sub.pending_plan = ""
         sub.save(update_fields=["pending_plan", "updated_at"])
+
+        # Fire the one-time partner referral reward (Phase E.1). Best-effort and
+        # idempotent (guarded by reward_granted) — a reward failure must never
+        # fail the payment. Deferred import avoids a billing↔partners cycle.
+        try:
+            from partners.services import on_merchant_converted
+
+            on_merchant_converted(merchant)
+        except Exception:  # pragma: no cover - defensive
+            logger.exception("partner reward failed for merchant %s", merchant.id)
+
         return sub
 
     if event.kind == "failed":

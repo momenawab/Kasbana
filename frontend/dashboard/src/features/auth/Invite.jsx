@@ -61,7 +61,7 @@ export default function Invite() {
   }
 
   const backToLogin = (
-    <Link to="/login" className="font-semibold text-amber-d">
+    <Link to="/login" className="font-semibold text-violet-d">
       {t('login.title')}
     </Link>
   )

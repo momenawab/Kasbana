@@ -14,6 +14,8 @@ import pytest
 from django.utils import timezone
 from rest_framework.test import APIClient
 
+from accounts.models import MerchantSettings
+from accounts.services import settings_for
 from billing.services import subscription_for
 from console.auth import issue_admin_tokens
 from console.enums import AdminRole
@@ -135,6 +137,46 @@ def test_send_email_uses_mail_backend(api_client, marketing_admin, mailoutbox):
     assert "a@b.c" in mailoutbox[0].to
     # Email-only → no in-app delivery rows.
     assert AnnouncementDelivery.objects.filter(announcement_id=ann_id).count() == 0
+
+
+def test_send_email_skips_merchants_who_opted_out(api_client, marketing_admin, mailoutbox):
+    _merchant_with_owner(email="wants@mail.com")
+    quiet = _merchant_with_owner("Two", "no@mail.com")
+    s = settings_for(quiet)
+    s.notif_email = False
+    s.save()
+
+    ann_id = _create(_admin(marketing_admin), channel="email", audience="all").json()["id"]
+    body = _admin(marketing_admin).post(f"{BASE}/{ann_id}/send").json()
+
+    # Both merchants are in the segment; only the opted-in one is mailed.
+    assert body["recipients"] == 2
+    assert body["emails_sent"] == 1
+    assert len(mailoutbox) == 1
+    assert mailoutbox[0].to == ["wants@mail.com"]
+
+
+def test_email_opt_out_does_not_silence_in_app(api_client, marketing_admin, mailoutbox):
+    """The toggle is email-only — the dashboard banner still reaches them."""
+    quiet = _merchant_with_owner(email="no@mail.com")
+    s = settings_for(quiet)
+    s.notif_email = False
+    s.save()
+
+    ann_id = _create(_admin(marketing_admin), channel="both", audience="all").json()["id"]
+    _admin(marketing_admin).post(f"{BASE}/{ann_id}/send")
+
+    assert len(mailoutbox) == 0
+    assert AnnouncementDelivery.objects.filter(announcement_id=ann_id, merchant=quiet).exists()
+
+
+def test_merchant_without_settings_row_is_opted_in(api_client, marketing_admin, mailoutbox):
+    _merchant_with_owner(email="a@b.c")
+    assert not MerchantSettings.objects.exists()
+
+    ann_id = _create(_admin(marketing_admin), channel="email", audience="all").json()["id"]
+    assert _admin(marketing_admin).post(f"{BASE}/{ann_id}/send").json()["emails_sent"] == 1
+    assert len(mailoutbox) == 1
 
 
 def test_send_is_not_repeated(api_client, marketing_admin):

@@ -7,10 +7,28 @@ wallet credentials are absent.
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from celery import shared_task
 
 logger = logging.getLogger(__name__)
+
+
+def _record_wallet_failure(cc: Any, platform: str, operation: str, exc: Exception) -> None:
+    """Log a wallet sync failure for the ops console (Phase 14). Never raises —
+    the original exception is what should propagate to Celery."""
+    try:
+        from wallets.models import WalletSyncFailure
+
+        WalletSyncFailure.objects.create(
+            customer_card=cc,
+            merchant=cc.merchant,
+            platform=platform,
+            operation=operation,
+            error=str(exc)[:500],
+        )
+    except Exception:  # pragma: no cover - defensive
+        logger.exception("failed to record wallet sync failure (%s/%s)", operation, platform)
 
 
 @shared_task(name="wallets.tasks.provision_pass")
@@ -21,6 +39,7 @@ def provision_pass(customer_card_id: str) -> None:
     to exist before a save URL works, which provision() handles. This task is a
     hook for any heavier async provisioning.
     """
+    from core.enums import WalletPlatform
     from core.models import CustomerCard
     from wallets.google.client import GoogleWalletBackend
 
@@ -28,12 +47,17 @@ def provision_pass(customer_card_id: str) -> None:
     if cc is None:
         logger.warning("provision_pass: CustomerCard %s not found", customer_card_id)
         return
-    GoogleWalletBackend().provision(cc)
+    try:
+        GoogleWalletBackend().provision(cc)
+    except Exception as exc:
+        _record_wallet_failure(cc, WalletPlatform.GOOGLE, "provision", exc)
+        raise
 
 
 @shared_task(name="wallets.tasks.push_pass_update")
 def push_pass_update(customer_card_id: str) -> None:
     """Push a live update: Google PATCH + Apple APNs empty push."""
+    from core.enums import WalletPlatform
     from core.models import CustomerCard
     from wallets.apple.client import AppleWalletBackend
     from wallets.google.client import GoogleWalletBackend
@@ -42,8 +66,16 @@ def push_pass_update(customer_card_id: str) -> None:
     if cc is None:
         logger.warning("push_pass_update: CustomerCard %s not found", customer_card_id)
         return
-    GoogleWalletBackend().push_update(cc)
-    AppleWalletBackend().push_update(cc)
+    try:
+        GoogleWalletBackend().push_update(cc)
+    except Exception as exc:
+        _record_wallet_failure(cc, WalletPlatform.GOOGLE, "push_update", exc)
+        raise
+    try:
+        AppleWalletBackend().push_update(cc)
+    except Exception as exc:
+        _record_wallet_failure(cc, WalletPlatform.APPLE, "push_update", exc)
+        raise
 
 
 @shared_task(name="wallets.tasks.push_wallet_message")

@@ -5,11 +5,13 @@ import api, { normalizeError } from '../lib/api'
 import { useToast } from '../hooks/useToast'
 
 // FileUpload (spec §10) — POSTs to /uploads, returns {url}, calls onUploaded.
-export default function FileUpload({ accept = 'image/*', onUploaded, label }) {
+// `initial` seeds the preview with an already-saved image (e.g. the current
+// logo) so the control reflects saved state instead of always looking empty.
+export default function FileUpload({ accept = 'image/*', onUploaded, label, initial = null }) {
   const { t } = useTranslation()
   const toast = useToast()
   const [busy, setBusy] = useState(false)
-  const [preview, setPreview] = useState(null)
+  const [preview, setPreview] = useState(initial)
 
   async function handle(e) {
     const file = e.target.files?.[0]
@@ -33,7 +35,7 @@ export default function FileUpload({ accept = 'image/*', onUploaded, label }) {
   return (
     <div>
       {label && <span className="mb-1 block text-sm text-tx-2">{label}</span>}
-      <label className="flex cursor-pointer items-center gap-3 rounded-ctl border border-dashed border-line bg-white p-3 hover:border-amber">
+      <label className="flex cursor-pointer items-center gap-3 rounded-ctl border border-dashed border-line bg-surface p-3 hover:border-violet">
         {preview ? (
           <img src={preview} alt="" className="h-12 w-12 rounded-ctl object-cover" />
         ) : (

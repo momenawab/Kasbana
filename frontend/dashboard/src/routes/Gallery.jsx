@@ -24,8 +24,8 @@ import { gating } from '../lib/gating'
 function Section({ title, children }) {
   return (
     <section className="mb-8">
-      <h2 className="mb-3 font-head text-lg font-bold text-ink">{title}</h2>
-      <div className="flex flex-wrap items-start gap-4 rounded-card border border-line bg-white p-4">
+      <h2 className="mb-3 font-head text-lg font-bold text-tx">{title}</h2>
+      <div className="flex flex-wrap items-start gap-4 rounded-card border border-line bg-surface p-4">
         {children}
       </div>
     </section>
@@ -56,7 +56,7 @@ export default function Gallery() {
 
   return (
     <div className="mx-auto max-w-4xl p-4">
-      <h1 className="mb-6 font-head text-2xl font-bold text-ink">Component Gallery</h1>
+      <h1 className="mb-6 font-head text-2xl font-bold text-tx">Component Gallery</h1>
 
       <Section title="Buttons">
         <Button>Primary</Button>
@@ -80,21 +80,21 @@ export default function Gallery() {
 
       <Section title="Badges">
         <Badge>Neutral</Badge>
-        <Badge tone="amber">Trial</Badge>
+        <Badge tone="violet">Trial</Badge>
         <Badge tone="teal">Active</Badge>
-        <Badge tone="clay">Blocked</Badge>
+        <Badge tone="fuchsia">Blocked</Badge>
         <Badge tone="success">Reward ready</Badge>
       </Section>
 
       <Section title="KPI tiles">
-        <KpiTile label="Active customers" value={1280} deltaPct={12} icon={Users} tone="amber" />
+        <KpiTile label="Active customers" value={1280} deltaPct={12} icon={Users} tone="violet" />
         <KpiTile label="Stamps this week" value={342} deltaPct={-4} icon={Coffee} tone="teal" />
-        <KpiTile label="Rewards" value={56} icon={Gift} tone="clay" />
-        <KpiTile label="New joins" value={88} deltaPct={7} tone="ink" />
+        <KpiTile label="Rewards" value={56} icon={Gift} tone="fuchsia" />
+        <KpiTile label="New joins" value={88} deltaPct={7} tone="slate" />
       </Section>
 
       <Section title="Charts">
-        <div className="w-full rounded-card bg-ink p-4">
+        <div className="w-full rounded-card bg-slate p-4">
           <ChartLine data={series} />
         </div>
         <div className="w-full sm:w-1/2"><ChartBar data={series} /></div>
@@ -104,7 +104,7 @@ export default function Gallery() {
       <Section title="Overlays + gating">
         <Button onClick={() => setModal(true)}>Open Modal</Button>
         <Button variant="secondary" onClick={() => setDrawer(true)}>Open Drawer</Button>
-        <Button variant="ghost" onClick={() => gating.open('whatsapp')}>Trigger UpgradeDrawer</Button>
+        <Button variant="ghost" onClick={() => gating.open('custom_branding')}>Trigger UpgradeDrawer</Button>
         <Modal open={modal} onClose={() => setModal(false)} title="Example modal" footer={<Button onClick={() => setModal(false)}>OK</Button>}>
           <p className="text-tx-2">Modal body content.</p>
         </Modal>
@@ -147,7 +147,7 @@ export default function Gallery() {
       <Section title="QR + states">
         <QrBlock value="https://app.stampn.net/enroll/demo" />
         <div className="w-48"><Skeleton h={60} rounded="card" /></div>
-        <div className="w-full"><Banner tone="amber" action={<Button size="sm">Act</Button>}>Banner notice</Banner></div>
+        <div className="w-full"><Banner tone="violet" action={<Button size="sm">Act</Button>}>Banner notice</Banner></div>
         <div className="w-full">
           <EmptyState icon={Users} title="No customers yet" body="Share your join QR to get started." action={<Button size="sm">Share QR</Button>} />
         </div>

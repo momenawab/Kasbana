@@ -16,7 +16,6 @@ export default function CampaignsList() {
   const lang = i18n.language
 
   const columns = [
-    { key: 'channel', label: t('campaigns.channel'), render: (r) => <Badge tone="neutral">{r.channel}</Badge> },
     { key: 'audience', label: t('campaigns.audience') },
     { key: 'status', label: t('campaigns.statusCol'), render: (r) => <Badge tone="teal">{r.status}</Badge> },
     {
@@ -34,7 +33,7 @@ export default function CampaignsList() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="font-head text-2xl font-bold text-ink">{t('campaigns.title')}</h1>
+        <h1 className="font-head text-2xl font-bold text-tx">{t('campaigns.title')}</h1>
         <Button iconStart={Plus} onClick={() => navigate('/campaigns/new')}>
           {t('campaigns.new')}
         </Button>

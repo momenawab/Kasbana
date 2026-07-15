@@ -83,6 +83,17 @@ def test_forgot_is_always_ok(api_client):
     assert PasswordResetToken.objects.filter(user__email="nobody@x.test").count() == 0
 
 
+def test_forgot_ignores_email_notification_opt_out(api_client, merchant, mailoutbox):
+    """`notif_email` gates broadcasts only — account recovery must always send."""
+    staff = factories.StaffUserFactory(merchant=merchant, user__email="quiet@x.test")
+    s = MerchantSettings.objects.create(merchant=staff.merchant, notif_email=False)
+    assert s.notif_email is False
+
+    api_client.post("/api/v1/auth/forgot", {"email": "quiet@x.test"}, format="json")
+    assert len(mailoutbox) == 1
+    assert PasswordResetToken.objects.filter(user__email="quiet@x.test").exists()
+
+
 def test_reset_with_valid_token(api_client):
     staff = factories.StaffUserFactory(user__email="reset@x.test")
     reset = PasswordResetToken.objects.create(user=staff.user)
@@ -171,7 +182,7 @@ def test_business_settings_round_trip(merchant):
     resp = client.patch(
         "/api/v1/settings/business",
         {
-            "name": "Renamed Co",
+            "legal_name": "Renamed Co LLC",
             "color_bg": "#112233",
             "contact": {"phone": "+201111111111"},
             "address": "5 Tahrir St",
@@ -179,12 +190,144 @@ def test_business_settings_round_trip(merchant):
         format="json",
     )
     assert resp.status_code == 200
-    assert resp.json()["name"] == "Renamed Co"
+    assert resp.json()["legal_name"] == "Renamed Co LLC"
 
     merchant.refresh_from_db()
-    assert merchant.name == "Renamed Co" and merchant.color_bg == "#112233"
+    assert merchant.legal_name == "Renamed Co LLC" and merchant.color_bg == "#112233"
     s = MerchantSettings.objects.get(merchant=merchant)
     assert s.contact_phone == "+201111111111" and s.address == "5 Tahrir St"
+
+
+# The dashboard Business tab always posts every field it renders, including the
+# two custom_branding-gated enroll fields (blank when the plan can't set them).
+# Gating on key *presence* used to 402 the whole save on Starter. The business name
+# is not in here: it is fixed at signup, so the tab no longer posts it.
+def _business_tab_payload(**over):
+    return {
+        "color_bg": "#0E1B2A",
+        "color_fg": "#FFFFFF",
+        "enroll_headline": "",
+        "enroll_tagline": "",
+        "contact": {"phone": "+201111111111"},
+        **over,
+    }
+
+
+def test_business_save_with_blank_enroll_copy_is_ungated(merchant):
+    staff = factories.StaffUserFactory(merchant=merchant, role=Role.ADMIN)
+    activate_plan(merchant, PlanTier.STARTER)  # custom_branding off
+
+    resp = _auth(staff).patch(
+        "/api/v1/settings/business",
+        _business_tab_payload(legal_name="Blank Copy Ltd"),
+        format="json",
+    )
+    assert resp.status_code == 200
+    merchant.refresh_from_db()
+    assert merchant.legal_name == "Blank Copy Ltd"
+
+
+# ── The business name is fixed at signup ─────────────────────────────────────
+def test_business_name_cannot_be_renamed(merchant):
+    """Renaming is a support action — the endpoint refuses it outright."""
+    staff = factories.StaffUserFactory(merchant=merchant, role=Role.ADMIN)
+    original = merchant.name
+
+    resp = _auth(staff).patch(
+        "/api/v1/settings/business",
+        _business_tab_payload(name="Renamed Co"),
+        format="json",
+    )
+    assert resp.status_code == 400
+    # The merchant is told where to go, not just that it failed.
+    assert "support" in resp.json()["error"]["message"].lower()
+    merchant.refresh_from_db()
+    assert merchant.name == original
+
+
+def test_business_name_echoed_back_unchanged_is_a_noop(merchant):
+    """A stale tab posts the whole form back — that must still save everything else."""
+    staff = factories.StaffUserFactory(merchant=merchant, role=Role.ADMIN)
+
+    resp = _auth(staff).patch(
+        "/api/v1/settings/business",
+        _business_tab_payload(name=merchant.name, legal_name="Echoed Ltd"),
+        format="json",
+    )
+    assert resp.status_code == 200
+    merchant.refresh_from_db()
+    assert merchant.legal_name == "Echoed Ltd"
+
+
+def test_rejected_rename_does_not_half_apply_the_other_fields(merchant):
+    """The name gate raises mid-request; the atomic block must roll the rest back."""
+    staff = factories.StaffUserFactory(merchant=merchant, role=Role.ADMIN)
+
+    resp = _auth(staff).patch(
+        "/api/v1/settings/business",
+        _business_tab_payload(name="Renamed Co", legal_name="Should Not Stick"),
+        format="json",
+    )
+    assert resp.status_code == 400
+    merchant.refresh_from_db()
+    assert merchant.legal_name != "Should Not Stick"
+
+
+def test_business_save_resending_stored_enroll_copy_is_ungated(merchant):
+    """A downgraded merchant reloads the tab, which echoes the stored copy back."""
+    staff = factories.StaffUserFactory(merchant=merchant, role=Role.ADMIN)
+    s = MerchantSettings.objects.create(merchant=merchant, enroll_headline="Kept")
+    activate_plan(merchant, PlanTier.STARTER)
+
+    resp = _auth(staff).patch(
+        "/api/v1/settings/business",
+        _business_tab_payload(enroll_headline="Kept"),
+        format="json",
+    )
+    assert resp.status_code == 200
+    s.refresh_from_db()
+    assert s.enroll_headline == "Kept"
+
+
+def test_business_save_can_clear_enroll_copy_after_downgrade(merchant):
+    staff = factories.StaffUserFactory(merchant=merchant, role=Role.ADMIN)
+    s = MerchantSettings.objects.create(merchant=merchant, enroll_headline="Old")
+    activate_plan(merchant, PlanTier.STARTER)
+
+    resp = _auth(staff).patch("/api/v1/settings/business", _business_tab_payload(), format="json")
+    assert resp.status_code == 200
+    s.refresh_from_db()
+    assert s.enroll_headline == ""
+
+
+def test_business_save_setting_enroll_copy_still_requires_branding(merchant):
+    staff = factories.StaffUserFactory(merchant=merchant, role=Role.ADMIN)
+    activate_plan(merchant, PlanTier.STARTER)
+
+    resp = _auth(staff).patch(
+        "/api/v1/settings/business",
+        # legal_name, not name: the name is immutable now, so asserting it survives a
+        # rejected save would pass no matter what and prove nothing about the rollback.
+        _business_tab_payload(enroll_headline="Join us!", legal_name="Should Not Stick"),
+        format="json",
+    )
+    assert resp.status_code == 402
+    # The rejected save must not half-apply the ungated fields.
+    merchant.refresh_from_db()
+    assert merchant.legal_name != "Should Not Stick"
+
+
+def test_business_save_setting_enroll_copy_allowed_on_growth(merchant):
+    staff = factories.StaffUserFactory(merchant=merchant, role=Role.ADMIN)
+    activate_plan(merchant, PlanTier.GROWTH)  # custom_branding on
+
+    resp = _auth(staff).patch(
+        "/api/v1/settings/business",
+        _business_tab_payload(enroll_headline="Join us!"),
+        format="json",
+    )
+    assert resp.status_code == 200
+    assert MerchantSettings.objects.get(merchant=merchant).enroll_headline == "Join us!"
 
 
 def test_business_settings_requires_admin(merchant):
@@ -230,6 +373,74 @@ def test_password_change(merchant):
     assert ok.status_code == 200
     staff.user.refresh_from_db()
     assert staff.user.check_password("newpassword")
+    # Re-issues a fresh token pair for the current device.
+    assert ok.json()["access"] and ok.json()["refresh"]
+
+
+def test_password_change_revokes_existing_refresh_tokens(merchant):
+    """An old session's refresh token stops working after a password change; the
+    fresh pair returned to the caller keeps working."""
+    from rest_framework_simplejwt.tokens import RefreshToken
+
+    staff = factories.StaffUserFactory(merchant=merchant)
+    staff.user.set_password("oldpassword")
+    staff.user.save()
+
+    old_refresh = str(RefreshToken.for_user(staff.user))  # a pre-existing session
+    resp = _auth(staff).post(
+        "/api/v1/settings/account/password",
+        {"current": "oldpassword", "new": "newpassword"},
+        format="json",
+    )
+    assert resp.status_code == 200
+
+    # The old session can no longer refresh...
+    assert (
+        APIClient()
+        .post("/api/v1/auth/refresh", {"refresh": old_refresh}, format="json")
+        .status_code
+        == 401
+    )
+    # ...but the freshly-issued one can.
+    new_refresh = resp.json()["refresh"]
+    assert (
+        APIClient()
+        .post("/api/v1/auth/refresh", {"refresh": new_refresh}, format="json")
+        .status_code
+        == 200
+    )
+
+
+# ── Account data export (PDPL) ────────────────────────────────────────────────
+def test_account_export_owner_gets_full_snapshot(merchant):
+    owner = factories.StaffUserFactory(merchant=merchant, role=Role.OWNER)
+    factories.StaffUserFactory(merchant=merchant, role=Role.SCANNER)
+    MerchantSettings.objects.create(merchant=merchant, contact_phone="+201234567890")
+
+    resp = _auth(owner).get("/api/v1/settings/account/export")
+    assert resp.status_code == 200
+    assert 'attachment; filename="stampn-' in resp["Content-Disposition"]
+    body = resp.json()
+    assert body["merchant"]["id"] == str(merchant.id)
+    assert body["settings"]["contact_phone"] == "+201234567890"
+    assert {s["role"] for s in body["staff"]} == {Role.OWNER, Role.SCANNER}
+    assert "exported_at" in body
+
+
+def test_account_export_is_owner_only(merchant):
+    admin = factories.StaffUserFactory(merchant=merchant, role=Role.ADMIN)
+    assert _auth(admin).get("/api/v1/settings/account/export").status_code == 403
+
+
+def test_account_export_is_tenant_scoped(merchant):
+    """One owner never sees another merchant's staff/data."""
+    owner = factories.StaffUserFactory(merchant=merchant, role=Role.OWNER)
+    other = factories.MerchantFactory(name="Rival")
+    factories.StaffUserFactory(merchant=other, role=Role.OWNER, user__email="rival@x.test")
+
+    body = _auth(owner).get("/api/v1/settings/account/export").json()
+    emails = {s["email"] for s in body["staff"]}
+    assert "rival@x.test" not in emails
 
 
 def test_locked_merchant_me_shows_suspended(merchant):

@@ -78,16 +78,52 @@ def test_pass_json_has_required_fields(customer_card):
     assert p["teamIdentifier"] == "TEAM123456"
     assert p["authenticationToken"] == customer_card.auth_token
     assert p["webServiceURL"] == "https://api.stampn.net/api/v1/wallet/apple"
-    assert p["storeCard"]["primaryFields"][0]["value"] == 2
+    # The top-right header carries the platform brand; the stamp count is shown by
+    # the cup strip + the "N for a reward" secondary field, not a header balance.
+    assert p["storeCard"]["headerFields"][0]["value"] == "Stampn"
 
 
 def test_pass_json_has_no_message_field_without_a_message(customer_card):
     p = passdata.build_pass_json(customer_card)
-    assert p["storeCard"]["backFields"] == []
+    back = p["storeCard"]["backFields"]
+    # Back fields now include reward/how-it-works/merchant, but none is a wallet
+    # message (a message field is the one carrying changeMessage "%@").
+    assert all(f.get("changeMessage") != "%@" for f in back)
 
 
 def test_active_pass_is_not_voided(customer_card):
     assert "voided" not in passdata.build_pass_json(customer_card)
+
+
+def test_pass_back_has_contact_links_and_powered_by(customer_card):
+    """Merchant contact/social links render on the back (Facebook as a link, phone
+    as plain text) and "Powered by Stampn" is always the last back field."""
+    from accounts.models import MerchantSettings
+
+    MerchantSettings.objects.update_or_create(
+        merchant=customer_card.card.merchant,
+        defaults={
+            "contact_phone": "+201234567890",
+            "facebook_url": "https://facebook.com/acme",
+            "terms_url": "https://acme.test/terms",
+            "branches": "Maadi\nZamalek",
+        },
+    )
+    back = passdata.build_pass_json(customer_card)["storeCard"]["backFields"]
+    by_key = {f["key"]: f for f in back}
+    assert by_key["phone"]["value"] == "+201234567890"
+    assert 'href="https://facebook.com/acme"' in by_key["facebook"]["attributedValue"]
+    assert "branches" in by_key
+    assert "terms" in by_key
+    # Powered by Stampn is dead last, with only "Stampn" hyperlinked.
+    assert back[-1]["key"] == "powered"
+    assert 'href="https://stampn.net"' in back[-1]["attributedValue"]
+
+
+def test_pass_back_powered_by_present_without_contact(customer_card):
+    """With no contact settings, only the Powered by Stampn footer is appended."""
+    back = passdata.build_pass_json(customer_card)["storeCard"]["backFields"]
+    assert back[-1]["key"] == "powered"
 
 
 def test_completed_pass_is_voided(customer_card):
@@ -105,12 +141,11 @@ def test_pass_json_surfaces_latest_message_with_change_message(customer_card):
     WalletMessage.objects.create(customer_card=customer_card, title="Promo", body="Free coffee!")
 
     back = passdata.build_pass_json(customer_card)["storeCard"]["backFields"]
-    assert len(back) == 1
-    field = back[0]
-    assert field["value"] == "Free coffee!"  # newest wins
-    assert field["label"] == "Promo"
-    # changeMessage is what makes iOS show a lock-screen notification on change.
-    assert field["changeMessage"] == "%@"
+    # The message field is the one carrying changeMessage "%@".
+    msg = [f for f in back if f.get("changeMessage") == "%@"]
+    assert len(msg) == 1
+    assert msg[0]["value"] == "Free coffee!"  # newest wins
+    assert msg[0]["label"] == "Promo"
 
 
 def test_build_pkpass_is_valid_zip_with_matching_manifest(customer_card):
@@ -125,6 +160,16 @@ def test_build_pkpass_is_valid_zip_with_matching_manifest(customer_card):
     for fname, digest in manifest.items():
         assert hashlib.sha1(zf.read(fname)).hexdigest() == digest
     assert len(zf.read("signature")) > 0
+
+
+def test_signature_carries_authenticated_attributes(customer_card):
+    """iOS requires the signing-time / content-type / message-digest attrs; a
+    NoAttributes signature verifies in openssl but iOS rejects the pass."""
+    raw = build_pkpass(customer_card)
+    signature = zipfile.ZipFile(io.BytesIO(raw)).read("signature").hex()
+    assert "2a864886f70d010905" in signature  # signing-time  (OID 1.2.840.113549.1.9.5)
+    assert "2a864886f70d010903" in signature  # content-type  (OID 1.2.840.113549.1.9.3)
+    assert "2a864886f70d010904" in signature  # message-digest (OID 1.2.840.113549.1.9.4)
 
 
 # ── web service ──────────────────────────────────────────────────────────────
@@ -224,6 +269,22 @@ def test_download_pass(client, customer_card):
     resp = client.get(f"/api/v1/wallet/apple/download/{customer_card.id}")
     assert resp.status_code == 200
     assert resp["Content-Type"] == "application/vnd.apple.pkpass"
+
+
+def test_pkpass_icons_are_real_images(customer_card):
+    """iOS rejects a 1x1 icon ("Safari cannot download this file"); guard sizes."""
+    import io
+
+    from PIL import Image
+
+    from wallets.apple.signing import build_pass_images
+
+    imgs = build_pass_images(customer_card)
+    assert {"icon.png", "icon@2x.png", "logo.png"} <= set(imgs)
+    icon = Image.open(io.BytesIO(imgs["icon.png"]))
+    icon2x = Image.open(io.BytesIO(imgs["icon@2x.png"]))
+    assert icon.size == (29, 29)
+    assert icon2x.size == (58, 58)
 
 
 def test_download_pass_503_without_certs(client, settings):

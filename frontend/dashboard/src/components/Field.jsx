@@ -23,7 +23,7 @@ function Shell({ label, name, error, hint, required, children }) {
 }
 
 const base =
-  'w-full rounded-ctl border bg-white px-3 py-2 text-tx outline-none focus:border-amber'
+  'w-full rounded-ctl border bg-surface px-3 py-2 text-tx outline-none focus:border-violet'
 const ring = (error) => (error ? 'border-danger' : 'border-line')
 
 export const Input = forwardRef(function Input(

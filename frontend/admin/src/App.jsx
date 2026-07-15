@@ -3,6 +3,8 @@ import RequireAuth from './layout/RequireAuth'
 import AdminShell from './layout/AdminShell'
 import Login from './features/auth/Login'
 import Home from './features/home/Home'
+import LeadsHome from './features/leads/LeadsHome'
+import MessagesHome from './features/messages/MessagesHome'
 import MerchantsList from './features/merchants/MerchantsList'
 import MerchantDetail from './features/merchants/MerchantDetail'
 import PlansList from './features/plans/PlansList'
@@ -12,7 +14,12 @@ import PlatformHome from './features/platform/PlatformHome'
 import LifecycleHome from './features/lifecycle/LifecycleHome'
 import AnnouncementsHome from './features/announcements/AnnouncementsHome'
 import PromotionsHome from './features/promotions/PromotionsHome'
+import PartnersHome from './features/partners/PartnersHome'
 import TeamHome from './features/team/TeamHome'
+import AuditHome from './features/audit/AuditHome'
+import ComplianceHome from './features/compliance/ComplianceHome'
+import OpsHome from './features/ops/OpsHome'
+import SecurityHome from './features/security/SecurityHome'
 
 export default function App() {
   return (
@@ -26,6 +33,8 @@ export default function App() {
         }
       >
         <Route path="/" element={<Home />} />
+        <Route path="/leads" element={<LeadsHome />} />
+        <Route path="/messages" element={<MessagesHome />} />
         <Route path="/merchants" element={<MerchantsList />} />
         <Route path="/merchants/:id" element={<MerchantDetail />} />
         <Route path="/plans" element={<PlansList />} />
@@ -35,7 +44,12 @@ export default function App() {
         <Route path="/lifecycle" element={<LifecycleHome />} />
         <Route path="/announcements" element={<AnnouncementsHome />} />
         <Route path="/promotions" element={<PromotionsHome />} />
+        <Route path="/partners" element={<PartnersHome />} />
         <Route path="/team" element={<TeamHome />} />
+        <Route path="/audit" element={<AuditHome />} />
+        <Route path="/compliance" element={<ComplianceHome />} />
+        <Route path="/ops" element={<OpsHome />} />
+        <Route path="/security" element={<SecurityHome />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

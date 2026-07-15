@@ -1,7 +1,13 @@
 """Enrollment token issuance + resolution (contract §3.3 ENROLL_TOKEN_BYTES).
 
-A merchant generates a token per program (Card); the QR encodes
-``/enroll/{token}``. Tokens are random, URL-safe, and optionally expiring
+Two kinds of token, both encoded as ``/enroll/{token}`` behind one public route:
+
+* **Card token** (``core.EnrollmentToken``) — bound to one program forever.
+* **Merchant token** (``enrollment.MerchantEnrollLink``) — the "main QR": stable
+  across a change of program, so a printed poster never goes stale.
+
+``resolve_join_target`` is the single entry point; it tries a card token first,
+then the merchant link. Tokens are random, URL-safe, and optionally expiring
 (``ENROLL_TOKEN_TTL_DAYS`` is ``None`` = never expires by default).
 """
 
@@ -10,11 +16,14 @@ from __future__ import annotations
 import secrets
 from datetime import timedelta
 
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from common.errors import TokenExpired
 from core import constants
-from core.models import Card, EnrollmentToken
+from core.enums import CardStatus
+from core.models import Card, EnrollmentToken, Merchant
+from enrollment.models import MerchantEnrollLink
 
 
 def _generate_token() -> str:
@@ -69,3 +78,53 @@ def resolve_active_token(token: str) -> EnrollmentToken | None:
     if row.expires_at is not None and row.expires_at < timezone.now():
         raise TokenExpired()
     return row
+
+
+def get_or_issue_merchant_link(merchant: Merchant) -> MerchantEnrollLink:
+    """Return the merchant's main-QR link, creating it on first use.
+
+    Idempotent under a concurrent double-GET: ``merchant`` is a OneToOne, so the
+    loser of the race hits the unique constraint and re-reads the winner's row
+    rather than minting a second token (which would silently orphan the first).
+    """
+    existing = MerchantEnrollLink.objects.filter(merchant=merchant).first()
+    if existing is not None:
+        return existing
+    try:
+        with transaction.atomic():
+            return MerchantEnrollLink.objects.create(merchant=merchant, token=_generate_token())
+    except IntegrityError:
+        return MerchantEnrollLink.objects.get(merchant=merchant)
+
+
+def rotate_merchant_link(merchant: Merchant) -> MerchantEnrollLink:
+    """Mint a fresh token for the main QR, invalidating every printed poster."""
+    link = get_or_issue_merchant_link(merchant)
+    link.token = _generate_token()
+    link.save(update_fields=["token", "updated_at"])
+    return link
+
+
+def resolve_join_target(token: str) -> tuple[Merchant, Card] | None:
+    """Resolve a public join token to ``(merchant, card)``, or ``None`` (→ 404).
+
+    A card token resolves to its own card (raising ``TokenExpired`` → 410 when
+    past its TTL). A merchant token resolves to the elected ``primary_card``, but
+    only when one is elected **and** it is ACTIVE — a DRAFT or ARCHIVED program
+    must never take joins through the main QR, and an unset primary must 404
+    rather than fall back to an arbitrary card.
+    """
+    card_token = resolve_active_token(token)
+    if card_token is not None:
+        return card_token.merchant, card_token.card
+
+    link = (
+        MerchantEnrollLink.objects.select_related("primary_card", "merchant")
+        .filter(token=token, is_active=True)
+        .first()
+    )
+    if link is None or link.primary_card is None:
+        return None
+    if link.primary_card.status != CardStatus.ACTIVE:
+        return None
+    return link.merchant, link.primary_card

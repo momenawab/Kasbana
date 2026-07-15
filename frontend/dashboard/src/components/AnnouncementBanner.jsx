@@ -12,7 +12,7 @@ export default function AnnouncementBanner() {
   const a = unread[0]
 
   return (
-    <div className="flex items-start justify-between gap-3 bg-brand/10 px-4 py-2 text-sm text-ink">
+    <div className="flex items-start justify-between gap-3 bg-brand/10 px-4 py-2 text-sm text-tx">
       <div className="flex items-start gap-2">
         <Megaphone size={16} className="mt-0.5 shrink-0 text-brand" />
         <div>
@@ -23,7 +23,7 @@ export default function AnnouncementBanner() {
       <button
         onClick={() => markRead.mutate(a.id)}
         aria-label="Dismiss"
-        className="shrink-0 rounded-ctl p-1 text-tx-2 hover:bg-brand/20 hover:text-ink"
+        className="shrink-0 rounded-ctl p-1 text-tx-2 hover:bg-brand/20 hover:text-tx"
       >
         <X size={16} />
       </button>
