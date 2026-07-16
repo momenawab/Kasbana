@@ -249,17 +249,15 @@ export const translations = {
           features: [
             'Everything in Growth, plus:',
             'Unlimited cards, locations & staff',
-            '100,000 customers',
-            'White-label — remove “Powered by Stampn”',
+            'Unlimited customers',
             'Custom join-page domain',
             'Account manager + SLA',
-            'Read-only API',
           ],
         },
         {
-          key: 'custom',
-          name: 'Custom',
-          tagline: 'Integrate Stampn into your system.',
+          key: 'enterprise',
+          name: 'Enterprise',
+          tagline: 'Built around how your business works.',
           custom: true,
           priceLabel: "Let's talk",
           features: [
@@ -623,17 +621,15 @@ export const translations = {
           features: [
             'كل مميزات Growth، وكمان:',
             'كروت وفروع وموظفين بلا حدود',
-            '١٠٠٬٠٠٠ عميل',
-            'إزالة «Powered by Stampn» (وايت ليبل)',
+            'عملاء بلا حدود',
             'دومين مخصّص لصفحة الانضمام',
             'مدير حساب + اتفاقية مستوى خدمة',
-            'API للقراءة فقط',
           ],
         },
         {
-          key: 'custom',
-          name: 'Custom',
-          tagline: 'ادمج Stampn في نظامك.',
+          key: 'enterprise',
+          name: 'Enterprise',
+          tagline: 'مبني على طريقة شغل شركتك.',
           custom: true,
           priceLabel: 'خلينا نتكلم',
           features: [

@@ -23,9 +23,12 @@ Source docs (Paymob Developer Portal → left nav):
 - **Monthly + annual ship together**, not monthly-first. Matches the pricing
   page's toggle and `pricing-plan.md`'s ladder — no mismatch between what's
   advertised and what checkout actually charges.
-- **The legacy one-time-checkout gateway path is replaced, not kept.** Custom/
-  negotiated (Chain "Let's talk") deals get admin-granted access via the
-  existing `comp` / `override_plan` tools, not a real checkout.
+- **The legacy one-time-checkout gateway path is replaced, not kept.**
+- **Every public tier is self-service — Starter, Growth *and* Chain**
+  (revised 2026-07-16). Chain is an ordinary plan: it appears on Pricing, checks
+  out through Paymob, and auto-renews monthly or annually like the others. It is
+  **not** "Let's talk". Negotiated deals are a separate **Enterprise** tier
+  (§12), not a mode of Chain.
 - **The 6 Paymob Subscription Plans are created by a management command**,
   not by hand in the dashboard — repeatable, versioned, prints the IDs to
   paste into config.
@@ -265,7 +268,8 @@ conflicts with the earlier sections, this section wins.
    the plan gate. Frontend-only (see 11.5).
 3. **Plan gate** — the plans render (Starter / Growth / Chain, monthly/annual
    toggle — same catalogue as the marketing Pricing page). The merchant picks
-   one. Chain "Let's talk" routes to contact, not checkout (§0).
+   one; all three check out normally. Enterprise never appears here — it is
+   assigned by an admin after a sales conversation (§12).
 4. **Card capture (mandatory)** — to start the trial the merchant must add a
    debit/credit card. We create a Paymob **Intention** using the **3DS card
    integration ID** for a **1 EGP** (`amount_cents = 100`) transaction, render
@@ -366,3 +370,83 @@ preview dashboard without a card.
 - Phase 3 (adapter): the 1 EGP verification intention + card-token capture;
   Create Subscription with `subscription_start_date`.
 - New phase (frontend): the dashboard onboarding intro + plan/card gate.
+
+---
+
+## 12. Enterprise — negotiated tier (added 2026-07-16)
+
+Supersedes the old "Custom" plan and every remaining reference to Chain as
+"Let's talk". **Starter / Growth / Chain are self-service. Enterprise is
+contact-sales + admin-assigned, and bills exactly like the rest afterwards.**
+
+### 12.1 Why not just a price field on the merchant
+
+A per-merchant custom price does not scale: every new deal re-enters the same
+configuration by hand, and nothing is reusable. Instead an Enterprise plan is a
+**`billing.Plan` row like any other**, just with `is_public=False` so it never
+appears at self-serve. Ops defines *Enterprise Silver / Gold / Platinum* once
+and assigns whichever fits.
+
+This needs almost no new billing machinery, because the catalogue is already
+built for it: `Plan.key` is a free string ("so custom/negotiated plans can be
+added without a code change"), the entitlements engine already resolves limits
+from the DB by key, and admins can already create/edit/archive plans via
+`POST /api/admin/v1/plans`.
+
+### 12.2 The one structural change
+
+`Subscription.plan` and the frozen `core.Merchant.plan` are constrained to
+`PlanTier`, so they cannot hold `ENT_GOLD`. Two levels, therefore:
+
+- **tier** — `PlanTier.ENTERPRISE`, a new *additive* value on the frozen enum
+  (same precedent as `Role` gaining MARKETING/DESIGNER post-1.0; agreed
+  2026-07-16). This is what `Merchant.plan` mirrors and what the contract's
+  plan wire enum reports as `enterprise`.
+- **which one** — `Subscription.enterprise_plan`, an FK to the `Plan` row.
+  Carries the name ("Enterprise Gold"), price, interval and limits.
+
+`effective_plan()` resolves to the FK's key when set, so entitlements read the
+negotiated limits rather than a hardcoded tier.
+
+### 12.3 Billing is the existing flow, unchanged
+
+Each Enterprise `Plan` gets its own Paymob Subscription Plan, exactly like a
+public tier — `create_paymob_plans` simply stops filtering on `is_public`. That
+means **no new payment path**: the admin-sent "payment link" is the same
+Unified Checkout URL `POST /billing/subscribe` already returns, and once the
+first 3DS charge links the card, renewals, invoices, dunning, webhooks, retries
+and cancellation all reuse §5–§7 verbatim.
+
+### 12.4 Plan model additions
+
+Configurable per Enterprise plan (and harmless on public tiers):
+
+- `max_campaigns` — campaign limit (no equivalent today).
+- `priority_support` — boolean.
+- `custom_features` — JSON blob, so a one-off capability never needs a
+  migration. Keeps the architecture extensible per the brief.
+
+`api` already exists and is exactly what Enterprise re-enables — it left the
+public ladder on 2026-07-15 precisely to become bespoke.
+
+**White-label is deliberately absent.** Decision 2026-07-16: "Powered by
+Stampn" is removed from *every* plan, so there is nothing to gate — the flag
+would always be true. This reverses the 2026-07-15 "footer is mandatory"
+decision.
+
+### 12.5 Merchant-facing (§8 of the brief)
+
+The billing page shows the negotiated plan as a first-class subscription:
+Current Plan = *Enterprise*, Plan Name = *Enterprise Gold*, its price, interval,
+renewal date and status — plus the enabled limits/features. It never exposes the
+pricing editor or the plan configuration; those are admin-only.
+
+### 12.6 Build order
+
+1. Chain self-service everywhere + docs (done).
+2. `Plan` gains `max_campaigns` / `priority_support` / `custom_features`.
+3. `PlanTier.ENTERPRISE` + `Subscription.enterprise_plan` + assignment +
+   `effective_plan` resolution + `create_paymob_plans` covering non-public plans.
+4. Admin panel: manage Enterprise plans, assign one, send the payment link.
+5. Dashboard billing page: the Enterprise view above.
+6. Marketing pricing: Enterprise "Let's Talk" (done — replaced Custom).

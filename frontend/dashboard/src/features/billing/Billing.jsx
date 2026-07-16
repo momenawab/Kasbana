@@ -119,7 +119,10 @@ export default function Billing() {
               </p>
             )}
           </div>
-          {plan !== 'chain' && !cancelsOn && (
+          {/* Chain is a self-serve plan like any other now, so it cancels like
+              one — the old `plan !== 'chain'` guard dated from when Chain was
+              contact-sales, and left paying Chain merchants unable to cancel. */}
+          {!cancelsOn && (
             <Button variant="danger" onClick={doCancel} loading={cancel.isPending}>
               {t('billing.cancel')}
             </Button>
