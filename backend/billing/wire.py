@@ -42,6 +42,10 @@ def status_to_wire(merchant: Merchant, subscription: Subscription) -> str:
         BillingStatus.LOCKED,
         BillingStatus.CANCELED,
         BillingStatus.PAST_DUE,
+        # No card yet — locked out at the onboarding gate. The contract has no
+        # value for the pre-trial state, and "suspended" is what it means for
+        # access, so it maps here rather than falling through to "active".
+        BillingStatus.PENDING_CARD,
     ):
         return "suspended"
     return "active"

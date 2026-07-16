@@ -14,13 +14,21 @@ from decimal import Decimal
 from django.db import models
 from django.utils import timezone
 
-from billing.plans import TRIAL_DAYS, TRIAL_PLAN, BillingStatus
+from billing.plans import TRIAL_DAYS, TRIAL_PLAN, BillingInterval, BillingStatus
 from core.enums import PlanTier
 from core.models import Merchant, TimeStampedModel, UUIDModel
 from core.tenancy import TenantManager
 
 
 def default_trial_end() -> datetime:
+    """Provisional trial end for a row created before a card exists.
+
+    Under the card-upfront trial the real clock starts at card verification
+    (``trial_started_at + TRIAL_DAYS``, which overwrites this). It stays as the
+    field default so legacy card-free trials — and any row created outside the
+    onboarding gate — still carry a bounded end date rather than ``None``, which
+    ``trial_active`` would read as "no trial at all".
+    """
     return timezone.now() + timedelta(days=TRIAL_DAYS)
 
 
@@ -43,8 +51,16 @@ class Plan(UUIDModel, TimeStampedModel):
     key = models.CharField(max_length=32, unique=True)
     name = models.CharField(max_length=64)
     price_egp = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0"))
+    # Annual list price — ten months' worth of ``price_egp`` ("2 months free").
+    price_egp_annual = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0"))
     is_public = models.BooleanField(default=True)  # offered on the self-serve subscribe screen
     archived = models.BooleanField(default=False)
+
+    # The Paymob Subscription Plan this tier maps to, one per interval. Created
+    # once per environment by ``manage.py create_paymob_plans`` and pasted back
+    # here; blank until then (and always blank for FREE, which isn't sellable).
+    paymob_plan_id_monthly = models.CharField(max_length=64, blank=True)
+    paymob_plan_id_annual = models.CharField(max_length=64, blank=True)
 
     # ``max_*`` — null means unlimited (mirrors billing.plans.LIMIT_CAPABILITIES).
     max_cards = models.PositiveIntegerField(null=True, blank=True)
@@ -69,6 +85,12 @@ class Plan(UUIDModel, TimeStampedModel):
     def __str__(self) -> str:
         return f"{self.key} ({self.name})"
 
+    def paymob_plan_id(self, interval: str) -> str:
+        """The Paymob Subscription Plan id for ``interval``, or "" if unmapped."""
+        if interval == BillingInterval.ANNUAL:
+            return self.paymob_plan_id_annual
+        return self.paymob_plan_id_monthly
+
     def as_limits(self) -> dict[str, int | bool | str | None]:
         """Shape matching ``billing.plans.PLAN_LIMITS[plan]`` for the entitlements engine."""
         return {
@@ -90,17 +112,34 @@ class Subscription(UUIDModel, TimeStampedModel):
     """One subscription per merchant; drives the entitlements engine."""
 
     merchant = models.OneToOneField(Merchant, on_delete=models.CASCADE, related_name="subscription")
-    # The paid plan the merchant converts to; during the trial, access is
-    # TRIAL_PLAN-level regardless of this value (see ``effective_plan``).
+    # The plan the merchant picked at the gate — what they trial on and what
+    # Paymob auto-charges at trial end (see ``effective_plan``).
     plan = models.CharField(max_length=16, choices=PlanTier.choices, default=PlanTier.FREE)
     status = models.CharField(
-        max_length=16, choices=BillingStatus.choices, default=BillingStatus.TRIALING
+        max_length=24, choices=BillingStatus.choices, default=BillingStatus.TRIALING
+    )
+    # How often the plan renews; picked alongside ``plan`` at the gate and fixed
+    # for the life of the Paymob subscription (switching interval re-subscribes).
+    billing_interval = models.CharField(
+        max_length=8, choices=BillingInterval.choices, default=BillingInterval.MONTHLY
     )
     trial_ends_at = models.DateTimeField(null=True, blank=True, default=default_trial_end)
     current_period_end = models.DateTimeField(null=True, blank=True)
     # Gateway linkage (Paymob) — filled by the webhook handlers.
     provider = models.CharField(max_length=16, blank=True)
     gateway_ref = models.CharField(max_length=128, blank=True)
+
+    # ── Recurring subscription + card-upfront trial ─────────────────────────
+    # Paymob's *subscription* instance id — distinct from ``gateway_ref``, which
+    # stays the linking *transaction* ref. Needed to suspend/resume/cancel the
+    # recurring deductions on Paymob's side.
+    paymob_subscription_id = models.CharField(max_length=64, blank=True)
+    # When the card was verified and the trial clock actually started. Null while
+    # PENDING_CARD; ``trial_ends_at`` is derived from it (+ TRIAL_DAYS) rather
+    # than from signup, since a trial without a card never begins.
+    trial_started_at = models.DateTimeField(null=True, blank=True)
+    card_verified = models.BooleanField(default=False)
+    card_token_ref = models.CharField(max_length=64, blank=True)  # Paymob card token
     # The plan a pending checkout will convert to, recorded at ``subscribe`` time
     # so the webhook (which only carries a gateway ref) knows what to activate.
     pending_plan = models.CharField(max_length=16, choices=PlanTier.choices, blank=True)
@@ -163,7 +202,9 @@ class Subscription(UUIDModel, TimeStampedModel):
 
         - an active admin override -> ``override_plan``, regardless of status;
         - ``comp`` -> the stored ``plan``, regardless of status;
-        - TRIALING + not expired -> ``TRIAL_PLAN`` (full Growth-level access);
+        - PENDING_CARD -> locked (``None``) — signed up but no card yet, so the
+          trial has not started (the onboarding gate is the only reachable UI);
+        - TRIALING + not expired -> the ``plan`` they picked at the gate;
         - TRIALING + expired      -> locked (``None``) — trial ended unconverted;
         - ACTIVE                  -> the paid ``plan`` (until a scheduled
           period-end cancel lapses, then locked — access retained meanwhile);
@@ -175,7 +216,13 @@ class Subscription(UUIDModel, TimeStampedModel):
         if self.comp:
             return self.plan
         if self.status == BillingStatus.TRIALING:
-            return TRIAL_PLAN if self.trial_active(now) else None
+            if not self.trial_active(now):
+                return None
+            # Legacy rows started a card-free trial before a plan was ever
+            # picked, so ``plan`` is still FREE for them — those keep the old
+            # fixed Growth-level trial. New signups always arrive here with the
+            # tier they chose at the gate.
+            return self.plan if self.plan != PlanTier.FREE else TRIAL_PLAN
         if self.status == BillingStatus.ACTIVE:
             # A period-end cancel keeps access until the period lapses, then locks.
             if (

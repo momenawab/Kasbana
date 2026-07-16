@@ -96,7 +96,7 @@ class PaymobGateway:
                     "amount_cents": amount_cents,
                     "currency": "EGP",
                     "order_id": order["id"],
-                    "integration_id": self.cfg.get("INTEGRATION_ID", ""),
+                    "integration_id": self.cfg.get("CARD_INTEGRATION_ID", ""),
                     "billing_data": {
                         "email": customer_email or "na@kasbana.net",
                         "first_name": "Kasbana",

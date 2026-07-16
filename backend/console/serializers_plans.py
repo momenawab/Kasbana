@@ -14,8 +14,12 @@ class PlanSerializer(serializers.ModelSerializer):
             "key",
             "name",
             "price_egp",
+            "price_egp_annual",
             "is_public",
             "archived",
+            # Pasted in by ops after `manage.py create_paymob_plans` (per env).
+            "paymob_plan_id_monthly",
+            "paymob_plan_id_annual",
             "max_cards",
             "max_locations",
             "max_staff",

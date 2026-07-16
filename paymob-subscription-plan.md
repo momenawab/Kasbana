@@ -76,9 +76,9 @@ webhook. No recurrence.
 
 | Credential/ID | New? | Purpose |
 |---|---|---|
-| `PAYMOB_API_KEY` | existing | `api/auth/tokens` — legacy, still used for anything not on Intention API |
+| `PAYMOB_API_KEY` | existing | `api/auth/tokens` — legacy, still used for anything not on Intention API. **Required by the plan-creation command** (§7): Create Subscription Plan authenticates with this auth token, *not* `SECRET_KEY` |
 | `PAYMOB_HMAC_SECRET` | existing | keys **both** HMAC schemes (transaction + subscription), the concatenation differs, the secret doesn't |
-| `PAYMOB_SECRET_KEY` | **new** | Bearer/Token auth for the Intention API (`v1/intention/`) — a different key than `API_KEY` |
+| `PAYMOB_SECRET_KEY` | **new** | Bearer/Token auth for the Intention API (`v1/intention/`) — a different key than `API_KEY`. Scoped to one Paymob account: a plan ID from a *different* account fails Create Subscription with `404 {"message": "invalid subscription plan id"}` |
 | `PAYMOB_PUBLIC_KEY` | **new** | Unified Checkout / Pixel `publicKey` param |
 | `PAYMOB_MOTO_INTEGRATION_ID` | **new** | goes on the Subscription Plan; drives the recurring auto-deductions |
 | `PAYMOB_CARD_INTEGRATION_ID` | rename of existing `INTEGRATION_ID` | the one-time 3DS card-linking transaction (`payment_methods` on the intention) |
@@ -121,6 +121,18 @@ already implied by the marketing annual toggle).
   `resume_subscription(...)`, `cancel_subscription(...)` — thin wrappers over
   `POST api/acceptance/subscriptions/{id}/{suspend|resume|cancel}`.
 - **Add** `create_subscription_plan(...)` used only by the management command.
+  Wire details verified against the live docs 2026-07-16 (page updated
+  2026-06-28): auth is the **legacy** Bearer token from `api/auth/tokens`
+  (1-hour expiry), **not** `SECRET_KEY`. The Moto integration goes in a field
+  named **`integration`** (a number) — *not* `integration_id`, as an earlier
+  draft of this plan said. `frequency` is a **closed enum** — `7, 15, 30, 60,
+  90, 180, 360` — so monthly=30 / annual=360; anything else 400s with
+  `{"frequency": ["\"5\" is not a valid choice."]}`. Note annual is **360 days,
+  not a calendar year**. Other fields: `name` (required, ≤200 chars),
+  `amount_cents`, `webhook_url`, `use_transaction_amount` (default false),
+  `is_active` (default true), `plan_type` (`"rent"`, the default),
+  `number_of_deductions` (default null), `reminder_days`/`retrial_days`
+  (strings). The response `id` is a **number**; we store it as a string.
 - **Add a second webhook verifier**, `verify_and_parse_subscription_event`.
   This **cannot** reuse `verify_and_parse` — the subscription callback's shape
   (`{"subscription_data": {...}, "trigger_type": "...", "hmac": "..."}`) and
@@ -145,7 +157,15 @@ already implied by the marketing annual toggle).
   | `"Failed Transaction"` | failed `Invoice`, status → **`PAST_DUE`** (finally reachable) |
   | `"Failed Overdue Transaction"` | failed `Invoice` after Paymob's own retrial window lapsed → lock (`LOCKED`), matching "data retained, access revoked" |
   | `"suspended"` / `"canceled"` | reconcile local status **only if we didn't initiate it** (e.g. customer's bank blocked the card) — check a "we requested this" flag first to avoid double-processing our own suspend/cancel calls |
-  | `"resumed"`, `"updated"`, card-change types | log only, no state change needed today |
+  | `"Subscription Created"`, `"resumed"`, `"updated"`, `"register_webhook"`, `"change_primary_card"`, `"add_secondry_card"`, `"delete_card"` | log only, no state change needed today |
+
+  **Verified against the live docs 2026-07-16** (portal page *HMAC calculation
+  for subscription callback*, updated 2026-06-01). The catalogue above is the
+  complete set — an earlier draft of this plan omitted `"Subscription Created"`,
+  `"register_webhook"`, `"change_primary_card"`, `"add_secondry_card"` and
+  `"delete_card"`. Note `add_secondry_card` carries Paymob's own misspelling and
+  must be matched verbatim. The handler should treat an unknown `trigger_type`
+  as log-and-ack, never as an error — the catalogue can grow server-side.
 
 ## 7. Cancellation — matches the stated refund/cancellation policy exactly
 
@@ -216,13 +236,16 @@ checkout.
   whether `apply_webhook_event` is still needed at all for the first charge,
   or whether everything (including subscription creation) comes through the
   new subscription webhook exclusively.
-- Exact behavior of `use_transaction_amount` on the plan (whether the first
-  transaction's amount silently becomes the recurring amount, vs. always
-  using the plan's `amount_cents`) — we want the plan's configured
-  `amount_cents` to be authoritative, not whatever a coupon-discounted first
-  charge happened to be, so we'll likely leave `use_transaction_amount=false`
-  and confirm that a discounted first month doesn't retroactively become the
-  renewal price.
+- ~~Exact behavior of `use_transaction_amount`~~ — **partly resolved from the
+  docs 2026-07-16.** `use_transaction_amount=true` makes the system "use the
+  first transaction amount instead of the specified subscription amount"; the
+  default is `false`, which uses the plan's `amount_cents`. Critically, Create
+  Subscription's docs state `subscription_start_date` "is effective **if the
+  `use_transaction_amount` value is false**" — so the two are coupled by
+  design, not merely by our preference: the deferred day-14 first charge
+  (§11.1) *requires* `use_transaction_amount=false`. This is now a constraint,
+  not a choice. Still worth confirming in sandbox that a coupon-discounted 1 EGP
+  linking charge doesn't leak into the renewal price.
 
 ---
 

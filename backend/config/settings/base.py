@@ -301,11 +301,24 @@ WALLET = {
 # ── Billing gateways (Phase 1.7 · contract §3.10) ─────────────────────────────
 # Paymob credentials. Unset locally/CI → the adapter runs in stub mode
 # (deterministic checkout URL, no network); real creds are wired on staging.
+#
+# Recurring subscriptions need a second set of credentials beyond the legacy
+# Accept API's: SECRET_KEY/PUBLIC_KEY drive the Intention API + Unified Checkout,
+# and the two integration ids play different roles — CARD_INTEGRATION_ID runs the
+# one-time 3DS card-linking charge, MOTO_INTEGRATION_ID is attached to the Paymob
+# Subscription Plan and runs the unattended recurring deductions.
 BILLING = {
     "PAYMOB": {
         "API_KEY": env("PAYMOB_API_KEY", ""),
         "HMAC_SECRET": env("PAYMOB_HMAC_SECRET", ""),
-        "INTEGRATION_ID": env("PAYMOB_INTEGRATION_ID", ""),
+        "SECRET_KEY": env("PAYMOB_SECRET_KEY", ""),
+        "PUBLIC_KEY": env("PAYMOB_PUBLIC_KEY", ""),
+        "CARD_INTEGRATION_ID": env("PAYMOB_CARD_INTEGRATION_ID", "")
+        # Back-compat: this was PAYMOB_INTEGRATION_ID before the card/Moto split.
+        or env("PAYMOB_INTEGRATION_ID", ""),
+        "MOTO_INTEGRATION_ID": env("PAYMOB_MOTO_INTEGRATION_ID", ""),
+        # Legacy hosted iframe. Unified Checkout replaces it when the adapter
+        # moves to the Intention API; still read by today's create_checkout.
         "IFRAME_ID": env("PAYMOB_IFRAME_ID", ""),
     },
 }
