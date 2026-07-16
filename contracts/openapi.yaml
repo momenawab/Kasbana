@@ -7389,6 +7389,12 @@ components:
           minimum: 0
           format: int64
           nullable: true
+        max_campaigns_per_month:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
         export:
           type: boolean
         api:
@@ -7399,6 +7405,9 @@ components:
           type: boolean
         referral:
           type: boolean
+        priority_support:
+          type: boolean
+        custom_features: {}
         automations:
           type: integer
           maximum: 9223372036854775807
@@ -7675,6 +7684,12 @@ components:
           minimum: 0
           format: int64
           nullable: true
+        max_campaigns_per_month:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
         export:
           type: boolean
         api:
@@ -7685,6 +7700,9 @@ components:
           type: boolean
         referral:
           type: boolean
+        priority_support:
+          type: boolean
+        custom_features: {}
         automations:
           type: integer
           maximum: 9223372036854775807
@@ -8700,7 +8718,10 @@ components:
           type: integer
         customers:
           type: integer
+        campaigns_this_month:
+          type: integer
       required:
+      - campaigns_this_month
       - cards
       - customers
       - locations

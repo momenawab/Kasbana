@@ -14,7 +14,7 @@ from decimal import Decimal
 from django.db import models
 from django.utils import timezone
 
-from billing.plans import TRIAL_DAYS, TRIAL_PLAN, BillingInterval, BillingStatus
+from billing.plans import TRIAL_DAYS, TRIAL_PLAN, BillingInterval, BillingStatus, PlanLimits
 from core.enums import PlanTier
 from core.models import Merchant, TimeStampedModel, UUIDModel
 from core.tenancy import TenantManager
@@ -68,11 +68,27 @@ class Plan(UUIDModel, TimeStampedModel):
     max_staff = models.PositiveIntegerField(null=True, blank=True)
     max_customers = models.PositiveIntegerField(null=True, blank=True)
 
+    # Campaigns sent per calendar month; null = unlimited, which every public
+    # tier is. Monthly rather than lifetime: campaigns accumulate, so a lifetime
+    # cap would eventually block a merchant permanently instead of pacing them.
+    max_campaigns_per_month = models.PositiveIntegerField(null=True, blank=True)
+
     export = models.BooleanField(default=False)
     api = models.BooleanField(default=False)
     specialized_roles = models.BooleanField(default=False)
     custom_branding = models.BooleanField(default=False)
     referral = models.BooleanField(default=False)
+    # An Enterprise contract term rather than a product gate — support acts on
+    # it; nothing in the app checks it. Stored so the admin can set it per plan
+    # and the merchant can see what they agreed to.
+    priority_support = models.BooleanField(default=False)
+
+    # Free-form negotiated capabilities, so a one-off Enterprise term never
+    # needs a migration ("any future feature flags"). Shape is {name: value};
+    # read via ``billing.entitlements.custom_feature``. Deliberately not part of
+    # ``check()`` — an unknown capability there must stay an error, or a typo
+    # would silently grant access.
+    custom_features = models.JSONField(default=dict, blank=True)
 
     automations = models.PositiveIntegerField(default=0)
     analytics = models.CharField(
@@ -91,18 +107,21 @@ class Plan(UUIDModel, TimeStampedModel):
             return self.paymob_plan_id_annual
         return self.paymob_plan_id_monthly
 
-    def as_limits(self) -> dict[str, int | bool | str | None]:
+    def as_limits(self) -> PlanLimits:
         """Shape matching ``billing.plans.PLAN_LIMITS[plan]`` for the entitlements engine."""
         return {
             "max_cards": self.max_cards,
             "max_locations": self.max_locations,
             "max_staff": self.max_staff,
             "max_customers": self.max_customers,
+            "max_campaigns_per_month": self.max_campaigns_per_month,
             "export": self.export,
             "api": self.api,
             "specialized_roles": self.specialized_roles,
             "custom_branding": self.custom_branding,
             "referral": self.referral,
+            "priority_support": self.priority_support,
+            "custom_features": self.custom_features or {},
             "automations": self.automations,
             "analytics": self.analytics,
         }

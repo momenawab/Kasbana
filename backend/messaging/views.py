@@ -16,6 +16,7 @@ from rest_framework.response import Response
 from rest_framework.serializers import BaseSerializer
 from rest_framework.views import APIView
 
+from billing import entitlements
 from billing.plans import PLAN_LIMITS, plan_limits_map
 from billing.services import subscription_for
 from common.errors import PlanLimit, UnprocessableEntity
@@ -53,6 +54,10 @@ class CampaignListCreateView(generics.ListCreateAPIView):
         body.is_valid(raise_exception=True)
         data = body.validated_data
         merchant = get_request_merchant(request)
+
+        # Unlimited on every public tier, so this is a no-op there; it exists
+        # for Enterprise plans, where the monthly allowance is negotiated.
+        entitlements.enforce(merchant, "max_campaigns_per_month")
 
         schedule_at = data.get("schedule_at")
         scheduled = bool(schedule_at and schedule_at > timezone.now())

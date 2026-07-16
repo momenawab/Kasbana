@@ -23,6 +23,8 @@ class UsageSerializer(serializers.Serializer):
     locations = serializers.IntegerField()
     staff = serializers.IntegerField()
     customers = serializers.IntegerField()
+    # Pairs with the per-month campaign allowance; resets on the 1st.
+    campaigns_this_month = serializers.IntegerField()
 
 
 class BillingStateSerializer(serializers.Serializer):

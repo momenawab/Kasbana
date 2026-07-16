@@ -19,6 +19,12 @@ from django.db import models
 
 from core.enums import PlanTier
 
+# One plan's capability map. Values are a limit (``int``/``None``), a feature
+# flag (``bool``), a tier name (``str`` — ``analytics``), or the free-form
+# ``custom_features`` object, hence the ``dict`` member.
+PlanLimitValue = int | bool | str | None | dict[str, object]
+PlanLimits = dict[str, PlanLimitValue]
+
 
 class BillingStatus(models.TextChoices):
     """Lifecycle of a merchant's subscription (billing-owned, not in core)."""
@@ -70,12 +76,33 @@ CARD_VERIFICATION_AMOUNT_CENTS = 100
 
 # Capability groups. ``max_*`` are counted against live usage; the rest are
 # boolean feature flags. Keep in sync with ``entitlements.CAPABILITIES``.
-LIMIT_CAPABILITIES = frozenset({"max_cards", "max_locations", "max_staff", "max_customers"})
+LIMIT_CAPABILITIES = frozenset(
+    {
+        "max_cards",
+        "max_locations",
+        "max_staff",
+        "max_customers",
+        # Counted per calendar month, not lifetime — campaigns accumulate
+        # forever, so a lifetime cap would permanently block a long-lived
+        # merchant rather than pace them. Unlimited on every public tier
+        # (campaigns have never been capped); it exists for Enterprise plans,
+        # where an admin negotiates a number.
+        "max_campaigns_per_month",
+    }
+)
 # ``specialized_roles`` gates the Marketing/Designer staff roles; ``custom_branding``
 # gates custom join-page branding (the "Powered by Stampn" footer is mandatory on
 # every plan and cannot be removed). Both Growth+.
+# ``priority_support`` is an Enterprise-negotiated term (dedicated/priority
+# response). It gates nothing in the product today — it is a contractual promise
+# support staff act on — but it lives here so the admin can set it per plan and
+# the merchant can see what they bought.
+#
+# There is deliberately no ``white_label``: "Powered by Stampn" cannot be
+# removed on any plan, Enterprise included (confirmed 2026-07-16). Do not add
+# one; the footer is not a negotiable term.
 FEATURE_CAPABILITIES = frozenset(
-    {"export", "api", "specialized_roles", "custom_branding", "referral"}
+    {"export", "api", "specialized_roles", "custom_branding", "referral", "priority_support"}
 )
 # Derived capabilities are computed from a non-boolean plan field, not a stored
 # flag. ``analytics_full`` is true when the plan's ``analytics`` tier is "full"
@@ -91,7 +118,7 @@ DERIVED_CAPABILITIES = frozenset({"analytics_full"})
 # FREE is not a sellable tier (subscribe offers Starter/Growth/Chain only) — it
 # only supplies the display "shape" for a locked/un-converted account, so it
 # stays here to avoid a KeyError but grants nothing.
-PLAN_LIMITS: dict[str, dict[str, int | bool | str | None]] = {
+PLAN_LIMITS: dict[str, PlanLimits] = {
     PlanTier.FREE: {
         "max_cards": 1,
         "max_locations": 1,
@@ -102,6 +129,9 @@ PLAN_LIMITS: dict[str, dict[str, int | bool | str | None]] = {
         "specialized_roles": False,
         "custom_branding": False,
         "referral": False,
+        "priority_support": False,
+        "custom_features": {},
+        "max_campaigns_per_month": None,
         "automations": 0,
         "analytics": "basic",
     },
@@ -115,6 +145,9 @@ PLAN_LIMITS: dict[str, dict[str, int | bool | str | None]] = {
         "specialized_roles": False,
         "custom_branding": False,
         "referral": False,
+        "priority_support": False,
+        "custom_features": {},
+        "max_campaigns_per_month": None,
         # Engagement automations are a Growth+ feature; `welcome` is exempt (free
         # on every plan). 0 here means Starter can enable no engagement automation.
         "automations": 0,
@@ -126,11 +159,14 @@ PLAN_LIMITS: dict[str, dict[str, int | bool | str | None]] = {
         "max_staff": 25,
         "max_customers": 20_000,
         "export": True,
-        # API is no longer a self-serve ladder feature — it's bespoke Custom-only.
+        # API is not a self-serve ladder feature — it's bespoke, Enterprise-only.
         "api": False,
         "specialized_roles": True,
         "custom_branding": True,
         "referral": True,
+        "priority_support": False,
+        "custom_features": {},
+        "max_campaigns_per_month": None,
         "automations": 5,
         "analytics": "full",
     },
@@ -144,14 +180,18 @@ PLAN_LIMITS: dict[str, dict[str, int | bool | str | None]] = {
         "specialized_roles": True,
         "custom_branding": True,
         "referral": True,
+        "priority_support": False,
+        "custom_features": {},
+        "max_campaigns_per_month": None,
         "automations": 99,
         "analytics": "full",
     },
 }
 
-# Monthly list price per tier, EGP major units (billing-owned config — confirm
-# with product before launch, per the brief's notes). ``trial`` shows the plan
-# the trial converts to (GROWTH); CHAIN is custom-quoted (0 = "contact us").
+# Monthly list price per tier, EGP major units (billing-owned config). Every
+# tier here is self-service and really charges this — including CHAIN, which an
+# older comment described as "custom-quoted / contact us"; negotiated deals are
+# the separate Enterprise tier, not a mode of Chain (revised 2026-07-16).
 PLAN_PRICES_EGP: dict[str, Decimal] = {
     PlanTier.FREE: Decimal("0"),
     PlanTier.STARTER: Decimal("599"),
@@ -179,7 +219,7 @@ _PLAN_CATALOGUE_CACHE_TTL = 60  # seconds; admin edits also invalidate explicitl
 
 
 class _PlanEntry(TypedDict):
-    limits: dict[str, int | bool | str | None]
+    limits: PlanLimits
     price: Decimal
     price_annual: Decimal
 
@@ -210,7 +250,7 @@ def _catalogue() -> dict[str, _PlanEntry]:
     return rows
 
 
-def plan_limits_map() -> dict[str, dict[str, int | bool | str | None]]:
+def plan_limits_map() -> dict[str, PlanLimits]:
     """The live plan -> limits map, DB-backed with the hardcoded seed as fallback."""
     rows = {key: entry["limits"] for key, entry in _catalogue().items()}
     return rows or PLAN_LIMITS

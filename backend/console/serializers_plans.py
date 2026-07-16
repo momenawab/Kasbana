@@ -24,11 +24,17 @@ class PlanSerializer(serializers.ModelSerializer):
             "max_locations",
             "max_staff",
             "max_customers",
+            "max_campaigns_per_month",
             "export",
             "api",
             "specialized_roles",
             "custom_branding",
             "referral",
+            "priority_support",
+            # Free-form negotiated extras, so a one-off Enterprise term never
+            # needs a migration. Admin-only — merchants see the resolved values
+            # via /me, never this editor.
+            "custom_features",
             "automations",
             "analytics",
             "created_at",
