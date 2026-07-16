@@ -37,6 +37,32 @@ class WebhookEvent:
     amount_egp: Decimal | None = None
 
 
+@dataclass(frozen=True)
+class SubscriptionEvent:
+    """A verified Paymob *subscription*-lifecycle callback.
+
+    Deliberately separate from ``WebhookEvent``: that one describes a single
+    charge (success/failed/canceled), while this describes what happened to the
+    recurring subscription itself. The two callbacks differ in payload shape and
+    in HMAC formula, and a renewal has to update the subscription's period — not
+    just book an invoice — so collapsing them would lose the distinction.
+
+    ``trigger_type`` is Paymob's verbatim value (e.g. ``"Successful
+    Transaction"``, ``"suspended"``); mapping it to a state change is the
+    service layer's job, and unknown values must be ignored rather than fail —
+    Paymob can add to the catalogue without telling us.
+    """
+
+    provider: str
+    trigger_type: str
+    subscription_id: str
+    plan_id: str = ""
+    state: str = ""
+    amount_egp: Decimal | None = None
+    next_billing: str = ""
+    initial_transaction: str = ""
+
+
 class PaymentGateway(Protocol):
     """The seam billing calls; Paymob implements it (contract §3.10)."""
 

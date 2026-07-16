@@ -34,7 +34,6 @@ LIVE_CFG = {
         "PUBLIC_KEY": "test-public",
         "CARD_INTEGRATION_ID": "111",
         "MOTO_INTEGRATION_ID": "999",
-        "IFRAME_ID": "222",
     }
 }
 

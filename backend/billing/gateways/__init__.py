@@ -12,7 +12,7 @@ runs in a deterministic stub mode when its keys are unset.
 
 from __future__ import annotations
 
-from billing.gateways.base import PaymentGateway, WebhookEvent
+from billing.gateways.base import PaymentGateway, SubscriptionEvent, WebhookEvent
 from billing.gateways.paymob import PaymobGateway
 
 # Active provider adapters. ``subscribe`` picks the default; the webhook routes
@@ -40,6 +40,7 @@ __all__ = [
     "DEFAULT_PROVIDER",
     "PaymentGateway",
     "PaymobGateway",
+    "SubscriptionEvent",
     "WebhookEvent",
     "get_gateway",
 ]

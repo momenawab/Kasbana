@@ -317,9 +317,6 @@ BILLING = {
         # Back-compat: this was PAYMOB_INTEGRATION_ID before the card/Moto split.
         or env("PAYMOB_INTEGRATION_ID", ""),
         "MOTO_INTEGRATION_ID": env("PAYMOB_MOTO_INTEGRATION_ID", ""),
-        # Legacy hosted iframe. Unified Checkout replaces it when the adapter
-        # moves to the Intention API; still read by today's create_checkout.
-        "IFRAME_ID": env("PAYMOB_IFRAME_ID", ""),
     },
 }
 
