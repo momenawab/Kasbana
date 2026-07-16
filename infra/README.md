@@ -50,11 +50,26 @@ ssh -i key.pem ubuntu@13.49.70.197 'nano /opt/stampn/infra/.env'   # fill real v
 #    EC2_HOST=13.49.70.197   EC2_USER=ubuntu   EC2_SSH_KEY=<contents of key.pem>
 
 # 4. Schedule backups (nightly dump + weekly verified restore)
-ssh -i key.pem ubuntu@13.49.70.197 \
-  '(crontab -l 2>/dev/null;
+#    DO NOT SKIP THIS. It was missed on the first server and backups silently
+#    never ran for 17 days — the failure is invisible until you need a restore.
+#    The PATH line is REQUIRED: cron's default PATH is /usr/bin:/bin, which omits
+#    /usr/local/bin where the AWS CLI lives. Without it backup.sh dumps fine and
+#    then exits 1 at the S3 upload, every night, off-box copy never happening.
+ssh -i key.pem ubuntu@<host> \
+  '(echo "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin";
+    crontab -l 2>/dev/null | grep -v "^PATH=";
     echo "30 2 * * * /opt/stampn/infra/scripts/backup.sh >> /opt/stampn/backups/backup.log 2>&1";
     echo "0 4 * * 0 /opt/stampn/infra/scripts/verify_backup.sh >> /opt/stampn/backups/verify.log 2>&1"
    ) | crontab -'
+
+# 5. VERIFY it — a crontab that exists is not a backup that runs. Simulate cron's
+#    stripped environment; anything less can pass by hand and fail at 02:30.
+ssh -i key.pem ubuntu@<host> \
+  'env -i SHELL=/bin/sh PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+     HOME=/home/ubuntu LOGNAME=ubuntu USER=ubuntu \
+     /bin/sh -c /opt/stampn/infra/scripts/backup.sh'
+# Want: "✓ Off-box copy stored". Then confirm the object landed:
+#   aws s3 ls s3://stampn-db-backups/stampn/
 ```
 
 Then promote to `prod` to ship.
