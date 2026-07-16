@@ -4,6 +4,7 @@ import Sidebar from './Sidebar'
 import Topbar from './Topbar'
 import UpgradeDrawer from '../components/UpgradeDrawer'
 import AnnouncementBanner from '../components/AnnouncementBanner'
+import PlanGate from '../features/billing/PlanGate'
 import { useAuth } from '../hooks/useAuth'
 import { areaForPath, canAccess, landingFor } from '../lib/roles'
 import { arDigits, daysUntil } from '../lib/format'
@@ -20,6 +21,15 @@ export default function Shell() {
   const area = areaForPath(location.pathname)
   if (role && !canAccess(role, area)) {
     return <Navigate to={landingFor(role)} replace />
+  }
+
+  // Signup gate (§11.5): no card yet, so the trial hasn't started and nothing
+  // is entitled. Checked before the suspended branch below on purpose — the
+  // contract's status enum has no pre-trial value, so this state arrives as
+  // "suspended", and that screen would tell a brand-new merchant an admin
+  // banned them.
+  if (merchant?.needs_card) {
+    return <PlanGate />
   }
 
   const status = merchant?.status

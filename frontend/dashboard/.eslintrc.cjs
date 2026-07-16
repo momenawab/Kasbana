@@ -13,6 +13,10 @@ module.exports = {
   rules: {
     'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
     'react/prop-types': 'off',
+    // Dropping a key by destructuring it out and spreading the rest is a
+    // deliberate idiom here (e.g. Settings omits `name` from the PATCH body),
+    // never a leftover. The extracted name is unused by definition.
+    'no-unused-vars': ['error', { ignoreRestSiblings: true }],
   },
   ignorePatterns: ['dist', 'node_modules', 'public/mockServiceWorker.js'],
 }

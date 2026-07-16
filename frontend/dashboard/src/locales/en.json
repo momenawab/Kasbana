@@ -706,5 +706,40 @@
     "dark": "Dark",
     "toLight": "Switch to light mode",
     "toDark": "Switch to dark mode"
+  },
+  "gate": {
+    "welcome": "Welcome, {{name}}",
+    "introBody": "Stampn replaces the paper punch card. Here's what you can do with it.",
+    "feature": {
+      "cards": {
+        "title": "Design a loyalty card",
+        "body": "Your branding, your reward, in Apple and Google Wallet."
+      },
+      "stamps": {
+        "title": "Stamp from any phone",
+        "body": "Your staff scan a QR — no extra hardware."
+      },
+      "customers": {
+        "title": "Keep your customers",
+        "body": "Automatic reminders bring them back before they drift."
+      },
+      "analytics": {
+        "title": "See what's working",
+        "body": "Visits, rewards and repeat rate, per branch."
+      }
+    },
+    "introCta": "Choose a plan",
+    "planTitle": "Pick your plan",
+    "planBody": "Start with a 14-day trial. You won't be charged the plan price until it ends.",
+    "intervalLabel": "Billing period",
+    "monthly": "Monthly",
+    "annual": "Annual",
+    "annualSaving": "2 months free",
+    "perMonth": "per month",
+    "perYear": "per year",
+    "cardExplainer": "To start your trial, add a card. We charge 1 EGP now to check it's valid, then nothing until day 14 — cancel any time before then and you won't be charged the plan price.",
+    "startTrial": "Add card and start trial",
+    "back": "Back",
+    "noCheckout": "Couldn't open checkout. Please try again."
   }
 }
