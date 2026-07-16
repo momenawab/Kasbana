@@ -34,6 +34,22 @@ else
   echo "✓ docker already installed"
 fi
 
+# ── AWS CLI ───────────────────────────────────────────────────────────────────
+# backup.sh hard-fails without this when BACKUP_S3 is set. On EC2 it came free
+# with the AMI, so provisioning never installed it — on any other host it is
+# missing and the nightly off-box copy dies.
+if ! command -v aws >/dev/null 2>&1; then
+  echo "▶ Installing AWS CLI v2"
+  TMP=$(mktemp -d)
+  curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-$(uname -m).zip" -o "$TMP/awscliv2.zip"
+  sudo apt-get install -y unzip >/dev/null 2>&1 || true
+  unzip -q "$TMP/awscliv2.zip" -d "$TMP"
+  sudo "$TMP/aws/install"
+  rm -rf "$TMP"
+else
+  echo "✓ aws cli already installed"
+fi
+
 # ── App directories ───────────────────────────────────────────────────────────
 # secrets/ holds wallet certs (Phase 1.1), mounted read-only into the containers.
 sudo mkdir -p /opt/stampn/infra /opt/stampn/backups /opt/stampn/secrets
