@@ -159,7 +159,8 @@ def _card_client(merchant):
 
     staff = factories.StaffUserFactory(merchant=merchant)
     client = APIClient()
-    client.credentials(HTTP_AUTHORIZATION=f"Bearer {RefreshToken.for_user(staff.user).access_token}")
+    access = RefreshToken.for_user(staff.user).access_token
+    client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
     return client
 
 
