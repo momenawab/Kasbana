@@ -14,7 +14,7 @@ from typing import Any
 
 from django.utils import timezone
 
-from billing.gateways.base import WebhookEvent
+from billing.gateways.base import SubscriptionEvent, WebhookEvent
 from billing.models import WebhookDelivery
 
 logger = logging.getLogger(__name__)
@@ -43,6 +43,57 @@ def event_from_payload(payload: dict[str, Any]) -> WebhookEvent:
         plan=payload.get("plan"),
         amount_egp=Decimal(amount) if amount is not None else None,
     )
+
+
+# Paymob's trigger_type -> the short ``kind`` vocabulary the delivery log
+# already speaks (success/failed/canceled/ignored). "Successful Transaction"
+# alone overflows the 24-char column, and a mid-word truncation reads as a bug
+# in the ops console; the verbatim trigger is kept in ``payload`` regardless.
+_SUB_KINDS = {
+    "Successful Transaction": "sub:success",
+    "Failed Transaction": "sub:failed",
+    "Failed Overdue Transaction": "sub:overdue",
+    "suspended": "sub:suspended",
+    "canceled": "sub:canceled",
+}
+
+
+def record_subscription(
+    provider: str,
+    status: str,
+    *,
+    event: SubscriptionEvent | None = None,
+    error: str = "",
+) -> None:
+    """Append a WebhookDelivery for a *subscription* callback. Never raises.
+
+    ``gateway_ref`` holds the Paymob subscription id — the only id these
+    callbacks carry.
+    """
+    try:
+        payload: dict[str, Any] = {}
+        if event is not None:
+            payload = {
+                "provider": event.provider,
+                "trigger_type": event.trigger_type,
+                "subscription_id": event.subscription_id,
+                "plan_id": event.plan_id,
+                "state": event.state,
+                "amount_egp": str(event.amount_egp) if event.amount_egp is not None else None,
+                "next_billing": event.next_billing,
+                "initial_transaction": event.initial_transaction,
+            }
+        WebhookDelivery.objects.create(
+            provider=provider,
+            kind=_SUB_KINDS.get(event.trigger_type, "sub:ignored") if event else "",
+            gateway_ref=event.subscription_id if event else "",
+            status=status,
+            payload=payload,
+            error=error[:500],
+            processed_at=timezone.now() if status == WebhookDelivery.Status.PROCESSED else None,
+        )
+    except Exception:  # pragma: no cover - defensive; recording must never 500 a webhook
+        logger.exception("failed to record subscription delivery (%s/%s)", provider, status)
 
 
 def record(

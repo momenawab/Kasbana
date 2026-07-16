@@ -204,3 +204,53 @@ class _WebhookView(APIView):
 
 class PaymobWebhookView(_WebhookView):
     provider = "paymob"
+
+
+class PaymobSubscriptionWebhookView(APIView):
+    """POST /billing/webhook/paymob/subscription — recurring-subscription events.
+
+    Registered as every Paymob Subscription Plan's ``webhook_url``. Separate
+    from ``PaymobWebhookView`` because the payload shape and the HMAC scheme
+    both differ, and because only these events move the billing period forward.
+    """
+
+    permission_classes = [AllowAny]
+    authentication_classes: list = []
+    throttle_scope = "webhook"
+    provider = "paymob"
+
+    @extend_schema(request=None, responses=None)
+    def post(self, request: Request) -> Response:
+        from billing import webhook_log
+        from billing.models import WebhookDelivery
+
+        gateway = get_gateway(self.provider)
+        try:
+            event = gateway.verify_and_parse_subscription_event(
+                headers=dict(request.headers), body=request.body
+            )
+        except WebhookVerificationError as exc:
+            logger.warning("paymob subscription webhook verification failed: %s", exc)
+            webhook_log.record_subscription(
+                self.provider, WebhookDelivery.Status.INVALID, error=str(exc)
+            )
+            return Response({"detail": "invalid signature"}, status=status.HTTP_400_BAD_REQUEST)
+
+        sub = services.apply_subscription_event(event)
+        if sub is None:
+            # Nothing local matches this Paymob subscription — e.g. a plan
+            # created against another environment pointing here. Ack anyway so
+            # Paymob stops retrying, but keep the row so ops can see it.
+            logger.warning(
+                "paymob subscription webhook: no local subscription for id=%s (trigger=%s)",
+                event.subscription_id,
+                event.trigger_type,
+            )
+            webhook_log.record_subscription(
+                self.provider, WebhookDelivery.Status.NO_MERCHANT, event=event
+            )
+        else:
+            webhook_log.record_subscription(
+                self.provider, WebhookDelivery.Status.PROCESSED, event=event
+            )
+        return Response({"received": True, "at": timezone.now().isoformat()})

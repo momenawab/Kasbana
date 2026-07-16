@@ -16,13 +16,22 @@ from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from billing.models import Invoice, InvoiceStatus, Subscription
-from billing.plans import BillingStatus
+from billing.plans import INTERVAL_DAYS, BillingStatus
 from core.models import Merchant
 
 if TYPE_CHECKING:
-    from billing.gateways.base import CheckoutSession, WebhookEvent
+    from billing.gateways.base import CheckoutSession, SubscriptionEvent, WebhookEvent
 
 logger = logging.getLogger(__name__)
+
+# Paymob's ``trigger_type`` values, verbatim (docs verified 2026-07-16). The
+# casing really is inconsistent between them — the transaction ones are
+# Title Case with spaces, the lifecycle ones lowercase.
+TRIGGER_SUCCESS = "Successful Transaction"
+TRIGGER_FAILED = "Failed Transaction"
+TRIGGER_FAILED_OVERDUE = "Failed Overdue Transaction"
+TRIGGER_SUSPENDED = "suspended"
+TRIGGER_CANCELED = "canceled"
 
 
 def subscription_for(merchant: Merchant) -> Subscription:
@@ -177,6 +186,17 @@ def subscription_by_gateway_ref(provider: str, gateway_ref: str) -> Subscription
     return Subscription.objects.filter(provider=provider, gateway_ref=gateway_ref).first()
 
 
+def subscription_by_paymob_id(paymob_subscription_id: str) -> Subscription | None:
+    """Resolve the subscription a *subscription*-lifecycle callback belongs to.
+
+    Keyed on Paymob's subscription id, not ``gateway_ref``: renewals have no
+    order of ours to match on — only the subscription they belong to.
+    """
+    if not paymob_subscription_id:
+        return None
+    return Subscription.objects.filter(paymob_subscription_id=paymob_subscription_id).first()
+
+
 @transaction.atomic
 def record_invoice(
     merchant: Merchant,
@@ -321,5 +341,162 @@ def apply_webhook_event(event: WebhookEvent) -> Subscription | None:
 
     if event.kind == "canceled":
         return lock(merchant, status=BillingStatus.CANCELED)
+
+    return sub
+
+
+# ── Recurring subscription callbacks ────────────────────────────────────────
+def _period_end_for(event: SubscriptionEvent, sub: Subscription) -> datetime:
+    """When the period this renewal just paid for runs out.
+
+    Prefers Paymob's own ``next_billing`` — it is the authority on when it will
+    actually deduct again, and drifts from a locally computed date as soon as a
+    retrial or a suspension shifts the cycle. Falls back to the plan's interval.
+
+    A date-only ``next_billing`` (which is what Paymob sends) resolves to the
+    *end* of that day, not its start: Paymob bills at some unknown hour on the
+    date, and midnight would revoke a paying merchant's access hours before the
+    charge it is waiting for — a day earlier still once the local offset is
+    applied. Erring late costs at most a day of access; erring early locks out
+    someone who paid.
+    """
+    from django.utils.dateparse import parse_date, parse_datetime
+
+    raw = (event.next_billing or "").strip()
+    if raw:
+        # parse_date first, and it has to be: Django's parse_datetime delegates
+        # to fromisoformat, which happily reads a date-only "2026-08-15" as
+        # midnight — so asking it first would never leave anything for
+        # parse_date, and would silently take the start of the day. parse_date
+        # returns None for a full timestamp, which makes it the discriminator.
+        as_date = parse_date(raw)
+        if as_date is not None:
+            return timezone.make_aware(datetime.combine(as_date, datetime.max.time()))
+        as_dt = parse_datetime(raw)
+        if as_dt is not None:
+            return as_dt if timezone.is_aware(as_dt) else timezone.make_aware(as_dt)
+        logger.warning("paymob sent an unparseable next_billing %r; using the interval", raw)
+    return timezone.now() + timedelta(days=INTERVAL_DAYS[sub.billing_interval])
+
+
+def _subscription_invoice_ref(event: SubscriptionEvent, suffix: str = "") -> str:
+    """A stable per-cycle invoice ref.
+
+    Synthetic on purpose: the subscription callback carries no transaction id
+    for the deduction it is reporting (only ``initial_transaction``, which never
+    changes), so there is nothing real to key on. Including the cycle makes a
+    replay of the same callback idempotent while still allowing next month's
+    charge its own invoice. See the plan's §10 — if the sandbox pass shows a
+    parallel transaction callback with a real id, prefer that.
+    """
+    cycle = event.next_billing or "unknown"
+    parts = ["paymob-sub", event.subscription_id, cycle]
+    if suffix:
+        parts.append(suffix)
+    return "-".join(parts)
+
+
+@transaction.atomic
+def apply_subscription_event(event: SubscriptionEvent) -> Subscription | None:
+    """Drive subscription state from a verified Paymob subscription callback.
+
+    This is the recurring-renewal path, deliberately separate from
+    ``apply_webhook_event``: that one is shaped for a single one-time charge and
+    stays for the initial linking transaction. Only this one moves the period
+    forward, and only this one can reach PAST_DUE.
+
+    Returns the affected subscription, or ``None`` when the callback cannot be
+    matched (logged + acknowledged so Paymob stops retrying).
+    """
+    sub = subscription_by_paymob_id(event.subscription_id)
+    if sub is None:
+        return None
+    merchant = sub.merchant
+
+    if event.trigger_type == TRIGGER_SUCCESS:
+        return _renew(sub, merchant, event)
+
+    if event.trigger_type in (TRIGGER_FAILED, TRIGGER_FAILED_OVERDUE):
+        overdue = event.trigger_type == TRIGGER_FAILED_OVERDUE
+        record_invoice(
+            merchant,
+            amount_egp=event.amount_egp or Decimal("0"),
+            status=InvoiceStatus.FAILED,
+            provider=event.provider,
+            gateway_ref=_subscription_invoice_ref(event, "failed" if not overdue else "overdue"),
+        )
+        # A plain failure is recoverable — Paymob keeps retrying for the plan's
+        # retrial window. An overdue failure means that window lapsed, so this
+        # is terminal: lock (data retained).
+        return lock(merchant, status=BillingStatus.LOCKED if overdue else BillingStatus.PAST_DUE)
+
+    if event.trigger_type in (TRIGGER_SUSPENDED, TRIGGER_CANCELED):
+        # We suspend/cancel on Paymob ourselves when a merchant asks to cancel,
+        # and Paymob echoes that back. Acting on our own echo would revoke
+        # access at request time instead of at period end — the opposite of the
+        # "keep access until the period ends" policy. ``cancel_at_period_end``
+        # is that "we asked for this" flag; the scheduled-cancel task owns the
+        # local status from there.
+        if sub.cancel_at_period_end:
+            logger.info(
+                "paymob subscription %s %s — our own request, no local change",
+                event.subscription_id,
+                event.trigger_type,
+            )
+            return sub
+        # Nobody here asked for it: the bank blocked the card, or an admin acted
+        # in Paymob's dashboard. Reconcile.
+        if event.trigger_type == TRIGGER_CANCELED:
+            return lock(merchant, status=BillingStatus.CANCELED)
+        return lock(merchant, status=BillingStatus.PAST_DUE)
+
+    # Everything else (Subscription Created, resumed, updated, register_webhook,
+    # the card-change triggers) needs no local state change. Unknown triggers
+    # land here too — Paymob can extend the catalogue without breaking us.
+    logger.info(
+        "paymob subscription %s: no-op trigger %r", event.subscription_id, event.trigger_type
+    )
+    return sub
+
+
+def _renew(sub: Subscription, merchant: Merchant, event: SubscriptionEvent) -> Subscription:
+    """Book the paid invoice and roll the period forward (trial conversion or
+    an ordinary renewal — they are the same transition)."""
+    gateway_ref = _subscription_invoice_ref(event)
+    if Invoice.objects.filter(
+        provider=event.provider, gateway_ref=gateway_ref, status=InvoiceStatus.PAID
+    ).exists():
+        return sub  # replayed callback; this cycle is already booked
+
+    record_invoice(
+        merchant,
+        amount_egp=event.amount_egp if event.amount_egp is not None else Decimal("0"),
+        status=InvoiceStatus.PAID,
+        provider=event.provider,
+        gateway_ref=gateway_ref,
+    )
+
+    plan = sub.pending_plan or sub.plan
+    sub.plan = plan
+    sub.status = BillingStatus.ACTIVE
+    sub.pending_plan = ""
+    sub.current_period_end = _period_end_for(event, sub)
+    # NB: cancel_at_period_end is deliberately NOT cleared. If a cancel is
+    # pending and Paymob charged anyway (a suspend that didn't take), silently
+    # un-cancelling would bill them again next cycle.
+    sub.save(update_fields=["plan", "status", "pending_plan", "current_period_end", "updated_at"])
+
+    if merchant.plan != plan:
+        merchant.plan = plan
+        merchant.save(update_fields=["plan"])
+
+    # One-time partner referral reward on first conversion — best-effort and
+    # idempotent; a reward failure must never fail the payment.
+    try:
+        from partners.services import on_merchant_converted
+
+        on_merchant_converted(merchant)
+    except Exception:  # pragma: no cover - defensive
+        logger.exception("partner reward failed for merchant %s", merchant.id)
 
     return sub

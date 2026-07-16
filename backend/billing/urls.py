@@ -7,6 +7,7 @@ from billing.views import (
     BillingStateView,
     CancelView,
     InvoiceListView,
+    PaymobSubscriptionWebhookView,
     PaymobWebhookView,
     SubscribeView,
 )
@@ -17,4 +18,12 @@ urlpatterns = [
     path("billing/invoices", InvoiceListView.as_view(), name="billing-invoices"),
     path("billing/cancel", CancelView.as_view(), name="billing-cancel"),
     path("billing/webhook/paymob", PaymobWebhookView.as_view(), name="billing-webhook-paymob"),
+    # Must match SUBSCRIPTION_WEBHOOK_PATH in the create_paymob_plans command —
+    # it is baked into each Paymob plan at creation time, so changing this path
+    # orphans every existing plan's webhook.
+    path(
+        "billing/webhook/paymob/subscription",
+        PaymobSubscriptionWebhookView.as_view(),
+        name="billing-webhook-paymob-subscription",
+    ),
 ]
