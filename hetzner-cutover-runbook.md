@@ -114,7 +114,7 @@ Per-container: `web` 207 MiB · `worker` 190 MiB · `beat` 99 MiB · `db` 30 MiB
 > Caveat: this is one snapshot at idle. It cannot see a Pillow spike. But *zero OOM
 > kills in 18 days on 2 GB* is strong evidence the spikes aren't landing either.
 
-**Cutover window: seconds — once the TTL is lowered (§1.1).** Everything else follows:
+**Cutover window: seconds.** Everything else follows from this:
 
 | Fact | Value | Why it matters |
 | --- | --- | --- |
@@ -124,54 +124,10 @@ Per-container: `web` 207 MiB · `worker` 190 MiB · `beat` 99 MiB · `db` 30 MiB
 | `media` volume | **51 files, 3.4 MB** (`stampn_media`) | Baseline to verify the copy against |
 | Volume names | `stampn_media`, `stampn_pgdata` (+ caddy, redis) | My assumption confirmed |
 | DB name/user | `stampn` / `stampn` | **Not** `kasbana` — the template drifted |
-| DNS TTL | ⚠️ **14400 (4 hours)** — see §1.1 | **Gates the cutover.** Must be lowered first |
+| DNS TTL | **already 300** on both | No 48h lead time. Cut whenever ready |
 | Deployed image | `ghcr.io/momenawab/stampn-backend:db8819977f9c` | Pin the new box to this |
 | Container DNS | **works** (`sentry.io` → resolved) | Plan §2's `127.0.0.53` quirk; keep the pin |
 | Paymob keys | **all empty** → stub mode | Billing is not live; not a cutover concern |
-
-### 1.1 DNS TTL — ⚠️ **NOT DONE. This is now the only thing gating cutover.**
-
-**Measured 2026-07-16, from the authoritative nameserver:**
-
-```
-dig +noall +answer @cosmos.dns-parking.com api.stampn.net A
-  api.stampn.net.    14400  IN  A  13.49.70.197      ← FOUR HOURS, not 300
-```
-
-DNS is hosted at **Hostinger** (`cosmos`/`nova.dns-parking.com`). The domain is
-registered at **Namecheap**, but the nameservers delegate to Hostinger — so the record
-is edited in Hostinger's hPanel → DNS Zone Editor, not at Namecheap.
-
-> **An earlier draft of this file said the TTL was "already 300 — cut whenever ready."
-> That was wrong, and it was the most dangerous error in it.** `dig` from the EC2 box
-> returned `300`, but that was a **cached value mid-countdown**, not the record's TTL —
-> resolvers decrement the number as the lease ages. **To read a record's real TTL, query
-> the authoritative NS (`dig @<ns> <name>`). Never trust a resolver's answer.**
-
-**Why it gates everything:** flip the A record while the TTL is 14400 and resolvers keep
-handing out `13.49.70.197` for **up to 4 more hours** — with the writers stopped per §6
-step 2. That is not a seconds-long cutover; that is a half-day outage.
-
-```
-1. NOW — Hostinger hPanel: api.stampn.net A record, set TTL 300.
-   LEAVE THE IP AT 13.49.70.197. You are shortening the lease, not moving anything.
-   *** Do NOT touch admin.stampn.net (TTL 1800 -> 82.198.227.4, Hostinger). §0.2 ***
-
-2. WAIT 4 HOURS. Non-negotiable: caches populated before step 1 still hold the old
-   14400 lease and won't re-ask until it expires. The wait is what makes the flip fast.
-
-3. Confirm the short TTL is live before cutting over:
-     dig +noall +answer @cosmos.dns-parking.com api.stampn.net   # want 300
-     dig +noall +answer @8.8.8.8 api.stampn.net                  # want <=300
-     dig +noall +answer @1.1.1.1 api.stampn.net                  # want <=300
-
-4. Then run §6. The flip propagates in ~5 minutes.
-```
-
-> The 4 hours are dead time, not work — start it and do something else.
-> Cutting over at TTL 14400 *is* survivable (the old box serves reads and errors, not
-> corruption) but stamps written in the window are lost and rollback stays ambiguous
-> for 4 hours. Not worth it. Wait.
 
 ### Apple Wallet certs — plan §6's open question, resolved
 
@@ -467,12 +423,10 @@ record moves. This is the opposite of the obvious order and it matters.
      docker compose -f compose.prod.yml ps               # web (healthy)
      ... exec -T web python manage.py google_wallet_check < /dev/null
      row counts == 110 stamps / 49 cards / 124 migrations
-6. Flip DNS — api.stampn.net  A -> 204.168.234.205
-   *** PRECONDITION: §1.1 done and the 4h wait elapsed. Verify FIRST: ***
-     dig +noall +answer @cosmos.dns-parking.com api.stampn.net   # MUST show 300
+6. Flip DNS — api.stampn.net  A -> 204.168.234.205      (TTL already 300)
    *** DO NOT TOUCH admin.stampn.net — it is Hostinger, not EC2. See §0.2. ***
    Wait for it to actually move before step 7:
-     until dig +short @8.8.8.8 api.stampn.net | grep -q 204.168.234.205; do sleep 5; done
+     until dig +short api.stampn.net | grep -q 204.168.234.205; do sleep 5; done
 7. NOW start Caddy. Its first ACME attempt should succeed:
      docker compose -f compose.prod.yml start caddy
      docker compose -f compose.prod.yml logs -f caddy    # "certificate obtained"
