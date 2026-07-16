@@ -24,6 +24,9 @@ from billing.gateways.base import (
     WebhookVerificationError,
     _to_egp,
 )
+from billing.plans import PAYMOB_FREQUENCIES
+
+_API_BASE = "https://accept.paymob.com"
 
 # Order of fields Paymob concatenates before HMAC-SHA512 (their docs §webhooks).
 _HMAC_FIELDS = (
@@ -60,6 +63,83 @@ class PaymobGateway:
     def __init__(self) -> None:
         self.cfg = _config()
 
+    # ── auth ──────────────────────────────────────────────────────────────────
+    def _auth_token(self, client: httpx.Client) -> str:
+        """A legacy Accept auth token (valid ~1h), derived from ``API_KEY``.
+
+        This is *not* ``SECRET_KEY``: the Intention API takes the secret key,
+        but ``api/auth/tokens`` and the subscription-plan endpoints take this.
+        """
+        resp = client.post(f"{_API_BASE}/api/auth/tokens", json={"api_key": self.cfg["API_KEY"]})
+        resp.raise_for_status()
+        return str(resp.json()["token"])
+
+    # ── subscription plans (ops / management command) ─────────────────────────
+    def create_subscription_plan(
+        self,
+        *,
+        name: str,
+        amount_egp: Decimal,
+        frequency: int,
+        webhook_url: str,
+        reminder_days: str = "",
+        retrial_days: str = "",
+        is_active: bool = True,
+    ) -> str:
+        """Create a Paymob Subscription Plan; return its id.
+
+        The recurring deductions this plan drives are unattended, so it must
+        carry the **Moto** integration — the 3DS card integration would demand
+        an authentication the renewal can never satisfy. ``frequency`` is in
+        days and Paymob only accepts a value from its closed enum.
+        """
+        if frequency not in PAYMOB_FREQUENCIES:
+            raise ValueError(
+                f"frequency {frequency} is not one of Paymob's "
+                f"{sorted(PAYMOB_FREQUENCIES)} — the API would reject it."
+            )
+        if not self.cfg.get("API_KEY", ""):
+            # Stub mode — deterministic, no network (local/CI).
+            return f"paymob-stub-plan-{frequency}-{name.lower().replace(' ', '-')}"
+
+        moto_id = self.cfg.get("MOTO_INTEGRATION_ID", "")
+        if not moto_id:
+            raise ValueError(
+                "PAYMOB_MOTO_INTEGRATION_ID is not configured — a subscription "
+                "plan built on the 3DS card integration cannot auto-deduct."
+            )
+
+        body: dict[str, Any] = {
+            "name": name[:200],  # Paymob caps the name at 200 chars
+            "frequency": frequency,
+            "amount_cents": int(amount_egp * 100),
+            # The plan's amount stays authoritative, so a discounted or 1 EGP
+            # first charge never becomes the renewal price. Also a hard
+            # requirement for deferring the first deduction: Paymob only honours
+            # ``subscription_start_date`` while this is false.
+            "use_transaction_amount": False,
+            "is_active": is_active,
+            # Paymob names this field ``integration``, not ``integration_id``.
+            "integration": int(moto_id),
+            "webhook_url": webhook_url,
+            "plan_type": "rent",
+        }
+        if reminder_days:
+            body["reminder_days"] = reminder_days
+        if retrial_days:
+            body["retrial_days"] = retrial_days
+
+        with httpx.Client(timeout=20.0) as client:
+            token = self._auth_token(client)
+            resp = client.post(
+                f"{_API_BASE}/api/acceptance/subscription-plans",
+                json=body,
+                headers={"Authorization": f"Bearer {token}"},
+            )
+            resp.raise_for_status()
+            # Paymob returns the id as a number; we store it as a string.
+            return str(resp.json()["id"])
+
     # ── checkout ──────────────────────────────────────────────────────────────
     def create_checkout(
         self, *, merchant_id: str, plan: str, amount_egp: Decimal, customer_email: str = ""
@@ -75,11 +155,9 @@ class PaymobGateway:
 
         amount_cents = int(amount_egp * 100)
         with httpx.Client(timeout=20.0) as client:
-            token = client.post(
-                "https://accept.paymob.com/api/auth/tokens", json={"api_key": api_key}
-            ).json()["token"]
+            token = self._auth_token(client)
             order = client.post(
-                "https://accept.paymob.com/api/ecommerce/orders",
+                f"{_API_BASE}/api/ecommerce/orders",
                 json={
                     "auth_token": token,
                     "amount_cents": amount_cents,
@@ -90,7 +168,7 @@ class PaymobGateway:
             ).json()
             order_id = str(order["id"])
             pay_key = client.post(
-                "https://accept.paymob.com/api/acceptance/payment_keys",
+                f"{_API_BASE}/api/acceptance/payment_keys",
                 json={
                     "auth_token": token,
                     "amount_cents": amount_cents,
@@ -112,9 +190,7 @@ class PaymobGateway:
                 },
             ).json()["token"]
         iframe_id = self.cfg.get("IFRAME_ID", "")
-        url = (
-            f"https://accept.paymob.com/api/acceptance/iframes/{iframe_id}?payment_token={pay_key}"
-        )
+        url = f"{_API_BASE}/api/acceptance/iframes/{iframe_id}?payment_token={pay_key}"
         return CheckoutSession(checkout_url=url, gateway_ref=order_id)
 
     # ── webhook ───────────────────────────────────────────────────────────────
