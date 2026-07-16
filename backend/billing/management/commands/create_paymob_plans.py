@@ -140,4 +140,5 @@ class Command(BaseCommand):
         return plan.price_egp <= Decimal("0")
 
     def _moto_id(self) -> str:
-        return settings.BILLING.get("PAYMOB", {}).get("MOTO_INTEGRATION_ID", "")
+        # Display only — the adapter is what refuses to build a plan without it.
+        return str(settings.BILLING.get("PAYMOB", {}).get("MOTO_INTEGRATION_ID", "") or "")

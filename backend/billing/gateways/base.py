@@ -69,9 +69,21 @@ class PaymentGateway(Protocol):
     provider: str
 
     def create_checkout(
-        self, *, merchant_id: str, plan: str, amount_egp: Decimal, customer_email: str = ""
+        self,
+        *,
+        merchant_id: str,
+        plan: str,
+        amount_egp: Decimal,
+        customer_email: str = "",
+        subscription_plan_id: str = "",
+        subscription_start_date: str = "",
     ) -> CheckoutSession:
-        """Create a hosted-checkout session and return its URL + gateway ref."""
+        """Create a hosted-checkout session and return its URL + gateway ref.
+
+        With ``subscription_plan_id``, the charge also links a recurring
+        subscription; ``subscription_start_date`` (``YYYY-MM-DD``) defers the
+        first full deduction — together, the card-upfront trial.
+        """
         ...
 
     def verify_and_parse(self, *, headers: dict[str, str], body: bytes) -> WebhookEvent:
@@ -79,6 +91,43 @@ class PaymentGateway(Protocol):
 
         Raises ``WebhookVerificationError`` when the signature does not match,
         so the view can return 400 without touching subscription state.
+        """
+        ...
+
+    # ── Recurring subscriptions ───────────────────────────────────────────────
+    def create_subscription_plan(
+        self,
+        *,
+        name: str,
+        amount_egp: Decimal,
+        frequency: int,
+        webhook_url: str,
+        reminder_days: str = "",
+        retrial_days: str = "",
+        is_active: bool = True,
+    ) -> str:
+        """Create a recurring plan and return the provider's plan id (ops only)."""
+        ...
+
+    def suspend_subscription(self, subscription_id: str) -> dict[str, Any]:
+        """Stop the next deduction, reversibly."""
+        ...
+
+    def resume_subscription(self, subscription_id: str) -> dict[str, Any]:
+        """Undo a suspend."""
+        ...
+
+    def cancel_subscription(self, subscription_id: str) -> dict[str, Any]:
+        """Close the subscription permanently."""
+        ...
+
+    def verify_and_parse_subscription_event(
+        self, *, headers: dict[str, str], body: bytes
+    ) -> SubscriptionEvent:
+        """Verify + parse a subscription-lifecycle callback.
+
+        Separate from ``verify_and_parse``: the payload shape and the signature
+        scheme both differ, and only these events move the billing period.
         """
         ...
 
