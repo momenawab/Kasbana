@@ -35,6 +35,11 @@ class WebhookEvent:
     merchant_id: str | None = None
     plan: str | None = None
     amount_egp: Decimal | None = None
+    # The provider's *transaction* id (distinct from ``gateway_ref``, the order).
+    # For a subscription-linking charge this is what later subscription
+    # callbacks echo as ``initial_transaction`` — the only way to tie them back
+    # to a merchant.
+    transaction_ref: str = ""
 
 
 @dataclass(frozen=True)

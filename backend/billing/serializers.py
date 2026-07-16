@@ -9,6 +9,7 @@ from __future__ import annotations
 from rest_framework import serializers
 
 from billing.models import Invoice
+from billing.plans import BillingInterval
 from core.enums import PlanTier
 
 
@@ -28,6 +29,9 @@ class BillingStateSerializer(serializers.Serializer):
     plan = serializers.CharField()
     trial_ends_at = serializers.DateTimeField(allow_null=True)
     price_egp = serializers.DecimalField(max_digits=10, decimal_places=2)
+    # "monthly" | "annual" — without it the dashboard cannot tell 999/mo from
+    # 9,990/yr, and ``price_egp`` above is ambiguous.
+    billing_interval = serializers.CharField()
     usage = UsageSerializer()
     next_renewal = serializers.DateTimeField(allow_null=True)
     # Set when a merchant-initiated cancel is pending: access continues until
@@ -38,6 +42,11 @@ class BillingStateSerializer(serializers.Serializer):
 
 class SubscribeRequestSerializer(serializers.Serializer):
     plan = serializers.ChoiceField(choices=[PlanTier.STARTER, PlanTier.GROWTH, PlanTier.CHAIN])
+    # Defaults to monthly so a client that predates the annual toggle keeps
+    # working — and, more to the point, never accidentally buys a year.
+    interval = serializers.ChoiceField(
+        choices=BillingInterval.choices, required=False, default=BillingInterval.MONTHLY
+    )
     # Optional discount code (Phase 11) — validated + applied server-side.
     coupon = serializers.CharField(required=False, allow_blank=True)
 

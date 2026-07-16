@@ -16,7 +16,7 @@ from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from billing.models import Invoice, InvoiceStatus, Subscription
-from billing.plans import INTERVAL_DAYS, BillingStatus
+from billing.plans import INTERVAL_DAYS, BillingInterval, BillingStatus
 from core.models import Merchant
 
 if TYPE_CHECKING:
@@ -65,6 +65,10 @@ def activate_plan(
     # ...and it is billing again, so the "we told Paymob to stop" flag no longer
     # applies. Leaving it set would make the retry sweep suspend a live sub.
     sub.gateway_billing_stopped = False
+    # The interval they actually paid for now takes effect (see begin_checkout).
+    if sub.pending_interval:
+        sub.billing_interval = sub.pending_interval
+        sub.pending_interval = ""
     if provider:
         sub.provider = provider
     if gateway_ref:
@@ -80,18 +84,37 @@ def activate_plan(
 
 @transaction.atomic
 def begin_checkout(
-    merchant: Merchant, *, plan: str, provider: str, gateway_ref: str
+    merchant: Merchant,
+    *,
+    plan: str,
+    provider: str,
+    gateway_ref: str,
+    interval: str = BillingInterval.MONTHLY,
 ) -> Subscription:
     """Record a pending checkout so the webhook can resolve merchant + plan.
 
     Does *not* change access — the merchant stays on their current plan/trial
     until the gateway confirms payment via webhook (``activate_plan``).
+
+    ``interval`` is held as *pending* beside ``pending_plan`` and only applied on
+    activation. The renewal callback carries no interval, so it has to be
+    recorded here — but writing it live would mean an abandoned annual checkout
+    left a monthly subscriber's dashboard reading "9,990/yr".
     """
     sub = subscription_for(merchant)
     sub.provider = provider
     sub.gateway_ref = gateway_ref
     sub.pending_plan = plan
-    sub.save(update_fields=["provider", "gateway_ref", "pending_plan", "updated_at"])
+    sub.pending_interval = interval
+    sub.save(
+        update_fields=[
+            "provider",
+            "gateway_ref",
+            "pending_plan",
+            "pending_interval",
+            "updated_at",
+        ]
+    )
     return sub
 
 
@@ -346,6 +369,13 @@ def apply_webhook_event(event: WebhookEvent) -> Subscription | None:
     merchant = sub.merchant
     plan = event.plan or sub.pending_plan or sub.plan
 
+    # Remember which transaction this was, whatever its outcome: the Paymob
+    # subscription it linked will identify itself only by this id. Recorded even
+    # on failure — a retried 3DS attempt can still end up linking a card.
+    if event.transaction_ref and sub.linking_transaction_ref != event.transaction_ref:
+        sub.linking_transaction_ref = event.transaction_ref
+        sub.save(update_fields=["linking_transaction_ref", "updated_at"])
+
     if event.kind == "success":
         # Replay guard: if we've already booked a paid invoice for this exact
         # gateway transaction, the plan is already active — acknowledge and stop
@@ -455,6 +485,48 @@ def _subscription_invoice_ref(event: SubscriptionEvent, suffix: str = "") -> str
     return "-".join(parts)
 
 
+def _bind_subscription(event: SubscriptionEvent) -> Subscription | None:
+    """First sighting of a Paymob subscription: attach its id to our row.
+
+    Paymob never tells us the subscription id at checkout — it does not exist
+    until the customer finishes 3DS — and the subscription callbacks identify
+    the merchant by nothing except ``initial_transaction``, the linking charge
+    recorded by the transaction webhook.
+
+    Deliberately runs on *any* trigger rather than only "Subscription Created":
+    if that callback arrives before the transaction webhook (ordering Paymob
+    does not promise — see plan §10) it cannot bind, and binding here means the
+    next callback for the same subscription heals it instead of it being lost.
+    """
+    if not event.initial_transaction:
+        return None
+    sub = Subscription.objects.filter(linking_transaction_ref=event.initial_transaction).first()
+    if sub is None:
+        return None
+    # A row already holding a *different* id means a second subscription linked
+    # to the same charge. Rebinding would silently orphan the first — and leave
+    # it billing, since we would no longer hold the id needed to suspend it.
+    if sub.paymob_subscription_id and sub.paymob_subscription_id != event.subscription_id:
+        logger.error(
+            "paymob subscription %s claims transaction %s, already bound to %s "
+            "for merchant %s — not rebinding",
+            event.subscription_id,
+            event.initial_transaction,
+            sub.paymob_subscription_id,
+            sub.merchant_id,
+        )
+        return None
+    sub.paymob_subscription_id = event.subscription_id
+    sub.save(update_fields=["paymob_subscription_id", "updated_at"])
+    logger.info(
+        "bound paymob subscription %s to merchant %s via transaction %s",
+        event.subscription_id,
+        sub.merchant_id,
+        event.initial_transaction,
+    )
+    return sub
+
+
 @transaction.atomic
 def apply_subscription_event(event: SubscriptionEvent) -> Subscription | None:
     """Drive subscription state from a verified Paymob subscription callback.
@@ -468,6 +540,8 @@ def apply_subscription_event(event: SubscriptionEvent) -> Subscription | None:
     matched (logged + acknowledged so Paymob stops retrying).
     """
     sub = subscription_by_paymob_id(event.subscription_id)
+    if sub is None:
+        sub = _bind_subscription(event)
     if sub is None:
         return None
     merchant = sub.merchant
@@ -539,11 +613,26 @@ def _renew(sub: Subscription, merchant: Merchant, event: SubscriptionEvent) -> S
     sub.plan = plan
     sub.status = BillingStatus.ACTIVE
     sub.pending_plan = ""
+    if sub.pending_interval:
+        sub.billing_interval = sub.pending_interval
+        sub.pending_interval = ""
+    # Read after applying the pending interval: the period this renewal bought
+    # is 30 or 360 days depending on it.
     sub.current_period_end = _period_end_for(event, sub)
     # NB: cancel_at_period_end is deliberately NOT cleared. If a cancel is
     # pending and Paymob charged anyway (a suspend that didn't take), silently
     # un-cancelling would bill them again next cycle.
-    sub.save(update_fields=["plan", "status", "pending_plan", "current_period_end", "updated_at"])
+    sub.save(
+        update_fields=[
+            "plan",
+            "status",
+            "pending_plan",
+            "pending_interval",
+            "billing_interval",
+            "current_period_end",
+            "updated_at",
+        ]
+    )
 
     if merchant.plan != plan:
         merchant.plan = plan

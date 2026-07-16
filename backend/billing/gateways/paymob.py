@@ -282,6 +282,7 @@ class PaymobGateway:
             kind=kind,
             gateway_ref=gateway_ref,
             amount_egp=amount_egp,
+            transaction_ref=str(obj.get("id", "") or ""),
         )
 
     def verify_and_parse_subscription_event(

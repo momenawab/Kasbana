@@ -24,7 +24,7 @@ from rest_framework.views import APIView
 from billing import coupons, services
 from billing.gateways import DEFAULT_PROVIDER, get_gateway
 from billing.gateways.base import WebhookVerificationError
-from billing.models import Coupon, Invoice
+from billing.models import Coupon, Invoice, Plan
 from billing.plans import BillingStatus, plan_price
 from billing.serializers import (
     BillingStateSerializer,
@@ -63,7 +63,8 @@ class BillingStateView(APIView):
         payload = {
             "plan": plan_to_wire(sub),
             "trial_ends_at": sub.trial_ends_at if sub.trial_active() else None,
-            "price_egp": plan_price(plan),
+            "price_egp": plan_price(plan, sub.billing_interval),
+            "billing_interval": sub.billing_interval,
             "usage": entitlements.usage(merchant),
             "next_renewal": sub.current_period_end,
             "cancels_on": sub.cancels_on(),
@@ -83,16 +84,23 @@ class SubscribeView(APIView):
         body = SubscribeRequestSerializer(data=request.data)
         body.is_valid(raise_exception=True)
         plan = body.validated_data["plan"]
+        interval = body.validated_data["interval"]
 
         merchant = get_request_merchant(request)
         sub = subscription_for(merchant)
-        if sub.status == BillingStatus.ACTIVE and sub.plan == plan:
+        if (
+            sub.status == BillingStatus.ACTIVE
+            and sub.plan == plan
+            and sub.billing_interval == interval
+        ):
+            # Same plan *and* interval — switching monthly<->annual on the plan
+            # they already hold is a legitimate re-subscribe, not a duplicate.
             raise Conflict("Already subscribed to this plan.")
 
         # Optional discount code (Phase 11): validate + apply to the charge, and
         # record the (capped) redemption. Only percent/fixed change a checkout
         # charge; other coupon types are admin-granted, not used here.
-        amount = plan_price(plan)
+        amount = plan_price(plan, interval)
         coupon_code = body.validated_data.get("coupon", "")
         applied_coupon = None
         if coupon_code:
@@ -119,18 +127,44 @@ class SubscribeView(APIView):
             plan=plan,
             amount_egp=amount,
             customer_email=getattr(getattr(request, "user", None), "email", ""),
+            subscription_plan_id=self._paymob_plan_id(plan, interval),
         )
         services.begin_checkout(
-            merchant, plan=plan, provider=provider, gateway_ref=session.gateway_ref
+            merchant,
+            plan=plan,
+            provider=provider,
+            gateway_ref=session.gateway_ref,
+            interval=interval,
         )
         if applied_coupon is not None:
             coupons.redeem(
                 applied_coupon,
                 merchant,
-                discount_egp=plan_price(plan) - amount,
-                detail=f"{plan} checkout",
+                discount_egp=plan_price(plan, interval) - amount,
+                detail=f"{plan} {interval} checkout",
             )
         return Response({"checkout_url": session.checkout_url})
+
+    def _paymob_plan_id(self, plan: str, interval: str) -> str:
+        """The Paymob Subscription Plan this checkout should attach to.
+
+        Blank means "charge once, do not set up recurring billing" — which is
+        what happens until ops has run ``create_paymob_plans`` for this
+        environment. Deliberately not an error: a merchant being charged once
+        and needing a nudge to re-subscribe is recoverable, whereas refusing
+        every checkout would take the product offline. The unmapped state is
+        loud in the log instead.
+        """
+        row = Plan.objects.filter(key=plan).first()
+        paymob_plan_id = row.paymob_plan_id(interval) if row is not None else ""
+        if not paymob_plan_id:
+            logger.error(
+                "no Paymob plan id for %s/%s — checkout will be a ONE-TIME charge "
+                "with no recurring subscription. Run `manage.py create_paymob_plans`.",
+                plan,
+                interval,
+            )
+        return paymob_plan_id
 
 
 class InvoiceListView(generics.ListAPIView):

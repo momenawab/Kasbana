@@ -3065,6 +3065,22 @@ paths:
       responses:
         '200':
           description: No response body
+  /api/v1/billing/webhook/paymob/subscription:
+    post:
+      operationId: billing_webhook_paymob_subscription_create
+      description: |-
+        POST /billing/webhook/paymob/subscription — recurring-subscription events.
+
+        Registered as every Paymob Subscription Plan's ``webhook_url``. Separate
+        from ``PaymobWebhookView`` because the payload shape and the HMAC scheme
+        both differ, and because only these events move the billing period forward.
+      tags:
+      - billing
+      security:
+      - {}
+      responses:
+        '200':
+          description: No response body
   /api/v1/campaigns:
     get:
       operationId: campaigns_list
@@ -4828,6 +4844,8 @@ components:
           type: string
           format: decimal
           pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        billing_interval:
+          type: string
         usage:
           $ref: '#/components/schemas/Usage'
         next_renewal:
@@ -4843,6 +4861,7 @@ components:
           - $ref: '#/components/schemas/PaymentMethod'
           nullable: true
       required:
+      - billing_interval
       - next_renewal
       - payment_method
       - plan
@@ -5949,6 +5968,14 @@ components:
       - read
       - sent_at
       - title
+    IntervalEnum:
+      enum:
+      - monthly
+      - annual
+      type: string
+      description: |-
+        * `monthly` - Monthly
+        * `annual` - Annual
     InviteAccept:
       type: object
       properties:
@@ -6088,6 +6115,7 @@ components:
     KeyEnum:
       enum:
       - reward_ready
+      - almost_there
       - expiry
       - birthday
       - winback
@@ -6095,6 +6123,7 @@ components:
       type: string
       description: |-
         * `reward_ready` - Reward ready
+        * `almost_there` - Almost there
         * `expiry` - Expiry
         * `birthday` - Birthday
         * `winback` - Winback
@@ -7298,10 +7327,20 @@ components:
           type: string
           format: decimal
           pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        price_egp_annual:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
         is_public:
           type: boolean
         archived:
           type: boolean
+        paymob_plan_id_monthly:
+          type: string
+          maxLength: 64
+        paymob_plan_id_annual:
+          type: string
+          maxLength: 64
         max_cards:
           type: integer
           maximum: 9223372036854775807
@@ -7333,6 +7372,8 @@ components:
         specialized_roles:
           type: boolean
         custom_branding:
+          type: boolean
+        referral:
           type: boolean
         automations:
           type: integer
@@ -7452,7 +7493,7 @@ components:
         plan:
           $ref: '#/components/schemas/Plan756Enum'
         status:
-          $ref: '#/components/schemas/Status141Enum'
+          $ref: '#/components/schemas/Status771Enum'
         override_plan:
           oneOf:
           - $ref: '#/components/schemas/OverridePlanEnum'
@@ -7572,10 +7613,20 @@ components:
           type: string
           format: decimal
           pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        price_egp_annual:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
         is_public:
           type: boolean
         archived:
           type: boolean
+        paymob_plan_id_monthly:
+          type: string
+          maxLength: 64
+        paymob_plan_id_annual:
+          type: string
+          maxLength: 64
         max_cards:
           type: integer
           maximum: 9223372036854775807
@@ -7607,6 +7658,8 @@ components:
         specialized_roles:
           type: boolean
         custom_branding:
+          type: boolean
+        referral:
           type: boolean
         automations:
           type: integer
@@ -8235,20 +8288,6 @@ components:
       - reward_ready
       - stamp_count
       - stamps_required
-    Status141Enum:
-      enum:
-      - TRIALING
-      - ACTIVE
-      - PAST_DUE
-      - CANCELED
-      - LOCKED
-      type: string
-      description: |-
-        * `TRIALING` - Trialing
-        * `ACTIVE` - Active
-        * `PAST_DUE` - Past due
-        * `CANCELED` - Canceled
-        * `LOCKED` - Locked
     Status21dEnum:
       enum:
       - ACTIVE
@@ -8269,6 +8308,22 @@ components:
         * `new` - New
         * `read` - Read
         * `replied` - Replied
+    Status771Enum:
+      enum:
+      - PENDING_CARD
+      - TRIALING
+      - ACTIVE
+      - PAST_DUE
+      - CANCELED
+      - LOCKED
+      type: string
+      description: |-
+        * `PENDING_CARD` - Pending card
+        * `TRIALING` - Trialing
+        * `ACTIVE` - Active
+        * `PAST_DUE` - Past due
+        * `CANCELED` - Canceled
+        * `LOCKED` - Locked
     StepUp:
       type: object
       description: |-
@@ -8286,6 +8341,10 @@ components:
       properties:
         plan:
           $ref: '#/components/schemas/SubscribeRequestPlanEnum'
+        interval:
+          allOf:
+          - $ref: '#/components/schemas/IntervalEnum'
+          default: monthly
         coupon:
           type: string
       required:
@@ -8306,7 +8365,7 @@ components:
         plan:
           $ref: '#/components/schemas/Plan756Enum'
         status:
-          $ref: '#/components/schemas/Status141Enum'
+          $ref: '#/components/schemas/Status771Enum'
         trial_ends_at:
           type: string
           format: date-time

@@ -134,6 +134,13 @@ class Subscription(UUIDModel, TimeStampedModel):
     # stays the linking *transaction* ref. Needed to suspend/resume/cancel the
     # recurring deductions on Paymob's side.
     paymob_subscription_id = models.CharField(max_length=64, blank=True)
+    # The *transaction* id of the 3DS charge that linked the card. The only
+    # thread tying a Paymob subscription back to us: the subscription callbacks
+    # carry it as ``initial_transaction``, and nothing else in them identifies
+    # the merchant — while the transaction callback (which does, via order.id)
+    # carries no subscription id. Recorded from the transaction webhook so the
+    # first subscription callback can bind ``paymob_subscription_id``.
+    linking_transaction_ref = models.CharField(max_length=64, blank=True)
     # When the card was verified and the trial clock actually started. Null while
     # PENDING_CARD; ``trial_ends_at`` is derived from it (+ TRIAL_DAYS) rather
     # than from signup, since a trial without a card never begins.
@@ -150,6 +157,11 @@ class Subscription(UUIDModel, TimeStampedModel):
     # The plan a pending checkout will convert to, recorded at ``subscribe`` time
     # so the webhook (which only carries a gateway ref) knows what to activate.
     pending_plan = models.CharField(max_length=16, choices=PlanTier.choices, blank=True)
+    # The interval that pending checkout buys, applied alongside ``pending_plan``
+    # once payment confirms. Kept pending for the same reason the plan is: an
+    # abandoned annual checkout must not make a monthly subscriber's dashboard
+    # read "9,990/yr" while they are still paying 999/mo.
+    pending_interval = models.CharField(max_length=8, choices=BillingInterval.choices, blank=True)
     # Merchant-initiated cancellation that keeps access until the paid period
     # ends (contract "cancel = retain until period end"). While True the sub
     # stays ACTIVE and fully entitled until ``current_period_end``; after that
