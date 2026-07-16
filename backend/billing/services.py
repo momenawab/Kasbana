@@ -62,6 +62,9 @@ def activate_plan(
     sub.plan = plan
     sub.status = BillingStatus.ACTIVE
     sub.cancel_at_period_end = False  # a new/renewed subscription clears any pending cancel
+    # ...and it is billing again, so the "we told Paymob to stop" flag no longer
+    # applies. Leaving it set would make the retry sweep suspend a live sub.
+    sub.gateway_billing_stopped = False
     if provider:
         sub.provider = provider
     if gateway_ref:
@@ -101,7 +104,46 @@ def lock(merchant: Merchant, *, status: str = BillingStatus.LOCKED) -> Subscript
     return sub
 
 
-@transaction.atomic
+def stop_gateway_billing(sub: Subscription, *, action: str = "suspend") -> bool:
+    """Tell the gateway to stop deducting for ``sub``. Best-effort; never raises.
+
+    Returns whether the gateway was actually told. A failure here is the one
+    that hurts — the merchant believes they cancelled while Paymob keeps
+    charging — so it is logged at exception level rather than swallowed, and
+    ``retry_pending_gateway_cancels`` sweeps it up afterwards.
+
+    It does not raise because the merchant's *local* cancellation must always
+    succeed: refusing to cancel because a third party is unreachable would be a
+    worse failure than a retryable one.
+    """
+    if not sub.paymob_subscription_id:
+        # A trial that never linked a card, a legacy row, or stub mode — there
+        # is no recurring subscription to stop, so nothing can bill them.
+        Subscription.objects.filter(pk=sub.pk).update(gateway_billing_stopped=True)
+        sub.gateway_billing_stopped = True
+        return True
+    try:
+        from billing.gateways import get_gateway
+
+        gateway = get_gateway(sub.provider or "paymob")
+        getattr(gateway, f"{action}_subscription")(sub.paymob_subscription_id)
+    except Exception:
+        logger.exception(
+            "paymob %s FAILED for subscription %s (merchant %s) — they may still "
+            "be charged; retry sweep will re-attempt",
+            action,
+            sub.paymob_subscription_id,
+            sub.merchant_id,
+        )
+        return False
+
+    # Not sub.save(): the caller's copy may be stale, and this must not clobber
+    # a field another request changed while the gateway call was in flight.
+    Subscription.objects.filter(pk=sub.pk).update(gateway_billing_stopped=True)
+    sub.gateway_billing_stopped = True
+    return True
+
+
 def schedule_cancel(merchant: Merchant) -> Subscription:
     """Merchant-initiated cancel that keeps access until the period ends.
 
@@ -111,15 +153,32 @@ def schedule_cancel(merchant: Merchant) -> Subscription:
     paid period to run out (no ``current_period_end`` on an active plan), there
     is nothing to wait for, so lock immediately. A trial is left to expire on its
     own ``trial_ends_at`` — we only flag the intent so it won't be reactivated.
+
+    Suspends (not cancels) on Paymob: it stops the *next* deduction while
+    leaving the subscription resumable, which is what "access until period end,
+    and you may change your mind" needs. ``expire_scheduled_cancellations``
+    closes it for good once the period lapses.
     """
-    sub = subscription_for(merchant)
-    if sub.status == BillingStatus.ACTIVE and sub.current_period_end is None:
-        sub.status = BillingStatus.CANCELED
-        sub.cancel_at_period_end = False
-        sub.save(update_fields=["status", "cancel_at_period_end", "updated_at"])
-        return sub
-    sub.cancel_at_period_end = True
-    sub.save(update_fields=["cancel_at_period_end", "updated_at"])
+    with transaction.atomic():
+        sub = subscription_for(merchant)
+        immediate = sub.status == BillingStatus.ACTIVE and sub.current_period_end is None
+        if immediate:
+            sub.status = BillingStatus.CANCELED
+            sub.cancel_at_period_end = False
+            sub.save(update_fields=["status", "cancel_at_period_end", "updated_at"])
+        else:
+            # Set BEFORE telling Paymob, and commit before the network call:
+            # Paymob echoes our suspend straight back as a "suspended" callback,
+            # and apply_subscription_event reads this flag to tell our own
+            # request apart from a bank-initiated block. If the callback landed
+            # first it would be read as involuntary and mark them PAST_DUE.
+            sub.cancel_at_period_end = True
+            sub.save(update_fields=["cancel_at_period_end", "updated_at"])
+
+    # Outside the transaction: a 20s gateway timeout must not hold DB locks.
+    # An immediate cancel has no period left to protect, so close it outright
+    # rather than leaving a suspended subscription behind on Paymob.
+    stop_gateway_billing(sub, action="cancel" if immediate else "suspend")
     return sub
 
 

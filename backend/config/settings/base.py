@@ -384,6 +384,13 @@ CELERY_BEAT_SCHEDULE = {
         "task": "billing.tasks.expire_scheduled_cancellations",
         "schedule": 3600.0,  # hourly
     },
+    # Re-attempt suspends that never reached Paymob. A cancel is always recorded
+    # locally, even if the gateway call fails — without this sweep such a
+    # merchant keeps getting deducted while believing they cancelled.
+    "billing-retry-pending-gateway-cancels": {
+        "task": "billing.tasks.retry_pending_gateway_cancels",
+        "schedule": 3600.0,  # hourly
+    },
     # Fire date-driven engage automations (birthday/expiry/winback) (Phase 1.7).
     "messaging-scan-automations": {
         "task": "messaging.tasks.scan_automations",

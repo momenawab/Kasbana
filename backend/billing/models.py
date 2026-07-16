@@ -138,6 +138,13 @@ class Subscription(UUIDModel, TimeStampedModel):
     # PENDING_CARD; ``trial_ends_at`` is derived from it (+ TRIAL_DAYS) rather
     # than from signup, since a trial without a card never begins.
     trial_started_at = models.DateTimeField(null=True, blank=True)
+    # Whether Paymob has confirmed it will stop deducting (a suspend/cancel we
+    # asked for actually landed). A cancel request sets ``cancel_at_period_end``
+    # locally no matter what, so without this we cannot tell "billing stopped"
+    # from "we asked and the call failed" — i.e. a merchant who believes they
+    # cancelled but is still being charged. ``retry_pending_gateway_cancels``
+    # sweeps the False rows.
+    gateway_billing_stopped = models.BooleanField(default=False)
     card_verified = models.BooleanField(default=False)
     card_token_ref = models.CharField(max_length=64, blank=True)  # Paymob card token
     # The plan a pending checkout will convert to, recorded at ``subscribe`` time
