@@ -159,6 +159,26 @@ def test_me_for_trial_merchant(merchant):
     assert ent["features"]["api"] is False  # API left the ladder (Custom-only)
     assert ent["features"]["analytics"] == "full"
     assert ent["usage"]["cards"] == 0
+    assert body["merchant"]["needs_card"] is False
+
+
+def test_me_flags_a_merchant_stuck_at_the_signup_gate(merchant):
+    """The dashboard renders the plan/card gate off this flag. It cannot use
+    ``status``: the contract enum has no pre-trial value, so PENDING_CARD
+    arrives as "suspended" — true of their access, but that screen tells a
+    brand-new merchant an admin banned them."""
+    from billing.plans import BillingStatus
+    from billing.services import subscription_for
+
+    sub = subscription_for(merchant)
+    sub.status = BillingStatus.PENDING_CARD
+    sub.save()
+    staff = factories.StaffUserFactory(merchant=merchant, role=Role.OWNER)
+
+    body = _auth(staff).get("/api/v1/me").json()
+
+    assert body["merchant"]["needs_card"] is True
+    assert body["merchant"]["status"] == "suspended"  # access-wise accurate
 
 
 def test_me_for_paid_starter_merchant(merchant):

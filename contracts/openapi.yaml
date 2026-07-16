@@ -3028,6 +3028,27 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedInvoiceList'
           description: ''
+  /api/v1/billing/plans:
+    get:
+      operationId: billing_plans_list
+      description: |-
+        GET /billing/plans — the sellable tiers + their prices.
+
+        Feeds the subscribe screen and the signup gate. Reads the same DB catalogue
+        checkout prices from, so an admin's price edit shows up without a deploy.
+        Any authenticated merchant user may read it: it is public pricing, and a
+        merchant sitting at the signup gate has no plan yet.
+      tags:
+      - billing
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PlanOption'
+          description: ''
   /api/v1/billing/subscribe:
     post:
       operationId: billing_subscribe_create
@@ -6517,6 +6538,8 @@ components:
           $ref: '#/components/schemas/MerchantOutStatusEnum'
         plan:
           $ref: '#/components/schemas/MerchantOutPlanEnum'
+        needs_card:
+          type: boolean
         trial_ends_at:
           type: string
           format: date-time
@@ -6562,6 +6585,7 @@ components:
       - legal_name
       - logo_url
       - name
+      - needs_card
       - phone
       - plan
       - slug
@@ -7693,6 +7717,32 @@ components:
         * `STARTER` - Starter
         * `GROWTH` - Growth
         * `CHAIN` - Chain / Custom
+    PlanOption:
+      type: object
+      description: |-
+        A sellable tier as the subscribe screen / signup gate renders it.
+
+        Prices are served rather than hardcoded in the client: they are admin-
+        editable without a deploy (Phase 3), so a copy in the frontend would drift
+        from what checkout actually charges.
+      properties:
+        key:
+          type: string
+        name:
+          type: string
+        price_egp:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        price_egp_annual:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+      required:
+      - key
+      - name
+      - price_egp
+      - price_egp_annual
     PlatformAnalytics:
       type: object
       properties:

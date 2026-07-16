@@ -160,6 +160,10 @@ class MerchantOutSerializer(serializers.Serializer):
     slug = serializers.CharField()
     status = serializers.ChoiceField(choices=["trial", "active", "suspended"])
     plan = serializers.ChoiceField(choices=["trial", "starter", "growth", "chain"])
+    # True while the merchant still has to pick a plan and add a card. The
+    # dashboard renders the signup gate instead of the app; ``status`` cannot
+    # carry this without widening a contract enum other clients read.
+    needs_card = serializers.BooleanField()
     trial_ends_at = serializers.DateTimeField(allow_null=True)
     logo_url = serializers.URLField(allow_null=True)
     address = serializers.CharField(allow_blank=True)

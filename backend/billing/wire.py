@@ -32,6 +32,16 @@ def plan_to_wire(subscription: Subscription) -> str:
     return _PAID_WIRE.get(subscription.plan, "trial")
 
 
+def plan_key_to_wire(key: str) -> str:
+    """Contract value for a bare ``Plan.key``, for the catalogue listing.
+
+    Unlike ``plan_to_wire`` there is no subscription to interpret, so an unknown
+    or custom key passes through lowercased rather than becoming "trial" —
+    a negotiated tier is not a trial.
+    """
+    return _PAID_WIRE.get(key, key.lower())
+
+
 def status_to_wire(merchant: Merchant, subscription: Subscription) -> str:
     """Contract status value: ``trial|active|suspended``."""
     if merchant.status == MerchantStatus.SUSPENDED:

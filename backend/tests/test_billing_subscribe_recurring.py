@@ -285,3 +285,44 @@ def test_a_callback_without_an_initial_transaction_cannot_bind(merchant):
     _linked(merchant)
 
     assert services.apply_subscription_event(_event(initial="")) is None
+
+
+# ── Plan catalogue (feeds the subscribe screen + signup gate) ────────────────
+def test_plan_catalogue_serves_both_prices(merchant):
+    """The client must not hardcode prices: they are admin-editable without a
+    deploy, so a copy would advertise a price checkout won't charge."""
+    rows = _client(merchant).get("/api/v1/billing/plans").json()
+
+    growth = next(r for r in rows if r["key"] == "growth")
+    assert Decimal(growth["price_egp"]) == Decimal("999")
+    assert Decimal(growth["price_egp_annual"]) == Decimal("9990")
+
+
+def test_plan_catalogue_reflects_an_admin_price_edit(merchant):
+    from billing.plans import invalidate_plan_cache
+
+    Plan.objects.filter(key=PlanTier.GROWTH).update(price_egp=Decimal("1099"))
+    invalidate_plan_cache()
+
+    rows = _client(merchant).get("/api/v1/billing/plans").json()
+
+    growth = next(r for r in rows if r["key"] == "growth")
+    assert Decimal(growth["price_egp"]) == Decimal("1099")
+
+
+def test_plan_catalogue_hides_what_is_not_sellable(merchant):
+    """FREE isn't offered at self-serve subscribe, so the gate must not show it."""
+    keys = {r["key"] for r in _client(merchant).get("/api/v1/billing/plans").json()}
+
+    assert keys == {"starter", "growth", "chain"}
+    assert "free" not in keys
+
+
+def test_a_merchant_at_the_gate_can_read_the_catalogue(merchant):
+    """They have no plan yet — the pricing they're being asked to choose from
+    can't be gated behind having chosen."""
+    sub = services.subscription_for(merchant)
+    sub.status = BillingStatus.PENDING_CARD
+    sub.save()
+
+    assert _client(merchant).get("/api/v1/billing/plans").status_code == 200

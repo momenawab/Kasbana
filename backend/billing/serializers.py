@@ -58,6 +58,20 @@ class SubscribeRequestSerializer(serializers.Serializer):
         return super().to_internal_value(raw)
 
 
+class PlanOptionSerializer(serializers.Serializer):
+    """A sellable tier as the subscribe screen / signup gate renders it.
+
+    Prices are served rather than hardcoded in the client: they are admin-
+    editable without a deploy (Phase 3), so a copy in the frontend would drift
+    from what checkout actually charges.
+    """
+
+    key = serializers.CharField()
+    name = serializers.CharField()
+    price_egp = serializers.DecimalField(max_digits=10, decimal_places=2)
+    price_egp_annual = serializers.DecimalField(max_digits=10, decimal_places=2)
+
+
 class CheckoutResponseSerializer(serializers.Serializer):
     checkout_url = serializers.CharField()
 

@@ -25,16 +25,17 @@ from billing import coupons, services
 from billing.gateways import DEFAULT_PROVIDER, get_gateway
 from billing.gateways.base import WebhookVerificationError
 from billing.models import Coupon, Invoice, Plan
-from billing.plans import BillingStatus, plan_price
+from billing.plans import BillingInterval, BillingStatus, plan_price
 from billing.serializers import (
     BillingStateSerializer,
     CancelRequestSerializer,
     CheckoutResponseSerializer,
     InvoiceSerializer,
+    PlanOptionSerializer,
     SubscribeRequestSerializer,
 )
 from billing.services import subscription_for
-from billing.wire import plan_to_wire
+from billing.wire import plan_key_to_wire, plan_to_wire
 from common.errors import Conflict
 from common.permissions import IsAdminOrAbove, IsOwner
 from core.tenancy import get_request_merchant
@@ -71,6 +72,32 @@ class BillingStateView(APIView):
             "payment_method": payment_method,
         }
         return Response(BillingStateSerializer(payload).data)
+
+
+class PlanCatalogueView(APIView):
+    """GET /billing/plans — the sellable tiers + their prices.
+
+    Feeds the subscribe screen and the signup gate. Reads the same DB catalogue
+    checkout prices from, so an admin's price edit shows up without a deploy.
+    Any authenticated merchant user may read it: it is public pricing, and a
+    merchant sitting at the signup gate has no plan yet.
+    """
+
+    permission_classes = [IsAdminOrAbove]
+    serializer_class = PlanOptionSerializer
+
+    @extend_schema(responses=PlanOptionSerializer(many=True))
+    def get(self, request: Request) -> Response:
+        rows = [
+            {
+                "key": plan_key_to_wire(p.key),
+                "name": p.name,
+                "price_egp": plan_price(p.key),
+                "price_egp_annual": plan_price(p.key, BillingInterval.ANNUAL),
+            }
+            for p in Plan.objects.filter(is_public=True, archived=False)
+        ]
+        return Response(PlanOptionSerializer(rows, many=True).data)
 
 
 class SubscribeView(APIView):

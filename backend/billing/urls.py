@@ -9,11 +9,13 @@ from billing.views import (
     InvoiceListView,
     PaymobSubscriptionWebhookView,
     PaymobWebhookView,
+    PlanCatalogueView,
     SubscribeView,
 )
 
 urlpatterns = [
     path("billing", BillingStateView.as_view(), name="billing-state"),
+    path("billing/plans", PlanCatalogueView.as_view(), name="billing-plans"),
     path("billing/subscribe", SubscribeView.as_view(), name="billing-subscribe"),
     path("billing/invoices", InvoiceListView.as_view(), name="billing-invoices"),
     path("billing/cancel", CancelView.as_view(), name="billing-cancel"),

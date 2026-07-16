@@ -7,6 +7,7 @@ from typing import Any
 from django.utils.text import slugify
 
 from accounts.models import MerchantSettings
+from billing.plans import BillingStatus
 from billing.services import subscription_for
 from billing.wire import plan_to_wire, status_to_wire
 from core.models import Merchant
@@ -39,6 +40,11 @@ def merchant_payload(merchant: Merchant) -> dict[str, Any]:
         "slug": merchant.slug,
         "status": status_to_wire(merchant, sub),
         "plan": plan_to_wire(sub),
+        # The signup gate (card-upfront trial): they have no card yet, so the
+        # trial has not started and nothing is entitled. Distinct from
+        # ``status`` — that collapses to "suspended" here, which is true of
+        # their *access* but would tell a new merchant an admin banned them.
+        "needs_card": sub.status == BillingStatus.PENDING_CARD,
         "trial_ends_at": sub.trial_ends_at,
         "logo_url": merchant.logo_url or None,
         "address": s.address,
