@@ -29,6 +29,12 @@ Source docs (Paymob Developer Portal → left nav):
 - **The 6 Paymob Subscription Plans are created by a management command**,
   not by hand in the dashboard — repeatable, versioned, prints the IDs to
   paste into config.
+- **Card-upfront trial (added 2026-07-16, see §11).** The trial is no longer
+  free/card-free. On signup the merchant sees a dashboard intro, then a plan
+  gate; to start the 14-day trial they must add a debit/credit card, verified
+  by a **1 EGP** charge. At day 14 Paymob auto-deducts the real plan price.
+  Defaults taken (changeable): **keep the 1 EGP** (no refund), and **hard-lock
+  the dashboard until a card + plan is set** (no card = no access).
 
 ## 1. Why this is a real gap, not a polish pass
 
@@ -217,3 +223,123 @@ checkout.
   charge happened to be, so we'll likely leave `use_transaction_amount=false`
   and confirm that a discounted first month doesn't retroactively become the
   renewal price.
+
+---
+
+## 11. Card-upfront trial + signup onboarding (added 2026-07-16)
+
+This section **amends §2 (flow), §4 (model), §6 (webhook logic), and §7
+(cancellation)** to make the trial card-mandatory and auto-converting. Where it
+conflicts with the earlier sections, this section wins.
+
+### 11.1 The signup → trial → auto-charge journey
+
+1. **Sign up** — account + merchant created. The merchant is **not** trialing
+   yet and has **no** dashboard access (see 11.4). New `Subscription` starts in
+   a pre-trial state, not `TRIALING`.
+2. **Dashboard intro** — a first-run onboarding walkthrough that explains what
+   the dashboard does (cards, stamps, customers, analytics), then leads into
+   the plan gate. Frontend-only (see 11.5).
+3. **Plan gate** — the plans render (Starter / Growth / Chain, monthly/annual
+   toggle — same catalogue as the marketing Pricing page). The merchant picks
+   one. Chain "Let's talk" routes to contact, not checkout (§0).
+4. **Card capture (mandatory)** — to start the trial the merchant must add a
+   debit/credit card. We create a Paymob **Intention** using the **3DS card
+   integration ID** for a **1 EGP** (`amount_cents = 100`) transaction, render
+   Unified Checkout / Pixel, and the customer completes one 3DS auth. This:
+   - verifies the card is real and authorised,
+   - **tokenises + saves** the card (card token callback), and
+   - is the **linking transaction** the Paymob subscription attaches to.
+   **Decision (default): keep the 1 EGP** — no refund call. It appears on the
+   statement as proof of a valid card. (Alternative: auto-refund after
+   tokenisation — one extra API call per signup; not chosen.)
+5. **Subscription created** — call Create Subscription against the selected
+   plan's Paymob plan ID (matching interval), with
+   **`subscription_start_date = signup_date + 14 days`** and
+   **`use_transaction_amount = false`** so the first *real* deduction is
+   deferred to trial end and is the plan's configured `amount_cents` (not the
+   1 EGP). Store `paymob_subscription_id` on our `Subscription`.
+6. **Trial (14 days)** — full access **at the plan they picked** (not fixed
+   Growth). See 11.3.
+7. **Day 14 auto-charge** — Paymob deducts the plan's real price from the saved
+   card via the Moto integration and fires the subscription webhook
+   (`trigger_type = "Successful Transaction"`); our handler books a paid invoice
+   and rolls `current_period_end` forward. Recurring every cycle thereafter
+   (30 / 360 days).
+
+### 11.2 What changes vs. today's free trial
+
+Today: a `Subscription` row + `trial_ends_at` are created **free** at first
+access; `TRIAL_PLAN = GROWTH` is fixed; no card; `expire_trials` locks the
+merchant if they never convert. New model:
+
+- **Trial requires a completed card verification + live Paymob subscription.**
+  No card ⇒ not trialing ⇒ no access.
+- **Trial plan = the selected plan**, not always Growth.
+- **Conversion is automatic** (Paymob charges at day 14), so `expire_trials`
+  changes role: it's now the **fallback** for "day-14 charge failed / never
+  arrived" → `PAST_DUE`/locked, not the normal path.
+
+### 11.3 Model changes (extends §4)
+
+```python
+class Subscription(...):
+    ...
+    # Pre-trial gate: the trial clock only starts once a card is verified.
+    # Until then the merchant is locked out (11.4).
+    trial_started_at = models.DateTimeField(null=True, blank=True)
+    card_verified   = models.BooleanField(default=False)
+    card_token_ref  = models.CharField(max_length=64, blank=True)  # Paymob card token
+```
+
+- New `BillingStatus.PENDING_CARD` (or reuse a flag) for the post-signup,
+  pre-card state. `effective_plan()` returns `None` (locked) in this state.
+- `default_trial_end` / `trial_ends_at` are set **at card-verification time**
+  (`trial_started_at + 14d`), not at merchant creation.
+- `effective_plan()` while `TRIALING` returns the **selected `plan`** (the tier
+  they chose at the gate), not `TRIAL_PLAN`.
+
+### 11.4 Access gate (hard-lock default)
+
+**Decision (default): no card ⇒ no dashboard.** Until `card_verified` and a
+plan are set, the only thing the merchant can reach is the onboarding intro +
+plan/card gate. Every other dashboard route + API is locked (the entitlements
+engine already returns "locked" when `effective_plan()` is `None` — we extend
+that to the `PENDING_CARD` state). Alternative (not chosen): a read-only
+preview dashboard without a card.
+
+### 11.5 Onboarding intro (frontend/dashboard)
+
+- A first-run flow in `frontend/dashboard`: welcome → short feature intro →
+  plan selection → card capture (Unified Checkout redirect or Pixel embed).
+- Gates the app: while `GET /billing` reports `PENDING_CARD`, the dashboard
+  shell renders the onboarding flow instead of the normal app.
+- Once the 1 EGP verification succeeds and the subscription is created, the
+  merchant lands in the real dashboard, trialing on their chosen plan, with a
+  "trial ends in N days · renews at X EGP on <date>" banner.
+
+### 11.6 Cancellation during the trial (extends §7)
+
+- Cancel **during the trial** ⇒ call Paymob **suspend** on the subscription so
+  the **day-14 auto-charge never fires**; access continues until day 14 (trial
+  end), then locks — consistent with the "access until period end" policy.
+- Cancel **after** conversion ⇒ exactly §7 (suspend now, access to
+  `current_period_end`, cancel at period end).
+
+### 11.7 Extra sandbox checks (adds to §10)
+
+- Confirm `subscription_start_date` reliably defers the first deduction to day
+  14 while the 1 EGP linking transaction settles immediately.
+- Confirm the card token from the 1 EGP transaction is the one the recurring
+  deductions use (no second card-entry prompt at day 14).
+- Confirm what Paymob does if the **day-14 deduction fails** (retrial_days
+  behaviour) so `PENDING_CARD` vs `PAST_DUE` vs `LOCKED` transitions match
+  reality.
+
+### 11.8 Build-order additions (extends §9)
+
+- Phase 1 (model): add `trial_started_at`, `card_verified`, `card_token_ref`,
+  `PENDING_CARD` state; change trial-start + `effective_plan` semantics.
+- Phase 3 (adapter): the 1 EGP verification intention + card-token capture;
+  Create Subscription with `subscription_start_date`.
+- New phase (frontend): the dashboard onboarding intro + plan/card gate.
