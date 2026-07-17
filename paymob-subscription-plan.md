@@ -429,10 +429,11 @@ Configurable per Enterprise plan (and harmless on public tiers):
 `api` already exists and is exactly what Enterprise re-enables — it left the
 public ladder on 2026-07-15 precisely to become bespoke.
 
-**White-label is deliberately absent.** Decision 2026-07-16: "Powered by
-Stampn" is removed from *every* plan, so there is nothing to gate — the flag
-would always be true. This reverses the 2026-07-15 "footer is mandatory"
-decision.
+**White-label is deliberately absent, and stays absent.** Confirmed
+2026-07-16: there is **no option to remove "Powered by Stampn"** — on any plan,
+Enterprise included. The 2026-07-15 decision stands unchanged; the footer is
+mandatory everywhere and is not a negotiable term. Do not add a `white_label`
+flag, and do not let a sales conversation promise one.
 
 ### 12.5 Merchant-facing (§8 of the brief)
 
