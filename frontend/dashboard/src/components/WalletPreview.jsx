@@ -18,12 +18,7 @@ import { useTranslation } from 'react-i18next'
 import { QRCodeSVG } from 'qrcode.react'
 import { arDigits } from '../lib/format'
 import { isStampIcon, STAMP_ICON_PATHS } from './stampIcons'
-
-// The canvases the backend actually renders into (wallets/apple/signing.py and
-// wallets/google/hero.py). Drawing the preview in these same coordinate spaces is
-// what locks its proportions to the pass's instead of to whatever the DOM does.
-export const APPLE_STRIP = [1125, 369]
-export const GOOGLE_HERO = [1032, 336]
+import { APPLE_STRIP, GOOGLE_HERO, stampGeometry } from './passGeometry'
 
 // Resolve a slot `source` token to a preview value (mirrors wallets/design.py).
 function resolveValue(source, ctx) {
@@ -52,74 +47,6 @@ function darkenHex(hex, factor = 0.82) {
   const g = Math.round(((n >> 8) & 255) * factor)
   const b = Math.round((n & 255) * factor)
   return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`
-}
-
-// ── Stamp geometry ────────────────────────────────────────────────────────────
-// A direct port of wallets/stamp_grid.py::_centers, working in the same pixel
-// space the backend draws into. Same padding, same pitch, same radius formula —
-// so the preview's stamps are the pass's stamps in shape AND in scale, not just
-// in arrangement. (The old preview drew fixed 20px glyphs, which on a 3-stamp
-// card came out roughly half the size the pass renders them.)
-export function stampGeometry(count, layout, size = APPLE_STRIP) {
-  const [w, h] = size
-  const n = Math.max(1, Math.min(count, 15)) // cap so a big card doesn't render dust
-  const rows = n <= 5 ? 1 : 2
-  const cols = Math.ceil(n / rows)
-  const padX = Math.trunc(w * 0.06)
-  const padY = Math.trunc(h * 0.14)
-  const cellW = (w - 2 * padX) / cols
-  const cellH = (h - 2 * padY) / rows
-
-  let centers
-  let pitch
-  if ((layout === 'columns' || layout === 'stagger') && rows > 1) {
-    // Both alternate down the rows — stamp i sits on row `i % rows`, column
-    // `i // rows` — so a 6-stamp card runs 0,2,4 across the top and 1,3,5 across
-    // the bottom. STAGGER additionally slides each lower row half a column along,
-    // which is what turns the grid into a zigzag.
-    const units = []
-    for (let i = 0; i < n; i++) {
-      const r = i % rows
-      const c = Math.floor(i / rows)
-      units.push([r, c + 0.5 + (layout === 'stagger' ? 0.5 * r : 0)])
-    }
-    const lo = Math.min(...units.map(([, u]) => u))
-    const hi = Math.max(...units.map(([, u]) => u))
-    // +1.0 leaves half a pitch of margin either side, so the row that sticks out
-    // furthest (the staggered one) still sits inside the padding.
-    pitch = (w - 2 * padX) / (hi - lo + 1)
-    centers = units.map(([r, u], i) => ({
-      i,
-      row: r,
-      x: padX + (u - lo + 0.5) * pitch,
-      y: padY + r * cellH + cellH / 2,
-    }))
-  } else {
-    pitch = cellW
-    centers = []
-    for (let i = 0; i < n; i++) {
-      const row = Math.floor(i / cols)
-      const c = i % cols
-      // centre the last row if it is short
-      const inRow = row < rows - 1 ? cols : n - cols * (rows - 1)
-      const rowW = inRow * cellW
-      centers.push({
-        i,
-        row,
-        x: (w - rowW) / 2 + c * cellW + cellW / 2,
-        y: padY + row * cellH + cellH / 2,
-      })
-    }
-  }
-
-  const radius = Math.trunc(Math.min(pitch, cellH) * 0.34)
-  return {
-    centers,
-    pitch,
-    radius,
-    ring: Math.max(4, Math.trunc(radius / 7)),
-    iconSize: Math.trunc(Math.min(pitch, cellH) * 0.82),
-  }
 }
 
 // The stamp strip, drawn in the backend's own coordinate space and scaled to fit

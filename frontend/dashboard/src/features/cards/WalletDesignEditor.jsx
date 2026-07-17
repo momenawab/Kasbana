@@ -19,6 +19,7 @@ import { normalizeError } from '../../lib/api'
 import ColorPicker from '../../components/ColorPicker'
 import FileUpload from '../../components/FileUpload'
 import WalletPreview from '../../components/WalletPreview'
+import { DEFAULTS } from './walletDesignDefaults'
 import { STAMP_ICONS } from '../../components/stampIcons'
 import StampGlyph from '../../components/StampGlyph'
 import Button from '../../components/Button'
@@ -27,29 +28,6 @@ import Button from '../../components/Button'
 // (wallets.templates._DEFAULT_BY_TYPE) so a legacy `custom`/unknown key resolves
 // to the same layout the pass actually renders.
 const DEFAULT_TEMPLATE_KEY = { STAMP: 'loyalty_stamps', POINTS: 'points_reward' }
-
-export const DEFAULTS = {
-  label_color: '',
-  apple_logo_text: '',
-  apple_header: [],
-  apple_primary: [],
-  apple_secondary: [],
-  apple_auxiliary: [],
-  apple_back: [],
-  apple_strip_enabled: true,
-  strip_bg_color: '',
-  strip_empty_url: '',
-  strip_filled_url: '',
-  stamp_icon: '',
-  stamp_color: '',
-  stamp_layout: '',
-  google_title: '',
-  google_subtitle: '',
-  google_rows: [],
-  google_stamp_hero: false,
-  template_key: '',
-  bottom_image_url: '',
-}
 
 // How the stamps are arranged. Blank = the backend default (row-major). Only has
 // a visible effect once the card wraps to two rows, i.e. more than 5 stamps.
