@@ -59,12 +59,18 @@ def revenue_analytics(date_from: date, date_to: date) -> dict[str, Any]:
     if cached is not None:
         return cached
 
-    subs = list(Subscription.objects.all())
+    # select_related: plan_key follows the enterprise_plan FK, which would
+    # otherwise be a query per Enterprise subscriber.
+    subs = list(Subscription.objects.select_related("enterprise_plan").all())
     paying = [s for s in subs if _is_paying(s)]
     paying_ids = {s.merchant_id for s in paying}
 
     # ── MRR / ARR / ARPU + revenue by plan ─────────────────────────────────────
-    by_plan = Counter(s.plan for s in paying)
+    # Keyed on plan_key, not plan: the ENTERPRISE *tier* has no catalogue row, so
+    # plan_price() would find nothing and price every negotiated merchant at 0.
+    # It also splits the revenue-by-plan table per deal (Enterprise Gold vs
+    # Platinum) instead of collapsing them into one meaningless bucket.
+    by_plan = Counter(s.plan_key for s in paying)
     mrr: Decimal = sum((plan_price(plan) * count for plan, count in by_plan.items()), Decimal("0"))
     revenue_by_plan = [
         {"plan": plan, "paying_merchants": count, "mrr": plan_price(plan) * count}
@@ -92,7 +98,7 @@ def revenue_analytics(date_from: date, date_to: date) -> dict[str, Any]:
     # over total ever-paid MRR.
     churned_mrr: Decimal = sum(
         (
-            plan_price(s.plan)
+            plan_price(s.plan_key)
             for s in subs
             if s.merchant_id in churned_ids and s.plan != PlanTier.FREE
         ),

@@ -17,7 +17,6 @@ from rest_framework.serializers import BaseSerializer
 from rest_framework.views import APIView
 
 from billing import entitlements
-from billing.plans import PLAN_LIMITS, plan_limits_map
 from billing.services import subscription_for
 from common.errors import PlanLimit, UnprocessableEntity
 from common.permissions import CanEngage
@@ -151,7 +150,7 @@ class AutomationDetailView(APIView):
         plan = sub.effective_plan()
         if plan is None:  # locked
             raise PlanLimit("Your plan does not allow automations.")
-        allowance = (plan_limits_map().get(plan) or PLAN_LIMITS[plan])["automations"]
+        allowance = entitlements._limits_for(plan)["automations"]
         assert isinstance(allowance, int)
         enabled_count = (
             Automation.objects.for_merchant(merchant)

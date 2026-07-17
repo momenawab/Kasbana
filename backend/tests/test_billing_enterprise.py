@@ -256,3 +256,59 @@ def test_a_plan_someone_is_paying_for_cannot_be_deleted(merchant, gold):
 
     with pytest.raises(ProtectedError):
         gold.delete()
+
+
+# ── Enterprise must not break what reads a plan ─────────────────────────────
+def test_enterprise_mrr_counts_the_negotiated_price(merchant, gold):
+    """The ENTERPRISE *tier* has no catalogue row, so pricing off it returns 0 —
+    every negotiated merchant would silently vanish from MRR."""
+    from datetime import date, timedelta
+
+    from console import analytics_revenue
+
+    services.assign_enterprise_plan(merchant, gold)
+    services.activate_plan(merchant, PlanTier.ENTERPRISE)
+
+    today = date.today()
+    summary = analytics_revenue.revenue_analytics(today - timedelta(days=30), today)
+
+    assert summary["kpis"]["mrr"] == Decimal("7500")
+    rows = {r["plan"]: r for r in summary["revenue_by_plan"]}
+    # Broken out per deal, not collapsed into one "ENTERPRISE" bucket.
+    assert rows["ENT_GOLD"]["paying_merchants"] == 1
+
+
+def test_an_enterprise_merchant_can_toggle_an_automation(merchant, gold):
+    gold.automations = 99
+    gold.save()
+    invalidate_plan_cache()
+    services.assign_enterprise_plan(merchant, gold)
+    services.activate_plan(merchant, PlanTier.ENTERPRISE)
+
+    from messaging.enums import AutomationKey
+    from messaging.models import Automation
+
+    resp = _client(merchant).patch(
+        f"/api/v1/automations/{AutomationKey.BIRTHDAY}", {"enabled": True}, format="json"
+    )
+
+    assert resp.status_code == 200
+    assert Automation.objects.get(merchant=merchant, key=AutomationKey.BIRTHDAY).enabled is True
+
+
+def test_a_half_assigned_enterprise_merchant_is_denied_not_500ed(merchant):
+    """Tier set, no plan behind it — every plan lookup resolves to a key with no
+    catalogue row. Each such site must fail closed; a KeyError would 500 the
+    request instead of denying it."""
+    from messaging.enums import AutomationKey
+
+    sub = services.subscription_for(merchant)
+    sub.plan = PlanTier.ENTERPRISE
+    sub.status = BillingStatus.ACTIVE
+    sub.save()
+
+    resp = _client(merchant).patch(
+        f"/api/v1/automations/{AutomationKey.BIRTHDAY}", {"enabled": True}, format="json"
+    )
+
+    assert resp.status_code == 402  # PLAN_LIMIT, not a crash
