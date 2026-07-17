@@ -117,7 +117,9 @@ LOCAL_APPS = [
     "messaging",
     "branding",  # registration-page theme + QR styling (finalize Phase 1)
     "console",  # platform admin panel (separate auth boundary)
+    "console_ops",  # Stampn Ops — Super-Admin host/health control plane
     "partners",  # merchant-referral program (Phase E.1)
+    "whatsapp",  # WhatsApp Cloud API phone verification (OTP)
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -406,6 +408,17 @@ CELERY_BEAT_SCHEDULE = {
         "task": "console.tasks.send_due_announcements",
         "schedule": 300.0,  # every 5 minutes
     },
+    # Stampn Ops — pull a host/health snapshot every minute and send the hourly
+    # Telegram digest. Both no-op cheaply when the collector token or Telegram
+    # config is absent, so they are safe to schedule before either is set up.
+    "stampn-ops-collect-snapshot": {
+        "task": "console_ops.tasks.collect_snapshot",
+        "schedule": 60.0,
+    },
+    "stampn-ops-hourly-report": {
+        "task": "console_ops.tasks.send_hourly_report",
+        "schedule": 3600.0,
+    },
 }
 CELERY_TASK_ACKS_LATE = True
 CELERY_TIMEZONE = TIME_ZONE
@@ -469,3 +482,23 @@ if SENTRY_DSN and "pytest" not in sys.modules:  # never report from the test sui
         profile_session_sample_rate=_profile_rate,
         profile_lifecycle="trace",
     )
+
+
+# ── Stampn Ops (console_ops) ──────────────────────────────────────────────────
+# The Django service reads facts from an internal, privileged collector; it never
+# touches the Docker socket or the host itself. Empty defaults keep Ops dormant
+# and non-fatal until the collector and Telegram are configured in infra/.env.
+OPS_COLLECTOR_URL = env("OPS_COLLECTOR_URL", "http://ops-collector:9800/v1/snapshot")
+OPS_COLLECTOR_TOKEN = env("OPS_COLLECTOR_TOKEN", "")
+OPS_SETTINGS_ENCRYPTION_KEY = env("OPS_SETTINGS_ENCRYPTION_KEY", "")
+
+# ── WhatsApp Cloud API (phone verification) ───────────────────────────────────
+# Empty defaults leave the feature installed but inert: send/verify raise a clean
+# provider error and the webhook rejects every unsigned call until real Meta
+# credentials are supplied.
+WHATSAPP_ACCESS_TOKEN = env("WHATSAPP_ACCESS_TOKEN", "")
+WHATSAPP_PHONE_NUMBER_ID = env("WHATSAPP_PHONE_NUMBER_ID", "")
+WHATSAPP_BUSINESS_ACCOUNT_ID = env("WHATSAPP_BUSINESS_ACCOUNT_ID", "")
+WHATSAPP_VERIFY_TOKEN = env("WHATSAPP_VERIFY_TOKEN", "")
+WHATSAPP_APP_SECRET = env("WHATSAPP_APP_SECRET", "")
+WHATSAPP_API_VERSION = env("WHATSAPP_API_VERSION", "v23.0")

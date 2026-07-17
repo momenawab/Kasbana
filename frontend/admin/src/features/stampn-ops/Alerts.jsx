@@ -1,0 +1,6 @@
+import { AlertTriangle } from 'lucide-react'
+import StatusBadge from './StatusBadge'
+import { ago } from './format'
+import { useOpsAlerts } from './api'
+
+export default function Alerts() { const { data, isLoading } = useOpsAlerts(); const alerts = data?.results || data || []; if (isLoading) return <div className="py-20 text-center text-tx-3">Loading alerts…</div>; return <section className="rounded-ctl border border-line bg-surface"><div className="flex items-center gap-2 border-b border-line p-4"><AlertTriangle size={18} className="text-amber-500" /><h2 className="font-semibold text-tx">Open alerts</h2></div>{alerts.length ? <div className="divide-y divide-line">{alerts.map((a) => <article key={a.id} className="p-4"><div className="flex flex-wrap items-start justify-between gap-2"><div><div className="flex items-center gap-2"><StatusBadge value={a.severity} /><strong className="text-sm text-tx">{a.title}</strong></div><p className="mt-2 text-sm text-tx-2">{a.detail}</p><p className="mt-2 text-xs text-tx-3">First seen {ago(a.first_seen_at)} · Last seen {ago(a.last_seen_at)} · {a.occurrences} occurrence{a.occurrences === 1 ? '' : 's'}</p></div><StatusBadge value={a.status} /></div></article>)}</div> : <div className="p-10 text-center text-emerald-600">No open alerts. Production is healthy.</div>}</section> }

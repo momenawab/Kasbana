@@ -47,6 +47,8 @@ api_v1: list = [
     path("", include("messaging.urls")),
     # Public marketing "Get started" lead intake (unauthenticated).
     path("", include("console.public_urls")),
+    # WhatsApp phone verification — send/verify OTP + Meta webhook (unauthenticated).
+    path("", include("whatsapp.urls")),
 ]
 
 urlpatterns = [
