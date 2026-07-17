@@ -93,4 +93,7 @@ find "$BACKUP_DIR" -name 'stampn-*.sql.gz' -mtime +7 -delete
 # not merely that the script ran.
 sentry_checkin ok
 
+echo "▶ Recording backup to Stampn Ops"
+docker compose -f compose.prod.yml -f compose.ops-collector.yml run --rm web python manage.py ops_record_backup --size "$SIZE" || true
+
 echo "✓ Backup complete: $OUT"
