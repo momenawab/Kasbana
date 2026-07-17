@@ -17,6 +17,40 @@ set -euo pipefail
 cd "$(dirname "$0")/.."   # -> infra/
 set -a; [ -f .env ] && . ./.env; set +a
 
+# ── Sentry cron monitoring ────────────────────────────────────────────────────
+# A silently broken backup is worse than none, because you believe you're
+# covered. This script sat unscheduled for 17 days and nobody noticed — the
+# script was fine, nothing was watching. Sentry alerts when a check-in doesn't
+# arrive on schedule, which is the only way that failure mode is ever visible.
+#
+# Reuses SENTRY_DSN from .env (no new secret) and derives the check-in URL from
+# it. Create the monitor first: Sentry -> Crons -> slug `stampn-backup`,
+# schedule `30 2 * * *`. Empty SENTRY_DSN disables this silently.
+#
+# A check-in NEVER fails the backup — a Sentry outage must not cost you a dump.
+SENTRY_MONITOR_SLUG="${SENTRY_MONITOR_SLUG:-stampn-backup}"
+
+sentry_checkin() {
+  [ -n "${SENTRY_DSN:-}" ] || return 0
+  command -v curl >/dev/null 2>&1 || return 0
+  # DSN shape: https://<key>@<host>/<project_id>
+  local rest key host project
+  rest=${SENTRY_DSN#*//}
+  key=${rest%%@*}
+  host=${rest#*@}; host=${host%%/*}
+  project=${SENTRY_DSN##*/}
+  curl -fsS -m 10 -o /dev/null \
+    "https://${host}/api/${project}/cron/${SENTRY_MONITOR_SLUG}/${key}/?status=$1" \
+    2>/dev/null || echo "⚠ Sentry check-in ($1) failed — the backup itself is unaffected"
+  return 0
+}
+
+# Report on ANY non-zero exit, not just a clean finish: the integrity gate
+# (exit 1) and the S3 upload failure are exactly the cases worth alerting on.
+trap 'rc=$?; [ "$rc" -eq 0 ] || sentry_checkin error' EXIT
+
+sentry_checkin in_progress
+
 BACKUP_DIR=/opt/stampn/backups
 mkdir -p "$BACKUP_DIR"
 TS=$(date +%F-%H%M)
@@ -53,5 +87,10 @@ fi
 
 echo "▶ Pruning local dumps older than 7 days"
 find "$BACKUP_DIR" -name 'stampn-*.sql.gz' -mtime +7 -delete
+
+# Only reached if the dump passed the integrity gate AND (if configured) the
+# off-box copy landed — so an "ok" here means the backup is genuinely safe,
+# not merely that the script ran.
+sentry_checkin ok
 
 echo "✓ Backup complete: $OUT"
