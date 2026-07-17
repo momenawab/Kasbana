@@ -7,7 +7,8 @@ import { describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
 
 import '../lib/i18n'
-import WalletPreview, { APPLE_STRIP, stampGeometry } from './WalletPreview'
+import WalletPreview from './WalletPreview'
+import { APPLE_STRIP, stampGeometry } from './passGeometry'
 
 // Which stamps land on which row, read back off the geometry the strip is actually
 // drawn from — so this guards the real render path, not a lookalike of it.
