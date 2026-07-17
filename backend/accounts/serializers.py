@@ -9,10 +9,8 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 from rest_framework import serializers
 
-from accounts.services import settings_for, unique_slug
-from billing.services import subscription_for
-from core.enums import Role
-from core.models import Merchant, StaffUser
+from accounts.services import provision_merchant
+from core.models import StaffUser
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -38,23 +36,17 @@ class SignupSerializer(serializers.Serializer):
 
     @transaction.atomic
     def create(self, validated_data: dict[str, Any]) -> StaffUser:
-        email = validated_data["email"]
-        user = User(username=email, email=email, first_name=validated_data["owner_name"][:150])
-        user.set_password(validated_data["password"])
-        user.save()
-
-        merchant = Merchant.objects.create(
-            name=validated_data["business_name"],
-            slug=unique_slug(validated_data["business_name"]),
+        # Provisioning is shared with Sales' Convert-To-Merchant — see
+        # ``accounts.services.provision_merchant``. Referral attribution stays
+        # here because it is signup's alone: a lead Sales converted was worked
+        # by Sales, not walked in by a partner's link.
+        staff = provision_merchant(
+            business_name=validated_data["business_name"],
+            owner_name=validated_data["owner_name"],
+            email=validated_data["email"],
+            phone=validated_data["phone"],
+            password=validated_data["password"],
         )
-        staff = StaffUser.objects.create(merchant=merchant, user=user, role=Role.OWNER)
-
-        s = settings_for(merchant)
-        s.contact_email = email
-        s.contact_phone = validated_data["phone"]
-        s.save(update_fields=["contact_email", "contact_phone", "updated_at"])
-
-        subscription_for(merchant)  # starts the 14-day trial
 
         # Best-effort partner attribution (Phase E.1) — never block signup on it.
         code = validated_data.get("referral_code", "")
@@ -62,9 +54,9 @@ class SignupSerializer(serializers.Serializer):
             try:
                 from partners.services import attribute_signup
 
-                attribute_signup(merchant, code)
+                attribute_signup(staff.merchant, code)
             except Exception:  # pragma: no cover - defensive
-                logger.exception("partner attribution failed for %s", merchant.id)
+                logger.exception("partner attribution failed for %s", staff.merchant_id)
 
         return staff
 
