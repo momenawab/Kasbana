@@ -922,6 +922,99 @@ paths:
                 items:
                   $ref: '#/components/schemas/CouponRedemption'
           description: ''
+  /api/admin/v1/crm/choices:
+    get:
+      operationId: api_admin_v1_crm_choices_list
+      description: |-
+        GET /crm/choices[?kind=] — every configurable value (any admin, since
+        every CRM picker needs them) · POST — add a custom value (super-admin).
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CrmChoice'
+          description: ''
+    post:
+      operationId: api_admin_v1_crm_choices_create
+      description: |-
+        GET /crm/choices[?kind=] — every configurable value (any admin, since
+        every CRM picker needs them) · POST — add a custom value (super-admin).
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CrmChoice'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CrmChoice'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CrmChoice'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CrmChoice'
+          description: ''
+  /api/admin/v1/crm/choices/{choice_id}:
+    patch:
+      operationId: api_admin_v1_crm_choices_partial_update
+      description: |-
+        PATCH /crm/choices/{id} — relabel/recolour/reorder · DELETE — remove a
+        custom value. Both super-admin (``CRM_CONFIGURE``).
+      parameters:
+      - in: path
+        name: choice_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedCrmChoice'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedCrmChoice'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedCrmChoice'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CrmChoice'
+          description: ''
+    delete:
+      operationId: api_admin_v1_crm_choices_destroy
+      description: |-
+        PATCH /crm/choices/{id} — relabel/recolour/reorder · DELETE — remove a
+        custom value. Both super-admin (``CRM_CONFIGURE``).
+      parameters:
+      - in: path
+        name: choice_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      responses:
+        '204':
+          description: No response body
   /api/admin/v1/impersonate/end:
     post:
       operationId: api_admin_v1_impersonate_end_create
@@ -1005,7 +1098,9 @@ paths:
   /api/admin/v1/leads:
     get:
       operationId: api_admin_v1_leads_list
-      description: GET /leads — every inbound lead, newest first.
+      description: |-
+        GET /leads — the pipeline (filter/search/sort/paginate) ·
+        POST /leads — create a manual lead (Sales+).
       tags:
       - api
       responses:
@@ -1017,10 +1112,37 @@ paths:
                 items:
                   $ref: '#/components/schemas/Lead'
           description: ''
+    post:
+      operationId: api_admin_v1_leads_create
+      description: |-
+        GET /leads — the pipeline (filter/search/sort/paginate) ·
+        POST /leads — create a manual lead (Sales+).
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LeadWrite'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LeadWrite'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LeadWrite'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeadDetail'
+          description: ''
   /api/admin/v1/leads/{lead_id}:
-    patch:
-      operationId: api_admin_v1_leads_partial_update
-      description: PATCH /leads/{id} — toggle contacted status · DELETE /leads/{id}.
+    get:
+      operationId: api_admin_v1_leads_retrieve
+      description: GET /leads/{id} — the details page · PATCH — edit (Sales+) · DELETE
+        (Sales+).
       parameters:
       - in: path
         name: lead_id
@@ -1035,11 +1157,43 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Lead'
+                $ref: '#/components/schemas/LeadDetail'
+          description: ''
+    patch:
+      operationId: api_admin_v1_leads_partial_update
+      description: GET /leads/{id} — the details page · PATCH — edit (Sales+) · DELETE
+        (Sales+).
+      parameters:
+      - in: path
+        name: lead_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedLeadWrite'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedLeadWrite'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedLeadWrite'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeadDetail'
           description: ''
     delete:
       operationId: api_admin_v1_leads_destroy
-      description: PATCH /leads/{id} — toggle contacted status · DELETE /leads/{id}.
+      description: GET /leads/{id} — the details page · PATCH — edit (Sales+) · DELETE
+        (Sales+).
       parameters:
       - in: path
         name: lead_id
@@ -1051,6 +1205,287 @@ paths:
       - api
       responses:
         '204':
+          description: No response body
+  /api/admin/v1/leads/{lead_id}/calls:
+    post:
+      operationId: api_admin_v1_leads_calls_create
+      description: |-
+        POST /leads/{id}/calls — Log Call (Sales+).
+
+        Logging a call does four things at once, which is why it is not a plain
+        create: it records the call, moves the lead's follow-up date, stamps
+        ``last_contact_at``, and lands on the timeline.
+      parameters:
+      - in: path
+        name: lead_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LeadCallCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LeadCallCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LeadCallCreate'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeadCall'
+          description: ''
+  /api/admin/v1/leads/{lead_id}/convert:
+    post:
+      operationId: api_admin_v1_leads_convert_create
+      description: |-
+        POST /leads/{id}/convert {plan_key} — turn the lead into a live merchant.
+
+        Gated on ``LEADS_CONVERT`` rather than ``LEADS_MANAGE``: this is the one
+        lead action that reaches outside the CRM and creates real, billable
+        accounts, so it is worth being able to grant separately from day-to-day
+        pipeline work.
+      parameters:
+      - in: path
+        name: lead_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeadDetail'
+          description: ''
+  /api/admin/v1/leads/{lead_id}/duplicates:
+    get:
+      operationId: api_admin_v1_leads_duplicates_list_2
+      description: |-
+        GET /leads/{id}/duplicates — this lead's likely duplicates ·
+        POST /leads/{id}/merge {absorbed_id} — fold another lead into this one (Sales+).
+
+        The lead in the path is always the survivor: merge happens *from* the record
+        you are keeping, absorbing the other into it. That direction is the whole
+        reason merge is safe — the survivor's pipeline position and its already-set
+        fields are never touched, so a merge cannot quietly downgrade a lead.
+      parameters:
+      - in: path
+        name: lead_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Lead'
+          description: ''
+    post:
+      operationId: api_admin_v1_leads_duplicates_create
+      description: |-
+        GET /leads/{id}/duplicates — this lead's likely duplicates ·
+        POST /leads/{id}/merge {absorbed_id} — fold another lead into this one (Sales+).
+
+        The lead in the path is always the survivor: merge happens *from* the record
+        you are keeping, absorbing the other into it. That direction is the whole
+        reason merge is safe — the survivor's pipeline position and its already-set
+        fields are never touched, so a merge cannot quietly downgrade a lead.
+      parameters:
+      - in: path
+        name: lead_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeadDetail'
+          description: ''
+  /api/admin/v1/leads/{lead_id}/logo:
+    post:
+      operationId: api_admin_v1_leads_logo_create
+      description: |-
+        POST /leads/{id}/logo (multipart) — upload the business logo (Sales+).
+
+        Separate from the merchant dashboard's ``POST /uploads`` because that one
+        authenticates a merchant and gates on a merchant role — an admin cannot call
+        it at all. What counts as an acceptable image is shared, though
+        (``common.uploads``): two auth boundaries, one set of rules.
+      parameters:
+      - in: path
+        name: lead_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeadDetail'
+          description: ''
+  /api/admin/v1/leads/{lead_id}/merge:
+    get:
+      operationId: api_admin_v1_leads_merge_list
+      description: |-
+        GET /leads/{id}/duplicates — this lead's likely duplicates ·
+        POST /leads/{id}/merge {absorbed_id} — fold another lead into this one (Sales+).
+
+        The lead in the path is always the survivor: merge happens *from* the record
+        you are keeping, absorbing the other into it. That direction is the whole
+        reason merge is safe — the survivor's pipeline position and its already-set
+        fields are never touched, so a merge cannot quietly downgrade a lead.
+      parameters:
+      - in: path
+        name: lead_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Lead'
+          description: ''
+    post:
+      operationId: api_admin_v1_leads_merge_create
+      description: |-
+        GET /leads/{id}/duplicates — this lead's likely duplicates ·
+        POST /leads/{id}/merge {absorbed_id} — fold another lead into this one (Sales+).
+
+        The lead in the path is always the survivor: merge happens *from* the record
+        you are keeping, absorbing the other into it. That direction is the whole
+        reason merge is safe — the survivor's pipeline position and its already-set
+        fields are never touched, so a merge cannot quietly downgrade a lead.
+      parameters:
+      - in: path
+        name: lead_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeadDetail'
+          description: ''
+  /api/admin/v1/leads/duplicates:
+    get:
+      operationId: api_admin_v1_leads_duplicates_list
+      description: |-
+        GET /leads/duplicates?phone=&email=&business_name= — probe before creating.
+
+        Lets the Add Lead form warn as the user types rather than only after they
+        submit and get a 409 back.
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Lead'
+          description: ''
+  /api/admin/v1/leads/import:
+    post:
+      operationId: api_admin_v1_leads_import_create
+      description: |-
+        POST /leads/import (multipart: file + mapping JSON) — create the leads.
+
+        The file is uploaded again rather than parked on the server between the two
+        calls: the browser already holds it, and a temp file keyed to a session is
+        state to expire, clean up and leak. Re-parsing a 5,000-row sheet is cheap by
+        comparison.
+      tags:
+      - api
+      responses:
+        '200':
+          description: No response body
+  /api/admin/v1/leads/import/preview:
+    post:
+      operationId: api_admin_v1_leads_import_preview_create
+      description: |-
+        POST /leads/import/preview (multipart) — read the file, propose a mapping.
+
+        Writes nothing. Parsing and importing are separate calls on purpose: a
+        mapping guessed wrong and applied silently would load phone numbers into
+        four hundred leads' area field, and nobody would notice until they called
+        one. The human confirms the mapping in between.
+      tags:
+      - api
+      responses:
+        '200':
+          description: No response body
+  /api/admin/v1/leads/kpis:
+    get:
+      operationId: api_admin_v1_leads_kpis_retrieve
+      description: |-
+        GET /leads/kpis — the dashboard cards.
+
+        Takes the same filter params as the list, so the cards describe the slice
+        the user is looking at rather than silently contradicting the table below.
+      tags:
+      - api
+      responses:
+        '200':
+          description: No response body
+  /api/admin/v1/leads/sales-users:
+    get:
+      operationId: api_admin_v1_leads_sales_users_retrieve
+      description: |-
+        GET /leads/sales-users — who a lead may be assigned to.
+
+        Exists rather than reusing ``GET /admins`` because that endpoint gates on
+        ``ADMINS_MANAGE``, which Sales deliberately does not hold — pointing the
+        assignment picker at it would 403 for the very role that lives in this
+        screen. Widening that permission to fix a dropdown would hand the sales team
+        the admin-team management API, so the CRM gets its own read instead: name
+        and email only, no roles, no MFA state, no lockout counters.
+
+        Super-admins are assignable alongside Sales — they hold every permission,
+        and a one-person team must still be able to put a lead on someone.
+      tags:
+      - api
+      responses:
+        '200':
           description: No response body
   /api/admin/v1/lifecycle/at-risk:
     get:
@@ -2663,6 +3098,99 @@ paths:
       responses:
         '200':
           description: No response body
+  /api/admin/v1/stampn-ops/alerts:
+    get:
+      operationId: api_admin_v1_stampn_ops_alerts_retrieve
+      description: |-
+        Base for all ``/api/admin/v1`` endpoints.
+
+        - authenticates ONLY via the admin JWT boundary;
+        - requires an active admin whose role satisfies ``allowed_roles`` (None = any);
+        - intentionally does NO tenant scoping — admin views are cross-tenant.
+      tags:
+      - api
+      responses:
+        '200':
+          description: No response body
+  /api/admin/v1/stampn-ops/dashboard:
+    get:
+      operationId: api_admin_v1_stampn_ops_dashboard_retrieve
+      description: |-
+        Base for all ``/api/admin/v1`` endpoints.
+
+        - authenticates ONLY via the admin JWT boundary;
+        - requires an active admin whose role satisfies ``allowed_roles`` (None = any);
+        - intentionally does NO tenant scoping — admin views are cross-tenant.
+      tags:
+      - api
+      responses:
+        '200':
+          description: No response body
+  /api/admin/v1/stampn-ops/refresh:
+    post:
+      operationId: api_admin_v1_stampn_ops_refresh_create
+      description: |-
+        Base for all ``/api/admin/v1`` endpoints.
+
+        - authenticates ONLY via the admin JWT boundary;
+        - requires an active admin whose role satisfies ``allowed_roles`` (None = any);
+        - intentionally does NO tenant scoping — admin views are cross-tenant.
+      tags:
+      - api
+      responses:
+        '200':
+          description: No response body
+  /api/admin/v1/stampn-ops/settings:
+    get:
+      operationId: api_admin_v1_stampn_ops_settings_retrieve
+      description: |-
+        Base for all ``/api/admin/v1`` endpoints.
+
+        - authenticates ONLY via the admin JWT boundary;
+        - requires an active admin whose role satisfies ``allowed_roles`` (None = any);
+        - intentionally does NO tenant scoping — admin views are cross-tenant.
+      tags:
+      - api
+      responses:
+        '200':
+          description: No response body
+    patch:
+      operationId: api_admin_v1_stampn_ops_settings_partial_update
+      description: |-
+        Base for all ``/api/admin/v1`` endpoints.
+
+        - authenticates ONLY via the admin JWT boundary;
+        - requires an active admin whose role satisfies ``allowed_roles`` (None = any);
+        - intentionally does NO tenant scoping — admin views are cross-tenant.
+      tags:
+      - api
+      responses:
+        '200':
+          description: No response body
+  /api/admin/v1/stampn-ops/telegram/test:
+    post:
+      operationId: api_admin_v1_stampn_ops_telegram_test_create
+      description: |-
+        Base for all ``/api/admin/v1`` endpoints.
+
+        - authenticates ONLY via the admin JWT boundary;
+        - requires an active admin whose role satisfies ``allowed_roles`` (None = any);
+        - intentionally does NO tenant scoping — admin views are cross-tenant.
+      tags:
+      - api
+      responses:
+        '200':
+          description: No response body
+  /api/admin/v1/stampn-ops/widget:
+    get:
+      operationId: api_admin_v1_stampn_ops_widget_retrieve
+      description: Authenticated for now; mobile clients will use scoped device tokens
+        later.
+      tags:
+      - api
+      responses:
+        '200':
+          description: No response body
   /api/v1/activity:
     get:
       operationId: activity_retrieve
@@ -2909,6 +3437,16 @@ paths:
               schema:
                 $ref: '#/components/schemas/Ok'
           description: ''
+  /api/v1/auth/send-whatsapp-otp/:
+    post:
+      operationId: auth_send_whatsapp_otp_create
+      tags:
+      - auth
+      security:
+      - {}
+      responses:
+        '200':
+          description: No response body
   /api/v1/auth/signup:
     post:
       operationId: auth_signup_create
@@ -2962,6 +3500,16 @@ paths:
               schema:
                 $ref: '#/components/schemas/EmailTokenObtainPair'
           description: ''
+  /api/v1/auth/verify-whatsapp-otp/:
+    post:
+      operationId: auth_verify_whatsapp_otp_create
+      tags:
+      - auth
+      security:
+      - {}
+      responses:
+        '200':
+          description: No response body
   /api/v1/automations:
     get:
       operationId: automations_list
@@ -4302,7 +4850,12 @@ paths:
   /api/v1/uploads:
     post:
       operationId: uploads_create
-      description: POST /uploads — store a logo/image and return its URL.
+      description: |-
+        POST /uploads — store a logo/image and return its URL.
+
+        What counts as an acceptable image lives in ``common.uploads``, shared with
+        the admin console's lead-logo upload: the two endpoints authenticate
+        differently but must never disagree about what they accept.
       tags:
       - uploads
       requestBody:
@@ -4340,6 +4893,25 @@ paths:
               schema:
                 $ref: '#/components/schemas/WalletTemplateList'
           description: ''
+  /api/v1/webhooks/whatsapp/:
+    get:
+      operationId: webhooks_whatsapp_retrieve
+      tags:
+      - webhooks
+      security:
+      - {}
+      responses:
+        '200':
+          description: No response body
+    post:
+      operationId: webhooks_whatsapp_create
+      tags:
+      - webhooks
+      security:
+      - {}
+      responses:
+        '200':
+          description: No response body
 components:
   schemas:
     AccountSettingsOut:
@@ -4478,7 +5050,7 @@ components:
           type: string
           maxLength: 120
         role:
-          $ref: '#/components/schemas/RoleDadEnum'
+          $ref: '#/components/schemas/Role4e0Enum'
       required:
       - email
       - role
@@ -4623,7 +5195,7 @@ components:
           type: string
           maxLength: 120
         role:
-          $ref: '#/components/schemas/RoleDadEnum'
+          $ref: '#/components/schemas/Role4e0Enum'
         is_active:
           type: boolean
         mfa_enabled:
@@ -5324,7 +5896,7 @@ components:
           readOnly: true
         source:
           allOf:
-          - $ref: '#/components/schemas/SourceEnum'
+          - $ref: '#/components/schemas/ContactMessageSourceEnum'
           readOnly: true
         merchant:
           type: string
@@ -5387,6 +5959,30 @@ components:
       - message
       - name
       - subject
+    ContactMessageSourceEnum:
+      enum:
+      - marketing
+      - dashboard
+      type: string
+      description: |-
+        * `marketing` - Marketing site
+        * `dashboard` - Merchant dashboard
+    ContactMethodEnum:
+      enum:
+      - phone
+      - whatsapp
+      - instagram
+      - facebook
+      - email
+      - visit
+      type: string
+      description: |-
+        * `phone` - Phone
+        * `whatsapp` - WhatsApp
+        * `instagram` - Instagram
+        * `facebook` - Facebook
+        * `email` - Email
+        * `visit` - Visit
     ContactReply:
       type: object
       description: Admin reply body — the free-text message emailed back to the customer.
@@ -5583,6 +6179,79 @@ components:
       - discount_egp
       - id
       - merchant
+    CreatedByTypeEnum:
+      enum:
+      - system
+      - sales_user
+      type: string
+      description: |-
+        * `system` - System
+        * `sales_user` - Sales User
+    CrmChoice:
+      type: object
+      description: |-
+        A configurable dropdown row. ``is_system`` is the code's claim on a slug,
+        never the client's to set.
+
+        ``validators = []`` drops DRF's implicit unique-together check on
+        (kind, slug). Not to weaken it — the database constraint still holds, and
+        ``views_crm_config`` re-checks — but because that validator answers a
+        collision with a bare "must be unique" 400, which cannot distinguish "you
+        already added this" from "this is a built-in you may not shadow". Those need
+        different fixes, so the view owns the check and says which one it is.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        kind:
+          $ref: '#/components/schemas/CrmChoiceKindEnum'
+        slug:
+          type: string
+          maxLength: 64
+          pattern: ^[-a-zA-Z0-9_]+$
+        label:
+          type: string
+          maxLength: 120
+        color:
+          type: string
+          maxLength: 16
+        order:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        is_system:
+          type: boolean
+          readOnly: true
+        is_active:
+          type: boolean
+      required:
+      - id
+      - is_system
+      - kind
+      - label
+      - slug
+    CrmChoiceKindEnum:
+      enum:
+      - status
+      - priority
+      - temperature
+      - source
+      - category
+      - expected_plan
+      - contact_method
+      - next_action
+      type: string
+      description: |-
+        * `status` - Status
+        * `priority` - Priority
+        * `temperature` - Temperature
+        * `source` - Lead Source
+        * `category` - Business Category
+        * `expected_plan` - Expected Plan
+        * `contact_method` - Contact Method
+        * `next_action` - Next Action
     Customer:
       type: object
       description: Read representation for GET /customers and GET /customers/{id}.
@@ -6256,51 +6925,263 @@ components:
         * `en` - en
     Lead:
       type: object
+      description: The table row — every column the leads table renders.
       properties:
         id:
           type: string
           format: uuid
           readOnly: true
+        business_name:
+          type: string
+          readOnly: true
         name:
+          type: string
+          readOnly: true
+        phone:
+          type: string
+          readOnly: true
+        whatsapp:
           type: string
           readOnly: true
         email:
           type: string
           format: email
           readOnly: true
-        phone:
+        area:
           type: string
           readOnly: true
-        business_name:
+        category:
           type: string
+          readOnly: true
+        assigned_sales:
+          allOf:
+          - $ref: '#/components/schemas/_AdminBrief'
+          readOnly: true
+        priority:
+          allOf:
+          - $ref: '#/components/schemas/PriorityEnum'
           readOnly: true
         status:
           allOf:
-          - $ref: '#/components/schemas/LeadStatusEnum'
+          - $ref: '#/components/schemas/StatusFd7Enum'
           readOnly: true
-        contacted_at:
+        temperature:
+          allOf:
+          - $ref: '#/components/schemas/TemperatureEnum'
+          readOnly: true
+        lead_score:
+          type: integer
+          readOnly: true
+        lead_type:
+          allOf:
+          - $ref: '#/components/schemas/LeadTypeEnum'
+          readOnly: true
+        source:
+          allOf:
+          - $ref: '#/components/schemas/SourceE39Enum'
+          readOnly: true
+        next_follow_up_at:
           type: string
           format: date-time
           readOnly: true
           nullable: true
+        last_activity:
+          type: string
+          readOnly: true
+        last_contact_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        created_by:
+          allOf:
+          - $ref: '#/components/schemas/_AdminBrief'
+          readOnly: true
+        created_by_type:
+          allOf:
+          - $ref: '#/components/schemas/CreatedByTypeEnum'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        is_converted:
+          type: boolean
+          readOnly: true
+      required:
+      - area
+      - assigned_sales
+      - business_name
+      - category
+      - created_at
+      - created_by
+      - created_by_type
+      - email
+      - id
+      - is_converted
+      - last_activity
+      - last_contact_at
+      - lead_score
+      - lead_type
+      - name
+      - next_follow_up_at
+      - phone
+      - priority
+      - source
+      - status
+      - temperature
+      - whatsapp
+    LeadActivity:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        kind:
+          allOf:
+          - $ref: '#/components/schemas/LeadActivityKindEnum'
+          readOnly: true
+        title:
+          type: string
+          readOnly: true
+        description:
+          type: string
+          readOnly: true
+        actor_label:
+          type: string
+          readOnly: true
         created_at:
           type: string
           format: date-time
           readOnly: true
       required:
-      - business_name
-      - contacted_at
+      - actor_label
       - created_at
-      - email
+      - description
       - id
-      - name
-      - phone
-      - status
+      - kind
+      - title
+    LeadActivityKindEnum:
+      enum:
+      - lead_created
+      - website_form_submitted
+      - manual_lead_created
+      - phone_call_logged
+      - whatsapp_sent
+      - email_sent
+      - priority_changed
+      - status_changed
+      - assigned_sales_changed
+      - demo_scheduled
+      - demo_completed
+      - proposal_sent
+      - converted_to_merchant
+      - closed
+      - duplicate_merged
+      - note_added
+      type: string
+      description: |-
+        * `lead_created` - Lead Created
+        * `website_form_submitted` - Website Form Submitted
+        * `manual_lead_created` - Manual Lead Created
+        * `phone_call_logged` - Phone Call Logged
+        * `whatsapp_sent` - WhatsApp Sent
+        * `email_sent` - Email Sent
+        * `priority_changed` - Priority Changed
+        * `status_changed` - Status Changed
+        * `assigned_sales_changed` - Assigned Sales Changed
+        * `demo_scheduled` - Demo Scheduled
+        * `demo_completed` - Demo Completed
+        * `proposal_sent` - Proposal Sent
+        * `converted_to_merchant` - Converted To Merchant
+        * `closed` - Closed
+        * `duplicate_merged` - Duplicate Merged
+        * `note_added` - Note Added
+    LeadCall:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        called_at:
+          type: string
+          format: date-time
+          readOnly: true
+        duration_seconds:
+          type: integer
+          readOnly: true
+        result:
+          allOf:
+          - $ref: '#/components/schemas/ResultEnum'
+          readOnly: true
+        contact_method:
+          allOf:
+          - $ref: '#/components/schemas/ContactMethodEnum'
+          readOnly: true
+        next_follow_up_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        notes:
+          type: string
+          readOnly: true
+        logged_by_label:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - called_at
+      - contact_method
+      - created_at
+      - duration_seconds
+      - id
+      - logged_by_label
+      - next_follow_up_at
+      - notes
+      - result
+    LeadCallCreate:
+      type: object
+      description: |-
+        Log Call. ``next_follow_up_at`` is copied onto the lead by the view — the
+        point of setting it here is that the pipeline picks it up.
+      properties:
+        called_at:
+          type: string
+          format: date-time
+        duration_seconds:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        result:
+          $ref: '#/components/schemas/ResultEnum'
+        contact_method:
+          type: string
+        next_follow_up_at:
+          type: string
+          format: date-time
+          nullable: true
+        notes:
+          type: string
+      required:
+      - called_at
+      - result
     LeadCreate:
       type: object
       description: |-
-        Public write shape. ``botcheck`` is a honeypot — a real person leaves it
-        empty; a bot that fills it is rejected quietly by the view.
+        Public write shape — what the marketing "Get started" form POSTs.
+
+        ``botcheck`` is a honeypot: a real person leaves it empty; a bot that fills
+        it is rejected quietly by the view. Email is required here even though the
+        model now allows blank, because the marketing form asks for it and a website
+        lead with no reply address is a dead one. Manual leads carry no such rule —
+        which is exactly why the rule lives here and not on the model.
       properties:
         name:
           type: string
@@ -6308,7 +7189,6 @@ components:
         email:
           type: string
           format: email
-          maxLength: 254
         phone:
           type: string
           maxLength: 40
@@ -6323,14 +7203,293 @@ components:
       - email
       - name
       - phone
-    LeadStatusEnum:
+    LeadDetail:
+      type: object
+      description: 'The details page: everything, plus the timeline and the calls.'
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        business_name:
+          type: string
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        phone:
+          type: string
+          readOnly: true
+        whatsapp:
+          type: string
+          readOnly: true
+        email:
+          type: string
+          format: email
+          readOnly: true
+        area:
+          type: string
+          readOnly: true
+        category:
+          type: string
+          readOnly: true
+        assigned_sales:
+          allOf:
+          - $ref: '#/components/schemas/_AdminBrief'
+          readOnly: true
+        priority:
+          allOf:
+          - $ref: '#/components/schemas/PriorityEnum'
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StatusFd7Enum'
+          readOnly: true
+        temperature:
+          allOf:
+          - $ref: '#/components/schemas/TemperatureEnum'
+          readOnly: true
+        lead_score:
+          type: integer
+          readOnly: true
+        lead_type:
+          allOf:
+          - $ref: '#/components/schemas/LeadTypeEnum'
+          readOnly: true
+        source:
+          allOf:
+          - $ref: '#/components/schemas/SourceE39Enum'
+          readOnly: true
+        next_follow_up_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        last_activity:
+          type: string
+          readOnly: true
+        last_contact_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        created_by:
+          allOf:
+          - $ref: '#/components/schemas/_AdminBrief'
+          readOnly: true
+        created_by_type:
+          allOf:
+          - $ref: '#/components/schemas/CreatedByTypeEnum'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        is_converted:
+          type: boolean
+          readOnly: true
+        instagram:
+          type: string
+          readOnly: true
+        facebook:
+          type: string
+          readOnly: true
+        website:
+          type: string
+          format: uri
+          readOnly: true
+        google_maps_url:
+          type: string
+          format: uri
+          readOnly: true
+        logo_url:
+          type: string
+          format: uri
+          readOnly: true
+        address:
+          type: string
+          readOnly: true
+        notes:
+          type: string
+          readOnly: true
+        expected_plan:
+          type: string
+          readOnly: true
+        expected_revenue:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+          nullable: true
+        contact_method:
+          type: string
+          readOnly: true
+        next_action:
+          type: string
+          readOnly: true
+        contacted_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        converted_merchant:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        converted_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        activities:
+          type: array
+          items:
+            $ref: '#/components/schemas/LeadActivity'
+          readOnly: true
+        calls:
+          type: array
+          items:
+            $ref: '#/components/schemas/LeadCall'
+          readOnly: true
+      required:
+      - activities
+      - address
+      - area
+      - assigned_sales
+      - business_name
+      - calls
+      - category
+      - contact_method
+      - contacted_at
+      - converted_at
+      - converted_merchant
+      - created_at
+      - created_by
+      - created_by_type
+      - email
+      - expected_plan
+      - expected_revenue
+      - facebook
+      - google_maps_url
+      - id
+      - instagram
+      - is_converted
+      - last_activity
+      - last_contact_at
+      - lead_score
+      - lead_type
+      - logo_url
+      - name
+      - next_action
+      - next_follow_up_at
+      - notes
+      - phone
+      - priority
+      - source
+      - status
+      - temperature
+      - updated_at
+      - website
+      - whatsapp
+    LeadTypeEnum:
       enum:
-      - new
-      - contacted
+      - website
+      - manual
       type: string
       description: |-
-        * `new` - New
-        * `contacted` - Contacted
+        * `website` - Website
+        * `manual` - Manual
+    LeadWrite:
+      type: object
+      description: |-
+        Console write shape — manual create and edit.
+
+        Provenance (``lead_type``, ``created_by``, ``created_by_type``) is absent by
+        design: it is the system's to decide from *how* a lead arrived, never the
+        client's to claim. Same for ``lead_score`` and ``last_activity``, which are
+        derived — accepting either would let a caller assert a score that the next
+        recalculation silently contradicts.
+      properties:
+        business_name:
+          type: string
+          maxLength: 160
+        name:
+          type: string
+          maxLength: 120
+        phone:
+          type: string
+          maxLength: 40
+        whatsapp:
+          type: string
+          maxLength: 40
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        instagram:
+          type: string
+          maxLength: 120
+        facebook:
+          type: string
+          maxLength: 200
+        website:
+          type: string
+          format: uri
+          maxLength: 200
+        google_maps_url:
+          type: string
+          format: uri
+          maxLength: 500
+        area:
+          type: string
+          maxLength: 120
+        category:
+          type: string
+        address:
+          type: string
+          maxLength: 255
+        notes:
+          type: string
+        source:
+          type: string
+        assigned_sales:
+          type: string
+          format: uuid
+          nullable: true
+        status:
+          type: string
+        priority:
+          type: string
+        temperature:
+          type: string
+        expected_plan:
+          type: string
+        expected_revenue:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          nullable: true
+        contact_method:
+          type: string
+        next_action:
+          type: string
+        last_contact_at:
+          type: string
+          format: date-time
+          nullable: true
+        next_follow_up_at:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - business_name
+      - name
+      - phone
     Location:
       type: object
       properties:
@@ -7167,7 +8326,7 @@ components:
         always required (role/active changes are security-sensitive and audited).
       properties:
         role:
-          $ref: '#/components/schemas/RoleDadEnum'
+          $ref: '#/components/schemas/Role4e0Enum'
         is_active:
           type: boolean
         reason:
@@ -7325,6 +8484,45 @@ components:
           type: string
         active:
           type: boolean
+    PatchedCrmChoice:
+      type: object
+      description: |-
+        A configurable dropdown row. ``is_system`` is the code's claim on a slug,
+        never the client's to set.
+
+        ``validators = []`` drops DRF's implicit unique-together check on
+        (kind, slug). Not to weaken it — the database constraint still holds, and
+        ``views_crm_config`` re-checks — but because that validator answers a
+        collision with a bare "must be unique" 400, which cannot distinguish "you
+        already added this" from "this is a built-in you may not shadow". Those need
+        different fixes, so the view owns the check and says which one it is.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        kind:
+          $ref: '#/components/schemas/CrmChoiceKindEnum'
+        slug:
+          type: string
+          maxLength: 64
+          pattern: ^[-a-zA-Z0-9_]+$
+        label:
+          type: string
+          maxLength: 120
+        color:
+          type: string
+          maxLength: 16
+        order:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        is_system:
+          type: boolean
+          readOnly: true
+        is_active:
+          type: boolean
     PatchedFeatureFlag:
       type: object
       properties:
@@ -7352,6 +8550,88 @@ components:
           type: string
           format: date-time
           readOnly: true
+    PatchedLeadWrite:
+      type: object
+      description: |-
+        Console write shape — manual create and edit.
+
+        Provenance (``lead_type``, ``created_by``, ``created_by_type``) is absent by
+        design: it is the system's to decide from *how* a lead arrived, never the
+        client's to claim. Same for ``lead_score`` and ``last_activity``, which are
+        derived — accepting either would let a caller assert a score that the next
+        recalculation silently contradicts.
+      properties:
+        business_name:
+          type: string
+          maxLength: 160
+        name:
+          type: string
+          maxLength: 120
+        phone:
+          type: string
+          maxLength: 40
+        whatsapp:
+          type: string
+          maxLength: 40
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        instagram:
+          type: string
+          maxLength: 120
+        facebook:
+          type: string
+          maxLength: 200
+        website:
+          type: string
+          format: uri
+          maxLength: 200
+        google_maps_url:
+          type: string
+          format: uri
+          maxLength: 500
+        area:
+          type: string
+          maxLength: 120
+        category:
+          type: string
+        address:
+          type: string
+          maxLength: 255
+        notes:
+          type: string
+        source:
+          type: string
+        assigned_sales:
+          type: string
+          format: uuid
+          nullable: true
+        status:
+          type: string
+        priority:
+          type: string
+        temperature:
+          type: string
+        expected_plan:
+          type: string
+        expected_revenue:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          nullable: true
+        contact_method:
+          type: string
+        next_action:
+          type: string
+        last_contact_at:
+          type: string
+          format: date-time
+          nullable: true
+        next_follow_up_at:
+          type: string
+          format: date-time
+          nullable: true
     PatchedLocation:
       type: object
       properties:
@@ -7941,6 +9221,16 @@ components:
       - customers
       - redemptions
       - stamps
+    PriorityEnum:
+      enum:
+      - high
+      - medium
+      - low
+      type: string
+      description: |-
+        * `high` - High
+        * `medium` - Medium
+        * `low` - Low
     Reason:
       type: object
       properties:
@@ -8066,6 +9356,30 @@ components:
           maxLength: 500
       required:
       - action
+    ResultEnum:
+      enum:
+      - answered
+      - no_answer
+      - busy
+      - phone_off
+      - wrong_number
+      - reception_answered
+      - manager_answered
+      - owner_answered
+      - call_back_later
+      - not_interested
+      type: string
+      description: |-
+        * `answered` - Answered
+        * `no_answer` - No Answer
+        * `busy` - Busy
+        * `phone_off` - Phone Off
+        * `wrong_number` - Wrong Number
+        * `reception_answered` - Reception Answered
+        * `manager_answered` - Manager Answered
+        * `owner_answered` - Owner Answered
+        * `call_back_later` - Call Back Later
+        * `not_interested` - Not Interested
     RetentionPoint:
       type: object
       properties:
@@ -8213,13 +9527,14 @@ components:
       - paying_merchants
       - revenue_churn_rate
       - trial_to_paid_conversion
-    RoleDadEnum:
+    Role4e0Enum:
       enum:
       - SUPER_ADMIN
       - FINANCE
       - SUPPORT
       - MARKETING_ADMIN
       - ENGINEERING
+      - SALES
       - READ_ONLY
       type: string
       description: |-
@@ -8228,6 +9543,7 @@ components:
         * `SUPPORT` - Support
         * `MARKETING_ADMIN` - Marketing Admin
         * `ENGINEERING` - Engineering
+        * `SALES` - Sales
         * `READ_ONLY` - Read Only
     RoleEnum:
       enum:
@@ -8320,14 +9636,26 @@ components:
       - owner_name
       - password
       - phone
-    SourceEnum:
+    SourceE39Enum:
       enum:
-      - marketing
-      - dashboard
+      - website
+      - google_maps
+      - instagram
+      - facebook
+      - referral
+      - walk_in
+      - manual
+      - other
       type: string
       description: |-
-        * `marketing` - Marketing site
-        * `dashboard` - Merchant dashboard
+        * `website` - Website
+        * `google_maps` - Google Maps
+        * `instagram` - Instagram
+        * `facebook` - Facebook
+        * `referral` - Referral
+        * `walk_in` - Walk In
+        * `manual` - Manual
+        * `other` - Other
     Staff:
       type: object
       description: Read representation of a staff member.
@@ -8493,6 +9821,58 @@ components:
         * `PAST_DUE` - Past due
         * `CANCELED` - Canceled
         * `LOCKED` - Locked
+    StatusFd7Enum:
+      enum:
+      - new_lead
+      - contact_attempted
+      - no_answer
+      - busy
+      - phone_off
+      - wrong_number
+      - reception_answered
+      - manager_answered
+      - owner_answered
+      - interested
+      - very_interested
+      - hot_lead
+      - demo_scheduled
+      - demo_completed
+      - proposal_sent
+      - negotiation
+      - waiting_customer
+      - too_expensive
+      - using_competitor
+      - not_interested
+      - customer
+      - converted
+      - do_not_call_again
+      - closed
+      type: string
+      description: |-
+        * `new_lead` - New Lead
+        * `contact_attempted` - Contact Attempted
+        * `no_answer` - No Answer
+        * `busy` - Busy
+        * `phone_off` - Phone Off
+        * `wrong_number` - Wrong Number
+        * `reception_answered` - Reception Answered
+        * `manager_answered` - Manager Answered
+        * `owner_answered` - Owner Answered
+        * `interested` - Interested
+        * `very_interested` - Very Interested
+        * `hot_lead` - Hot Lead
+        * `demo_scheduled` - Demo Scheduled
+        * `demo_completed` - Demo Completed
+        * `proposal_sent` - Proposal Sent
+        * `negotiation` - Negotiation
+        * `waiting_customer` - Waiting Customer
+        * `too_expensive` - Too Expensive
+        * `using_competitor` - Using Competitor
+        * `not_interested` - Not Interested
+        * `customer` - Customer
+        * `converted` - Converted
+        * `do_not_call_again` - Do Not Call Again
+        * `closed` - Closed
     StepUp:
       type: object
       description: |-
@@ -8682,6 +10062,16 @@ components:
       - date_done
       - result
       - task_id
+    TemperatureEnum:
+      enum:
+      - hot
+      - warm
+      - cold
+      type: string
+      description: |-
+        * `hot` - Hot
+        * `warm` - Warm
+        * `cold` - Cold
     TemplateKeyEnum:
       enum:
       - classic
@@ -9039,6 +10429,24 @@ components:
       - merchant
       - plan
       - provider
+    _AdminBrief:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        email:
+          type: string
+          format: email
+          readOnly: true
+      required:
+      - email
+      - id
+      - name
     _AdminMeta:
       type: object
       properties:

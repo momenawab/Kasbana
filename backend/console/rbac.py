@@ -35,6 +35,9 @@ class Permission:
     RETENTION_MANAGE = "retention.manage"  # Phase 13 — edit the data-retention policy
     OPS_MANAGE = "ops.manage"  # Phase 14 — flags/settings/maintenance, job & webhook retries
     PARTNERS_MANAGE = "partners.manage"  # Phase E.1 — referral partners + reward config
+    LEADS_MANAGE = "leads.manage"  # CRM — create/edit/assign leads, log calls
+    LEADS_CONVERT = "leads.convert"  # CRM — convert a lead into a live merchant
+    CRM_CONFIGURE = "crm.configure"  # CRM — edit the configurable dropdowns
 
 
 ALL_PERMISSIONS: frozenset[str] = frozenset(
@@ -71,6 +74,13 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
     ),
     AdminRole.MARKETING_ADMIN: frozenset({Permission.ANNOUNCEMENTS_MANAGE}),
     AdminRole.ENGINEERING: frozenset({Permission.OPS_MANAGE}),  # platform ops (Phase 14)
+    # Sales works the lead pipeline and closes it. LEADS_CONVERT provisions a
+    # real merchant + subscription, which is otherwise Finance's ground — it sits
+    # here because closing a lead *is* the sales job, and the conversion can only
+    # ever create an account, never re-price or refund an existing one. Note the
+    # absence of CRM_CONFIGURE: reshaping everyone's dropdowns is platform config,
+    # so it stays super-admin-only alongside the other config keys.
+    AdminRole.SALES: frozenset({Permission.LEADS_MANAGE, Permission.LEADS_CONVERT}),
     AdminRole.READ_ONLY: frozenset(),  # view everything, mutate nothing
 }
 
@@ -84,6 +94,7 @@ MFA_REQUIRED_ROLES: frozenset[str] = frozenset(
         AdminRole.SUPPORT,
         AdminRole.MARKETING_ADMIN,
         AdminRole.ENGINEERING,  # holds OPS_MANAGE since Phase 14 → now privileged
+        AdminRole.SALES,  # mutates leads + reads a pipeline full of contact PII
     }
 )
 

@@ -12,9 +12,7 @@ Every queryset is scoped to the caller's merchant via ``for_merchant`` /
 from __future__ import annotations
 
 import csv
-import re
 from datetime import date, timedelta
-from pathlib import Path
 from typing import Any
 
 from django.conf import settings
@@ -33,7 +31,8 @@ from rest_framework.serializers import BaseSerializer
 from rest_framework.views import APIView
 
 from billing import entitlements
-from common.errors import Conflict, PayloadTooLarge, UnprocessableEntity
+from common import uploads
+from common.errors import Conflict
 from common.permissions import (
     CanEngage,
     CanManageCards,
@@ -246,17 +245,13 @@ class CardQRView(APIView):
 
 
 # ── Uploads ───────────────────────────────────────────────────────────────────
-_UPLOAD_TYPE_MAP: dict[str, frozenset[str]] = {
-    "image/jpeg": frozenset({".jpg", ".jpeg"}),
-    "image/png": frozenset({".png"}),
-    "image/webp": frozenset({".webp"}),
-    # SVG intentionally excluded (stored-XSS risk) — see settings.UPLOAD_ALLOWED_TYPES.
-}
-_UPLOAD_ALLOWED_EXTENSIONS = frozenset().union(*_UPLOAD_TYPE_MAP.values())
-
-
 class UploadView(APIView):
-    """POST /uploads — store a logo/image and return its URL."""
+    """POST /uploads — store a logo/image and return its URL.
+
+    What counts as an acceptable image lives in ``common.uploads``, shared with
+    the admin console's lead-logo upload: the two endpoints authenticate
+    differently but must never disagree about what they accept.
+    """
 
     permission_classes = [CanManageCards]
     parser_classes = [MultiPartParser, FormParser]
@@ -264,27 +259,10 @@ class UploadView(APIView):
 
     @extend_schema(request=UploadRequestSerializer, responses=UploadSerializer)
     def post(self, request: Request) -> Response:
-        from django.core.files.storage import default_storage
-
-        file_obj = request.FILES.get("file")
-        if file_obj is None:
-            raise UnprocessableEntity("No file provided.")
-
-        if file_obj.size > settings.UPLOAD_MAX_SIZE_BYTES:
-            raise PayloadTooLarge()
-
-        ext = Path(file_obj.name).suffix.lower()
-        allowed_exts = _UPLOAD_ALLOWED_EXTENSIONS
-        allowed_types = settings.UPLOAD_ALLOWED_TYPES
-        if ext not in allowed_exts or file_obj.content_type not in allowed_types:
-            raise UnprocessableEntity("Unsupported file type.")
-        if ext not in _UPLOAD_TYPE_MAP.get(file_obj.content_type, set()):
-            raise UnprocessableEntity("File extension does not match content type.")
-
-        safe_name = re.sub(r"[^\w.\-]", "_", Path(file_obj.name).name)
-        path = default_storage.save(f"uploads/{timezone.now().timestamp()}_{safe_name}", file_obj)
-        url = request.build_absolute_uri(settings.MEDIA_URL + path)
-        return Response({"url": url}, status=status.HTTP_201_CREATED)
+        path = uploads.save_image(request.FILES.get("file"))
+        return Response(
+            {"url": uploads.absolute_url(request, path)}, status=status.HTTP_201_CREATED
+        )
 
 
 # ── Locations ─────────────────────────────────────────────────────────────────
