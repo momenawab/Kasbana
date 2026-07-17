@@ -17,6 +17,7 @@ import uuid
 from django.contrib.auth.hashers import check_password, make_password
 from django.db import models
 
+from console import crm
 from console.enums import AdminRole
 from core.models import Merchant, TimeStampedModel, UUIDModel
 
@@ -418,29 +419,239 @@ class PlatformSetting(UUIDModel, TimeStampedModel):
 
 
 class Lead(UUIDModel, TimeStampedModel):
-    """An inbound "Get started" lead from the public marketing site.
+    """A sales lead — the CRM's central record, from first contact to merchant.
 
-    The marketing site's Get-started form (name / email / phone / business)
-    POSTs here anonymously; the sales team then works the list from the admin
-    console (Leads section). No merchant linkage — a lead exists *before* signup.
+    Two things create a lead and they differ *only* in provenance:
+
+    * the public marketing "Get started" form (``console.public``) — anonymous,
+      unattended, ``lead_type=WEBSITE`` / ``created_by_type=SYSTEM``; and
+    * a sales user in the console — ``lead_type=MANUAL``, ``created_by`` set.
+
+    From there both follow one pipeline. No merchant linkage until it converts:
+    a lead exists *before* signup, and ``converted_merchant`` is what closes
+    that gap (see the Convert-To-Merchant flow).
+
+    The CRM fields are stored as *slugs*, not FKs to ``CrmChoice``. That is
+    deliberate: the vocabulary in ``console.crm`` is the system's, and a lead's
+    history must not change meaning because an admin renamed or removed a
+    dropdown row afterwards. ``CrmChoice`` decorates these slugs for display; it
+    does not own them.
     """
 
-    class Status(models.TextChoices):
-        NEW = "new", "New"
-        CONTACTED = "contacted", "Contacted"
-
-    name = models.CharField(max_length=120)
-    email = models.EmailField()
-    phone = models.CharField(max_length=40)
+    # ── Business information ─────────────────────────────────────────────────
     business_name = models.CharField(max_length=160)
-    status = models.CharField(max_length=16, choices=Status.choices, default=Status.NEW)
+    name = models.CharField(max_length=120)  # the owner / person we talk to
+    phone = models.CharField(max_length=40)
+    whatsapp = models.CharField(max_length=40, blank=True)
+    # Blank-able since a manual lead is often just a name and a phone number
+    # walked in off the street. The *public* form still requires it — that rule
+    # lives in ``LeadCreateSerializer``, not here.
+    email = models.EmailField(blank=True)
+    instagram = models.CharField(max_length=120, blank=True)  # handle or URL
+    facebook = models.CharField(max_length=200, blank=True)  # handle or URL
+    website = models.URLField(blank=True)
+    google_maps_url = models.URLField(max_length=500, blank=True)
+    # Uploaded by Sales while qualifying (``POST /leads/{id}/logo``) and carried
+    # onto ``Merchant.logo_url`` at conversion, so nobody re-uploads it. A URL
+    # rather than a FileField to match Merchant.logo_url exactly — the upload
+    # endpoint stores the file and hands back its URL (see ``common.uploads``).
+    logo_url = models.URLField(max_length=500, blank=True)
+    area = models.CharField(max_length=120, blank=True)
+    category = models.CharField(max_length=64, blank=True)  # CrmChoice(CATEGORY) slug
+    address = models.CharField(max_length=255, blank=True)
+    notes = models.TextField(blank=True)
+
+    # ── Provenance ───────────────────────────────────────────────────────────
+    lead_type = models.CharField(
+        max_length=16, choices=crm.LeadType.choices, default=crm.LeadType.MANUAL
+    )
+    source = models.CharField(
+        max_length=32, choices=crm.LeadSource.choices, default=crm.LeadSource.MANUAL
+    )
+    created_by_type = models.CharField(
+        max_length=16, choices=crm.LeadCreatedBy.choices, default=crm.LeadCreatedBy.SYSTEM
+    )
+    # Null for website leads (nobody created them) and for leads whose creator
+    # has since been deleted — the admin team churns, the pipeline outlives it.
+    created_by = models.ForeignKey(
+        "console.AdminUser",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="leads_created",
+    )
+
+    # ── CRM state ────────────────────────────────────────────────────────────
+    assigned_sales = models.ForeignKey(
+        "console.AdminUser",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="leads_assigned",
+    )
+    status = models.CharField(
+        max_length=32, choices=crm.LeadStatus.choices, default=crm.LeadStatus.NEW_LEAD
+    )
+    priority = models.CharField(
+        max_length=16, choices=crm.LeadPriority.choices, default=crm.LeadPriority.MEDIUM
+    )
+    temperature = models.CharField(
+        max_length=16, choices=crm.LeadTemperature.choices, default=crm.LeadTemperature.WARM
+    )
+    lead_score = models.PositiveSmallIntegerField(default=0)
+    expected_plan = models.CharField(max_length=32, blank=True)
+    expected_revenue = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    contact_method = models.CharField(max_length=32, blank=True)
+    next_action = models.CharField(max_length=32, blank=True)
+    last_activity = models.CharField(max_length=200, blank=True)  # display summary
+    last_contact_at = models.DateTimeField(null=True, blank=True)
+    next_follow_up_at = models.DateTimeField(null=True, blank=True)
     contacted_at = models.DateTimeField(null=True, blank=True)
+
+    # ── Conversion ───────────────────────────────────────────────────────────
+    converted_merchant = models.ForeignKey(
+        Merchant,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="source_leads",
+    )
+    converted_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["-created_at"]
+        indexes = [
+            # The pipeline board and KPI cards slice by these.
+            models.Index(fields=["status"]),
+            models.Index(fields=["lead_type"]),
+            models.Index(fields=["assigned_sales", "status"]),
+            # Today's / overdue follow-ups — the query behind the notifications.
+            models.Index(fields=["next_follow_up_at"]),
+            # Duplicate detection probes phone and email on every manual create.
+            models.Index(fields=["phone"]),
+            models.Index(fields=["email"]),
+        ]
 
     def __str__(self) -> str:
-        return f"lead({self.business_name} · {self.email})"
+        return f"lead({self.business_name} · {self.phone})"
+
+    @property
+    def is_converted(self) -> bool:
+        return self.converted_merchant_id is not None
+
+    def recalculate_score(self, *, save: bool = True) -> int:
+        """Recompute and persist ``lead_score``. Safe to call after any mutation
+        — ``crm.score_lead`` derives the score from scratch every time."""
+        self.lead_score = crm.score_lead(self)
+        if save and self.pk:
+            self.save(update_fields=["lead_score", "updated_at"])
+        return self.lead_score
+
+
+class LeadActivity(UUIDModel, TimeStampedModel):
+    """One entry on a lead's timeline — the CRM's audit trail, in sales language.
+
+    Distinct from ``AdminAuditLog``: that one answers "which operator touched
+    what" for compliance and covers the whole console. This one is the story of
+    a *lead*, written for the sales user reading it, and includes things no
+    admin did at all (the website form submitting itself).
+
+    Rows are append-only. ``actor_label`` snapshots the actor's name at write
+    time so the timeline still reads correctly after an admin leaves and the FK
+    nulls out.
+    """
+
+    lead = models.ForeignKey(Lead, on_delete=models.CASCADE, related_name="activities")
+    kind = models.CharField(max_length=32, choices=crm.ActivityKind.choices)
+    title = models.CharField(max_length=160)
+    description = models.TextField(blank=True)
+    actor = models.ForeignKey(
+        "console.AdminUser",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="lead_activities",
+    )
+    actor_label = models.CharField(max_length=120, blank=True)  # "System" when unattended
+
+    class Meta:
+        ordering = ["-created_at"]  # newest first — the timeline's reading order
+        indexes = [models.Index(fields=["lead", "-created_at"])]
+
+    def __str__(self) -> str:
+        return f"activity({self.kind} · {self.lead_id})"
+
+
+class LeadCall(UUIDModel, TimeStampedModel):
+    """One logged call against a lead.
+
+    Immutable history: a call records what happened at a moment, so editing the
+    lead's status later never rewrites it. Logging a call also writes a
+    ``PHONE_CALL_LOGGED`` activity and bumps the lead's score (calls are a
+    scoring signal) — that orchestration lives in the view, not here.
+    """
+
+    lead = models.ForeignKey(Lead, on_delete=models.CASCADE, related_name="calls")
+    called_at = models.DateTimeField()
+    duration_seconds = models.PositiveIntegerField(default=0)
+    result = models.CharField(max_length=32, choices=crm.CallResult.choices)
+    contact_method = models.CharField(
+        max_length=32, choices=crm.ContactMethod.choices, default=crm.ContactMethod.PHONE
+    )
+    next_follow_up_at = models.DateTimeField(null=True, blank=True)
+    notes = models.TextField(blank=True)
+    logged_by = models.ForeignKey(
+        "console.AdminUser",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="lead_calls",
+    )
+    logged_by_label = models.CharField(max_length=120, blank=True)
+
+    class Meta:
+        ordering = ["-called_at"]
+        indexes = [models.Index(fields=["lead", "-called_at"])]
+
+    def __str__(self) -> str:
+        return f"call({self.lead_id} · {self.result})"
+
+
+class CrmChoice(UUIDModel, TimeStampedModel):
+    """One row in a configurable CRM dropdown (Settings → CRM Configuration).
+
+    This table is an *overlay*, not the source of truth. For every kind in
+    ``crm.SYSTEM_CHOICES`` the code's enum defines which values exist; a row
+    here with ``is_system=True`` carries that value's label, colour and order,
+    and admins may edit those three freely. What they may not do is delete it or
+    change its slug — scoring, conversion and the KPI cards read those slugs by
+    name, so removing one would break the maths silently rather than loudly.
+
+    Admins may also add rows with ``is_system=False``: extra statuses, sources,
+    or plans that carry no logic and are pure vocabulary. Business categories
+    have no enum at all, so every category row is one of these.
+
+    ``console.management`` seeds the system rows; ``ensure_seeded`` keeps them
+    in step when a later release adds an enum value.
+    """
+
+    kind = models.CharField(max_length=32, choices=crm.CrmChoiceKind.choices)
+    slug = models.SlugField(max_length=64)
+    label = models.CharField(max_length=120)
+    color = models.CharField(max_length=16, blank=True)  # hex, for the status badge
+    order = models.PositiveSmallIntegerField(default=0)
+    is_system = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=True)  # hide from pickers, keep history readable
+
+    class Meta:
+        ordering = ["kind", "order", "label"]
+        constraints = [
+            models.UniqueConstraint(fields=["kind", "slug"], name="crmchoice_unique_kind_slug"),
+        ]
+        indexes = [models.Index(fields=["kind", "is_active"])]
+
+    def __str__(self) -> str:
+        return f"crm_choice({self.kind}.{self.slug})"
 
 
 class ContactMessage(UUIDModel, TimeStampedModel):

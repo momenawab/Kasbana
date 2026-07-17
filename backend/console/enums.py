@@ -17,4 +17,5 @@ class AdminRole(models.TextChoices):
     SUPPORT = "SUPPORT", "Support"  # merchant support, impersonation, notes
     MARKETING_ADMIN = "MARKETING_ADMIN", "Marketing Admin"  # announcements, promos
     ENGINEERING = "ENGINEERING", "Engineering"  # ops, health, feature flags
+    SALES = "SALES", "Sales"  # the lead CRM — work the pipeline, convert leads
     READ_ONLY = "READ_ONLY", "Read Only"  # view everything, change nothing

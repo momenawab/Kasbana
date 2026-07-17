@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from django.urls import path
+from django.urls import include, path
 
 from console.views import (
     AdminLoginView,
@@ -55,13 +55,26 @@ from console.views_coupons import (
     CouponListView,
     CouponRedemptionsView,
 )
+from console.views_crm_config import CrmChoiceDetailView, CrmChoiceListView
 from console.views_invoices import (
     InvoiceDetailView,
     InvoiceListView,
     InvoiceRetryView,
     MerchantInvoiceCreateView,
 )
-from console.views_leads import LeadDetailView, LeadListView
+from console.views_leads import (
+    LeadCallView,
+    LeadConvertView,
+    LeadDetailView,
+    LeadDuplicateCheckView,
+    LeadImportPreviewView,
+    LeadImportView,
+    LeadKpiView,
+    LeadListView,
+    LeadLogoView,
+    LeadMergeView,
+    LeadSalesUsersView,
+)
 from console.views_lifecycle import (
     AtRiskView,
     ModerationQueueView,
@@ -278,9 +291,27 @@ urlpatterns = [
         AnnouncementScheduleView.as_view(),
         name="admin-announcement-schedule",
     ),
-    # Inbound "Get started" leads from the marketing site
+    # The lead CRM — website leads from the marketing site + manual leads from Sales.
+    # The literal sub-paths precede <uuid:lead_id> so "kpis" is never read as an id.
     path("leads", LeadListView.as_view(), name="admin-leads"),
+    path("leads/kpis", LeadKpiView.as_view(), name="admin-lead-kpis"),
+    path("leads/duplicates", LeadDuplicateCheckView.as_view(), name="admin-lead-duplicates"),
+    path("leads/sales-users", LeadSalesUsersView.as_view(), name="admin-lead-sales-users"),
+    path("leads/import/preview", LeadImportPreviewView.as_view(), name="admin-lead-import-preview"),
+    path("leads/import", LeadImportView.as_view(), name="admin-lead-import"),
     path("leads/<uuid:lead_id>", LeadDetailView.as_view(), name="admin-lead-detail"),
+    path("leads/<uuid:lead_id>/calls", LeadCallView.as_view(), name="admin-lead-calls"),
+    path("leads/<uuid:lead_id>/logo", LeadLogoView.as_view(), name="admin-lead-logo"),
+    path("leads/<uuid:lead_id>/convert", LeadConvertView.as_view(), name="admin-lead-convert"),
+    path("leads/<uuid:lead_id>/duplicates", LeadMergeView.as_view(), name="admin-lead-merge-list"),
+    path("leads/<uuid:lead_id>/merge", LeadMergeView.as_view(), name="admin-lead-merge"),
+    # Settings → CRM Configuration — the editable dropdowns behind every CRM picker
+    path("crm/choices", CrmChoiceListView.as_view(), name="admin-crm-choices"),
+    path(
+        "crm/choices/<uuid:choice_id>",
+        CrmChoiceDetailView.as_view(),
+        name="admin-crm-choice-detail",
+    ),
     # Inbound support/contact messages from the marketing site
     path("messages", ContactMessageListView.as_view(), name="admin-messages"),
     path(
@@ -384,4 +415,8 @@ urlpatterns = [
         WalletReprovisionView.as_view(),
         name="admin-ops-wallet-reprovision",
     ),
+    # Stampn Ops — Super-Admin host/health control plane (console_ops app). Under
+    # its own "stampn-ops/" prefix so it never collides with the platform
+    # "ops/" routes above, which are a different feature.
+    path("stampn-ops/", include("console_ops.urls")),
 ]
