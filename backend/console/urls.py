@@ -95,6 +95,7 @@ from console.views_partners import (
 )
 from console.views_plans import PlanDetailView, PlanListView
 from console.views_subscription import (
+    AssignEnterpriseView,
     CompView,
     ExtendTrialView,
     LockView,
@@ -141,6 +142,11 @@ urlpatterns = [
         "merchants/<uuid:merchant_id>/subscription",
         MerchantSubscriptionView.as_view(),
         name="admin-merchant-subscription",
+    ),
+    path(
+        "merchants/<uuid:merchant_id>/subscription/enterprise",
+        AssignEnterpriseView.as_view(),
+        name="admin-merchant-subscription-enterprise",
     ),
     path(
         "merchants/<uuid:merchant_id>/subscription/extend-trial",

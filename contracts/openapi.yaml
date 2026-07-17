@@ -1472,6 +1472,48 @@ paths:
               schema:
                 $ref: '#/components/schemas/Subscription'
           description: ''
+  /api/admin/v1/merchants/{merchant_id}/subscription/enterprise:
+    post:
+      operationId: api_admin_v1_merchants_subscription_enterprise_create
+      description: |-
+        POST /merchants/{id}/subscription/enterprise {plan_key, interval, reason}.
+
+        Step 4 of the Enterprise flow (§12): sales agreed terms, an admin now puts
+        the merchant on the matching plan.
+
+        Records the agreement only — it does not grant access or charge anyone. The
+        merchant pays through the ordinary checkout (`POST /billing/subscribe`,
+        which resolves their negotiated plan server-side) and activates on the
+        payment webhook exactly like a self-serve merchant. That is the whole point
+        of §12.3: no second payment path to maintain.
+      parameters:
+      - in: path
+        name: merchant_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignEnterprise'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AssignEnterprise'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AssignEnterprise'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseAssignment'
+          description: ''
   /api/admin/v1/merchants/{merchant_id}/subscription/extend-trial:
     post:
       operationId: api_admin_v1_merchants_subscription_extend_trial_create
@@ -4740,6 +4782,27 @@ components:
           type: string
       required:
       - code
+    AssignEnterprise:
+      type: object
+      description: |-
+        POST body — put a merchant on a negotiated Enterprise plan (§12).
+
+        ``plan_key`` rather than a ``PlanTier``: the tier is always ENTERPRISE, and
+        what an admin is choosing is *which* plan (Enterprise Gold, …).
+      properties:
+        plan_key:
+          type: string
+          maxLength: 32
+        interval:
+          allOf:
+          - $ref: '#/components/schemas/IntervalEnum'
+          default: monthly
+        reason:
+          type: string
+          maxLength: 500
+      required:
+      - plan_key
+      - reason
     AssignReferral:
       type: object
       properties:
@@ -4852,6 +4915,14 @@ components:
           type: string
       required:
       - key
+    BillingIntervalEnum:
+      enum:
+      - monthly
+      - annual
+      type: string
+      description: |-
+        * `monthly` - Monthly
+        * `annual` - Annual
     BillingState:
       type: object
       properties:
@@ -5758,6 +5829,29 @@ components:
       - template_key
       - terms_url
       - welcome_body
+    EnterpriseAssignment:
+      type: object
+      description: 'What an admin sees after assigning: the deal, and how to get them
+        to pay.'
+      properties:
+        plan_key:
+          type: string
+        plan_name:
+          type: string
+        price_egp:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        interval:
+          type: string
+        subscription:
+          $ref: '#/components/schemas/Subscription'
+      required:
+      - interval
+      - plan_key
+      - plan_name
+      - price_egp
+      - subscription
     EntitlementsOut:
       type: object
       properties:
@@ -8439,6 +8533,14 @@ components:
       properties:
         plan:
           $ref: '#/components/schemas/PlanF50Enum'
+        enterprise_plan_key:
+          type: string
+          readOnly: true
+        enterprise_plan_name:
+          type: string
+          readOnly: true
+        billing_interval:
+          $ref: '#/components/schemas/BillingIntervalEnum'
         status:
           $ref: '#/components/schemas/Status771Enum'
         trial_ends_at:
@@ -8474,6 +8576,8 @@ components:
           readOnly: true
       required:
       - effective_plan
+      - enterprise_plan_key
+      - enterprise_plan_name
       - updated_at
     SubscriptionAuditLog:
       type: object

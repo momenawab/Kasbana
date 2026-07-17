@@ -11,17 +11,21 @@ from __future__ import annotations
 
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema
+from rest_framework.exceptions import ValidationError as DRFValidationError
 from rest_framework.request import Request
 from rest_framework.response import Response
 
 from billing import entitlements, services
-from billing.plans import LIMIT_CAPABILITIES, PLAN_LIMITS, plan_limits_map
+from billing.models import Plan
+from billing.plans import LIMIT_CAPABILITIES, plan_price
 from billing.services import subscription_for
 from console import audit
 from console.models import AdminAuditLog
 from console.permissions import AdminAPIView, IsAdminUser, IsFinanceAdmin
 from console.serializers_subscription import (
+    AssignEnterpriseSerializer,
     CompSerializer,
+    EnterpriseAssignmentSerializer,
     ExtendTrialSerializer,
     ReasonSerializer,
     SubscriptionAuditLogSerializer,
@@ -30,12 +34,26 @@ from console.serializers_subscription import (
 )
 from core.models import Merchant
 
+# capability -> the key ``entitlements.usage()`` reports it under. Mostly the
+# capability minus "max_", but not always: the campaign allowance is per-month,
+# so its usage key says so and a blind removeprefix() would KeyError.
+_USAGE_KEYS = {
+    "max_cards": "cards",
+    "max_locations": "locations",
+    "max_staff": "staff",
+    "max_customers": "customers",
+    "max_campaigns_per_month": "campaigns_this_month",
+}
+
 
 def _downgrade_shortfall(merchant: Merchant, new_plan: str) -> dict[str, dict[str, int]]:
     """``{capability: {usage, limit}}`` for any usage that exceeds ``new_plan``'s
     limits — the guardrail against silently dropping a merchant below their
     current usage (Phase 4 DoD)."""
-    limits = plan_limits_map().get(new_plan) or PLAN_LIMITS[new_plan]
+    # Shares the entitlements engine's resolution so a key with no catalogue row
+    # (ENTERPRISE — the tier, whose row is the negotiated plan) reads as
+    # deny-all rather than raising KeyError mid-request.
+    limits = entitlements._limits_for(new_plan)
     usage = entitlements.usage(merchant)
     shortfall: dict[str, dict[str, int]] = {}
     for cap in LIMIT_CAPABILITIES:
@@ -43,8 +61,8 @@ def _downgrade_shortfall(merchant: Merchant, new_plan: str) -> dict[str, dict[st
         if limit is None:
             continue
         assert isinstance(limit, int)  # LIMIT_CAPABILITIES values are int|None
-        used = usage[cap.removeprefix("max_")]
-        assert used is not None  # cards/locations/staff/customers are always counted
+        used = usage[_USAGE_KEYS[cap]]
+        assert used is not None
         if used > limit:
             shortfall[cap] = {"usage": used, "limit": limit}
     return shortfall
@@ -112,6 +130,58 @@ class MerchantSubscriptionView(AdminAPIView):
             metadata={"reason": data["reason"], "before": before, "after": after},
         )
         return Response(after)
+
+
+class AssignEnterpriseView(AdminAPIView):
+    """POST /merchants/{id}/subscription/enterprise {plan_key, interval, reason}.
+
+    Step 4 of the Enterprise flow (§12): sales agreed terms, an admin now puts
+    the merchant on the matching plan.
+
+    Records the agreement only — it does not grant access or charge anyone. The
+    merchant pays through the ordinary checkout (`POST /billing/subscribe`,
+    which resolves their negotiated plan server-side) and activates on the
+    payment webhook exactly like a self-serve merchant. That is the whole point
+    of §12.3: no second payment path to maintain.
+    """
+
+    permission_classes = [IsAdminUser, IsFinanceAdmin]
+
+    @extend_schema(request=AssignEnterpriseSerializer, responses=EnterpriseAssignmentSerializer)
+    def post(self, request: Request, merchant_id: str) -> Response:
+        mer = get_object_or_404(Merchant, pk=merchant_id)
+        body = AssignEnterpriseSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+        data = body.validated_data
+
+        plan = get_object_or_404(Plan, key=data["plan_key"])
+        before = SubscriptionSerializer(subscription_for(mer)).data
+        try:
+            sub = services.assign_enterprise_plan(mer, plan, interval=data["interval"])
+        except ValueError as exc:
+            # A public or archived plan — the service is the authority on what
+            # may be negotiated; surface its reason rather than a 500.
+            raise DRFValidationError({"plan_key": str(exc)}) from exc
+
+        after = SubscriptionSerializer(sub).data
+        audit.record(
+            request,
+            "subscription.assign_enterprise",
+            target_type="subscription",
+            target_id=str(mer.id),
+            metadata={"reason": data["reason"], "before": before, "after": after},
+        )
+        return Response(
+            EnterpriseAssignmentSerializer(
+                {
+                    "plan_key": plan.key,
+                    "plan_name": plan.name,
+                    "price_egp": plan_price(plan.key, data["interval"]),
+                    "interval": data["interval"],
+                    "subscription": sub,
+                }
+            ).data
+        )
 
 
 class ExtendTrialView(AdminAPIView):

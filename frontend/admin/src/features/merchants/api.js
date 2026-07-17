@@ -61,6 +61,12 @@ export function useExtendTrial(merchantId) {
   return useSubscriptionMutation(merchantId, '/extend-trial')
 }
 
+// Put a merchant on a negotiated Enterprise plan. Records the agreement only —
+// they still pay through the ordinary checkout and activate on the webhook.
+export function useAssignEnterprise(merchantId) {
+  return useSubscriptionMutation(merchantId, '/enterprise')
+}
+
 export function useSetComp(merchantId) {
   return useSubscriptionMutation(merchantId, '/comp')
 }

@@ -8,13 +8,20 @@ import {
   useSetComp,
   useLockSubscription,
   useUnlockSubscription,
+  useAssignEnterprise,
 } from './api'
+import { usePlans } from '../plans/api'
 import { useAuth } from '../../hooks/useAuth'
 import Badge from '../../components/Badge'
 import { normalizeError } from '../../lib/api'
-import { shortDate, fromNow, statusTone } from '../../lib/format'
+import { shortDate, fromNow, statusTone, num } from '../../lib/format'
 
 const FINANCE_ROLES = ['SUPER_ADMIN', 'FINANCE']
+// ENTERPRISE is deliberately absent: picking it here would set the tier with no
+// plan behind it, which entitles nothing. Enterprise is assigned in its own
+// panel below, by choosing *which* negotiated plan. It's still rendered as an
+// option when a merchant is already on it, or the select would fall back to
+// showing FREE and a save would silently downgrade them.
 const PLANS = ['FREE', 'STARTER', 'GROWTH', 'CHAIN']
 const STATUSES = ['TRIALING', 'ACTIVE', 'PAST_DUE', 'CANCELED', 'LOCKED']
 
@@ -40,6 +47,8 @@ export default function SubscriptionTab({ merchantId }) {
   const setComp = useSetComp(merchantId)
   const lockSub = useLockSubscription(merchantId)
   const unlockSub = useUnlockSubscription(merchantId)
+  const assignEnterprise = useAssignEnterprise(merchantId)
+  const { data: allPlans = [] } = usePlans(false)
 
   const [form, setForm] = useState(null)
   const [reason, setReason] = useState('')
@@ -48,10 +57,28 @@ export default function SubscriptionTab({ merchantId }) {
   const [days, setDays] = useState(14)
   const [compReason, setCompReason] = useState('')
   const [lockReason, setLockReason] = useState('')
+  const [entKey, setEntKey] = useState('')
+  const [entInterval, setEntInterval] = useState('monthly')
+  const [entReason, setEntReason] = useState('')
+
+  // An Enterprise plan is simply one that isn't sold at self-serve — the same
+  // is_public flag the merchant-facing catalogue filters on.
+  const entPlans = allPlans.filter((p) => !p.is_public && p.key !== 'FREE')
+  const entSelected = entPlans.find((p) => p.key === entKey)
+  const entPreview = entSelected
+    ? entInterval === 'annual'
+      ? entSelected.price_egp_annual
+      : entSelected.price_egp
+    : null
 
   if (isLoading || !sub) {
     return <Loader2 className="mx-auto mt-10 animate-spin text-tx-3" />
   }
+
+  // Show ENTERPRISE only when they're already on it: the select would
+  // otherwise have no matching option and silently display FREE, so a
+  // notes-only save would downgrade a paying Enterprise merchant.
+  const planOptions = PLANS.includes(sub.plan) ? PLANS : [...PLANS, sub.plan]
 
   const f = form ?? {
     plan: sub.plan,
@@ -138,18 +165,35 @@ export default function SubscriptionTab({ merchantId }) {
     }
   }
 
+  async function runAssignEnterprise() {
+    setError('')
+    try {
+      await assignEnterprise.mutateAsync({
+        plan_key: entKey,
+        interval: entInterval,
+        reason: entReason,
+      })
+      setEntReason('')
+    } catch (err) {
+      setError(normalizeError(err).message)
+    }
+  }
+
   const busy =
     update.isPending ||
     extendTrial.isPending ||
     setComp.isPending ||
     lockSub.isPending ||
-    unlockSub.isPending
+    unlockSub.isPending ||
+    assignEnterprise.isPending
 
   return (
     <div className="flex flex-col gap-4">
       {/* Current state */}
       <div className="flex flex-wrap items-center gap-2 rounded-card border border-line bg-surface p-4">
         <Badge tone="brand">{sub.plan}</Badge>
+        {/* "ENTERPRISE" alone says nothing about the deal — name it. */}
+        {sub.enterprise_plan_name && <Badge tone="info">{sub.enterprise_plan_name}</Badge>}
         <Badge tone={statusTone(sub.status)}>{sub.status}</Badge>
         {sub.comp && <Badge tone="success">Comp</Badge>}
         {sub.override_plan && <Badge tone="info">Override → {sub.override_plan}</Badge>}
@@ -193,7 +237,7 @@ export default function SubscriptionTab({ merchantId }) {
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Plan">
                 <select value={f.plan} onChange={(e) => set('plan', e.target.value)} className={inputClass}>
-                  {PLANS.map((p) => (
+                  {planOptions.map((p) => (
                     <option key={p} value={p}>
                       {p}
                     </option>
@@ -255,6 +299,75 @@ export default function SubscriptionTab({ merchantId }) {
               Save changes
             </button>
           </form>
+
+          {/* Enterprise assignment — step 4 of the sales flow. Kept out of the
+              plan dropdown above on purpose: choosing "ENTERPRISE" there would
+              set the tier without a plan, which grants nothing. Assigning is
+              picking *which* deal. */}
+          <div className="rounded-card border border-line bg-surface p-4">
+            <h3 className="mb-1 font-head text-sm font-semibold text-tx">Enterprise plan</h3>
+            <p className="mb-3 text-xs text-tx-3">
+              Puts them on a negotiated plan. Doesn&apos;t charge or unlock anything — send
+              them to Billing to pay, and they activate like any other subscription.
+            </p>
+            {entPlans.length === 0 ? (
+              <p className="text-xs text-tx-3">
+                No Enterprise plans yet — create one under Plans (uncheck “Public”).
+              </p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                <div className="grid gap-2 sm:grid-cols-3">
+                  <Field label="Plan">
+                    <select
+                      value={entKey}
+                      onChange={(e) => setEntKey(e.target.value)}
+                      className={inputClass}
+                    >
+                      <option value="">Select…</option>
+                      {entPlans.map((p) => (
+                        <option key={p.key} value={p.key}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field label="Billing interval">
+                    <select
+                      value={entInterval}
+                      onChange={(e) => setEntInterval(e.target.value)}
+                      className={inputClass}
+                    >
+                      <option value="monthly">Monthly</option>
+                      <option value="annual">Annual</option>
+                    </select>
+                  </Field>
+                  <Field label="Reason (required)">
+                    <input
+                      value={entReason}
+                      onChange={(e) => setEntReason(e.target.value)}
+                      className={inputClass}
+                    />
+                  </Field>
+                </div>
+                {entPreview && (
+                  <p className="text-xs text-tx-2">
+                    Charges{' '}
+                    <span className="font-semibold text-tx">
+                      EGP {num(entPreview)} / {entInterval === 'annual' ? 'year' : 'month'}
+                    </span>{' '}
+                    once they pay.
+                  </p>
+                )}
+                <button
+                  onClick={runAssignEnterprise}
+                  disabled={busy || !entKey || !entReason}
+                  className="w-fit rounded-ctl border border-line px-4 py-2 text-sm font-semibold text-tx hover:bg-surface-2 disabled:opacity-60"
+                >
+                  {sub.enterprise_plan_key ? 'Change Enterprise plan' : 'Assign Enterprise plan'}
+                </button>
+              </div>
+            )}
+          </div>
 
           {/* Quick actions */}
           <div className="grid gap-4 sm:grid-cols-3">

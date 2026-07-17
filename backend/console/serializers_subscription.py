@@ -5,18 +5,26 @@ from __future__ import annotations
 from rest_framework import serializers
 
 from billing.models import Subscription
-from billing.plans import BillingStatus
+from billing.plans import BillingInterval, BillingStatus
 from console.models import AdminAuditLog
 from core.enums import PlanTier
 
 
 class SubscriptionSerializer(serializers.ModelSerializer):
     effective_plan = serializers.SerializerMethodField()
+    # ``plan`` reads ENTERPRISE for every negotiated merchant, which says
+    # nothing about the deal — these say which one, so the admin isn't left
+    # cross-referencing the catalogue to answer "what are they actually on?".
+    enterprise_plan_key = serializers.SerializerMethodField()
+    enterprise_plan_name = serializers.SerializerMethodField()
 
     class Meta:
         model = Subscription
         fields = [
             "plan",
+            "enterprise_plan_key",
+            "enterprise_plan_name",
+            "billing_interval",
             "status",
             "trial_ends_at",
             "current_period_end",
@@ -32,6 +40,12 @@ class SubscriptionSerializer(serializers.ModelSerializer):
     def get_effective_plan(self, sub: Subscription) -> str | None:
         return sub.effective_plan()
 
+    def get_enterprise_plan_key(self, sub: Subscription) -> str:
+        return sub.enterprise_plan.key if sub.enterprise_plan else ""
+
+    def get_enterprise_plan_name(self, sub: Subscription) -> str:
+        return sub.enterprise_plan.name if sub.enterprise_plan else ""
+
 
 class SubscriptionPatchSerializer(serializers.Serializer):
     """PATCH body — any subset of these; ``reason`` is always required."""
@@ -45,6 +59,30 @@ class SubscriptionPatchSerializer(serializers.Serializer):
     notes = serializers.CharField(required=False, allow_blank=True)
     reason = serializers.CharField(max_length=500)
     force = serializers.BooleanField(required=False, default=False)
+
+
+class AssignEnterpriseSerializer(serializers.Serializer):
+    """POST body — put a merchant on a negotiated Enterprise plan (§12).
+
+    ``plan_key`` rather than a ``PlanTier``: the tier is always ENTERPRISE, and
+    what an admin is choosing is *which* plan (Enterprise Gold, …).
+    """
+
+    plan_key = serializers.CharField(max_length=32)
+    interval = serializers.ChoiceField(
+        choices=BillingInterval.choices, required=False, default=BillingInterval.MONTHLY
+    )
+    reason = serializers.CharField(max_length=500)
+
+
+class EnterpriseAssignmentSerializer(serializers.Serializer):
+    """What an admin sees after assigning: the deal, and how to get them to pay."""
+
+    plan_key = serializers.CharField()
+    plan_name = serializers.CharField()
+    price_egp = serializers.DecimalField(max_digits=10, decimal_places=2)
+    interval = serializers.CharField()
+    subscription = SubscriptionSerializer()
 
 
 class ExtendTrialSerializer(serializers.Serializer):
