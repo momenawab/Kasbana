@@ -43,3 +43,12 @@ Pillow>=10.4
 
 # --- Observability (Phase 5) ---
 sentry-sdk[django]>=2.0       # error + performance tracking, ties issues to the deployed release
+
+# --- Lead CRM import ---
+# .xlsx parsing for the CRM's lead import. CSV needs nothing (stdlib), but Sales
+# is handed .xlsx files and telling them to re-save each one is how an import
+# feature goes unused. openpyxl is the standard pure-Python reader; we open
+# workbooks read_only + data_only, which streams rows and never evaluates a
+# formula. The old binary .xls format is deliberately unsupported — it needs
+# xlrd, which dropped .xls precisely because parsing it safely was a losing game.
+openpyxl>=3.1
