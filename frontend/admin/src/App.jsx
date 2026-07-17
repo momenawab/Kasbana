@@ -4,6 +4,8 @@ import AdminShell from './layout/AdminShell'
 import Login from './features/auth/Login'
 import Home from './features/home/Home'
 import LeadsHome from './features/leads/LeadsHome'
+import LeadDetail from './features/leads/LeadDetail'
+import CrmSettings from './features/leads/CrmSettings'
 import MessagesHome from './features/messages/MessagesHome'
 import MerchantsList from './features/merchants/MerchantsList'
 import MerchantDetail from './features/merchants/MerchantDetail'
@@ -19,6 +21,7 @@ import TeamHome from './features/team/TeamHome'
 import AuditHome from './features/audit/AuditHome'
 import ComplianceHome from './features/compliance/ComplianceHome'
 import OpsHome from './features/ops/OpsHome'
+import StampnOpsHome from './features/stampn-ops/StampnOpsHome'
 import SecurityHome from './features/security/SecurityHome'
 
 export default function App() {
@@ -34,6 +37,9 @@ export default function App() {
       >
         <Route path="/" element={<Home />} />
         <Route path="/leads" element={<LeadsHome />} />
+        {/* Before /leads/:id — "settings" is not a lead id. */}
+        <Route path="/leads/settings" element={<CrmSettings />} />
+        <Route path="/leads/:id" element={<LeadDetail />} />
         <Route path="/messages" element={<MessagesHome />} />
         <Route path="/merchants" element={<MerchantsList />} />
         <Route path="/merchants/:id" element={<MerchantDetail />} />
@@ -49,6 +55,7 @@ export default function App() {
         <Route path="/audit" element={<AuditHome />} />
         <Route path="/compliance" element={<ComplianceHome />} />
         <Route path="/ops" element={<OpsHome />} />
+        <Route path="/stampn-ops" element={<StampnOpsHome />} />
         <Route path="/security" element={<SecurityHome />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

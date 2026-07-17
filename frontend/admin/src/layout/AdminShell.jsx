@@ -17,6 +17,7 @@ import {
   ScrollText,
   ShieldAlert,
   Activity,
+  Wrench,
   Lock,
   LogOut,
   Loader2,
@@ -44,6 +45,7 @@ const NAV = [
   { to: '/audit', key: 'Audit Log', Icon: ScrollText, ready: true },
   { to: '/compliance', key: 'Compliance', Icon: ShieldAlert, ready: true },
   { to: '/ops', key: 'Operations', Icon: Activity, ready: true },
+  { to: '/stampn-ops', key: 'Stampn Ops', Icon: Wrench, ready: true, superOnly: true },
   { to: '/security', key: 'Security', Icon: Lock, ready: true },
 ]
 
@@ -110,7 +112,11 @@ export default function AdminShell() {
 
   // Financials are Finance/Super-admin only — hide the Revenue nav for everyone
   // else (the route itself also guards, so a direct URL still won't leak data).
-  const nav = NAV.filter((item) => !item.financeOnly || FINANCE_ROLES.includes(role))
+  const nav = NAV.filter(
+    (item) =>
+      (!item.financeOnly || FINANCE_ROLES.includes(role)) &&
+      (!item.superOnly || role === 'SUPER_ADMIN'),
+  )
 
   return (
     <div className="flex min-h-screen bg-bg">

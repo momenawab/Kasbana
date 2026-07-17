@@ -1,0 +1,33 @@
+# Applied alongside compose.prod.yml only after Stampn Ops is promoted.
+# No ports are published: only the internal `web` service can reach this service.
+services:
+  ops-collector:
+    build:
+      context: ./ops-collector
+    restart: unless-stopped
+    env_file: [.env]
+    environment:
+      OPS_COLLECTOR_TOKEN: ${OPS_COLLECTOR_TOKEN:?set in infra/.env}
+      OPS_ENVIRONMENT: production
+      OPS_SERVER_LOCATION: ${OPS_SERVER_LOCATION:-eu-north-1}
+      OPS_MAX_LOG_LINES: 80
+    volumes:
+      # Host process, disk and temperature facts only; never mounted into Django.
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/host:ro
+      # Docker's API is powerful even with :ro. It is isolated to this service,
+      # never exposed as a TCP port, and used only for list/stats/log read calls.
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    read_only: true
+    tmpfs:
+      - /tmp:noexec,nosuid,size=16m
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9800/healthz', timeout=2)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
