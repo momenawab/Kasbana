@@ -14,13 +14,23 @@ cd "$(dirname "$0")/.."   # -> infra/
 : "${IMAGE_TAG:?IMAGE_TAG is required (the image tag to deploy)}"
 export IMAGE_TAG
 
-COMPOSE="docker compose -f compose.prod.yml"
+COMPOSE="docker compose -f compose.prod.yml -f compose.ops-collector.yml"
 
 echo "▶ Deploying image tag: $IMAGE_TAG"
 
 if [ ! -f .env ]; then
   echo "✗ Missing infra/.env on the server — copy .env.prod.example and fill it." >&2
   exit 1
+fi
+
+# Auto-provision Stampn Ops secrets if missing
+if ! grep -q "OPS_COLLECTOR_TOKEN" .env; then
+  echo "▶ Auto-provisioning Stampn Ops secrets into .env"
+  echo "" >> .env
+  echo "# ── Stampn Ops ────────────────────────────────────────────────────────────────" >> .env
+  echo "OPS_COLLECTOR_TOKEN=$(openssl rand -hex 32)" >> .env
+  # Fake a Fernet key: 32 random bytes, base64url encoded
+  echo "OPS_SETTINGS_ENCRYPTION_KEY=$(openssl rand -base64 32 | tr '+/' '-_' | cut -c1-43)=" >> .env
 fi
 
 echo "▶ Pulling images"
@@ -39,6 +49,9 @@ $COMPOSE run --rm web python manage.py migrate --noinput
 
 echo "▶ Starting / updating services"
 $COMPOSE up -d
+
+echo "▶ Recording deployment"
+$COMPOSE run --rm web python manage.py ops_record_deployment || true
 
 # Force-recreate Caddy on its own so a changed Caddyfile is actually re-read.
 # The Caddyfile is a single-file bind mount; `caddy reload` reads the old inode
