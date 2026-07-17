@@ -1,14 +1,14 @@
 """Revenue & financial analytics for the admin console (Phase 7).
 
 Every number here is a **pure, reproducible function of the raw
-subscription + invoice data** — no separate metrics store. Two honesty notes,
-given this system's billing shape (one-time checkouts, no recurring
-auto-renewal — see Phase 5):
+subscription + invoice data** — no separate metrics store. Two honesty notes:
 
 - **MRR is modelled**, not billed monthly: it's the committed monthly value of
   every *currently paying* subscription (``status=ACTIVE``, not ``comp``, not a
-  free plan) priced at the live catalogue price (Phase 3). Trials and comps
-  contribute 0. ARR = MRR × 12; ARPU = MRR ÷ paying merchants.
+  free plan) priced at the live catalogue price (Phase 3). An annual subscriber
+  counts as a twelfth of the annual price, and an Enterprise merchant at their
+  negotiated plan's price — see ``_monthly_value``. Trials and comps contribute
+  0. ARR = MRR × 12; ARPU = MRR ÷ paying merchants.
 - **Churn is cumulative (lifetime), not a period rate**: a merchant is churned
   if they *ever* paid (≥1 PAID invoice) but hold no paying subscription now.
   A true period churn rate needs periodic MRR snapshots, which don't exist yet
@@ -32,7 +32,7 @@ from django.db.models.functions import TruncMonth
 from django.utils import timezone
 
 from billing.models import Invoice, InvoiceStatus, Subscription
-from billing.plans import BillingStatus, plan_price
+from billing.plans import BillingInterval, BillingStatus, plan_price
 from core.enums import PlanTier
 from core.models import Merchant
 
@@ -42,6 +42,23 @@ _CACHE_TTL = 300  # seconds
 def _is_paying(sub: Subscription) -> bool:
     """A subscription that contributes to MRR: actively paying a non-free plan."""
     return sub.status == BillingStatus.ACTIVE and not sub.comp and sub.plan != PlanTier.FREE
+
+
+def _monthly_value(sub: Subscription) -> Decimal:
+    """What ``sub`` contributes to MRR — *per month*, whatever it bills on.
+
+    An annual subscriber pays once for twelve months of service, so a twelfth
+    of the annual price is their monthly recurring value. Using the monthly list
+    price instead would overstate them by ~20%, since annual is deliberately ten
+    months' money for twelve months' service.
+
+    Keyed on ``plan_key``: the ENTERPRISE tier has no catalogue row, so pricing
+    off ``plan`` would value every negotiated merchant at 0.
+    """
+    price = plan_price(sub.plan_key, sub.billing_interval)
+    if sub.billing_interval == BillingInterval.ANNUAL:
+        price = price / 12
+    return price.quantize(Decimal("0.01"))
 
 
 def _month_key(dt: datetime) -> str:
@@ -66,14 +83,19 @@ def revenue_analytics(date_from: date, date_to: date) -> dict[str, Any]:
     paying_ids = {s.merchant_id for s in paying}
 
     # ── MRR / ARR / ARPU + revenue by plan ─────────────────────────────────────
-    # Keyed on plan_key, not plan: the ENTERPRISE *tier* has no catalogue row, so
-    # plan_price() would find nothing and price every negotiated merchant at 0.
-    # It also splits the revenue-by-plan table per deal (Enterprise Gold vs
-    # Platinum) instead of collapsing them into one meaningless bucket.
+    # Summed per subscription rather than price × headcount: two merchants on
+    # the same plan can be worth different monthly amounts, because an annual
+    # one is counted at a twelfth of the annual price. Grouping is by plan_key,
+    # so the table splits per Enterprise deal (Gold vs Platinum) rather than
+    # collapsing them into one meaningless bucket.
     by_plan = Counter(s.plan_key for s in paying)
-    mrr: Decimal = sum((plan_price(plan) * count for plan, count in by_plan.items()), Decimal("0"))
+    mrr_by_plan: dict[str, Decimal] = defaultdict(lambda: Decimal("0"))
+    for sub in paying:
+        mrr_by_plan[sub.plan_key] += _monthly_value(sub)
+
+    mrr: Decimal = sum(mrr_by_plan.values(), Decimal("0"))
     revenue_by_plan = [
-        {"plan": plan, "paying_merchants": count, "mrr": plan_price(plan) * count}
+        {"plan": plan, "paying_merchants": count, "mrr": mrr_by_plan[plan]}
         for plan, count in sorted(by_plan.items())
     ]
     arr = mrr * 12
@@ -98,7 +120,7 @@ def revenue_analytics(date_from: date, date_to: date) -> dict[str, Any]:
     # over total ever-paid MRR.
     churned_mrr: Decimal = sum(
         (
-            plan_price(s.plan_key)
+            _monthly_value(s)
             for s in subs
             if s.merchant_id in churned_ids and s.plan != PlanTier.FREE
         ),

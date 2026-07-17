@@ -244,3 +244,38 @@ def test_empty_platform_is_zeroed(api_client, finance_admin):
     assert kpis["paying_merchants"] == 0
     assert kpis["ltv"] is None
     assert kpis["net_revenue_retention"] is None
+
+
+# ── MRR normalises what a subscription is actually worth per month ────────────
+def test_an_annual_subscriber_counts_as_a_twelfth_of_the_annual_price(api_client, finance_admin):
+    """Annual is ten months' money for twelve months' service, so counting an
+    annual subscriber at the monthly list price overstates them by ~20%."""
+    from billing.plans import BillingInterval
+
+    m = _paying_merchant(PlanTier.GROWTH)
+    sub = subscription_for(m)
+    sub.billing_interval = BillingInterval.ANNUAL
+    sub.save()
+
+    kpis = _bearer(api_client, finance_admin).get(URL).json()["kpis"]
+
+    # 9,990/yr → 832.50/mo, not Growth's 999 monthly list price.
+    assert Decimal(kpis["mrr"]) == Decimal("832.50")
+
+
+def test_monthly_and_annual_subscribers_sum_correctly(api_client, finance_admin):
+    from billing.plans import BillingInterval
+
+    _paying_merchant(PlanTier.GROWTH)  # 999/mo
+    annual = _paying_merchant(PlanTier.STARTER)
+    sub = subscription_for(annual)
+    sub.billing_interval = BillingInterval.ANNUAL
+    sub.save()
+
+    body = _bearer(api_client, finance_admin).get(URL).json()
+
+    # 999 + (5,990 ÷ 12 = 499.17)
+    assert Decimal(body["kpis"]["mrr"]) == Decimal("1498.17")
+    rows = {r["plan"]: r for r in body["revenue_by_plan"]}
+    assert Decimal(rows["STARTER"]["mrr"]) == Decimal("499.17")
+    assert Decimal(rows["GROWTH"]["mrr"]) == Decimal("999.00")
