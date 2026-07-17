@@ -24,6 +24,7 @@ from billing.plans import (
     FEATURE_CAPABILITIES,
     LIMIT_CAPABILITIES,
     PLAN_LIMITS,
+    PlanLimits,
     plan_limits_map,
 )
 from billing.services import subscription_for
@@ -61,6 +62,34 @@ _USAGE_COUNTERS: dict[str, Callable[[Merchant], int]] = {
 }
 
 
+def _limits_for(plan: str) -> PlanLimits:
+    """The capability map for a catalogue ``plan`` key.
+
+    DB first, then the hardcoded seed — an active subscription whose plan was
+    archived out of the catalogue must keep working, not 500.
+
+    An unrecognised key grants **nothing** rather than raising. That is not
+    theoretical: ``PlanTier.ENTERPRISE`` is a tier with no catalogue row of its
+    own (the negotiated plan is the row), so a subscription mid-assignment
+    resolves here. Failing closed leaves a merchant briefly un-entitled;
+    KeyError would 500 every gated request they make.
+    """
+    from_db = plan_limits_map().get(plan)
+    if from_db:
+        return from_db
+    seeded = PLAN_LIMITS.get(plan)
+    if seeded is not None:
+        return seeded
+    # Nothing known about this key. NB a ``None`` limit means *unlimited*, so
+    # zeroing them is what denies; ``None`` here would grant everything.
+    denied: PlanLimits = dict.fromkeys(LIMIT_CAPABILITIES, 0)
+    denied.update(dict.fromkeys(FEATURE_CAPABILITIES, False))
+    denied["analytics"] = "basic"
+    denied["automations"] = 0
+    denied["custom_features"] = {}
+    return denied
+
+
 def check(merchant: Merchant, capability: str) -> bool:
     """Return whether ``merchant`` may use ``capability`` right now."""
     if capability not in CAPABILITIES:
@@ -70,9 +99,7 @@ def check(merchant: Merchant, capability: str) -> bool:
     if plan is None:  # locked — trial expired or subscription inactive
         return False
 
-    # Falls back to the hardcoded seed if an active subscription's plan was
-    # archived out of the DB catalogue — it must keep working, not 500.
-    limits = plan_limits_map().get(plan) or PLAN_LIMITS[plan]
+    limits = _limits_for(plan)
     if capability in FEATURE_CAPABILITIES:
         return bool(limits[capability])
     if capability in DERIVED_CAPABILITIES:  # analytics_full: the plan's tier == "full"
@@ -103,7 +130,7 @@ def custom_feature(merchant: Merchant, name: str, default: object = None) -> obj
     plan = sub.effective_plan()
     if plan is None:  # locked — a negotiated extra is still an entitlement
         return default
-    limits = plan_limits_map().get(plan) or PLAN_LIMITS[plan]
+    limits = _limits_for(plan)
     features: object = limits.get("custom_features") or {}
     if not isinstance(features, dict):  # a hand-edited plan row; don't explode
         return default
@@ -133,7 +160,7 @@ def describe(merchant: Merchant) -> dict[str, object]:
 
     sub = subscription_for(merchant)
     plan = sub.effective_plan() or sub.plan  # locked -> show stored plan's shape
-    limits = plan_limits_map().get(plan) or PLAN_LIMITS[plan]
+    limits = _limits_for(plan)
     return {
         "plan": plan_to_wire(sub),
         "limits": {k: limits[k] for k in LIMIT_CAPABILITIES},

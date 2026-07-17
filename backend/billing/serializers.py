@@ -29,6 +29,9 @@ class UsageSerializer(serializers.Serializer):
 
 class BillingStateSerializer(serializers.Serializer):
     plan = serializers.CharField()
+    # The negotiated plan's name for an Enterprise merchant ("Enterprise Gold");
+    # blank on a public tier, where ``plan`` already names it.
+    plan_name = serializers.CharField(allow_blank=True)
     trial_ends_at = serializers.DateTimeField(allow_null=True)
     price_egp = serializers.DecimalField(max_digits=10, decimal_places=2)
     # "monthly" | "annual" — without it the dashboard cannot tell 999/mo from

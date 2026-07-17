@@ -22,7 +22,13 @@ class PlanTier(models.TextChoices):
     FREE = "FREE", "Free"
     STARTER = "STARTER", "Starter"
     GROWTH = "GROWTH", "Growth"
-    CHAIN = "CHAIN", "Chain / Custom"
+    CHAIN = "CHAIN", "Chain"
+    # Negotiated tier (added post-1.0; additive — existing values unchanged,
+    # same precedent as Role gaining MARKETING/DESIGNER). It names the *tier*
+    # only: which negotiated plan a merchant is on lives in
+    # ``Subscription.enterprise_plan``, an FK to the billing.Plan row that
+    # carries the agreed name, price and limits.
+    ENTERPRISE = "ENTERPRISE", "Enterprise"
 
 
 class CardType(models.TextChoices):

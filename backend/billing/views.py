@@ -38,6 +38,7 @@ from billing.services import subscription_for
 from billing.wire import plan_key_to_wire, plan_to_wire
 from common.errors import Conflict
 from common.permissions import IsAdminOrAbove, IsOwner
+from core.enums import PlanTier
 from core.tenancy import get_request_merchant
 
 logger = logging.getLogger(__name__)
@@ -63,6 +64,11 @@ class BillingStateView(APIView):
 
         payload = {
             "plan": plan_to_wire(sub),
+            # The negotiated plan's human name ("Enterprise Gold") — §12.5. The
+            # wire ``plan`` above is only the tier, so without this an
+            # Enterprise merchant could not see *which* deal they are on. Blank
+            # on a public tier, where the tier name says it all.
+            "plan_name": sub.enterprise_plan.name if sub.enterprise_plan else "",
             "trial_ends_at": sub.trial_ends_at if sub.trial_active() else None,
             "price_egp": plan_price(plan, sub.billing_interval),
             "billing_interval": sub.billing_interval,
@@ -115,9 +121,19 @@ class SubscribeView(APIView):
 
         merchant = get_request_merchant(request)
         sub = subscription_for(merchant)
+
+        # An Enterprise merchant pays for the plan an admin negotiated with
+        # them, whatever the client asked for. The catalogue key is resolved
+        # server-side from the assignment — the request body must never be able
+        # to name a price, and their plan is not offered at self-serve anyway.
+        negotiated = sub.enterprise_plan if sub.plan == PlanTier.ENTERPRISE else None
+        if negotiated is not None:
+            plan = negotiated.key
+            interval = sub.pending_interval or sub.billing_interval
+
         if (
             sub.status == BillingStatus.ACTIVE
-            and sub.plan == plan
+            and (negotiated.key if negotiated is not None else sub.plan) == plan
             and sub.billing_interval == interval
         ):
             # Same plan *and* interval — switching monthly<->annual on the plan
@@ -158,7 +174,10 @@ class SubscribeView(APIView):
         )
         services.begin_checkout(
             merchant,
-            plan=plan,
+            # ``pending_plan`` is a PlanTier column, so it records the *tier*;
+            # for Enterprise the negotiated plan is already pinned by the
+            # enterprise_plan FK, which activation preserves.
+            plan=PlanTier.ENTERPRISE if negotiated is not None else plan,
             provider=provider,
             gateway_ref=session.gateway_ref,
             interval=interval,

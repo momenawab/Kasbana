@@ -72,11 +72,12 @@ class Command(BaseCommand):
                 "Set BASE_URL to the public host, or pass --webhook-url."
             )
 
-        # ``is_public`` is exactly "offered on the self-serve subscribe screen",
-        # so it's the right source for which tiers need a Paymob plan. FREE is
-        # not public; a 0-price tier can't be a subscription anyway.
-        sellable = Plan.objects.filter(is_public=True, archived=False)
-        tiers = [p for p in sellable if not self._free(p)]
+        # Anything with a price needs a Paymob plan to bill against — including
+        # the non-public Enterprise plans, which are negotiated rather than
+        # offered at self-serve but bill through exactly the same flow (§12.3).
+        # A 0-price row (FREE) can't be a subscription, and archived plans are
+        # kept only so historical subscriptions resolve.
+        tiers = [p for p in Plan.objects.filter(archived=False) if not self._free(p)]
         if not tiers:
             raise CommandError("No sellable plans found — has the seed migration run?")
 

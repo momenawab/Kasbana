@@ -24,11 +24,18 @@ _PAID_WIRE: dict[str, str] = {
     PlanTier.STARTER: "starter",
     PlanTier.GROWTH: "growth",
     PlanTier.CHAIN: "chain",
+    PlanTier.ENTERPRISE: "enterprise",
 }
 
 
 def plan_to_wire(subscription: Subscription) -> str:
-    """Contract plan value: ``trial|starter|growth|chain`` (no ``free``)."""
+    """Contract plan value: ``trial|starter|growth|chain|enterprise`` (no ``free``).
+
+    Enterprise reports the *tier*, not the negotiated plan's key: "ENT_GOLD" is
+    an internal catalogue key, and the wire enum is a fixed vocabulary clients
+    switch on. The plan's human name reaches the merchant separately, via
+    ``/billing``'s ``plan_name``.
+    """
     return _PAID_WIRE.get(subscription.plan, "trial")
 
 

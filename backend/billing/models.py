@@ -132,8 +132,21 @@ class Subscription(UUIDModel, TimeStampedModel):
 
     merchant = models.OneToOneField(Merchant, on_delete=models.CASCADE, related_name="subscription")
     # The plan the merchant picked at the gate — what they trial on and what
-    # Paymob auto-charges at trial end (see ``effective_plan``).
+    # Paymob auto-charges at trial end (see ``effective_plan``). For ENTERPRISE
+    # this is only the *tier*; ``enterprise_plan`` says which negotiated plan.
     plan = models.CharField(max_length=16, choices=PlanTier.choices, default=PlanTier.FREE)
+    # The admin-defined plan an Enterprise merchant is on (Enterprise Gold, …).
+    # Set only when ``plan == ENTERPRISE``; ``effective_plan`` resolves to its
+    # key so entitlements read the negotiated limits. PROTECT, not CASCADE:
+    # deleting a plan someone is paying for must fail loudly rather than
+    # silently delete their subscription — archive it instead.
+    enterprise_plan = models.ForeignKey(
+        "billing.Plan",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="subscriptions",
+    )
     status = models.CharField(
         max_length=24, choices=BillingStatus.choices, default=BillingStatus.TRIALING
     )
@@ -235,24 +248,43 @@ class Subscription(UUIDModel, TimeStampedModel):
         end = self.current_period_end if self.status == BillingStatus.ACTIVE else self.trial_ends_at
         return end if end is not None and end > now else None
 
+    @property
+    def plan_key(self) -> str:
+        """The catalogue key whose limits this subscription resolves to.
+
+        For a public tier that is just ``plan`` (the ``PlanTier`` value doubles
+        as the ``Plan.key``). For ENTERPRISE the tier says nothing about what
+        was negotiated, so it resolves to the assigned plan's key. An ENTERPRISE
+        row with no plan assigned falls back to the tier, which has no catalogue
+        row — ``entitlements`` treats an unknown key as no entitlements, which
+        is the safe direction for a half-finished assignment.
+        """
+        plan = self.enterprise_plan
+        if self.plan == PlanTier.ENTERPRISE and plan is not None:
+            return plan.key
+        return self.plan
+
     def effective_plan(self, now: datetime | None = None) -> str | None:
         """The plan whose limits apply right now, or ``None`` when locked.
 
         - an active admin override -> ``override_plan``, regardless of status;
-        - ``comp`` -> the stored ``plan``, regardless of status;
+        - ``comp`` -> the stored plan, regardless of status;
         - PENDING_CARD -> locked (``None``) — signed up but no card yet, so the
           trial has not started (the onboarding gate is the only reachable UI);
-        - TRIALING + not expired -> the ``plan`` they picked at the gate;
+        - TRIALING + not expired -> the plan they picked at the gate;
         - TRIALING + expired      -> locked (``None``) — trial ended unconverted;
-        - ACTIVE                  -> the paid ``plan`` (until a scheduled
+        - ACTIVE                  -> the paid plan (until a scheduled
           period-end cancel lapses, then locked — access retained meanwhile);
         - PAST_DUE / CANCELED / LOCKED -> locked (``None``), data retained.
+
+        Returns a catalogue *key*, so an Enterprise subscription resolves to its
+        negotiated plan (``plan_key``) rather than the bare tier.
         """
         now = now or timezone.now()
         if self.override_active(now):
             return self.override_plan
         if self.comp:
-            return self.plan
+            return self.plan_key
         if self.status == BillingStatus.TRIALING:
             if not self.trial_active(now):
                 return None
@@ -260,7 +292,7 @@ class Subscription(UUIDModel, TimeStampedModel):
             # picked, so ``plan`` is still FREE for them — those keep the old
             # fixed Growth-level trial. New signups always arrive here with the
             # tier they chose at the gate.
-            return self.plan if self.plan != PlanTier.FREE else TRIAL_PLAN
+            return self.plan_key if self.plan != PlanTier.FREE else TRIAL_PLAN
         if self.status == BillingStatus.ACTIVE:
             # A period-end cancel keeps access until the period lapses, then locks.
             if (
@@ -269,7 +301,7 @@ class Subscription(UUIDModel, TimeStampedModel):
                 and now >= self.current_period_end
             ):
                 return None
-            return self.plan
+            return self.plan_key
         return None
 
 

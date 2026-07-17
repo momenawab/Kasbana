@@ -15,8 +15,9 @@ from typing import TYPE_CHECKING
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
-from billing.models import Invoice, InvoiceStatus, Subscription
+from billing.models import Invoice, InvoiceStatus, Plan, Subscription
 from billing.plans import INTERVAL_DAYS, BillingInterval, BillingStatus
+from core.enums import PlanTier
 from core.models import Merchant
 
 if TYPE_CHECKING:
@@ -78,6 +79,51 @@ def activate_plan(
 
     if merchant.plan != plan:
         merchant.plan = plan
+        merchant.save(update_fields=["plan"])
+    return sub
+
+
+@transaction.atomic
+def assign_enterprise_plan(
+    merchant: Merchant,
+    plan: Plan,
+    *,
+    interval: str = BillingInterval.MONTHLY,
+) -> Subscription:
+    """Put ``merchant`` on an admin-negotiated Enterprise plan (§12).
+
+    Records the agreement; it does **not** grant access or take money. The
+    merchant is billed by the ordinary flow — an admin sends them the checkout
+    URL `POST /billing/subscribe` returns, and the subscription activates on the
+    payment webhook like every other. Until then they keep whatever access they
+    already had, which is why this leaves ``status`` alone: an Enterprise deal
+    signed mid-trial must not cut the trial short, and one signed while active
+    must not revoke the plan they are still paying for.
+    """
+    if plan.is_public:
+        # A public tier is bought at self-serve, not negotiated. Assigning one
+        # here would put a merchant on ENTERPRISE while resolving to Growth's
+        # limits — a confusing state with no legitimate use.
+        raise ValueError(f"{plan.key} is a public plan; Enterprise plans must be is_public=False.")
+    if plan.archived:
+        raise ValueError(f"{plan.key} is archived; assign a live plan.")
+
+    sub = subscription_for(merchant)
+    sub.plan = PlanTier.ENTERPRISE
+    sub.enterprise_plan = plan
+    sub.pending_plan = PlanTier.ENTERPRISE
+    sub.pending_interval = interval
+    sub.save(
+        update_fields=[
+            "plan",
+            "enterprise_plan",
+            "pending_plan",
+            "pending_interval",
+            "updated_at",
+        ]
+    )
+    if merchant.plan != PlanTier.ENTERPRISE:
+        merchant.plan = PlanTier.ENTERPRISE
         merchant.save(update_fields=["plan"])
     return sub
 

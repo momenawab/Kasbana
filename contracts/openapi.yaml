@@ -4857,6 +4857,8 @@ components:
       properties:
         plan:
           type: string
+        plan_name:
+          type: string
         trial_ends_at:
           type: string
           format: date-time
@@ -4886,6 +4888,7 @@ components:
       - next_renewal
       - payment_method
       - plan
+      - plan_name
       - price_egp
       - trial_ends_at
       - usage
@@ -6772,12 +6775,14 @@ components:
       - STARTER
       - GROWTH
       - CHAIN
+      - ENTERPRISE
       type: string
       description: |-
         * `FREE` - Free
         * `STARTER` - Starter
         * `GROWTH` - Growth
-        * `CHAIN` - Chain / Custom
+        * `CHAIN` - Chain
+        * `ENTERPRISE` - Enterprise
     PaginatedCampaignList:
       type: object
       required:
@@ -7524,7 +7529,7 @@ components:
       description: PATCH body — any subset of these; ``reason`` is always required.
       properties:
         plan:
-          $ref: '#/components/schemas/Plan756Enum'
+          $ref: '#/components/schemas/PlanF50Enum'
         status:
           $ref: '#/components/schemas/Status771Enum'
         override_plan:
@@ -7723,18 +7728,20 @@ components:
       - key
       - name
       - updated_at
-    Plan756Enum:
+    PlanF50Enum:
       enum:
       - FREE
       - STARTER
       - GROWTH
       - CHAIN
+      - ENTERPRISE
       type: string
       description: |-
         * `FREE` - Free
         * `STARTER` - Starter
         * `GROWTH` - Growth
-        * `CHAIN` - Chain / Custom
+        * `CHAIN` - Chain
+        * `ENTERPRISE` - Enterprise
     PlanOption:
       type: object
       description: |-
@@ -8431,7 +8438,7 @@ components:
       type: object
       properties:
         plan:
-          $ref: '#/components/schemas/Plan756Enum'
+          $ref: '#/components/schemas/PlanF50Enum'
         status:
           $ref: '#/components/schemas/Status771Enum'
         trial_ends_at:
