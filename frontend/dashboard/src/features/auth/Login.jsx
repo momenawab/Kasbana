@@ -31,7 +31,12 @@ export default function Login() {
     watch,
     setError,
     formState: { errors, isSubmitting },
-  } = useForm({ resolver: zodResolver(schema), defaultValues: { remember: true } })
+    // Prefill the email from ?email= (the marketing checkout hands off here
+    // after creating the account, so the owner only types their password).
+  } = useForm({
+    resolver: zodResolver(schema),
+    defaultValues: { remember: true, email: params.get('email') || '' },
+  })
 
   async function onSubmit(values) {
     try {

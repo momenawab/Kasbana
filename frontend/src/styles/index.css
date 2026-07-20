@@ -1493,3 +1493,129 @@ a.contact-value:hover {
     scroll-behavior: auto !important;
   }
 }
+
+/* ── Checkout (pre-launch signup flow) ──────────────────────────────────────
+   Reuses the waitlist two-column grid + glass panels. Only the order-summary,
+   consent checkbox, and inline-feedback pieces are new. */
+.checkout-summary {
+  margin-top: 1.5rem;
+  padding: 1.25rem 1.35rem;
+}
+.checkout-summary-heading {
+  font-family: var(--font-head);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 0.9rem;
+}
+.checkout-line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.4rem 0;
+  font-size: 0.95rem;
+}
+.checkout-line-label {
+  color: var(--muted-2);
+}
+.checkout-line-value {
+  color: var(--text);
+  font-weight: 600;
+  text-align: end;
+}
+.checkout-total {
+  margin-top: 0.35rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--line);
+  font-size: 1.05rem;
+}
+.checkout-total .checkout-line-value {
+  font-weight: 800;
+}
+.checkout-trial {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0.85rem 0 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.checkout-trial .ms {
+  color: #86efac;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+.checkout-includes {
+  margin: 1rem 0 0.5rem;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted-2);
+}
+.checkout-features {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.checkout-features li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+/* Consent checkbox */
+.field-checkbox {
+  flex-direction: column;
+}
+.checkbox-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+  cursor: pointer;
+  line-height: 1.5;
+}
+.checkbox-label input[type='checkbox'] {
+  margin-top: 0.2rem;
+  width: 1.05rem;
+  height: 1.05rem;
+  flex-shrink: 0;
+  accent-color: #8b5cf6;
+}
+.checkbox-label a {
+  color: #c4b5fd;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* Inline form feedback (non-field-specific) */
+.form-feedback {
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin: 0;
+}
+.form-feedback-error {
+  color: #ffb4ab;
+}
+
+/* Reassurance line under the pay button */
+.checkout-security {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0.9rem 0 0;
+  font-size: 0.82rem;
+  color: var(--muted-2);
+  line-height: 1.5;
+}
+.checkout-security .ms {
+  font-size: 1.05rem;
+  flex-shrink: 0;
+}
