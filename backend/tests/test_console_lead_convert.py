@@ -16,7 +16,7 @@ from rest_framework.test import APIClient
 from accounts.models import PasswordResetToken
 from billing.models import Plan, Subscription
 from billing.plans import BillingStatus
-from console import crm
+from console import crm, crm_convert
 from console.auth import issue_admin_tokens
 from console.crm_seed import ensure_seeded
 from console.enums import AdminRole
@@ -197,15 +197,26 @@ def test_the_trial_still_runs_when_no_plan_was_sold(sales):
     assert sub.trial_ends_at is not None
 
 
-def test_a_negotiated_enterprise_plan_sets_the_tier_and_names_the_deal(sales):
+def test_a_negotiated_enterprise_plan_is_handled_per_schema_support(sales):
+    """Enterprise conversion depends on schema the Paymob rollout owns. Where it
+    is present the negotiated plan is recorded; where it is held back the
+    conversion is cleanly refused rather than crashing. One test, both branches."""
     plan = Plan.objects.create(key="enterprise_gold", name="Enterprise Gold", is_public=False)
     lead = _lead()
-    _admin(sales).post(f"{ADMIN}/{lead.id}/convert", {"plan_key": "enterprise_gold"}, format="json")
+    res = _admin(sales).post(
+        f"{ADMIN}/{lead.id}/convert", {"plan_key": "enterprise_gold"}, format="json"
+    )
 
-    sub = Subscription.objects.get()
-    assert sub.plan == PlanTier.ENTERPRISE
-    assert sub.enterprise_plan == plan
-    assert sub.status == BillingStatus.TRIALING
+    if crm_convert.ENTERPRISE_SUPPORTED:
+        assert res.status_code == 201
+        sub = Subscription.objects.get()
+        assert sub.plan == crm_convert._ENTERPRISE_TIER
+        assert sub.enterprise_plan == plan
+        assert sub.status == BillingStatus.TRIALING
+    else:
+        assert res.status_code == 409
+        assert res.data["error"]["code"] == "ENTERPRISE_UNAVAILABLE"
+        assert Merchant.objects.count() == 0  # nothing provisioned
 
 
 def test_a_public_plan_row_cannot_be_assigned_as_negotiated(sales):

@@ -1907,48 +1907,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/Subscription'
           description: ''
-  /api/admin/v1/merchants/{merchant_id}/subscription/enterprise:
-    post:
-      operationId: api_admin_v1_merchants_subscription_enterprise_create
-      description: |-
-        POST /merchants/{id}/subscription/enterprise {plan_key, interval, reason}.
-
-        Step 4 of the Enterprise flow (§12): sales agreed terms, an admin now puts
-        the merchant on the matching plan.
-
-        Records the agreement only — it does not grant access or charge anyone. The
-        merchant pays through the ordinary checkout (`POST /billing/subscribe`,
-        which resolves their negotiated plan server-side) and activates on the
-        payment webhook exactly like a self-serve merchant. That is the whole point
-        of §12.3: no second payment path to maintain.
-      parameters:
-      - in: path
-        name: merchant_id
-        schema:
-          type: string
-          format: uuid
-        required: true
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AssignEnterprise'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/AssignEnterprise'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/AssignEnterprise'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/EnterpriseAssignment'
-          description: ''
   /api/admin/v1/merchants/{merchant_id}/subscription/extend-trial:
     post:
       operationId: api_admin_v1_merchants_subscription_extend_trial_create
@@ -3618,27 +3576,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedInvoiceList'
           description: ''
-  /api/v1/billing/plans:
-    get:
-      operationId: billing_plans_list
-      description: |-
-        GET /billing/plans — the sellable tiers + their prices.
-
-        Feeds the subscribe screen and the signup gate. Reads the same DB catalogue
-        checkout prices from, so an admin's price edit shows up without a deploy.
-        Any authenticated merchant user may read it: it is public pricing, and a
-        merchant sitting at the signup gate has no plan yet.
-      tags:
-      - billing
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/PlanOption'
-          description: ''
   /api/v1/billing/subscribe:
     post:
       operationId: billing_subscribe_create
@@ -3669,22 +3606,6 @@ paths:
     post:
       operationId: billing_webhook_paymob_create
       description: Base for the unauthenticated gateway webhooks (security:[] in contract).
-      tags:
-      - billing
-      security:
-      - {}
-      responses:
-        '200':
-          description: No response body
-  /api/v1/billing/webhook/paymob/subscription:
-    post:
-      operationId: billing_webhook_paymob_subscription_create
-      description: |-
-        POST /billing/webhook/paymob/subscription — recurring-subscription events.
-
-        Registered as every Paymob Subscription Plan's ``webhook_url``. Separate
-        from ``PaymobWebhookView`` because the payload shape and the HMAC scheme
-        both differ, and because only these events move the billing period forward.
       tags:
       - billing
       security:
@@ -5354,27 +5275,6 @@ components:
           type: string
       required:
       - code
-    AssignEnterprise:
-      type: object
-      description: |-
-        POST body — put a merchant on a negotiated Enterprise plan (§12).
-
-        ``plan_key`` rather than a ``PlanTier``: the tier is always ENTERPRISE, and
-        what an admin is choosing is *which* plan (Enterprise Gold, …).
-      properties:
-        plan_key:
-          type: string
-          maxLength: 32
-        interval:
-          allOf:
-          - $ref: '#/components/schemas/IntervalEnum'
-          default: monthly
-        reason:
-          type: string
-          maxLength: 500
-      required:
-      - plan_key
-      - reason
     AssignReferral:
       type: object
       properties:
@@ -5487,20 +5387,10 @@ components:
           type: string
       required:
       - key
-    BillingIntervalEnum:
-      enum:
-      - monthly
-      - annual
-      type: string
-      description: |-
-        * `monthly` - Monthly
-        * `annual` - Annual
     BillingState:
       type: object
       properties:
         plan:
-          type: string
-        plan_name:
           type: string
         trial_ends_at:
           type: string
@@ -5510,8 +5400,6 @@ components:
           type: string
           format: decimal
           pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
-        billing_interval:
-          type: string
         usage:
           $ref: '#/components/schemas/Usage'
         next_renewal:
@@ -5527,11 +5415,9 @@ components:
           - $ref: '#/components/schemas/PaymentMethod'
           nullable: true
       required:
-      - billing_interval
       - next_renewal
       - payment_method
       - plan
-      - plan_name
       - price_egp
       - trial_ends_at
       - usage
@@ -6498,29 +6384,6 @@ components:
       - template_key
       - terms_url
       - welcome_body
-    EnterpriseAssignment:
-      type: object
-      description: 'What an admin sees after assigning: the deal, and how to get them
-        to pay.'
-      properties:
-        plan_key:
-          type: string
-        plan_name:
-          type: string
-        price_egp:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
-        interval:
-          type: string
-        subscription:
-          $ref: '#/components/schemas/Subscription'
-      required:
-      - interval
-      - plan_key
-      - plan_name
-      - price_egp
-      - subscription
     EntitlementsOut:
       type: object
       properties:
@@ -6755,14 +6618,6 @@ components:
       - read
       - sent_at
       - title
-    IntervalEnum:
-      enum:
-      - monthly
-      - annual
-      type: string
-      description: |-
-        * `monthly` - Monthly
-        * `annual` - Annual
     InviteAccept:
       type: object
       properties:
@@ -7794,8 +7649,6 @@ components:
           $ref: '#/components/schemas/MerchantOutStatusEnum'
         plan:
           $ref: '#/components/schemas/MerchantOutPlanEnum'
-        needs_card:
-          type: boolean
         trial_ends_at:
           type: string
           format: date-time
@@ -7841,7 +7694,6 @@ components:
       - legal_name
       - logo_url
       - name
-      - needs_card
       - phone
       - plan
       - slug
@@ -8028,14 +7880,12 @@ components:
       - STARTER
       - GROWTH
       - CHAIN
-      - ENTERPRISE
       type: string
       description: |-
         * `FREE` - Free
         * `STARTER` - Starter
         * `GROWTH` - Growth
-        * `CHAIN` - Chain
-        * `ENTERPRISE` - Enterprise
+        * `CHAIN` - Chain / Custom
     PaginatedCampaignList:
       type: object
       required:
@@ -8730,20 +8580,10 @@ components:
           type: string
           format: decimal
           pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
-        price_egp_annual:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
         is_public:
           type: boolean
         archived:
           type: boolean
-        paymob_plan_id_monthly:
-          type: string
-          maxLength: 64
-        paymob_plan_id_annual:
-          type: string
-          maxLength: 64
         max_cards:
           type: integer
           maximum: 9223372036854775807
@@ -8768,12 +8608,6 @@ components:
           minimum: 0
           format: int64
           nullable: true
-        max_campaigns_per_month:
-          type: integer
-          maximum: 9223372036854775807
-          minimum: 0
-          format: int64
-          nullable: true
         export:
           type: boolean
         api:
@@ -8784,9 +8618,6 @@ components:
           type: boolean
         referral:
           type: boolean
-        priority_support:
-          type: boolean
-        custom_features: {}
         automations:
           type: integer
           maximum: 9223372036854775807
@@ -8903,9 +8734,9 @@ components:
       description: PATCH body — any subset of these; ``reason`` is always required.
       properties:
         plan:
-          $ref: '#/components/schemas/PlanF50Enum'
+          $ref: '#/components/schemas/Plan756Enum'
         status:
-          $ref: '#/components/schemas/Status771Enum'
+          $ref: '#/components/schemas/Status141Enum'
         override_plan:
           oneOf:
           - $ref: '#/components/schemas/OverridePlanEnum'
@@ -9025,20 +8856,10 @@ components:
           type: string
           format: decimal
           pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
-        price_egp_annual:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
         is_public:
           type: boolean
         archived:
           type: boolean
-        paymob_plan_id_monthly:
-          type: string
-          maxLength: 64
-        paymob_plan_id_annual:
-          type: string
-          maxLength: 64
         max_cards:
           type: integer
           maximum: 9223372036854775807
@@ -9063,12 +8884,6 @@ components:
           minimum: 0
           format: int64
           nullable: true
-        max_campaigns_per_month:
-          type: integer
-          maximum: 9223372036854775807
-          minimum: 0
-          format: int64
-          nullable: true
         export:
           type: boolean
         api:
@@ -9079,9 +8894,6 @@ components:
           type: boolean
         referral:
           type: boolean
-        priority_support:
-          type: boolean
-        custom_features: {}
         automations:
           type: integer
           maximum: 9223372036854775807
@@ -9102,46 +8914,18 @@ components:
       - key
       - name
       - updated_at
-    PlanF50Enum:
+    Plan756Enum:
       enum:
       - FREE
       - STARTER
       - GROWTH
       - CHAIN
-      - ENTERPRISE
       type: string
       description: |-
         * `FREE` - Free
         * `STARTER` - Starter
         * `GROWTH` - Growth
-        * `CHAIN` - Chain
-        * `ENTERPRISE` - Enterprise
-    PlanOption:
-      type: object
-      description: |-
-        A sellable tier as the subscribe screen / signup gate renders it.
-
-        Prices are served rather than hardcoded in the client: they are admin-
-        editable without a deploy (Phase 3), so a copy in the frontend would drift
-        from what checkout actually charges.
-      properties:
-        key:
-          type: string
-        name:
-          type: string
-        price_egp:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
-        price_egp_annual:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
-      required:
-      - key
-      - name
-      - price_egp
-      - price_egp_annual
+        * `CHAIN` - Chain / Custom
     PlatformAnalytics:
       type: object
       properties:
@@ -9785,6 +9569,20 @@ components:
       - reward_ready
       - stamp_count
       - stamps_required
+    Status141Enum:
+      enum:
+      - TRIALING
+      - ACTIVE
+      - PAST_DUE
+      - CANCELED
+      - LOCKED
+      type: string
+      description: |-
+        * `TRIALING` - Trialing
+        * `ACTIVE` - Active
+        * `PAST_DUE` - Past due
+        * `CANCELED` - Canceled
+        * `LOCKED` - Locked
     Status21dEnum:
       enum:
       - ACTIVE
@@ -9805,22 +9603,6 @@ components:
         * `new` - New
         * `read` - Read
         * `replied` - Replied
-    Status771Enum:
-      enum:
-      - PENDING_CARD
-      - TRIALING
-      - ACTIVE
-      - PAST_DUE
-      - CANCELED
-      - LOCKED
-      type: string
-      description: |-
-        * `PENDING_CARD` - Pending card
-        * `TRIALING` - Trialing
-        * `ACTIVE` - Active
-        * `PAST_DUE` - Past due
-        * `CANCELED` - Canceled
-        * `LOCKED` - Locked
     StatusFd7Enum:
       enum:
       - new_lead
@@ -9890,10 +9672,6 @@ components:
       properties:
         plan:
           $ref: '#/components/schemas/SubscribeRequestPlanEnum'
-        interval:
-          allOf:
-          - $ref: '#/components/schemas/IntervalEnum'
-          default: monthly
         coupon:
           type: string
       required:
@@ -9912,17 +9690,9 @@ components:
       type: object
       properties:
         plan:
-          $ref: '#/components/schemas/PlanF50Enum'
-        enterprise_plan_key:
-          type: string
-          readOnly: true
-        enterprise_plan_name:
-          type: string
-          readOnly: true
-        billing_interval:
-          $ref: '#/components/schemas/BillingIntervalEnum'
+          $ref: '#/components/schemas/Plan756Enum'
         status:
-          $ref: '#/components/schemas/Status771Enum'
+          $ref: '#/components/schemas/Status141Enum'
         trial_ends_at:
           type: string
           format: date-time
@@ -9956,8 +9726,6 @@ components:
           readOnly: true
       required:
       - effective_plan
-      - enterprise_plan_key
-      - enterprise_plan_name
       - updated_at
     SubscriptionAuditLog:
       type: object
@@ -10219,10 +9987,7 @@ components:
           type: integer
         customers:
           type: integer
-        campaigns_this_month:
-          type: integer
       required:
-      - campaigns_this_month
       - cards
       - customers
       - locations
