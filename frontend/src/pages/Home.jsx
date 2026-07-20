@@ -188,7 +188,11 @@ export default function Home() {
                   )}
                 </div>
                 <Link
-                  to={plan.custom ? PAGE_PATHS.contact[lang] : PAGE_PATHS.getStarted[lang]}
+                  to={
+                    plan.custom
+                      ? PAGE_PATHS.contact[lang]
+                      : `${PAGE_PATHS.checkout[lang]}?plan=${plan.key}&billing=monthly`
+                  }
                   className={`btn btn-block ${plan.popular ? 'btn-primary' : 'btn-glass'}`}
                 >
                   {plan.custom ? t.pricing.contactCta : t.pricing.cta}

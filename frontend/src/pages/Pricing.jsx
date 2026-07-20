@@ -17,8 +17,11 @@ export default function Pricing() {
   const [annual, setAnnual] = useState(false)
 
   const fmt = (n) => n.toLocaleString(lang === 'ar' ? 'ar-EG' : 'en-US')
-  const getStarted = PAGE_PATHS.getStarted[lang]
   const contact = PAGE_PATHS.contact[lang]
+  // A plan card sends the visitor to checkout with the plan + current billing
+  // period; "Custom" still routes to contact sales.
+  const checkoutTo = (plan) =>
+    `${PAGE_PATHS.checkout[lang]}?plan=${plan.key}&billing=${annual ? 'annual' : 'monthly'}`
 
   return (
     <>
@@ -91,7 +94,7 @@ export default function Pricing() {
                 )}
 
                 <Link
-                  to={plan.custom ? contact : getStarted}
+                  to={plan.custom ? contact : checkoutTo(plan)}
                   className={`btn btn-block ${plan.popular ? 'btn-primary' : 'btn-glass'}`}
                 >
                   {plan.custom ? p.contactCta : p.cta}

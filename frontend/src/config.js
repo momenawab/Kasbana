@@ -26,6 +26,10 @@ export const DASHBOARD_SIGNUP_URL = `${DASHBOARD_URL}/signup`
 export const API_URL = import.meta.env.VITE_API_URL || 'https://api.stampn.net'
 export const LEADS_ENDPOINT = `${API_URL}/api/v1/leads`
 export const CONTACT_ENDPOINT = `${API_URL}/api/v1/contact`
+// Self-serve signup — the checkout flow creates the merchant account here and
+// starts its trial. Live already (used by the dashboard app); the marketing
+// checkout reuses it so no backend change is needed for the pre-launch flow.
+export const SIGNUP_ENDPOINT = `${API_URL}/api/v1/auth/signup`
 
 // Brand
 export const BRAND_NAME = 'Stampn'

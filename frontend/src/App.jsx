@@ -11,6 +11,7 @@ const Support = lazy(() => import('./pages/Support.jsx'))
 const Privacy = lazy(() => import('./pages/Privacy.jsx'))
 const Refund = lazy(() => import('./pages/Refund.jsx'))
 const GetStarted = lazy(() => import('./pages/GetStarted.jsx'))
+const Checkout = lazy(() => import('./pages/Checkout.jsx'))
 const NotFound = lazy(() => import('./pages/NotFound.jsx'))
 
 // A minimal fallback to show while the route chunks are loading.
@@ -35,6 +36,7 @@ export default function App() {
           <Route path="privacy" element={<Privacy />} />
           <Route path="refund" element={<Refund />} />
           <Route path="get-started" element={<GetStarted />} />
+          <Route path="checkout" element={<Checkout />} />
           <Route path="*" element={<NotFound />} />
         </Route>
 
@@ -48,6 +50,7 @@ export default function App() {
           <Route path="privacy" element={<Privacy />} />
           <Route path="refund" element={<Refund />} />
           <Route path="get-started" element={<GetStarted />} />
+          <Route path="checkout" element={<Checkout />} />
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>
