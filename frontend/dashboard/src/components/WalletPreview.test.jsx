@@ -15,7 +15,7 @@ import { APPLE_STRIP, stampGeometry } from './passGeometry'
 function stampRows(n, layout) {
   const rows = []
   for (const c of stampGeometry(n, layout).centers) {
-    ;(rows[c.row] ||= []).push(c.i)
+    (rows[c.row] ||= []).push(c.i)
   }
   return rows
 }

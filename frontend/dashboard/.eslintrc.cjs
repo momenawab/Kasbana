@@ -13,6 +13,9 @@ module.exports = {
   rules: {
     'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
     'react/prop-types': 'off',
+    // Allow the destructure-to-omit pattern (`const { name, ...rest } = form`)
+    // where a field is pulled out purely to keep it OUT of the rest object.
+    'no-unused-vars': ['error', { ignoreRestSiblings: true }],
   },
   ignorePatterns: ['dist', 'node_modules', 'public/mockServiceWorker.js'],
 }
