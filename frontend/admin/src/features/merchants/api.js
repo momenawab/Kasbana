@@ -17,6 +17,20 @@ export function useMerchant(id) {
   })
 }
 
+// Edit a merchant's core profile (name / legal name / business contact).
+export function useUpdateMerchant(id) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (body) => (await api.patch(`/merchants/${id}`, body)).data,
+    onSuccess: (data) => {
+      // Seed the detail cache with the server's fresh payload, then refresh the
+      // list so the directory row picks up the new name.
+      qc.setQueryData(['merchant', id], data)
+      qc.invalidateQueries({ queryKey: ['merchants'] })
+    },
+  })
+}
+
 export function useSubscription(merchantId) {
   return useQuery({
     queryKey: ['subscription', merchantId],

@@ -84,6 +84,53 @@ def test_detail_unknown_id_404(admin_client):
     assert admin_client.get(f"{LIST}/{uuid.uuid4()}").status_code == 404
 
 
+# ── edit (PATCH) ────────────────────────────────────────────────────────────────
+def test_patch_updates_name_and_contact(admin_client, merchant):
+    resp = admin_client.patch(
+        f"{LIST}/{merchant.id}",
+        {"name": "New Name", "contact_email": "hi@shop.test", "contact_phone": "0100"},
+        format="json",
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["name"] == "New Name"
+    assert body["contact"]["email"] == "hi@shop.test"
+    assert body["contact"]["name"] == "0100"  # phone rendered as contact.name
+
+    merchant.refresh_from_db()
+    assert merchant.name == "New Name"
+    assert merchant.settings.contact_email == "hi@shop.test"
+
+
+def test_patch_blank_name_rejected(admin_client, merchant):
+    resp = admin_client.patch(f"{LIST}/{merchant.id}", {"name": "  "}, format="json")
+    assert resp.status_code == 400
+    merchant.refresh_from_db()
+    assert merchant.name != ""
+
+
+def test_patch_records_audit(admin_client, merchant):
+    from console.models import AdminAuditLog
+
+    admin_client.patch(f"{LIST}/{merchant.id}", {"name": "Audited Co"}, format="json")
+    entry = AdminAuditLog.objects.filter(action="merchant.update").first()
+    assert entry is not None
+    assert entry.metadata["changes"]["name"]["after"] == "Audited Co"
+
+
+def test_patch_read_only_role_forbidden(api_client, merchant):
+    """A READ_ONLY admin can view but not edit a merchant."""
+    ro = AdminUser(email="ro@stampn.net", role=AdminRole.READ_ONLY)
+    ro.set_password("supersecret1")
+    ro.save()
+    api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {issue_admin_tokens(ro)['access']}")
+
+    assert api_client.get(f"{LIST}/{merchant.id}").status_code == 200  # read ok
+    assert api_client.patch(
+        f"{LIST}/{merchant.id}", {"name": "Nope"}, format="json"
+    ).status_code == 403  # edit gated
+
+
 # ── security ──────────────────────────────────────────────────────────────────
 def test_merchant_token_cannot_list_merchants(api_client, merchant):
     """A merchant JWT must NOT reach the cross-tenant admin directory."""

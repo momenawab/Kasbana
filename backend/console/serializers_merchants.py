@@ -38,6 +38,23 @@ class _AdminMetaSerializer(serializers.Serializer):
     account_manager_email = serializers.CharField(allow_blank=True, allow_null=True)
 
 
+class MerchantUpdateSerializer(serializers.Serializer):
+    """Editable merchant-profile fields (admin). All optional — a PATCH sends
+    only what changed. ``name`` lives on ``Merchant``; the contact pair lives on
+    ``MerchantSettings`` (the sidecar)."""
+
+    name = serializers.CharField(max_length=120, required=False)
+    legal_name = serializers.CharField(max_length=160, required=False, allow_blank=True)
+    contact_email = serializers.EmailField(required=False, allow_blank=True)
+    contact_phone = serializers.CharField(max_length=20, required=False, allow_blank=True)
+
+    def validate_name(self, value: str) -> str:
+        # ``name`` is the merchant's display identity — never let it be blanked.
+        if not value.strip():
+            raise serializers.ValidationError("Name cannot be empty.")
+        return value.strip()
+
+
 class MerchantDetailSerializer(serializers.Serializer):
     """The 360° merchant view for the admin console."""
 

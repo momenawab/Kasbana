@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Loader2, Apple, Smartphone, Ban, ShieldCheck, Ticket } from 'lucide-react'
+import { ArrowLeft, Loader2, Apple, Smartphone, Ban, ShieldCheck, Ticket, Pencil } from 'lucide-react'
 import { useMerchant } from './api'
+import EditMerchantModal from './EditMerchantModal'
 import { useSuspendMerchant } from '../lifecycle/api'
 import { useApplyCouponToMerchant } from '../promotions/api'
 import { useAuth } from '../../hooks/useAuth'
@@ -40,6 +41,7 @@ export default function MerchantDetail() {
   const suspendMut = useSuspendMerchant(id)
   const applyCoupon = useApplyCouponToMerchant(id)
   const [tab, setTab] = useState('overview')
+  const [editing, setEditing] = useState(false)
 
   if (isLoading || !m) {
     return <Loader2 className="mx-auto mt-10 animate-spin text-tx-3" />
@@ -49,6 +51,7 @@ export default function MerchantDetail() {
   const isSuspended = m.status === 'SUSPENDED'
   const canSuspend = role === 'SUPER_ADMIN'
   const canApplyCoupon = ['SUPER_ADMIN', 'FINANCE'].includes(role)
+  const canEdit = ['SUPER_ADMIN', 'SUPPORT'].includes(role)
 
   async function toggleSuspend() {
     const suspend = !isSuspended
@@ -110,6 +113,14 @@ export default function MerchantDetail() {
           <div>Joined {shortDate(m.created_at)}</div>
           {m.trial_ends_at && <div className="text-tx-3">Trial ends {shortDate(m.trial_ends_at)}</div>}
           <div className="flex gap-2">
+            {canEdit && (
+              <button
+                onClick={() => setEditing(true)}
+                className="flex items-center gap-1.5 rounded-ctl border border-line px-3 py-1.5 text-sm font-semibold text-tx-2 hover:border-brand hover:text-brand"
+              >
+                <Pencil size={15} /> Edit
+              </button>
+            )}
             {canApplyCoupon && (
               <button
                 onClick={applyCouponCode}
@@ -210,6 +221,8 @@ export default function MerchantDetail() {
       {tab === 'compliance' && (
         <MerchantComplianceTab merchantId={id} slug={m.slug} name={m.name} />
       )}
+
+      {editing && <EditMerchantModal merchant={m} onClose={() => setEditing(false)} />}
     </div>
   )
 }

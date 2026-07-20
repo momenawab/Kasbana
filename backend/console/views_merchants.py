@@ -16,9 +16,16 @@ from billing import entitlements
 from billing.services import subscription_for
 from billing.wire import plan_to_wire
 from common.pagination import DefaultCursorPagination
+from console import audit
 from console import merchants as m
-from console.permissions import AdminAPIView
-from console.serializers_merchants import MerchantDetailSerializer, MerchantListSerializer
+from console.permissions import AdminAPIView, IsAdminUser, require
+from console.rbac import Permission
+from console.serializers_merchants import (
+    MerchantDetailSerializer,
+    MerchantListSerializer,
+    MerchantUpdateSerializer,
+)
+from accounts.models import MerchantSettings
 from core.models import Merchant
 
 
@@ -55,16 +62,75 @@ class MerchantListView(AdminAPIView):
 
 
 class MerchantDetailView(AdminAPIView):
-    """GET /merchants/{id} — the 360° merchant view."""
+    """GET /merchants/{id} — the 360° merchant view.
+
+    PATCH edits the merchant's core profile (name / legal name / business
+    contact). Reads are open to any admin (the base gate); the edit is gated on
+    ``SUPPORT_TOOLS`` (super-admin + Support — an "account fix") and audited.
+    """
+
+    def get_permissions(self):  # type: ignore[no-untyped-def]
+        # Reads stay open to any admin; only the edit needs the support gate.
+        if self.request.method == "PATCH":
+            return [IsAdminUser(), require(Permission.SUPPORT_TOOLS)()]
+        return super().get_permissions()
 
     @extend_schema(responses=MerchantDetailSerializer)
     def get(self, request: Request, merchant_id: str) -> Response:
         mer = get_object_or_404(Merchant, pk=merchant_id)
+        return Response(MerchantDetailSerializer(self._detail_payload(mer)).data)
+
+    @extend_schema(request=MerchantUpdateSerializer, responses=MerchantDetailSerializer)
+    def patch(self, request: Request, merchant_id: str) -> Response:
+        mer = get_object_or_404(Merchant, pk=merchant_id)
+        body = MerchantUpdateSerializer(data=request.data, partial=True)
+        body.is_valid(raise_exception=True)
+        data = body.validated_data
+
+        changes: dict[str, dict[str, str]] = {}
+
+        # Merchant-owned fields.
+        merchant_fields = []
+        for field in ("name", "legal_name"):
+            if field in data and getattr(mer, field) != data[field]:
+                changes[field] = {"before": getattr(mer, field), "after": data[field]}
+                setattr(mer, field, data[field])
+                merchant_fields.append(field)
+        if merchant_fields:
+            mer.save(update_fields=merchant_fields)
+
+        # Contact pair lives on the MerchantSettings sidecar (created on demand).
+        contact = {k: data[k] for k in ("contact_email", "contact_phone") if k in data}
+        if contact:
+            settings, _ = MerchantSettings.objects.get_or_create(merchant=mer)
+            settings_fields = []
+            for field, value in contact.items():
+                if getattr(settings, field) != value:
+                    changes[field] = {"before": getattr(settings, field), "after": value}
+                    setattr(settings, field, value)
+                    settings_fields.append(field)
+            if settings_fields:
+                settings.save(update_fields=settings_fields)
+
+        if changes:
+            audit.record(
+                request,
+                "merchant.update",
+                target_type="merchant",
+                target_id=str(mer.id),
+                metadata={"changes": changes},
+            )
+
+        mer.refresh_from_db()
+        return Response(MerchantDetailSerializer(self._detail_payload(mer)).data)
+
+    @staticmethod
+    def _detail_payload(mer: Merchant) -> dict:
         sub = subscription_for(mer)
         settings = getattr(mer, "settings", None)
         meta = getattr(mer, "admin_meta", None)
 
-        payload = {
+        return {
             "id": mer.id,
             "name": mer.name,
             "slug": mer.slug,
@@ -95,4 +161,3 @@ class MerchantDetailView(AdminAPIView):
                 ),
             },
         }
-        return Response(MerchantDetailSerializer(payload).data)
