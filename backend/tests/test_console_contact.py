@@ -117,6 +117,11 @@ def test_reply_sends_email_marks_replied_and_audits(super_admin, settings, mailo
     assert "The Growth plan is 499 EGP/mo." in sent.body
     html = sent.alternatives[0][0]
     assert "Stampn" in html and "The Growth plan is 499 EGP/mo." in html
+    # A human wrote this and the customer will write back, so it must come from
+    # the support box — not the donotreply@ address the automated mail uses.
+    assert sent.from_email == settings.SUPPORT_FROM_EMAIL
+    assert "donotreply" not in sent.from_email
+    assert sent.reply_to == [settings.SUPPORT_EMAIL]
 
 
 def test_reply_requires_message_body(super_admin):

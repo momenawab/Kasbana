@@ -15,6 +15,7 @@ from drf_spectacular.utils import extend_schema
 from rest_framework.request import Request
 from rest_framework.response import Response
 
+from common.mail import support_connection
 from console import audit
 from console.models import ContactMessage
 from console.permissions import AdminAPIView
@@ -106,11 +107,17 @@ class ContactReplyView(AdminAPIView):
         html_body = render_to_string("email/contact_reply.html", context)
         subject = f"Re: {message.subject}" if message.subject else "Re: your message to Stampn"
 
+        # The one email in the product a customer is meant to answer, so it is
+        # the one that comes from the support box rather than donotreply@ —
+        # which needs that mailbox's own connection, since the From header must
+        # match whoever we authenticated as. See common/mail.py.
         email = EmailMultiAlternatives(
             subject=subject,
             body=text_body,
+            from_email=settings.SUPPORT_FROM_EMAIL,
             to=[message.email],
-            reply_to=[settings.EMAIL_HOST_USER] if settings.EMAIL_HOST_USER else None,
+            reply_to=[settings.SUPPORT_EMAIL] if settings.SUPPORT_EMAIL else None,
+            connection=support_connection(),
         )
         email.attach_alternative(html_body, "text/html")
         try:
