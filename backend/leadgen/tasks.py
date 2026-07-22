@@ -90,3 +90,83 @@ def enqueue(job: SearchJob) -> str:
 
     job_service.log(job, f"Queued on {queue}", context_queue=queue)
     return "queued"
+
+
+@shared_task(
+    name="leadgen.tasks.run_ai_enrichment",
+    queue="leadgen_bg",
+    autoretry_for=(ConnectionError, TimeoutError),
+    retry_backoff=True,
+    max_retries=2,
+)
+def run_ai_enrichment(job_id: str) -> dict:
+    """Enrich every lead on a job.
+
+    Background queue by default: enrichment costs money per lead and nobody is
+    waiting on it the way they wait on discovery, so it must never delay a
+    search a rep is watching.
+    """
+    from leadgen.services import ai
+
+    job = SearchJob.objects.filter(pk=job_id).first()
+    if job is None:
+        return {"job": job_id, "status": "missing"}
+
+    completed = ai.enrich_job(job)
+    job_service.log(
+        job, f"AI enrichment finished — {completed} leads analysed",
+        stage=enums.PipelineStage.SCORING,
+    )
+    return {"job": str(job.id), "enriched": completed}
+
+
+@shared_task(
+    name="leadgen.tasks.run_verification",
+    queue="leadgen_bg",
+    autoretry_for=(ConnectionError, TimeoutError),
+    retry_backoff=True,
+    max_retries=2,
+)
+def run_verification(job_id: str) -> dict:
+    """Verify every contact on a job's leads, then re-score.
+
+    Re-scoring is part of the same task rather than a follow-up: verification
+    changes the fit score, and a queue that left scores stale until the next
+    unrelated run would show a rep a number that contradicts the record.
+    """
+    from leadgen.services import pipeline, verification
+
+    job = SearchJob.objects.filter(pk=job_id).first()
+    if job is None:
+        return {"job": job_id, "status": "missing"}
+
+    completed = verification.verify_job(job)
+    for lead in job.leads.filter(duplicate_of__isnull=True).iterator(chunk_size=100):
+        pipeline.score(lead)
+
+    job_service.log(job, f"Verification finished — {completed} contacts checked")
+    return {"job": str(job.id), "verified": completed}
+
+
+def enqueue_stage(job: SearchJob, task, label: str) -> str:
+    """Queue a Phase 2 stage, running inline when no broker is reachable.
+
+    Same contract as ``enqueue``: only a broker connection failure falls back,
+    never a task error.
+    """
+    try:
+        task.apply_async(args=[str(job.id)], queue="leadgen_bg")
+    except OperationalError as exc:
+        logger.error(
+            "leadgen.enqueue.no_broker", extra={"job": str(job.id), "error": str(exc)}
+        )
+        job_service.log(
+            job,
+            f"No Celery broker reachable — running {label} synchronously",
+            level=enums.LogLevel.WARNING,
+        )
+        task(str(job.id))
+        return "inline"
+
+    job_service.log(job, f"{label} queued")
+    return "queued"

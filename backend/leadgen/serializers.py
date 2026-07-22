@@ -12,11 +12,13 @@ from rest_framework import serializers
 
 from leadgen import enums
 from leadgen.models import (
+    AiEnrichment,
     GeneratedLead,
     JobLog,
     OwnerCandidate,
     SearchJob,
     SocialProfile,
+    Verification,
     WebsiteProfile,
 )
 
@@ -131,17 +133,36 @@ class GeneratedLeadListSerializer(serializers.ModelSerializer):
         return [social.platform for social in lead.socials.all()]
 
 
+class LeadAiSerializer(serializers.ModelSerializer):
+    """The drawer's AI tab. Excludes the raw payload, which the Raw tab covers."""
+
+    class Meta:
+        model = AiEnrichment
+        exclude = ("raw_response", "lead")
+
+
+class LeadVerificationSerializer(serializers.ModelSerializer):
+    line_type_display = serializers.CharField(source="get_line_type_display", read_only=True)
+
+    class Meta:
+        model = Verification
+        exclude = ("raw_response", "lead")
+
+
 class GeneratedLeadDetailSerializer(GeneratedLeadListSerializer):
     """The drawer. Everything, including the raw payload behind the Raw Data tab."""
 
     website_profile = WebsiteProfileSerializer(read_only=True)
     socials = SocialProfileSerializer(many=True, read_only=True)
     owner_candidates = OwnerCandidateSerializer(many=True, read_only=True)
+    ai_enrichment = LeadAiSerializer(read_only=True)
+    verifications = LeadVerificationSerializer(many=True, read_only=True)
 
     class Meta(GeneratedLeadListSerializer.Meta):
         fields = GeneratedLeadListSerializer.Meta.fields + (
             "lat", "lng", "photos_count", "opening_hours", "normalized_name",
             "score_breakdown", "website_profile", "socials", "owner_candidates",
+            "ai_enrichment", "verifications",
             "raw_places", "updated_at",
         )
         read_only_fields = fields
@@ -191,3 +212,105 @@ class ImportSerializer(serializers.Serializer):
     # Confirms an import past a CRM match. Not a default: the whole point of the
     # match warning is that somebody looks at it.
     force = serializers.BooleanField(default=False)
+
+
+class AiEnrichmentSerializer(serializers.ModelSerializer):
+    """The AI queue row and the lead drawer's AI tab.
+
+    ``raw_response`` is excluded: it is large, it is only useful when debugging a
+    specific bad answer, and the queue renders hundreds of these.
+    """
+
+    business_name = serializers.CharField(source="lead.business_name", read_only=True)
+    risk_level_display = serializers.CharField(source="get_risk_level_display", read_only=True)
+
+    class Meta:
+        model = AiEnrichment
+        exclude = ("raw_response",)
+        read_only_fields = ("id", "created_at", "updated_at")
+
+
+class VerificationSerializer(serializers.ModelSerializer):
+    business_name = serializers.CharField(source="lead.business_name", read_only=True)
+    line_type_display = serializers.CharField(source="get_line_type_display", read_only=True)
+
+    class Meta:
+        model = Verification
+        exclude = ("raw_response",)
+        read_only_fields = ("id", "created_at", "updated_at")
+
+
+class QueueStatsSerializer(serializers.Serializer):
+    """Counts by status — the header of both queue screens."""
+
+    queued = serializers.IntegerField()
+    running = serializers.IntegerField()
+    completed = serializers.IntegerField()
+    failed = serializers.IntegerField()
+    skipped = serializers.IntegerField()
+
+
+class ApiKeyStatusSerializer(serializers.Serializer):
+    """Reports *about* a key, never its value — see leadgen.services.apikeys."""
+
+    provider = serializers.CharField()
+    label = serializers.CharField()
+    purpose = serializers.CharField()
+    required = serializers.BooleanField()
+    env_var = serializers.CharField()
+    configured = serializers.BooleanField()
+    state = serializers.CharField()
+    last_used_at = serializers.DateTimeField(allow_null=True)
+    last_call_succeeded = serializers.BooleanField(allow_null=True)
+    calls_24h = serializers.IntegerField()
+    calls_30d = serializers.IntegerField()
+    cost_24h_usd = serializers.DecimalField(max_digits=12, decimal_places=6)
+    cost_30d_usd = serializers.DecimalField(max_digits=12, decimal_places=6)
+
+
+class ProviderCostSerializer(serializers.Serializer):
+    provider = serializers.CharField()
+    provider_label = serializers.CharField(required=False)
+    calls = serializers.IntegerField()
+    cost_usd = serializers.DecimalField(max_digits=12, decimal_places=6)
+    tokens_in = serializers.IntegerField(required=False)
+    tokens_out = serializers.IntegerField(required=False)
+    failures = serializers.IntegerField(required=False)
+
+
+class DailyCostSerializer(serializers.Serializer):
+    day = serializers.DateField()
+    calls = serializers.IntegerField()
+    cost_usd = serializers.DecimalField(max_digits=12, decimal_places=6)
+
+
+class CostSummarySerializer(serializers.Serializer):
+    days = serializers.IntegerField()
+    total_cost_usd = serializers.DecimalField(max_digits=12, decimal_places=6)
+    total_calls = serializers.IntegerField()
+    total_tokens_in = serializers.IntegerField()
+    total_tokens_out = serializers.IntegerField()
+    leads = serializers.IntegerField()
+    imported = serializers.IntegerField()
+    cost_per_lead_usd = serializers.DecimalField(max_digits=12, decimal_places=6)
+    cost_per_imported_usd = serializers.DecimalField(
+        max_digits=12, decimal_places=6, allow_null=True
+    )
+    by_provider = ProviderCostSerializer(many=True)
+    daily = DailyCostSerializer(many=True)
+    # Surfaced so the UI can say the figures rest on configured prices rather
+    # than on provider invoices.
+    rates_are_estimates = serializers.BooleanField()
+
+
+class StageDispatchSerializer(serializers.Serializer):
+    """Whether a stage went to the broker or ran inline — the caller needs to
+    know, because an inline run has already finished by the time it replies."""
+
+    stage = serializers.CharField()
+    dispatch = serializers.CharField()
+
+
+class TestConnectionSerializer(serializers.Serializer):
+    ok = serializers.BooleanField()
+    message = serializers.CharField()

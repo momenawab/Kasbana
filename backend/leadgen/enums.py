@@ -169,6 +169,71 @@ class LogLevel(models.TextChoices):
     ERROR = "error", "Error"
 
 
+class TaskStatus(models.TextChoices):
+    """Lifecycle of one queued unit of paid work — an AI call or a verification.
+
+    Shared by both queues because the operator's question is the same for each:
+    is it waiting, working, done, or stuck. ``SKIPPED`` is distinct from
+    ``FAILED``: a lead with no email was never going to be verifiable, and
+    counting that as a failure would make the queue look broken.
+    """
+
+    QUEUED = "queued", "Queued"
+    RUNNING = "running", "Running"
+    COMPLETED = "completed", "Completed"
+    FAILED = "failed", "Failed"
+    SKIPPED = "skipped", "Skipped"
+
+
+class VerificationKind(models.TextChoices):
+    PHONE = "phone", "Phone"
+    EMAIL = "email", "Email"
+
+
+class PhoneLineType(models.TextChoices):
+    """What kind of line a number is, from a lookup provider.
+
+    The useful signal for prospecting: a mobile reaches a person, a landline
+    reaches a counter, and a VoIP number on a small F&B business is usually a
+    reseller or a dead listing.
+    """
+
+    MOBILE = "mobile", "Mobile"
+    LANDLINE = "landline", "Landline"
+    VOIP = "voip", "VoIP"
+    UNKNOWN = "unknown", "Unknown"
+
+
+class VerificationResult(models.TextChoices):
+    """The spec's four states, applied to both phones and emails."""
+
+    VERIFIED = "verified", "Verified"
+    POSSIBLE = "possible", "Possible"
+    INVALID = "invalid", "Invalid"
+    UNKNOWN = "unknown", "Unknown"
+
+
+class ApiProvider(models.TextChoices):
+    """Every paid third party the module can call.
+
+    Names the *provider*, not the key: credentials stay in the environment
+    alongside Paymob and WhatsApp (see ``leadgen.services.apikeys``). This
+    enum exists so usage and cost can be attributed per provider.
+    """
+
+    GOOGLE_PLACES = "google_places", "Google Places"
+    GOOGLE_GEOCODING = "google_geocoding", "Google Geocoding"
+    GLM = "glm", "Zhipu GLM"
+    TWILIO_LOOKUP = "twilio_lookup", "Twilio Lookup"
+    HUNTER = "hunter", "Hunter.io"
+
+
+class RiskLevel(models.TextChoices):
+    LOW = "low", "Low"
+    MEDIUM = "medium", "Medium"
+    HIGH = "high", "High"
+
+
 class DedupeReason(models.TextChoices):
     """Why a discovered business was dropped or flagged as a duplicate.
 

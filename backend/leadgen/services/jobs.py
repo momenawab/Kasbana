@@ -15,11 +15,14 @@ from __future__ import annotations
 
 import logging
 
+from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
+from decimal import Decimal
+
 from leadgen import enums
-from leadgen.models import GeneratedLead, JobLog, SearchJob
+from leadgen.models import ApiUsage, GeneratedLead, JobLog, SearchJob
 from leadgen.places import PlacesClient, PlacesError
 from leadgen.services import discovery, pipeline
 
@@ -108,6 +111,13 @@ def create(
 
     job.center_lat, job.center_lng = located
     job.save()
+    ApiUsage.objects.create(
+        provider=enums.ApiProvider.GOOGLE_GEOCODING,
+        operation="geocode",
+        job=job,
+        calls=1,
+        cost_usd=Decimal(str(settings.GEOCODING_PRICE_PER_CALL_USD)),
+    )
     log(job, f"Job created for {address}", stage=enums.PipelineStage.DISCOVERY)
     return job
 
@@ -172,6 +182,19 @@ def retry(job: SearchJob) -> SearchJob:
     return job
 
 
+def _record_places_usage(job: SearchJob, calls: int) -> None:
+    """Bill the job for the Places calls discovery actually made."""
+    if calls <= 0:
+        return
+    ApiUsage.objects.create(
+        provider=enums.ApiProvider.GOOGLE_PLACES,
+        operation="places.searchText",
+        job=job,
+        calls=calls,
+        cost_usd=Decimal(str(settings.PLACES_PRICE_PER_CALL_USD)) * calls,
+    )
+
+
 def _should_stop(job: SearchJob) -> bool:
     """Whether the operator has paused or cancelled since the last check."""
     status = SearchJob.objects.filter(pk=job.pk).values_list("status", flat=True).first()
@@ -232,7 +255,13 @@ def _run_discovery(job: SearchJob, client: PlacesClient) -> None:
     _transition(job, enums.JobStatus.RUNNING, stage=enums.PipelineStage.DISCOVERY)
     log(job, "Discovery started", stage=enums.PipelineStage.DISCOVERY)
 
+    before = client.billed_calls
     created = discovery.discover(job, client)
+
+    # The ledger is written from the client's own call counter, not from the
+    # number of leads produced: a cell that returned nothing still cost a call,
+    # and pricing by results would understate every sparse search.
+    _record_places_usage(job, client.billed_calls - before)
 
     job.discovered_count = job.leads.count()
     job.save(update_fields=["discovered_count", "updated_at"])

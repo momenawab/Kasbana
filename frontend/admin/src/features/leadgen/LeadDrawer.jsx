@@ -4,7 +4,7 @@ import Badge from '../../components/Badge'
 import { CONFIDENCE_TONES, SCORE_TONES, typeLabel } from './constants'
 import { useGeneratedLead, useSetOwner } from './api'
 
-const TABS = ['Overview', 'Score', 'Contact', 'Website', 'Owner', 'Raw']
+const TABS = ['Overview', 'Score', 'AI', 'Contact', 'Website', 'Owner', 'Raw']
 
 export default function LeadDrawer({ leadId, onClose, canManage }) {
   const [tab, setTab] = useState('Overview')
@@ -66,6 +66,7 @@ export default function LeadDrawer({ leadId, onClose, canManage }) {
             <div className="py-4">
               {tab === 'Overview' && <Overview lead={lead} />}
               {tab === 'Score' && <ScoreTab lead={lead} />}
+              {tab === 'AI' && <AiTab lead={lead} />}
               {tab === 'Contact' && <ContactTab lead={lead} />}
               {tab === 'Website' && <WebsiteTab lead={lead} />}
               {tab === 'Owner' && <OwnerTab lead={lead} canManage={canManage} />}
@@ -143,6 +144,75 @@ function ScoreTab({ lead }) {
   )
 }
 
+// Everything here is a model's estimate from a listing and a website, never a
+// measurement. The tab says so once at the top rather than hedging each row,
+// because a number that looks like data is how a guess ends up quoted to a
+// prospect.
+function AiTab({ lead }) {
+  const ai = lead.ai_enrichment
+  if (!ai) return <Empty>No AI analysis yet. Run it from the search page.</Empty>
+  if (ai.status !== 'completed')
+    return (
+      <Empty>
+        Analysis {ai.status}
+        {ai.error ? ` — ${ai.error}` : '.'}
+      </Empty>
+    )
+
+  return (
+    <div className="space-y-4 text-sm">
+      <p className="rounded-ctl bg-surface-2 px-3 py-2 text-xs text-tx-2">
+        Estimated by {ai.model} from the listing and website. Not measured.
+      </p>
+
+      {ai.business_summary && <p className="text-tx">{ai.business_summary}</p>}
+
+      {ai.recommended_pitch && (
+        <div className="rounded-ctl bg-brand-bg px-3 py-2">
+          <p className="text-xs uppercase tracking-wide text-tx-2">Suggested opening</p>
+          <p className="text-tx">{ai.recommended_pitch}</p>
+        </div>
+      )}
+
+      <dl className="grid grid-cols-2 gap-3">
+        <Row label="Target customers">{ai.target_customers || '—'}</Row>
+        <Row label="Size">{ai.estimated_size || '—'}</Row>
+        <Row label="Daily visitors">{ai.estimated_daily_visitors ?? 'Not estimated'}</Row>
+        <Row label="Monthly customers">{ai.estimated_monthly_customers ?? 'Not estimated'}</Row>
+        <Row label="Revenue range">{ai.estimated_revenue_range || 'Not estimated'}</Row>
+        <Row label="Model">{ai.business_model || '—'}</Row>
+        <Row label="Suggested plan">{ai.recommended_plan || '—'}</Row>
+        <Row label="Risk">{ai.risk_level_display || ai.risk_level || '—'}</Row>
+      </dl>
+
+      <div className="space-y-2">
+        <Likelihood label="Likely uses a POS" value={ai.likelihood_uses_pos} />
+        <Likelihood label="Likely already uses loyalty" value={ai.likelihood_uses_loyalty} />
+        <Likelihood label="Likely to accept a digital tool" value={ai.likelihood_accepts_digital} />
+      </div>
+
+      {ai.confidence != null && (
+        <p className="text-xs text-tx-2">Model&rsquo;s own confidence: {ai.confidence}%</p>
+      )}
+    </div>
+  )
+}
+
+function Likelihood({ label, value }) {
+  if (value == null) return null
+  return (
+    <div>
+      <div className="flex justify-between text-xs text-tx-2">
+        <span>{label}</span>
+        <span>{value}%</span>
+      </div>
+      <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-surface-2">
+        <div className="h-full bg-brand" style={{ width: `${value}%` }} />
+      </div>
+    </div>
+  )
+}
+
 function ContactTab({ lead }) {
   const emails = lead.website_profile?.emails ?? []
   return (
@@ -150,12 +220,15 @@ function ContactTab({ lead }) {
       <div>
         <p className="mb-1 text-xs uppercase tracking-wide text-tx-2">Phone</p>
         {lead.phone_e164 || lead.phone ? (
-          <a
-            href={`tel:${lead.phone_e164 || lead.phone}`}
-            className="inline-flex items-center gap-1.5 text-tx hover:text-brand"
-          >
-            <Phone size={13} /> {lead.phone_e164 || lead.phone}
-          </a>
+          <div className="flex flex-wrap items-center gap-2">
+            <a
+              href={`tel:${lead.phone_e164 || lead.phone}`}
+              className="inline-flex items-center gap-1.5 text-tx hover:text-brand"
+            >
+              <Phone size={13} /> {lead.phone_e164 || lead.phone}
+            </a>
+            <VerificationBadge check={findCheck(lead, 'phone', lead.phone_e164)} />
+          </div>
         ) : (
           <span className="text-tx-2">None on the listing</span>
         )}
@@ -164,9 +237,12 @@ function ContactTab({ lead }) {
         <p className="mb-1 text-xs uppercase tracking-wide text-tx-2">Email</p>
         {emails.length ? (
           emails.map((email) => (
-            <a key={email} href={`mailto:${email}`} className="block text-tx hover:text-brand">
-              {email}
-            </a>
+            <div key={email} className="flex flex-wrap items-center gap-2">
+              <a href={`mailto:${email}`} className="text-tx hover:text-brand">
+                {email}
+              </a>
+              <VerificationBadge check={findCheck(lead, 'email', email)} />
+            </div>
           ))
         ) : (
           <span className="text-tx-2">None published</span>
@@ -193,6 +269,27 @@ function ContactTab({ lead }) {
         )}
       </div>
     </div>
+  )
+}
+
+function findCheck(lead, kind, target) {
+  return (lead.verifications ?? []).find(
+    (v) => v.kind === kind && v.target === (target || '').toLowerCase(),
+  )
+}
+
+// "possible" is shown as distinct from "verified" on purpose: it means the
+// offline check passed but no provider confirmed anyone answers.
+function VerificationBadge({ check }) {
+  if (!check) return null
+  const tone =
+    { verified: 'success', possible: 'warn', invalid: 'danger' }[check.result] || 'neutral'
+  const detail = check.provider ? '' : ' (offline)'
+  return (
+    <Badge tone={tone}>
+      {check.result}
+      {detail}
+    </Badge>
   )
 }
 

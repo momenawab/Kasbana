@@ -133,3 +133,70 @@ export function useImportLeads() {
     onSuccess: () => invalidateAll(qc),
   })
 }
+
+// ── Phase 2: queues, cost and keys ───────────────────────────────────────────
+
+// Both queues drain while you watch them, so they poll — but only while
+// something is actually queued or running. A settled queue goes quiet.
+function pollWhileWorking(query) {
+  const stats = query.state.data?.pages?.[0]?.stats
+  if (!stats) return false
+  return stats.queued > 0 || stats.running > 0 ? 5000 : false
+}
+
+function useQueue(key, path, filters) {
+  const params = clean(filters)
+  return useInfiniteQuery({
+    queryKey: [key, params],
+    queryFn: async ({ pageParam }) =>
+      (await api.get(path, { params: pageParam ? { ...params, cursor: pageParam } : params })).data,
+    initialPageParam: null,
+    getNextPageParam: (last) => cursorOf(last.next),
+    refetchInterval: pollWhileWorking,
+  })
+}
+
+export function useAiQueue(filters = {}) {
+  return useQueue('leadgen-ai-queue', '/leadgen/queues/ai', filters)
+}
+
+export function useVerificationQueue(filters = {}) {
+  return useQueue('leadgen-verify-queue', '/leadgen/queues/verification', filters)
+}
+
+export function useRunStage() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ jobId, stage }) =>
+      (await api.post(`/leadgen/jobs/${jobId}/run/${stage}`, {})).data,
+    onSuccess: () => {
+      invalidateAll(qc)
+      qc.invalidateQueries({ queryKey: ['leadgen-ai-queue'] })
+      qc.invalidateQueries({ queryKey: ['leadgen-verify-queue'] })
+    },
+  })
+}
+
+export function useCosts(days = 30) {
+  return useQuery({
+    queryKey: ['leadgen-costs', days],
+    queryFn: async () => (await api.get('/leadgen/costs', { params: { days } })).data,
+  })
+}
+
+export function useApiKeys() {
+  return useQuery({
+    queryKey: ['leadgen-api-keys'],
+    queryFn: async () => (await api.get('/leadgen/api-keys')).data,
+  })
+}
+
+export function useTestProvider() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (provider) =>
+      (await api.post(`/leadgen/api-keys/${provider}/test`, {})).data,
+    // A test writes a usage row, which changes the status shown next to it.
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['leadgen-api-keys'] }),
+  })
+}

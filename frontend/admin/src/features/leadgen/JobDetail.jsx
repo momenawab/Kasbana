@@ -2,12 +2,16 @@ import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import Badge from '../../components/Badge'
-import { useJob, useJobLogs } from './api'
+import { useAuth } from '../../hooks/useAuth'
+import { useJob, useJobLogs, useRunStage } from './api'
 import { JOB_TONES, STAGE_LABELS, TERMINAL_STATUSES, typeLabel } from './constants'
 import LeadsPanel from './LeadsPanel'
 
+const CAN_RUN = ['SUPER_ADMIN', 'SALES']
+
 export default function JobDetail() {
   const { id } = useParams()
+  const { role } = useAuth()
   const [showLogs, setShowLogs] = useState(false)
   const { data: job, isLoading } = useJob(id)
 
@@ -88,7 +92,44 @@ export default function JobDetail() {
         {showLogs && <JobLogs jobId={id} />}
       </div>
 
+      {CAN_RUN.includes(role) && <StageActions jobId={id} />}
+
       <LeadsPanel jobId={id} />
+    </div>
+  )
+}
+
+// The two paid stages are run on demand rather than automatically after
+// discovery: they cost money per lead, and an operator should decide whether a
+// given batch is worth enriching before it is charged for.
+function StageActions({ jobId }) {
+  const run = useRunStage()
+  const [done, setDone] = useState('')
+
+  return (
+    <div className="flex flex-wrap items-center gap-3 rounded-card bg-surface p-4">
+      <div className="mr-auto">
+        <p className="text-sm font-semibold text-tx">Enrich further</p>
+        <p className="text-xs text-tx-2">
+          Both cost money per lead and run in the background.
+        </p>
+      </div>
+      {[
+        ['verify', 'Verify contacts'],
+        ['ai', 'Run AI analysis'],
+      ].map(([stage, label]) => (
+        <button
+          key={stage}
+          onClick={() =>
+            run.mutate({ jobId, stage }, { onSuccess: (d) => setDone(`${label}: ${d.dispatch}`) })
+          }
+          disabled={run.isPending}
+          className="rounded-ctl bg-surface-2 px-3 py-2 text-sm font-semibold text-tx transition hover:bg-surface-3 disabled:opacity-50"
+        >
+          {label}
+        </button>
+      ))}
+      {done && <span className="text-xs text-tx-2">{done}</span>}
     </div>
   )
 }

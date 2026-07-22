@@ -10,14 +10,20 @@ from __future__ import annotations
 from django.urls import path
 
 from leadgen.views import (
+    AiQueueView,
+    ApiKeyStatusView,
+    ApiKeyTestView,
+    CostSummaryView,
     GeneratedLeadDetailView,
     GeneratedLeadImportView,
     GeneratedLeadListView,
     GeneratedLeadOwnerView,
     SearchJobActionView,
     SearchJobDetailView,
+    RunStageView,
     SearchJobListView,
     SearchJobLogView,
+    VerificationQueueView,
 )
 
 urlpatterns = [
@@ -27,6 +33,13 @@ urlpatterns = [
         "leadgen/jobs/<uuid:job_id>/logs",
         SearchJobLogView.as_view(),
         name="leadgen-job-logs",
+    ),
+    # Before the catch-all <str:action> route below, which would otherwise
+    # swallow "run".
+    path(
+        "leadgen/jobs/<uuid:job_id>/run/<str:stage>",
+        RunStageView.as_view(),
+        name="leadgen-run-stage",
     ),
     path(
         "leadgen/jobs/<uuid:job_id>/<str:action>",
@@ -44,5 +57,18 @@ urlpatterns = [
         "leadgen/leads/<uuid:lead_id>/owner",
         GeneratedLeadOwnerView.as_view(),
         name="leadgen-lead-owner",
+    ),
+    path("leadgen/queues/ai", AiQueueView.as_view(), name="leadgen-ai-queue"),
+    path(
+        "leadgen/queues/verification",
+        VerificationQueueView.as_view(),
+        name="leadgen-verification-queue",
+    ),
+    path("leadgen/costs", CostSummaryView.as_view(), name="leadgen-costs"),
+    path("leadgen/api-keys", ApiKeyStatusView.as_view(), name="leadgen-api-keys"),
+    path(
+        "leadgen/api-keys/<str:provider>/test",
+        ApiKeyTestView.as_view(),
+        name="leadgen-api-key-test",
     ),
 ]

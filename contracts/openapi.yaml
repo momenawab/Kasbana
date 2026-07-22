@@ -1095,6 +1095,62 @@ paths:
               schema:
                 $ref: '#/components/schemas/CheckoutResponse'
           description: ''
+  /api/admin/v1/leadgen/api-keys:
+    get:
+      operationId: api_admin_v1_leadgen_api_keys_list
+      description: |-
+        Which providers are configured, working, and what they have cost.
+
+        Never returns a key, not even masked: a masked key still leaks length and
+        prefix, and the test endpoint answers the question a reader actually has.
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ApiKeyStatus'
+          description: ''
+  /api/admin/v1/leadgen/api-keys/{provider}/test:
+    post:
+      operationId: leadgen_test_provider
+      description: |-
+        POST to make a real call against one provider.
+
+        Super-admin only. A test is a live billed request, and for Places it is a
+        real search — cheap, but not free, and not something every reader should be
+        able to trigger repeatedly.
+      parameters:
+      - in: path
+        name: provider
+        schema:
+          type: string
+        required: true
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TestConnection'
+          description: ''
+  /api/admin/v1/leadgen/costs:
+    get:
+      operationId: api_admin_v1_leadgen_costs_retrieve
+      description: Spend, volume and cost per lead, read from the usage ledger.
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CostSummary'
+          description: ''
   /api/admin/v1/leadgen/jobs:
     get:
       operationId: api_admin_v1_leadgen_jobs_list
@@ -1211,6 +1267,35 @@ paths:
                 items:
                   $ref: '#/components/schemas/JobLog'
           description: ''
+  /api/admin/v1/leadgen/jobs/{job_id}/run/{stage}:
+    post:
+      operationId: leadgen_run_stage
+      description: |-
+        POST to run AI enrichment or verification over a job's leads.
+
+        Gated on LEADGEN_RUN rather than a read permission: both stages spend money
+        per lead, which is the same reason starting a search is gated.
+      parameters:
+      - in: path
+        name: job_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: stage
+        schema:
+          type: string
+        required: true
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StageDispatch'
+          description: ''
   /api/admin/v1/leadgen/leads:
     get:
       operationId: api_admin_v1_leadgen_leads_list
@@ -1317,6 +1402,37 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ImportResult'
+          description: ''
+  /api/admin/v1/leadgen/queues/ai:
+    get:
+      operationId: api_admin_v1_leadgen_queues_ai_list
+      description: The AI queue — every enrichment attempt, with tokens, cost and
+        duration.
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AiEnrichment'
+          description: ''
+  /api/admin/v1/leadgen/queues/verification:
+    get:
+      operationId: api_admin_v1_leadgen_queues_verification_list
+      description: The verification queue — every phone and email checked.
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Verification'
           description: ''
   /api/admin/v1/leads:
     get:
@@ -5485,6 +5601,148 @@ components:
       - id
       - mfa_required
       - permissions
+    AiEnrichment:
+      type: object
+      description: |-
+        The AI queue row and the lead drawer's AI tab.
+
+        ``raw_response`` is excluded: it is large, it is only useful when debugging a
+        specific bad answer, and the queue renders hundreds of these.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        business_name:
+          type: string
+          readOnly: true
+        risk_level_display:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        status:
+          $ref: '#/components/schemas/StatusC7bEnum'
+        model:
+          type: string
+          maxLength: 64
+        prompt_version:
+          type: string
+          maxLength: 16
+        business_summary:
+          type: string
+        target_customers:
+          type: string
+          maxLength: 500
+        estimated_size:
+          type: string
+          maxLength: 64
+        estimated_daily_visitors:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+        estimated_monthly_customers:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+        estimated_revenue_range:
+          type: string
+          maxLength: 120
+        business_model:
+          type: string
+          maxLength: 64
+        is_franchise:
+          type: boolean
+          nullable: true
+        is_premium:
+          type: boolean
+          nullable: true
+        estimated_branches:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+        likelihood_uses_pos:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+        likelihood_uses_loyalty:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+        likelihood_accepts_digital:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+        recommended_pitch:
+          type: string
+        recommended_plan:
+          type: string
+          maxLength: 64
+        risk_level:
+          oneOf:
+          - $ref: '#/components/schemas/RiskLevelEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        confidence:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+        tokens_in:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        tokens_out:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        cost_usd:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,4}(?:\.\d{0,6})?$
+        duration_ms:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        attempts:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        error:
+          type: string
+          maxLength: 500
+        lead:
+          type: string
+          format: uuid
+      required:
+      - business_name
+      - created_at
+      - id
+      - lead
+      - risk_level_display
+      - updated_at
     AnalyticsEnum:
       enum:
       - basic
@@ -5610,6 +5868,57 @@ components:
       required:
       - body
       - title
+    ApiKeyStatus:
+      type: object
+      description: Reports *about* a key, never its value — see leadgen.services.apikeys.
+      properties:
+        provider:
+          type: string
+        label:
+          type: string
+        purpose:
+          type: string
+        required:
+          type: boolean
+        env_var:
+          type: string
+        configured:
+          type: boolean
+        state:
+          type: string
+        last_used_at:
+          type: string
+          format: date-time
+          nullable: true
+        last_call_succeeded:
+          type: boolean
+          nullable: true
+        calls_24h:
+          type: integer
+        calls_30d:
+          type: integer
+        cost_24h_usd:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,6}(?:\.\d{0,6})?$
+        cost_30d_usd:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,6}(?:\.\d{0,6})?$
+      required:
+      - calls_24h
+      - calls_30d
+      - configured
+      - cost_24h_usd
+      - cost_30d_usd
+      - env_var
+      - label
+      - last_call_succeeded
+      - last_used_at
+      - provider
+      - purpose
+      - required
+      - state
     ApplyCoupon:
       type: object
       properties:
@@ -6334,6 +6643,57 @@ components:
       - status
       - target_id
       - target_type
+    CostSummary:
+      type: object
+      properties:
+        days:
+          type: integer
+        total_cost_usd:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,6}(?:\.\d{0,6})?$
+        total_calls:
+          type: integer
+        total_tokens_in:
+          type: integer
+        total_tokens_out:
+          type: integer
+        leads:
+          type: integer
+        imported:
+          type: integer
+        cost_per_lead_usd:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,6}(?:\.\d{0,6})?$
+        cost_per_imported_usd:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,6}(?:\.\d{0,6})?$
+          nullable: true
+        by_provider:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProviderCost'
+        daily:
+          type: array
+          items:
+            $ref: '#/components/schemas/DailyCost'
+        rates_are_estimates:
+          type: boolean
+      required:
+      - by_provider
+      - cost_per_imported_usd
+      - cost_per_lead_usd
+      - daily
+      - days
+      - imported
+      - leads
+      - rates_are_estimates
+      - total_calls
+      - total_cost_usd
+      - total_tokens_in
+      - total_tokens_out
     Coupon:
       type: object
       properties:
@@ -6633,6 +6993,22 @@ components:
           type: string
       required:
       - text
+    DailyCost:
+      type: object
+      properties:
+        day:
+          type: string
+          format: date
+        calls:
+          type: integer
+        cost_usd:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,6}(?:\.\d{0,6})?$
+      required:
+      - calls
+      - cost_usd
+      - day
     DunningRow:
       type: object
       properties:
@@ -7031,7 +7407,7 @@ components:
           readOnly: true
         owner_name_confidence:
           allOf:
-          - $ref: '#/components/schemas/ConfidenceEnum'
+          - $ref: '#/components/schemas/OwnerNameConfidenceEnum'
           readOnly: true
         crm_match:
           type: string
@@ -7113,6 +7489,15 @@ components:
           items:
             $ref: '#/components/schemas/OwnerCandidate'
           readOnly: true
+        ai_enrichment:
+          allOf:
+          - $ref: '#/components/schemas/LeadAi'
+          readOnly: true
+        verifications:
+          type: array
+          items:
+            $ref: '#/components/schemas/LeadVerification'
+          readOnly: true
         raw_places:
           readOnly: true
         updated_at:
@@ -7121,6 +7506,7 @@ components:
           readOnly: true
       required:
       - address
+      - ai_enrichment
       - branch_count
       - business_name
       - business_status
@@ -7157,6 +7543,7 @@ components:
       - socials
       - state
       - updated_at
+      - verifications
       - website
       - website_domain
       - website_profile
@@ -7225,7 +7612,7 @@ components:
           readOnly: true
         owner_name_confidence:
           allOf:
-          - $ref: '#/components/schemas/ConfidenceEnum'
+          - $ref: '#/components/schemas/OwnerNameConfidenceEnum'
           readOnly: true
         crm_match:
           type: string
@@ -7658,6 +8045,14 @@ components:
         * `birthday` - Birthday
         * `winback` - Winback
         * `welcome` - Welcome
+    Kind17fEnum:
+      enum:
+      - phone
+      - email
+      type: string
+      description: |-
+        * `phone` - Phone
+        * `email` - Email
     LanguageEnum:
       enum:
       - ar
@@ -7702,7 +8097,7 @@ components:
           readOnly: true
         priority:
           allOf:
-          - $ref: '#/components/schemas/ConfidenceEnum'
+          - $ref: '#/components/schemas/Priority3cdEnum'
           readOnly: true
         status:
           allOf:
@@ -7841,6 +8236,133 @@ components:
         * `closed` - Closed
         * `duplicate_merged` - Duplicate Merged
         * `note_added` - Note Added
+    LeadAi:
+      type: object
+      description: The drawer's AI tab. Excludes the raw payload, which the Raw tab
+        covers.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        status:
+          $ref: '#/components/schemas/StatusC7bEnum'
+        model:
+          type: string
+          maxLength: 64
+        prompt_version:
+          type: string
+          maxLength: 16
+        business_summary:
+          type: string
+        target_customers:
+          type: string
+          maxLength: 500
+        estimated_size:
+          type: string
+          maxLength: 64
+        estimated_daily_visitors:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+        estimated_monthly_customers:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+        estimated_revenue_range:
+          type: string
+          maxLength: 120
+        business_model:
+          type: string
+          maxLength: 64
+        is_franchise:
+          type: boolean
+          nullable: true
+        is_premium:
+          type: boolean
+          nullable: true
+        estimated_branches:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+        likelihood_uses_pos:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+        likelihood_uses_loyalty:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+        likelihood_accepts_digital:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+        recommended_pitch:
+          type: string
+        recommended_plan:
+          type: string
+          maxLength: 64
+        risk_level:
+          oneOf:
+          - $ref: '#/components/schemas/RiskLevelEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        confidence:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+        tokens_in:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        tokens_out:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        cost_usd:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,4}(?:\.\d{0,6})?$
+        duration_ms:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        attempts:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        error:
+          type: string
+          maxLength: 500
+      required:
+      - created_at
+      - id
+      - updated_at
     LeadCall:
       type: object
       properties:
@@ -7857,7 +8379,7 @@ components:
           readOnly: true
         result:
           allOf:
-          - $ref: '#/components/schemas/ResultEnum'
+          - $ref: '#/components/schemas/Result56aEnum'
           readOnly: true
         contact_method:
           allOf:
@@ -7903,7 +8425,7 @@ components:
           minimum: 0
           format: int64
         result:
-          $ref: '#/components/schemas/ResultEnum'
+          $ref: '#/components/schemas/Result56aEnum'
         contact_method:
           type: string
         next_follow_up_at:
@@ -7982,7 +8504,7 @@ components:
           readOnly: true
         priority:
           allOf:
-          - $ref: '#/components/schemas/ConfidenceEnum'
+          - $ref: '#/components/schemas/Priority3cdEnum'
           readOnly: true
         status:
           allOf:
@@ -8147,6 +8669,84 @@ components:
       description: |-
         * `website` - Website
         * `manual` - Manual
+    LeadVerification:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        line_type_display:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        kind:
+          $ref: '#/components/schemas/Kind17fEnum'
+        target:
+          type: string
+          maxLength: 254
+        status:
+          $ref: '#/components/schemas/StatusC7bEnum'
+        result:
+          oneOf:
+          - $ref: '#/components/schemas/Result62cEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        provider:
+          oneOf:
+          - $ref: '#/components/schemas/ProviderEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        line_type:
+          oneOf:
+          - $ref: '#/components/schemas/LineTypeEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        carrier:
+          type: string
+          maxLength: 120
+        deliverable:
+          type: boolean
+          nullable: true
+        is_disposable:
+          type: boolean
+          nullable: true
+        is_role_address:
+          type: boolean
+          nullable: true
+        domain_valid:
+          type: boolean
+          nullable: true
+        confidence:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+        credits_used:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        attempts:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        error:
+          type: string
+          maxLength: 500
+      required:
+      - created_at
+      - id
+      - kind
+      - line_type_display
+      - target
+      - updated_at
     LeadWrite:
       type: object
       description: |-
@@ -8242,6 +8842,18 @@ components:
         * `info` - Info
         * `warning` - Warning
         * `error` - Error
+    LineTypeEnum:
+      enum:
+      - mobile
+      - landline
+      - voip
+      - unknown
+      type: string
+      description: |-
+        * `mobile` - Mobile
+        * `landline` - Landline
+        * `voip` - VoIP
+        * `unknown` - Unknown
     Location:
       type: object
       properties:
@@ -8873,6 +9485,16 @@ components:
           maxLength: 500
       required:
       - name
+    OwnerNameConfidenceEnum:
+      enum:
+      - high
+      - medium
+      - low
+      type: string
+      description: |-
+        * `high` - High
+        * `medium` - Medium
+        * `low` - Low
     OwnerNameSourceEnum:
       enum:
       - manual
@@ -10095,6 +10717,53 @@ components:
         * `high` - High
         * `normal` - Normal
         * `background` - Background
+    Priority3cdEnum:
+      enum:
+      - high
+      - medium
+      - low
+      type: string
+      description: |-
+        * `high` - High
+        * `medium` - Medium
+        * `low` - Low
+    ProviderCost:
+      type: object
+      properties:
+        provider:
+          type: string
+        provider_label:
+          type: string
+        calls:
+          type: integer
+        cost_usd:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,6}(?:\.\d{0,6})?$
+        tokens_in:
+          type: integer
+        tokens_out:
+          type: integer
+        failures:
+          type: integer
+      required:
+      - calls
+      - cost_usd
+      - provider
+    ProviderEnum:
+      enum:
+      - google_places
+      - google_geocoding
+      - glm
+      - twilio_lookup
+      - hunter
+      type: string
+      description: |-
+        * `google_places` - Google Places
+        * `google_geocoding` - Google Geocoding
+        * `glm` - Zhipu GLM
+        * `twilio_lookup` - Twilio Lookup
+        * `hunter` - Hunter.io
     Reason:
       type: object
       properties:
@@ -10220,7 +10889,7 @@ components:
           maxLength: 500
       required:
       - action
-    ResultEnum:
+    Result56aEnum:
       enum:
       - answered
       - no_answer
@@ -10244,6 +10913,18 @@ components:
         * `owner_answered` - Owner Answered
         * `call_back_later` - Call Back Later
         * `not_interested` - Not Interested
+    Result62cEnum:
+      enum:
+      - verified
+      - possible
+      - invalid
+      - unknown
+      type: string
+      description: |-
+        * `verified` - Verified
+        * `possible` - Possible
+        * `invalid` - Invalid
+        * `unknown` - Unknown
     RetentionPoint:
       type: object
       properties:
@@ -10391,6 +11072,16 @@ components:
       - paying_merchants
       - revenue_churn_rate
       - trial_to_paid_conversion
+    RiskLevelEnum:
+      enum:
+      - low
+      - medium
+      - high
+      type: string
+      description: |-
+        * `low` - Low
+        * `medium` - Medium
+        * `high` - High
     Role4e0Enum:
       enum:
       - SUPER_ADMIN
@@ -10846,6 +11537,19 @@ components:
           type: boolean
       required:
       - role
+    StageDispatch:
+      type: object
+      description: |-
+        Whether a stage went to the broker or ran inline — the caller needs to
+        know, because an inline run has already finished by the time it replies.
+      properties:
+        stage:
+          type: string
+        dispatch:
+          type: string
+      required:
+      - dispatch
+      - stage
     StageEnum:
       enum:
       - discovery
@@ -10960,6 +11664,20 @@ components:
         * `PAST_DUE` - Past due
         * `CANCELED` - Canceled
         * `LOCKED` - Locked
+    StatusC7bEnum:
+      enum:
+      - queued
+      - running
+      - completed
+      - failed
+      - skipped
+      type: string
+      description: |-
+        * `queued` - Queued
+        * `running` - Running
+        * `completed` - Completed
+        * `failed` - Failed
+        * `skipped` - Skipped
     StatusFd7Enum:
       enum:
       - new_lead
@@ -11223,6 +11941,16 @@ components:
         * `hero` - hero
         * `minimal` - minimal
         * `bold` - bold
+    TestConnection:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        message:
+          type: string
+      required:
+      - message
+      - ok
     TimelineEvent:
       type: object
       description: Customer timeline event (contract §3.6).
@@ -11366,6 +12094,92 @@ components:
       - customers
       - locations
       - staff
+    Verification:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        business_name:
+          type: string
+          readOnly: true
+        line_type_display:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        kind:
+          $ref: '#/components/schemas/Kind17fEnum'
+        target:
+          type: string
+          maxLength: 254
+        status:
+          $ref: '#/components/schemas/StatusC7bEnum'
+        result:
+          oneOf:
+          - $ref: '#/components/schemas/Result62cEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        provider:
+          oneOf:
+          - $ref: '#/components/schemas/ProviderEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        line_type:
+          oneOf:
+          - $ref: '#/components/schemas/LineTypeEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        carrier:
+          type: string
+          maxLength: 120
+        deliverable:
+          type: boolean
+          nullable: true
+        is_disposable:
+          type: boolean
+          nullable: true
+        is_role_address:
+          type: boolean
+          nullable: true
+        domain_valid:
+          type: boolean
+          nullable: true
+        confidence:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+        credits_used:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        attempts:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        error:
+          type: string
+          maxLength: 500
+        lead:
+          type: string
+          format: uuid
+      required:
+      - business_name
+      - created_at
+      - id
+      - kind
+      - lead
+      - line_type_display
+      - target
+      - updated_at
     WalletCardDesign:
       type: object
       properties:

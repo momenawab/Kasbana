@@ -554,3 +554,38 @@ LEADGEN_CRAWL_USER_AGENT = env(
     "LEADGEN_CRAWL_USER_AGENT",
     "StampnLeadBot/1.0 (+https://stampn.net/bot)",
 )
+
+# ── Lead generation — AI enrichment (Zhipu GLM) ───────────────────────────────
+# OpenAI-compatible endpoint, so the client is a plain chat-completions call.
+#
+# This needs a *pay-as-you-go* API key. Zhipu's flat-rate GLM Coding Plan is
+# licensed for use inside approved coding tools, not for production traffic from
+# an application, so a Coding Plan key does not cover this and should not be
+# pasted here.
+GLM_API_KEY = env("GLM_API_KEY", "")
+GLM_BASE_URL = env("GLM_BASE_URL", "https://api.z.ai/api/paas/v4")
+GLM_MODEL = env("GLM_MODEL", "glm-5.2")
+LEADGEN_AI_TIMEOUT = float(env("LEADGEN_AI_TIMEOUT", "60") or "60")
+
+# USD per million tokens, used to price each call for the cost ledger. These are
+# ESTIMATES and must be set from the actual contract — an unset or stale rate
+# makes every cost figure in the dashboard wrong in the same direction, which is
+# worse than showing nothing. Kept as env so a price change is a config change.
+GLM_PRICE_PER_MTOK_IN = float(env("GLM_PRICE_PER_MTOK_IN", "0.60") or "0.60")
+GLM_PRICE_PER_MTOK_OUT = float(env("GLM_PRICE_PER_MTOK_OUT", "2.20") or "2.20")
+
+# ── Lead generation — phone verification (Twilio Lookup) ──────────────────────
+# Validity, carrier and line type under a real contract. Unset leaves the stage
+# on the libphonenumber-only fallback, which still validates and infers a line
+# type but cannot confirm the number is live (see leadgen.verify).
+TWILIO_ACCOUNT_SID = env("TWILIO_ACCOUNT_SID", "")
+TWILIO_AUTH_TOKEN = env("TWILIO_AUTH_TOKEN", "")
+TWILIO_LOOKUP_PRICE_USD = float(env("TWILIO_LOOKUP_PRICE_USD", "0.008") or "0.008")
+
+# ── Lead generation — email verification (Hunter.io) ──────────────────────────
+HUNTER_API_KEY = env("HUNTER_API_KEY", "")
+HUNTER_PRICE_USD = float(env("HUNTER_PRICE_USD", "0.005") or "0.005")
+
+# Rough per-call Places prices for the cost ledger, same caveat as GLM above.
+PLACES_PRICE_PER_CALL_USD = float(env("PLACES_PRICE_PER_CALL_USD", "0.032") or "0.032")
+GEOCODING_PRICE_PER_CALL_USD = float(env("GEOCODING_PRICE_PER_CALL_USD", "0.005") or "0.005")

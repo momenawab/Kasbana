@@ -403,3 +403,184 @@ class JobLog(UUIDModel, TimeStampedModel):
 
     def __str__(self) -> str:
         return f"log({self.level} · {self.message[:60]})"
+
+
+class AiEnrichment(UUIDModel, TimeStampedModel):
+    """What the model concluded about one business, plus what it cost.
+
+    One row per lead, replaced on re-run. Both the parsed fields and the raw
+    response are kept: the parsed columns are what the UI and any future
+    scoring read, and the raw payload is the only way to tell a bad prompt from
+    a bad parse when a field looks wrong.
+
+    Every estimate is stored as an estimate. ``estimated_monthly_customers`` is
+    a model's guess from a Places listing and a website, not a measurement, and
+    the UI labels it that way — a number that looks like data but is a guess is
+    how a rep ends up quoting it to a prospect.
+    """
+
+    lead = models.OneToOneField(
+        GeneratedLead, on_delete=models.CASCADE, related_name="ai_enrichment"
+    )
+
+    status = models.CharField(
+        max_length=16, choices=enums.TaskStatus.choices, default=enums.TaskStatus.QUEUED
+    )
+    # The exact model string, not a friendly name: reproducing or disputing an
+    # output a month later needs to know which model produced it.
+    model = models.CharField(max_length=64, blank=True)
+    prompt_version = models.CharField(max_length=16, blank=True)
+
+    # ── The analysis ─────────────────────────────────────────────────────────
+    business_summary = models.TextField(blank=True)
+    target_customers = models.CharField(max_length=500, blank=True)
+    estimated_size = models.CharField(max_length=64, blank=True)
+    estimated_daily_visitors = models.PositiveIntegerField(null=True, blank=True)
+    estimated_monthly_customers = models.PositiveIntegerField(null=True, blank=True)
+    estimated_revenue_range = models.CharField(max_length=120, blank=True)
+    business_model = models.CharField(max_length=64, blank=True)  # franchise/independent/chain
+    is_franchise = models.BooleanField(null=True, blank=True)
+    is_premium = models.BooleanField(null=True, blank=True)
+    estimated_branches = models.PositiveSmallIntegerField(null=True, blank=True)
+
+    # 0-100 likelihoods. Integers rather than floats: the model is guessing, and
+    # rendering 73.4% would imply a precision that is not there.
+    likelihood_uses_pos = models.PositiveSmallIntegerField(null=True, blank=True)
+    likelihood_uses_loyalty = models.PositiveSmallIntegerField(null=True, blank=True)
+    likelihood_accepts_digital = models.PositiveSmallIntegerField(null=True, blank=True)
+
+    recommended_pitch = models.TextField(blank=True)
+    recommended_plan = models.CharField(max_length=64, blank=True)
+    risk_level = models.CharField(max_length=8, choices=enums.RiskLevel.choices, blank=True)
+    confidence = models.PositiveSmallIntegerField(null=True, blank=True)  # 0-100
+
+    # ── Cost and diagnostics ─────────────────────────────────────────────────
+    tokens_in = models.PositiveIntegerField(default=0)
+    tokens_out = models.PositiveIntegerField(default=0)
+    cost_usd = models.DecimalField(max_digits=10, decimal_places=6, default=0)
+    duration_ms = models.PositiveIntegerField(default=0)
+    attempts = models.PositiveSmallIntegerField(default=0)
+    error = models.CharField(max_length=500, blank=True)
+    raw_response = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        db_table = "lead_generation_ai"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["status", "-created_at"]),  # the AI queue screen
+            models.Index(fields=["lead"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"ai({self.lead_id} · {self.status})"
+
+
+class Verification(UUIDModel, TimeStampedModel):
+    """One phone or email checked against a provider.
+
+    Separate rows per contact rather than columns on the lead: a business often
+    publishes several numbers and addresses, and "which of these actually
+    reaches someone" is the question a rep needs answered.
+
+    Note what is deliberately absent: no owner name, no spam-report count, no
+    "likely manager". Those come from crowd-sourced caller-ID databases with no
+    lawful API, and inventing columns for data we will not collect would leave
+    them null in production while implying we tried.
+    """
+
+    lead = models.ForeignKey(
+        GeneratedLead, on_delete=models.CASCADE, related_name="verifications"
+    )
+    kind = models.CharField(max_length=8, choices=enums.VerificationKind.choices)
+    # The number or address as checked — E.164 for phones, lowercased for email.
+    target = models.CharField(max_length=254)
+
+    status = models.CharField(
+        max_length=16, choices=enums.TaskStatus.choices, default=enums.TaskStatus.QUEUED
+    )
+    result = models.CharField(
+        max_length=16, choices=enums.VerificationResult.choices, blank=True
+    )
+    provider = models.CharField(max_length=24, choices=enums.ApiProvider.choices, blank=True)
+
+    # ── Phone findings ───────────────────────────────────────────────────────
+    line_type = models.CharField(
+        max_length=16, choices=enums.PhoneLineType.choices, blank=True
+    )
+    carrier = models.CharField(max_length=120, blank=True)
+
+    # ── Email findings ───────────────────────────────────────────────────────
+    deliverable = models.BooleanField(null=True, blank=True)
+    is_disposable = models.BooleanField(null=True, blank=True)
+    is_role_address = models.BooleanField(null=True, blank=True)
+    domain_valid = models.BooleanField(null=True, blank=True)
+
+    confidence = models.PositiveSmallIntegerField(null=True, blank=True)  # 0-100
+    credits_used = models.PositiveIntegerField(default=0)
+    attempts = models.PositiveSmallIntegerField(default=0)
+    error = models.CharField(max_length=500, blank=True)
+    raw_response = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        db_table = "lead_generation_verification"
+        ordering = ["-created_at"]
+        constraints = [
+            # One verification per contact per lead — re-running updates in place
+            # rather than accumulating a row per attempt, so a retried queue does
+            # not multiply its own backlog.
+            models.UniqueConstraint(
+                fields=["lead", "kind", "target"], name="uniq_leadgen_verification_target"
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["status", "-created_at"]),  # the verification queue
+            models.Index(fields=["lead", "kind"]),
+            models.Index(fields=["result"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"verify({self.kind} · {self.target} · {self.result or self.status})"
+
+
+class ApiUsage(UUIDModel, TimeStampedModel):
+    """One billed interaction with a paid third party.
+
+    The ledger behind cost-per-lead. Written per call rather than aggregated
+    nightly because the question operators actually ask — "why did yesterday
+    cost that much" — needs the individual calls, and because an aggregate that
+    drifts from reality is worse than no aggregate.
+
+    ``job`` and ``lead`` are nullable: a geocode belongs to a job but no lead,
+    and a Test Connection belongs to neither.
+    """
+
+    provider = models.CharField(max_length=24, choices=enums.ApiProvider.choices)
+    operation = models.CharField(max_length=64)  # e.g. "searchText", "chat.completions"
+
+    job = models.ForeignKey(
+        SearchJob, null=True, blank=True, on_delete=models.SET_NULL, related_name="api_usage"
+    )
+    lead = models.ForeignKey(
+        GeneratedLead, null=True, blank=True, on_delete=models.SET_NULL, related_name="api_usage"
+    )
+
+    calls = models.PositiveIntegerField(default=1)
+    tokens_in = models.PositiveIntegerField(default=0)
+    tokens_out = models.PositiveIntegerField(default=0)
+    # Six decimal places: a single GLM call can cost a fraction of a cent, and
+    # rounding to cents per row would lose most of the spend across a job.
+    cost_usd = models.DecimalField(max_digits=10, decimal_places=6, default=0)
+    succeeded = models.BooleanField(default=True)
+
+    class Meta:
+        db_table = "lead_generation_api_usage"
+        ordering = ["-created_at"]
+        indexes = [
+            # The cost dashboard slices by provider over a date range.
+            models.Index(fields=["provider", "-created_at"]),
+            models.Index(fields=["job"]),
+            models.Index(fields=["-created_at"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"usage({self.provider} · {self.operation} · ${self.cost_usd})"

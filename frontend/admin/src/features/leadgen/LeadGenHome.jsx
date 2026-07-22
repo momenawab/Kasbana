@@ -39,6 +39,18 @@ export default function LeadGenHome() {
         </div>
         <div className="flex items-center gap-2">
           <Link
+            to="/leadgen/queues"
+            className="rounded-ctl bg-surface-2 px-3 py-2 text-sm text-tx-2 transition hover:bg-surface-3 hover:text-tx"
+          >
+            Queues
+          </Link>
+          <Link
+            to="/leadgen/settings"
+            className="rounded-ctl bg-surface-2 px-3 py-2 text-sm text-tx-2 transition hover:bg-surface-3 hover:text-tx"
+          >
+            Providers &amp; cost
+          </Link>
+          <Link
             to="/leadgen/leads"
             className="rounded-ctl bg-surface-2 px-3 py-2 text-sm text-tx-2 transition hover:bg-surface-3 hover:text-tx"
           >

@@ -11,7 +11,7 @@ to push a lead into the CRM. Looking is free; billing and writing are not.
 
 from __future__ import annotations
 
-from django.db.models import Q
+from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
@@ -21,11 +21,12 @@ from rest_framework.response import Response
 from common.pagination import DefaultCursorPagination
 from console import audit
 from console.models import AdminUser
-from console.permissions import AdminAPIView, require
+from console.permissions import AdminAPIView, IsSuperAdmin, require
 from console.rbac import Permission
 from leadgen import enums, serializers
-from leadgen.models import GeneratedLead, SearchJob
-from leadgen.services import importer
+from leadgen import tasks
+from leadgen.models import AiEnrichment, GeneratedLead, SearchJob, Verification
+from leadgen.services import apikeys, costs, importer
 from leadgen.services import jobs as job_service
 from leadgen.tasks import enqueue
 
@@ -256,8 +257,8 @@ class GeneratedLeadDetailView(AdminAPIView):
     @extend_schema(responses=serializers.GeneratedLeadDetailSerializer)
     def get(self, request: Request, lead_id) -> Response:
         lead = get_object_or_404(
-            GeneratedLead.objects.select_related("website_profile", "job")
-            .prefetch_related("socials", "owner_candidates"),
+            GeneratedLead.objects.select_related("website_profile", "job", "ai_enrichment")
+            .prefetch_related("socials", "owner_candidates", "verifications"),
             pk=lead_id,
         )
         return Response(serializers.GeneratedLeadDetailSerializer(lead).data)
@@ -363,3 +364,157 @@ class GeneratedLeadImportView(AdminAPIView):
 
 def _flag(params, name: str) -> bool:
     return params.get(name, "").lower() in {"1", "true", "yes"}
+
+
+# ── Queues ───────────────────────────────────────────────────────────────────
+class _QueueView(AdminAPIView):
+    """Shared behaviour for the AI and Verification queues.
+
+    Both answer the same operator question — what is waiting, working, done or
+    stuck — so they share filtering, stats and pagination rather than being two
+    copies that drift.
+    """
+
+    model = None
+    serializer = None
+
+    def get(self, request: Request) -> Response:
+        queryset = self.model.objects.select_related("lead").all()
+
+        for field, param in (("status", "status"), ("lead__job_id", "job_id")):
+            if request.query_params.get(param):
+                queryset = queryset.filter(**{field: request.query_params[param]})
+
+        paginator = DefaultCursorPagination()
+        page = paginator.paginate_queryset(queryset, request, view=self)
+        response = paginator.get_paginated_response(self.serializer(page, many=True).data)
+        # Stats describe the *unfiltered* queue on purpose: they are the header
+        # a operator reads to decide what to filter to.
+        response.data["stats"] = self._stats()
+        return response
+
+    def _stats(self) -> dict:
+        counts = dict(
+            self.model.objects.values_list("status")
+            .annotate(n=Count("id"))
+            .values_list("status", "n")
+        )
+        return {status: counts.get(status, 0) for status in enums.TaskStatus.values}
+
+
+class AiQueueView(_QueueView):
+    """The AI queue — every enrichment attempt, with tokens, cost and duration."""
+
+    model = AiEnrichment
+    serializer = serializers.AiEnrichmentSerializer
+
+    @extend_schema(responses=serializers.AiEnrichmentSerializer(many=True))
+    def get(self, request: Request) -> Response:
+        return super().get(request)
+
+
+class VerificationQueueView(_QueueView):
+    """The verification queue — every phone and email checked."""
+
+    model = Verification
+    serializer = serializers.VerificationSerializer
+
+    @extend_schema(responses=serializers.VerificationSerializer(many=True))
+    def get(self, request: Request) -> Response:
+        return super().get(request)
+
+
+class RunStageView(AdminAPIView):
+    """POST to run AI enrichment or verification over a job's leads.
+
+    Gated on LEADGEN_RUN rather than a read permission: both stages spend money
+    per lead, which is the same reason starting a search is gated.
+    """
+
+    STAGES = {
+        "ai": (tasks.run_ai_enrichment, "AI enrichment"),
+        "verify": (tasks.run_verification, "Verification"),
+    }
+
+    def get_permissions(self):
+        return [require(Permission.LEADGEN_RUN)()]
+
+    @extend_schema(
+        operation_id="leadgen_run_stage",
+        request=None,
+        responses=serializers.StageDispatchSerializer,
+    )
+    def post(self, request: Request, job_id, stage: str) -> Response:
+        entry = self.STAGES.get(stage)
+        if entry is None:
+            return Response(
+                {"detail": f"Unknown stage “{stage}”."}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        job = get_object_or_404(SearchJob, pk=job_id)
+        task, label = entry
+        dispatch = tasks.enqueue_stage(job, task, label)
+
+        audit.record(
+            request,
+            action=f"leadgen.stage.{stage}",
+            target_id=str(job.id),
+            metadata={"leads": job.leads.filter(duplicate_of__isnull=True).count()},
+        )
+        return Response({"stage": stage, "dispatch": dispatch})
+
+
+# ── Cost and keys ────────────────────────────────────────────────────────────
+class CostSummaryView(AdminAPIView):
+    """Spend, volume and cost per lead, read from the usage ledger."""
+
+    @extend_schema(responses=serializers.CostSummarySerializer)
+    def get(self, request: Request) -> Response:
+        try:
+            days = min(int(request.query_params.get("days", 30)), 365)
+        except ValueError:
+            days = 30
+        return Response(serializers.CostSummarySerializer(costs.summary(days=days)).data)
+
+
+class ApiKeyStatusView(AdminAPIView):
+    """Which providers are configured, working, and what they have cost.
+
+    Never returns a key, not even masked: a masked key still leaks length and
+    prefix, and the test endpoint answers the question a reader actually has.
+    """
+
+    @extend_schema(responses=serializers.ApiKeyStatusSerializer(many=True))
+    def get(self, request: Request) -> Response:
+        return Response(
+            {
+                "providers": serializers.ApiKeyStatusSerializer(
+                    apikeys.status_all(), many=True
+                ).data,
+                "rates": costs.rates(),
+            }
+        )
+
+
+class ApiKeyTestView(AdminAPIView):
+    """POST to make a real call against one provider.
+
+    Super-admin only. A test is a live billed request, and for Places it is a
+    real search — cheap, but not free, and not something every reader should be
+    able to trigger repeatedly.
+    """
+
+    def get_permissions(self):
+        return [IsSuperAdmin()]
+
+    @extend_schema(operation_id="leadgen_test_provider", request=None,
+                   responses=serializers.TestConnectionSerializer)
+    def post(self, request: Request, provider: str) -> Response:
+        ok, message = apikeys.test_connection(provider)
+        audit.record(
+            request,
+            action="leadgen.apikey.test",
+            target_id=provider,
+            metadata={"ok": ok},
+        )
+        return Response({"ok": ok, "message": message})

@@ -104,7 +104,12 @@ DIGITAL_PRESENCE_POINTS = 3  # already on a delivery/reservation platform
 # the category — but it is a displacement sale, which is slower and cheaper.
 # It also forfeits the greenfield signal, so the swing is larger than it looks.
 ALREADY_LOYALTY_PENALTY = -15
-SPAM_PHONE_PENALTY = -50  # Phase 2 — set by the verification stage
+
+# The spec's "-50 spam number" is deliberately not implemented. Spam-report
+# counts come from crowd-sourced caller-ID databases with no lawful API, so we
+# never learn them; a constant for a signal we cannot observe would be dead code
+# implying a check that never runs. An unreachable number simply earns no
+# reachability points, which is the honest expression of what we know.
 
 # ── Labels ───────────────────────────────────────────────────────────────────
 # Set against the observed distribution so all four buckets are populated by
@@ -124,6 +129,20 @@ def label_for(score: int) -> str:
     if score >= COLD_MIN:
         return enums.ScoreLabel.COLD
     return enums.ScoreLabel.IGNORE
+
+
+def _phone_detail(check) -> str:
+    """What the breakdown says about reachability, including when unchecked."""
+    if check is None:
+        return "Not verified yet"
+    if check.result == enums.VerificationResult.VERIFIED:
+        parts = [check.get_line_type_display()] if check.line_type else []
+        if check.carrier:
+            parts.append(check.carrier)
+        return " · ".join(parts) or "Confirmed by provider"
+    if check.result == enums.VerificationResult.INVALID:
+        return "Provider says this number is not valid"
+    return "Looks valid, but reachability is unconfirmed"
 
 
 def _tiered(value: float, tiers: tuple[tuple[float, int], ...]) -> int:
@@ -166,6 +185,28 @@ def score_lead(lead) -> tuple[int, str, list[dict]]:
         )
     )
 
+    # Provider-confirmed reachability. Only a real lookup earns these points:
+    # the offline fallback returns POSSIBLE precisely because it proves the
+    # number *could* exist, not that anyone answers, and paying it the same
+    # weight would make the signal mean nothing.
+    phone_check = next(
+        (
+            check
+            for check in lead.verifications.all()
+            if check.kind == enums.VerificationKind.PHONE
+        ),
+        None,
+    )
+    verified = phone_check is not None and phone_check.result == enums.VerificationResult.VERIFIED
+    signals.append(
+        Signal(
+            "phone_verified",
+            "Phone confirmed reachable",
+            PHONE_VERIFIED_POINTS if verified else 0,
+            _phone_detail(phone_check),
+        )
+    )
+
     website = bool(lead.website_domain)
     signals.append(
         Signal(
@@ -188,8 +229,9 @@ def score_lead(lead) -> tuple[int, str, list[dict]]:
     )
 
     # ── Social presence ──────────────────────────────────────────────────────
-    # ``socials`` is prefetched by the scoring stage; falling back to a query
-    # here would make this N+1 across a 1,000-lead job.
+    # ``socials`` and ``verifications`` are prefetched by ``pipeline.score``,
+    # which reloads the lead specifically so this stays one query per lead
+    # rather than three.
     platforms = {s.platform for s in lead.socials.all()}
     signals.append(
         Signal(

@@ -280,7 +280,20 @@ def _now():
 
 # ── Stage 5: scoring ─────────────────────────────────────────────────────────
 def score(lead: GeneratedLead) -> int:
-    """Recompute and persist the lead's fit score. Idempotent."""
+    """Recompute and persist the lead's fit score. Idempotent.
+
+    Reloads the lead with its scored relations attached rather than trusting the
+    caller to have prefetched them. Scoring touches ``socials``, ``verifications``
+    and ``website_profile``, so a bare instance costs three queries per lead —
+    across a 1,000-lead job that is three thousand round trips. Doing it here
+    means every caller gets it right, including a re-score after
+    ``refresh_from_db`` has dropped whatever the caller did prefetch.
+    """
+    lead = (
+        GeneratedLead.objects.select_related("website_profile")
+        .prefetch_related("socials", "verifications")
+        .get(pk=lead.pk)
+    )
     total, label, breakdown = scoring.score_lead(lead)
     lead.fit_score = total
     lead.score_label = label
