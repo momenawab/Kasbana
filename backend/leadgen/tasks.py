@@ -19,6 +19,7 @@ from __future__ import annotations
 import logging
 
 from celery import shared_task
+from django.utils import timezone
 from kombu.exceptions import OperationalError
 
 from leadgen import enums
@@ -62,13 +63,47 @@ def run_search_job(self, job_id: str) -> dict:
     }
 
 
-def enqueue(job: SearchJob) -> str:
-    """Queue ``job``, or run it inline when no broker is reachable.
+def consumers_for(queue: str) -> int | None:
+    """How many workers are consuming ``queue``. None when that can't be determined.
 
-    Returns "queued" or "inline" so the caller can tell the operator which
-    happened — a job that ran inline has already finished by the time the API
-    responds, and the UI should not sit waiting for progress that will never
-    arrive.
+    Publishing to a queue nobody consumes succeeds — the broker accepts the
+    message and it waits forever. From the publisher's side that is
+    indistinguishable from a healthy enqueue, which is exactly how a job can sit
+    at "Queued" indefinitely with nothing in any log to say why. Asking the
+    workers directly is the only way to tell the two apart.
+    """
+    try:
+        from config.celery import app
+
+        active = app.control.inspect(timeout=1.5).active_queues()
+    except Exception as exc:  # noqa: BLE001 — inspect fails in many uninteresting ways
+        logger.warning("leadgen.enqueue.inspect_failed", extra={"error": str(exc)})
+        return None
+
+    if active is None:
+        return 0  # broker reachable, nobody answered → no workers at all
+    return sum(
+        1 for queues in active.values() if any(q.get("name") == queue for q in queues)
+    )
+
+
+def enqueue(job: SearchJob) -> str:
+    """Queue ``job``. Returns "queued", "inline", or "unconsumed".
+
+    Three outcomes, because there are three genuinely different situations and
+    collapsing them is what hid this bug in the first place:
+
+    * **queued** — a worker is listening; the job will run.
+    * **inline** — no broker at all. Expected on a developer machine, so the
+      pipeline runs in-process rather than blocking local work.
+    * **unconsumed** — the broker took the message but no worker consumes that
+      queue. The job is failed immediately with a message naming the queue,
+      rather than waiting forever.
+
+    The last case deliberately does *not* fall back to running inline. A
+    1,000-result sweep takes minutes; running it inside the request that created
+    it would hang the browser and time out the gateway. Failing loudly with the
+    queue name is both safer and more useful — it names the fix.
     """
     queue = QUEUE_FOR_PRIORITY.get(job.priority, "leadgen")
 
@@ -87,6 +122,22 @@ def enqueue(job: SearchJob) -> str:
         )
         job_service.run(job)
         return "inline"
+
+    # None means we could not ask, which is not evidence of a problem — leave the
+    # job queued rather than failing a healthy one on a flaky inspect.
+    consumers = consumers_for(queue)
+    if consumers == 0:
+        message = (
+            f"No Celery worker is consuming the “{queue}” queue, so this job would "
+            f"wait forever. Start a worker with -Q {queue} (see infra/compose.prod.yml)."
+        )
+        logger.error("leadgen.enqueue.no_consumer", extra={"job": str(job.id), "queue": queue})
+        job_service.log(job, message, level=enums.LogLevel.ERROR)
+        job.status = enums.JobStatus.FAILED
+        job.error = message[:500]
+        job.finished_at = timezone.now()
+        job.save(update_fields=["status", "error", "finished_at", "updated_at"])
+        return "unconsumed"
 
     job_service.log(job, f"Queued on {queue}", context_queue=queue)
     return "queued"
@@ -154,6 +205,14 @@ def enqueue_stage(job: SearchJob, task, label: str) -> str:
     Same contract as ``enqueue``: only a broker connection failure falls back,
     never a task error.
     """
+    if consumers_for("leadgen_bg") == 0:
+        message = (
+            f"No Celery worker is consuming “leadgen_bg”, so {label} would wait "
+            "forever. Start a worker with -Q leadgen_bg."
+        )
+        job_service.log(job, message, level=enums.LogLevel.ERROR)
+        return "unconsumed"
+
     try:
         task.apply_async(args=[str(job.id)], queue="leadgen_bg")
     except OperationalError as exc:

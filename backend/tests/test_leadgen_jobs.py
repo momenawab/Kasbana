@@ -7,6 +7,8 @@ opening a connection.
 
 from __future__ import annotations
 
+from unittest.mock import patch
+
 import pytest
 
 from console.models import Lead as CrmLead
@@ -397,3 +399,115 @@ class TestRun:
         messages = [entry.message for entry in job.logs.all()]
         assert any("Discovery" in m for m in messages)
         assert any("complete" in m.lower() for m in messages)
+
+
+class TestEnqueueConsumerCheck:
+    """A queue nobody consumes accepts messages happily and never runs them.
+
+    This was a live bug: the production worker consumed default/wallet/messaging
+    only, so every leadgen job sat at "Queued" forever with nothing in any log
+    explaining why. The publisher cannot tell a healthy queue from an
+    unconsumed one — it has to ask the workers.
+    """
+
+    def _job(self) -> SearchJob:
+        return make_job()
+
+    def test_a_listening_worker_means_queued(self):
+        from leadgen import tasks
+
+        job = self._job()
+        with patch.object(tasks.run_search_job, "apply_async"), patch.object(
+            tasks, "consumers_for", return_value=1
+        ):
+            assert tasks.enqueue(job) == "queued"
+
+        job.refresh_from_db()
+        assert job.status == enums.JobStatus.QUEUED
+
+    def test_no_consumer_fails_the_job_immediately_naming_the_queue(self):
+        """Better a clear failure in seconds than a silent wait forever."""
+        from leadgen import tasks
+
+        job = self._job()
+        with patch.object(tasks.run_search_job, "apply_async"), patch.object(
+            tasks, "consumers_for", return_value=0
+        ):
+            assert tasks.enqueue(job) == "unconsumed"
+
+        job.refresh_from_db()
+        assert job.status == enums.JobStatus.FAILED
+        assert "leadgen" in job.error
+        assert "-Q leadgen" in job.error  # tells the operator the actual fix
+        assert job.finished_at is not None
+
+    def test_no_consumer_does_not_run_inline(self):
+        """A 1,000-result sweep inside the creating request would hang the
+        browser and time out the gateway."""
+        from leadgen import tasks
+
+        job = self._job()
+        with patch.object(tasks.run_search_job, "apply_async"), patch.object(
+            tasks, "consumers_for", return_value=0
+        ), patch.object(tasks.job_service, "run") as ran:
+            tasks.enqueue(job)
+
+        assert not ran.called
+
+    def test_an_unanswerable_inspect_leaves_the_job_queued(self):
+        """None means "could not ask", which is not evidence of a problem —
+        failing a healthy job on a flaky inspect would be worse than waiting."""
+        from leadgen import tasks
+
+        job = self._job()
+        with patch.object(tasks.run_search_job, "apply_async"), patch.object(
+            tasks, "consumers_for", return_value=None
+        ):
+            assert tasks.enqueue(job) == "queued"
+
+        job.refresh_from_db()
+        assert job.status == enums.JobStatus.QUEUED
+
+    def test_no_broker_still_runs_inline(self):
+        """The developer-machine path must survive the new check."""
+        from kombu.exceptions import OperationalError
+
+        from leadgen import tasks
+
+        job = self._job()
+        with patch.object(
+            tasks.run_search_job, "apply_async", side_effect=OperationalError("no broker")
+        ), patch.object(tasks.job_service, "run") as ran:
+            assert tasks.enqueue(job) == "inline"
+
+        assert ran.called
+
+    def test_priority_picks_the_queue_named_in_the_failure(self):
+        from leadgen import tasks
+
+        job = make_job(priority=enums.JobPriority.BACKGROUND)
+        with patch.object(tasks.run_search_job, "apply_async"), patch.object(
+            tasks, "consumers_for", return_value=0
+        ):
+            tasks.enqueue(job)
+
+        job.refresh_from_db()
+        assert "leadgen_bg" in job.error
+
+    def test_every_priority_maps_to_a_queue_the_prod_worker_consumes(self):
+        """Guards the original bug directly: the compose worker command and the
+        priority map must not drift apart again."""
+        import pathlib
+        import re
+
+        from leadgen import tasks
+
+        compose = (
+            pathlib.Path(__file__).resolve().parents[2] / "infra" / "compose.prod.yml"
+        ).read_text()
+        consumed: set[str] = set()
+        for match in re.finditer(r"celery -A config worker -Q ([\w,]+)", compose):
+            consumed.update(match.group(1).split(","))
+
+        missing = set(tasks.QUEUE_FOR_PRIORITY.values()) - consumed
+        assert not missing, f"no production worker consumes: {sorted(missing)}"

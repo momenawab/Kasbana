@@ -50,6 +50,18 @@ services:
     <<: *app
     command: celery -A config worker -Q default,wallet,messaging --concurrency 2 -l info
 
+  # Lead generation runs on its own worker, not on the one above. A 1,000-result
+  # sweep occupies a slot for minutes at a time, and sharing would let it delay a
+  # wallet push or an OTP — which is the whole reason these queues are separate
+  # in the first place (see CELERY_TASK_QUEUES in config/settings/base.py).
+  #
+  # Concurrency 1 is deliberate: discovery is rate-limited by Google and AI
+  # enrichment is sequential by design, so extra slots would buy nothing but
+  # memory and a faster path to a quota error.
+  leadgen-worker:
+    <<: *app
+    command: celery -A config worker -Q leadgen_high,leadgen,leadgen_bg --concurrency 1 -l info
+
   beat:
     <<: *app
     command: celery -A config beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
