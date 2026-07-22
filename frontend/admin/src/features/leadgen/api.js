@@ -200,3 +200,47 @@ export function useTestProvider() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['leadgen-api-keys'] }),
   })
 }
+
+// ── Phase 3: dashboard, bulk actions, export ─────────────────────────────────
+
+export function useDashboard(days = 30) {
+  return useQuery({
+    queryKey: ['leadgen-dashboard', days],
+    queryFn: async () => (await api.get('/leadgen/dashboard', { params: { days } })).data,
+  })
+}
+
+export function useBulkAction() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (payload) => (await api.post('/leadgen/leads/bulk', payload)).data,
+    onSuccess: () => {
+      invalidateAll(qc)
+      qc.invalidateQueries({ queryKey: ['leadgen-dashboard'] })
+    },
+  })
+}
+
+// Exports stream a file, so this bypasses react-query and drives a download
+// directly — there is nothing to cache and nothing to render.
+export async function downloadExport(format, filters) {
+  const response = await api.get(`/leadgen/leads/export/${format}`, {
+    params: clean(filters),
+    responseType: 'blob',
+  })
+
+  // Filename comes from the server's Content-Disposition so the date stamp in
+  // it is the server's, not the browser's — they can differ by a day.
+  const disposition = response.headers['content-disposition'] || ''
+  const match = disposition.match(/filename="?([^"]+)"?/)
+  const name = match ? match[1] : `stampn-leads.${format}`
+
+  const url = URL.createObjectURL(new Blob([response.data]))
+  const link = document.createElement('a')
+  link.href = url
+  link.download = name
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
+}

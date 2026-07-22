@@ -26,7 +26,7 @@ from console.rbac import Permission
 from leadgen import enums, serializers
 from leadgen import tasks
 from leadgen.models import AiEnrichment, GeneratedLead, SearchJob, Verification
-from leadgen.services import apikeys, costs, importer
+from leadgen.services import analytics, apikeys, costs, exports, importer
 from leadgen.services import jobs as job_service
 from leadgen.tasks import enqueue
 
@@ -518,3 +518,119 @@ class ApiKeyTestView(AdminAPIView):
             metadata={"ok": ok},
         )
         return Response({"ok": ok, "message": message})
+
+
+# ── Dashboard ────────────────────────────────────────────────────────────────
+class DashboardView(AdminAPIView):
+    """Every metric and chart series in one response.
+
+    One endpoint rather than nine: the screen renders them together, and nine
+    round trips would make it flash through nine loading states.
+    """
+
+    @extend_schema(responses=serializers.DashboardSerializer)
+    def get(self, request: Request) -> Response:
+        try:
+            days = min(int(request.query_params.get("days", 30)), 365)
+        except ValueError:
+            days = 30
+        return Response(analytics.dashboard(days=days))
+
+
+# ── Bulk actions and export ──────────────────────────────────────────────────
+class BulkActionView(AdminAPIView):
+    """POST an action over selected leads.
+
+    Split by cost, like everything else here: rejecting or restoring a lead is
+    a LEADS_MANAGE edit, while re-running AI or verification spends money and
+    needs LEADGEN_RUN. Delete is destructive and is super-admin only — a bulk
+    delete of discovered leads throws away work already paid for.
+    """
+
+    SPENDING = {"verify", "rerun_ai"}
+
+    def get_permissions(self):
+        action = (self.request.data or {}).get("action")
+        if action == "delete":
+            return [IsSuperAdmin()]
+        if action in self.SPENDING:
+            return [require(Permission.LEADGEN_RUN)()]
+        return [require(Permission.LEADS_MANAGE)()]
+
+    @extend_schema(
+        request=serializers.BulkActionSerializer,
+        responses=serializers.BulkResultSerializer,
+    )
+    def post(self, request: Request) -> Response:
+        payload = serializers.BulkActionSerializer(data=request.data)
+        payload.is_valid(raise_exception=True)
+        action = payload.validated_data["action"]
+
+        leads = GeneratedLead.objects.filter(id__in=payload.validated_data["lead_ids"])
+        if not leads.exists():
+            return Response({"detail": "No matching leads."}, status=status.HTTP_404_NOT_FOUND)
+
+        result = self._apply(action, leads)
+        audit.record(
+            request,
+            action=f"leadgen.bulk.{action}",
+            metadata={"count": result["affected"]},
+        )
+        return Response(result)
+
+    def _apply(self, action: str, leads) -> dict:
+        if action == "reject":
+            return {"action": action, "affected": leads.update(state=enums.LeadState.REJECTED)}
+
+        if action == "restore":
+            # Back to READY, not to whatever it was before: the earlier state is
+            # not recorded, and READY is the only one a rejected lead can
+            # meaningfully return to.
+            return {"action": action, "affected": leads.update(state=enums.LeadState.READY)}
+
+        if action == "delete":
+            count = leads.count()
+            leads.delete()
+            return {"action": action, "affected": count}
+
+        # The two spending actions run inline over the selection rather than
+        # queueing a whole job: the operator picked these rows deliberately, and
+        # a job-wide task would enrich leads they did not choose.
+        from leadgen.services import ai, pipeline, verification
+
+        affected = 0
+        for lead in leads.select_related("website_profile", "job").iterator(chunk_size=50):
+            if action == "verify":
+                verification.verify_lead(lead)
+            else:
+                ai.enrich(lead)
+            pipeline.score(lead)
+            affected += 1
+
+        return {"action": action, "affected": affected, "dispatch": "inline"}
+
+
+class ExportView(GeneratedLeadListView):
+    """GET the current filter selection as CSV, Excel or JSON.
+
+    Subclasses the list view so an export is *exactly* what the table shows —
+    same filters, same duplicate handling. Re-implementing the filter logic here
+    is how an export quietly starts disagreeing with the screen it came from.
+    """
+
+    @extend_schema(responses={200: {"type": "string", "format": "binary"}})
+    def get(self, request: Request, fmt: str):
+        writer = exports.FORMATS.get(fmt)
+        if writer is None:
+            return Response(
+                {"detail": f"Unsupported format “{fmt}”."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        queryset = self._filter(GeneratedLead.objects.all(), request)
+        audit.record(
+            request,
+            action="leadgen.export",
+            metadata={"format": fmt, "count": queryset.count()},
+        )
+        return writer(queryset)

@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react'
-import { Check, Globe, Instagram, Loader2, Mail, Upload, User } from 'lucide-react'
+import { Check, Download, Globe, Instagram, Loader2, Mail, Upload, User } from 'lucide-react'
 import Badge from '../../components/Badge'
 import { useAuth } from '../../hooks/useAuth'
 import { useDebounced } from '../leads/useDebounced'
-import { useGeneratedLeads, useImportLeads } from './api'
+import { downloadExport, useBulkAction, useGeneratedLeads, useImportLeads } from './api'
 import { BUSINESS_TYPES, SCORE_LABELS, SCORE_TONES, LEAD_STATES } from './constants'
 import LeadDrawer from './LeadDrawer'
 
@@ -31,6 +31,7 @@ export default function LeadsPanel({ jobId }) {
   const leads = data?.pages.flatMap((page) => page.results ?? []) ?? []
 
   const importLeads = useImportLeads()
+  const bulk = useBulkAction()
   const set = (key, value) => setFilters((current) => ({ ...current, [key]: value }))
 
   function toggle(id) {
@@ -85,7 +86,7 @@ export default function LeadsPanel({ jobId }) {
         </Select>
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {[
           ['has_website', 'Has website'],
           ['has_email', 'Has email'],
@@ -97,6 +98,18 @@ export default function LeadsPanel({ jobId }) {
             {label}
           </Chip>
         ))}
+        <span className="ml-auto flex items-center gap-1 text-xs text-tx-2">
+          <Download size={12} /> Export
+          {['csv', 'xlsx', 'json'].map((format) => (
+            <button
+              key={format}
+              onClick={() => downloadExport(format, query)}
+              className="rounded-ctl bg-surface-2 px-2 py-1 font-semibold uppercase text-tx-2 transition hover:bg-surface-3 hover:text-tx"
+            >
+              {format}
+            </button>
+          ))}
+        </span>
       </div>
 
       {canImport && selected.size > 0 && (
@@ -114,6 +127,25 @@ export default function LeadsPanel({ jobId }) {
             )}
             Import to CRM
           </button>
+          {[
+            ['verify', 'Verify contacts'],
+            ['rerun_ai', 'Run AI'],
+            ['reject', 'Reject'],
+          ].map(([action, label]) => (
+            <button
+              key={action}
+              onClick={() =>
+                bulk.mutate(
+                  { lead_ids: [...selected], action },
+                  { onSuccess: (d) => setResult({ imported: 0, skipped: [], bulk: d }) },
+                )
+              }
+              disabled={bulk.isPending}
+              className="rounded-ctl bg-surface-2 px-3 py-1.5 text-sm text-tx transition hover:bg-surface-3 disabled:opacity-50"
+            >
+              {label}
+            </button>
+          ))}
           <button onClick={() => setSelected(new Set())} className="text-sm text-tx-2 hover:text-tx">
             Clear
           </button>
@@ -246,6 +278,20 @@ export default function LeadsPanel({ jobId }) {
 // existing CRM record and need a decision. Showing what happened per lead beats
 // a toast that says "2 of 5 imported" and leaves the operator guessing which.
 function ImportResult({ result, onForce, onDismiss }) {
+  if (result.bulk) {
+    return (
+      <div className="flex items-center justify-between rounded-card bg-surface p-4">
+        <p className="text-sm text-tx">
+          <span className="font-semibold text-success">{result.bulk.affected}</span> leads:{' '}
+          {result.bulk.action.replace('_', ' ')}
+        </p>
+        <button onClick={onDismiss} className="text-xs text-tx-2 hover:text-tx">
+          Dismiss
+        </button>
+      </div>
+    )
+  }
+
   return (
     <div className="rounded-card bg-surface p-4">
       <div className="flex items-start justify-between gap-3">

@@ -170,6 +170,17 @@ class TestPrompt:
         assert "foodics" in prompt
         assert "Speciality coffee" in prompt
 
+    def test_a_lead_with_a_category_builds_a_prompt(self):
+        """Regression: every real lead has a category, but the original tests
+        all left it empty, so a broken category lookup passed unnoticed until
+        the exports hit the same field."""
+        lead = make_lead(category=enums.BusinessType.COFFEE_SHOP)
+        assert "Coffee Shop" in ai.build_user_prompt(lead)
+
+    def test_an_unrecognised_category_does_not_break_the_prompt(self):
+        lead = make_lead(category="something_new")
+        assert "something_new" in ai.build_user_prompt(lead)
+
     def test_the_model_is_never_asked_to_name_a_person(self):
         """The most dangerous thing this pipeline could invent."""
         assert "Never name a person" in ai.SYSTEM_PROMPT

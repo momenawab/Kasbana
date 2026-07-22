@@ -252,6 +252,21 @@ class GeneratedLead(UUIDModel, TimeStampedModel):
     def is_duplicate(self) -> bool:
         return self.duplicate_of_id is not None
 
+    @property
+    def category_display(self) -> str:
+        """Human label for ``category``.
+
+        ``category`` deliberately has no ``choices=``: it stores our own
+        BusinessType value, and pinning choices onto the column would mean a
+        migration every time the vocabulary grows. That also means Django
+        generates no ``get_category_display``, so the lookup lives here rather
+        than being re-derived (or wrongly assumed) at each call site.
+        """
+        try:
+            return enums.BusinessType(self.category).label
+        except ValueError:
+            return self.category
+
 
 class WebsiteProfile(UUIDModel, TimeStampedModel):
     """What the crawl found on a business's own website.

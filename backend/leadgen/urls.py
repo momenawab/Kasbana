@@ -11,6 +11,9 @@ from django.urls import path
 
 from leadgen.views import (
     AiQueueView,
+    BulkActionView,
+    DashboardView,
+    ExportView,
     ApiKeyStatusView,
     ApiKeyTestView,
     CostSummaryView,
@@ -58,6 +61,9 @@ urlpatterns = [
         GeneratedLeadOwnerView.as_view(),
         name="leadgen-lead-owner",
     ),
+    path("leadgen/dashboard", DashboardView.as_view(), name="leadgen-dashboard"),
+    path("leadgen/leads/bulk", BulkActionView.as_view(), name="leadgen-bulk"),
+    path("leadgen/leads/export/<str:fmt>", ExportView.as_view(), name="leadgen-export"),
     path("leadgen/queues/ai", AiQueueView.as_view(), name="leadgen-ai-queue"),
     path(
         "leadgen/queues/verification",

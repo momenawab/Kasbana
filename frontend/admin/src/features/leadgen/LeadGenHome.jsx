@@ -5,6 +5,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useJobs } from './api'
 import JobCard from './JobCard'
 import NewSearchModal from './NewSearchModal'
+import Dashboard from './Dashboard'
 
 // LEADGEN_RUN is held by Sales and super-admin (console/rbac.py). Everyone else
 // can watch the pipeline; starting one spends money at Google.
@@ -23,6 +24,7 @@ export default function LeadGenHome() {
   const canRun = CAN_RUN.includes(role)
   const [status, setStatus] = useState('')
   const [creating, setCreating] = useState(false)
+  const [view, setView] = useState('dashboard')
 
   const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useJobs({ status })
   const jobs = data?.pages.flatMap((page) => page.results ?? []) ?? []
@@ -67,6 +69,30 @@ export default function LeadGenHome() {
         </div>
       </header>
 
+      <nav className="flex gap-1 border-b border-surface-2">
+        {[
+          ['dashboard', 'Dashboard'],
+          ['searches', 'Searches'],
+        ].map(([key, label]) => (
+          <button
+            key={key}
+            onClick={() => setView(key)}
+            className={
+              'px-3 py-2 text-sm transition ' +
+              (view === key
+                ? 'border-b-2 border-brand font-semibold text-tx'
+                : 'text-tx-2 hover:text-tx')
+            }
+          >
+            {label}
+          </button>
+        ))}
+      </nav>
+
+      {view === 'dashboard' && <Dashboard />}
+
+      {view === 'searches' && (
+      <>
       <div className="flex flex-wrap gap-2">
         {STATUS_FILTERS.map((option) => (
           <button
@@ -108,6 +134,9 @@ export default function LeadGenHome() {
             {isFetchingNextPage ? 'Loading…' : 'Load more'}
           </button>
         </div>
+      )}
+
+      </>
       )}
 
       {creating && <NewSearchModal onClose={() => setCreating(false)} />}

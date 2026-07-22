@@ -314,3 +314,40 @@ class StageDispatchSerializer(serializers.Serializer):
 class TestConnectionSerializer(serializers.Serializer):
     ok = serializers.BooleanField()
     message = serializers.CharField()
+
+
+class BulkActionSerializer(serializers.Serializer):
+    """A bulk operation over selected leads.
+
+    ``lead_ids`` is capped: an unbounded bulk delete or re-run is a way to
+    spend a lot of money or destroy a lot of rows with one click.
+    """
+
+    lead_ids = serializers.ListField(
+        child=serializers.UUIDField(), allow_empty=False, max_length=500
+    )
+    action = serializers.ChoiceField(
+        choices=["verify", "rerun_ai", "reject", "restore", "delete"]
+    )
+
+
+class BulkResultSerializer(serializers.Serializer):
+    action = serializers.CharField()
+    affected = serializers.IntegerField()
+    dispatch = serializers.CharField(required=False)
+    detail = serializers.CharField(required=False)
+
+
+class DashboardSerializer(serializers.Serializer):
+    """Loose by design — the dashboard is read-only and its shape is the
+    analytics module's business, not a contract other code writes against."""
+
+    metrics = serializers.DictField()
+    leads_per_day = serializers.ListField(child=serializers.DictField())
+    leads_by_city = serializers.ListField(child=serializers.DictField())
+    score_distribution = serializers.ListField(child=serializers.DictField())
+    by_label = serializers.ListField(child=serializers.DictField())
+    conversion = serializers.DictField()
+    owner_sources = serializers.ListField(child=serializers.DictField())
+    by_category = serializers.ListField(child=serializers.DictField())
+    web_presence = serializers.DictField()

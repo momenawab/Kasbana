@@ -90,7 +90,7 @@ def build_user_prompt(lead: GeneratedLead) -> str:
 
     lines = [
         f"Business name: {lead.business_name}",
-        f"Category: {lead.get_category_display() if lead.category else 'unknown'}",
+        f"Category: {lead.category_display or 'unknown'}",
         f"Address: {lead.address or 'unknown'}",
         f"Google rating: {lead.rating if lead.rating is not None else 'not yet rated'}",
         f"Google review count: {lead.reviews_count}",

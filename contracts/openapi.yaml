@@ -1151,6 +1151,23 @@ paths:
               schema:
                 $ref: '#/components/schemas/CostSummary'
           description: ''
+  /api/admin/v1/leadgen/dashboard:
+    get:
+      operationId: api_admin_v1_leadgen_dashboard_retrieve
+      description: |-
+        Every metric and chart series in one response.
+
+        One endpoint rather than nine: the screen renders them together, and nine
+        round trips would make it flash through nine loading states.
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dashboard'
+          description: ''
   /api/admin/v1/leadgen/jobs:
     get:
       operationId: api_admin_v1_leadgen_jobs_list
@@ -1377,6 +1394,62 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/GeneratedLeadDetail'
+          description: ''
+  /api/admin/v1/leadgen/leads/bulk:
+    post:
+      operationId: api_admin_v1_leadgen_leads_bulk_create
+      description: |-
+        POST an action over selected leads.
+
+        Split by cost, like everything else here: rejecting or restoring a lead is
+        a LEADS_MANAGE edit, while re-running AI or verification spends money and
+        needs LEADGEN_RUN. Delete is destructive and is super-admin only — a bulk
+        delete of discovered leads throws away work already paid for.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkAction'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/BulkAction'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/BulkAction'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkResult'
+          description: ''
+  /api/admin/v1/leadgen/leads/export/{fmt}:
+    get:
+      operationId: api_admin_v1_leadgen_leads_export_retrieve
+      description: |-
+        GET the current filter selection as CSV, Excel or JSON.
+
+        Subclasses the list view so an export is *exactly* what the table shows —
+        same filters, same duplicate handling. Re-implementing the filter logic here
+        is how an export quietly starts disagreeing with the screen it came from.
+      parameters:
+      - in: path
+        name: fmt
+        schema:
+          type: string
+        required: true
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
           description: ''
   /api/admin/v1/leadgen/leads/import:
     post:
@@ -5304,14 +5377,6 @@ components:
       required:
       - language
       - notifications
-    ActionEnum:
-      enum:
-      - approve
-      - reject
-      type: string
-      description: |-
-        * `approve` - approve
-        * `reject` - reject
     ActivityEvent:
       type: object
       properties:
@@ -6110,6 +6175,53 @@ components:
     BlankEnum:
       enum:
       - ''
+    BulkAction:
+      type: object
+      description: |-
+        A bulk operation over selected leads.
+
+        ``lead_ids`` is capped: an unbounded bulk delete or re-run is a way to
+        spend a lot of money or destroy a lot of rows with one click.
+      properties:
+        lead_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          maxItems: 500
+        action:
+          $ref: '#/components/schemas/BulkActionActionEnum'
+      required:
+      - action
+      - lead_ids
+    BulkActionActionEnum:
+      enum:
+      - verify
+      - rerun_ai
+      - reject
+      - restore
+      - delete
+      type: string
+      description: |-
+        * `verify` - verify
+        * `rerun_ai` - rerun_ai
+        * `reject` - reject
+        * `restore` - restore
+        * `delete` - delete
+    BulkResult:
+      type: object
+      properties:
+        action:
+          type: string
+        affected:
+          type: integer
+        dispatch:
+          type: string
+        detail:
+          type: string
+      required:
+      - action
+      - affected
     BusinessTypesEnum:
       enum:
       - cafe
@@ -7009,6 +7121,61 @@ components:
       - calls
       - cost_usd
       - day
+    Dashboard:
+      type: object
+      description: |-
+        Loose by design — the dashboard is read-only and its shape is the
+        analytics module's business, not a contract other code writes against.
+      properties:
+        metrics:
+          type: object
+          additionalProperties: {}
+        leads_per_day:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+        leads_by_city:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+        score_distribution:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+        by_label:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+        conversion:
+          type: object
+          additionalProperties: {}
+        owner_sources:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+        by_category:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+        web_presence:
+          type: object
+          additionalProperties: {}
+      required:
+      - by_category
+      - by_label
+      - conversion
+      - leads_by_city
+      - leads_per_day
+      - metrics
+      - owner_sources
+      - score_distribution
+      - web_presence
     DunningRow:
       type: object
       properties:
@@ -10883,12 +11050,20 @@ components:
       type: object
       properties:
         action:
-          $ref: '#/components/schemas/ActionEnum'
+          $ref: '#/components/schemas/ResolveFlagActionEnum'
         notes:
           type: string
           maxLength: 500
       required:
       - action
+    ResolveFlagActionEnum:
+      enum:
+      - approve
+      - reject
+      type: string
+      description: |-
+        * `approve` - approve
+        * `reject` - reject
     Result56aEnum:
       enum:
       - answered
