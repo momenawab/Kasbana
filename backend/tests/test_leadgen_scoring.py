@@ -36,7 +36,7 @@ def fully_loaded_lead() -> GeneratedLead:
         website="https://karam.com.eg",
         website_domain="karam.com.eg",
         rating="4.8",
-        reviews_count=900,
+        reviews_count=1200,
         branch_count=6,
     )
     WebsiteProfile.objects.create(
@@ -79,6 +79,7 @@ class TestWeightBudget:
             + scoring.FACEBOOK_POINTS
             + scoring.PHONE_VALID_POINTS
             + scoring.PHONE_VERIFIED_POINTS
+            + scoring.GREENFIELD_POINTS
             + scoring.DIGITAL_PRESENCE_POINTS
             + scoring.REVIEW_TIERS[0][1]
             + scoring.RATING_TIERS[0][1]
@@ -86,14 +87,14 @@ class TestWeightBudget:
         )
         assert total == scoring.SCORE_MAX
 
-    def test_best_unverified_lead_is_warm_not_hot(self):
-        """The reason the spec's 20-point phone weight was split. Hot means
-        verified; without the verification stage nothing may claim it."""
+    def test_best_possible_unverified_lead_reads_hot(self):
+        """Under traction-first weights, thousands of reviews across several
+        branches is a hot lead whether or not a provider has confirmed the
+        number. Verification adds confidence; it no longer gates the label."""
         score, label, _ = scoring.score_lead(fully_loaded_lead())
 
         assert score == scoring.SCORE_MAX - scoring.PHONE_VERIFIED_POINTS
-        assert label == enums.ScoreLabel.WARM
-        assert score < scoring.HOT_MIN
+        assert label == enums.ScoreLabel.HOT
 
     def test_bare_listing_is_ignored(self):
         score, label, _ = scoring.score_lead(make_lead())
@@ -121,7 +122,8 @@ class TestSignals:
 
     @pytest.mark.parametrize(
         ("reviews", "expected"),
-        [(0, 0), (49, 0), (50, 5), (199, 5), (200, 10), (499, 10), (500, 15), (5000, 15)],
+        [(0, 0), (49, 0), (50, 8), (199, 8), (200, 14), (499, 14),
+         (500, 20), (999, 20), (1000, 25), (5000, 25)],
     )
     def test_review_tiers_are_graduated(self, reviews, expected):
         """Graduated rather than the spec's single 500-review cliff: a cafe with
@@ -130,14 +132,15 @@ class TestSignals:
         assert points_for(scoring.score_lead(lead)[2], "reviews") == expected
 
     @pytest.mark.parametrize(
-        ("rating", "expected"), [(None, 0), ("3.9", 0), ("4.0", 5), ("4.5", 10), ("5.0", 10)]
+        ("rating", "expected"),
+        [(None, 0), ("3.4", 0), ("3.5", 4), ("4.0", 8), ("4.2", 11), ("4.5", 15), ("5.0", 15)],
     )
     def test_rating_tiers(self, rating, expected):
         lead = make_lead(rating=rating)
         assert points_for(scoring.score_lead(lead)[2], "rating") == expected
 
     @pytest.mark.parametrize(
-        ("branches", "expected"), [(1, 0), (2, 10), (3, 10), (4, 20), (40, 20)]
+        ("branches", "expected"), [(1, 0), (2, 12), (3, 12), (4, 18), (40, 18)]
     )
     def test_branch_tiers(self, branches, expected):
         """Branch count comes from dedupe collapsing a chain's listings."""
@@ -165,8 +168,11 @@ class TestNegativeSignals:
         lead.refresh_from_db()
 
         after, _, breakdown = scoring.score_lead(lead)
-        assert after == before + scoring.ALREADY_LOYALTY_PENALTY
+        # Bigger than the penalty alone: an incumbent vendor also forfeits the
+        # greenfield signal, which is why greenfield is stated explicitly.
+        assert after == before + scoring.ALREADY_LOYALTY_PENALTY - scoring.GREENFIELD_POINTS
         assert points_for(breakdown, "existing_loyalty") == scoring.ALREADY_LOYALTY_PENALTY
+        assert points_for(breakdown, "greenfield") == 0
 
     def test_score_never_goes_negative(self):
         """The spam penalty is -50 and could otherwise drive a bare lead below
@@ -193,17 +199,86 @@ class TestBreakdown:
             assert row["detail"]
 
 
+class TestMarketReality:
+    """Regression tests for the weights themselves, taken from a live Maadi run.
+
+    Under the spec's original web-heavy table, 22 of 24 real cafes scored
+    "Ignore" because they had no website — a list no rep would ever open. These
+    pin the corrected behaviour to actual businesses rather than to round
+    numbers, so a future weight change has to confront the same reality.
+    """
+
+    def test_busy_website_less_chain_is_a_good_lead(self):
+        """Beano's Café: 4,384 reviews, 4.3 stars, two branches, no website.
+        The best prospect in the area, and previously labelled "Ignore"."""
+        lead = make_lead(
+            business_name="Beano's Café",
+            phone_e164="+201001234567",
+            rating="4.3",
+            reviews_count=4384,
+            branch_count=2,
+        )
+        score, label, _ = scoring.score_lead(lead)
+
+        assert label in (enums.ScoreLabel.WARM, enums.ScoreLabel.HOT)
+        assert score >= scoring.WARM_MIN
+
+    def test_no_website_costs_less_than_the_traction_it_would_replace(self):
+        """Two thirds of Egyptian F&B has no site. Absence must be a small
+        deduction, not a disqualification."""
+        busy = make_lead(place_id="p-busy", reviews_count=3000, rating="4.6", phone_e164="+201001234567")
+        quiet = make_lead(
+            place_id="p-quiet",
+            reviews_count=8,
+            rating="3.2",
+            phone_e164="+201009999999",
+            website="https://quiet.com.eg",
+            website_domain="quiet.com.eg",
+        )
+        assert scoring.score_lead(busy)[0] > scoring.score_lead(quiet)[0]
+
+    def test_greenfield_beats_an_equally_busy_incumbent(self):
+        """The product thesis: footfall with no loyalty vendor is the easiest
+        sale, so it must outrank an identical business already running one."""
+        greenfield = make_lead(place_id="p-green", reviews_count=2000, phone_e164="+201001234567")
+        incumbent = make_lead(place_id="p-inc", reviews_count=2000, phone_e164="+201001234567")
+        WebsiteProfile.objects.create(lead=incumbent, loyalty_vendors=["smiles"])
+        incumbent.refresh_from_db()
+
+        assert scoring.score_lead(greenfield)[0] > scoring.score_lead(incumbent)[0]
+
+    def test_pillars_outweigh_convenience_signals(self):
+        """Traction, scale and reachability must dominate web presence, or the
+        market's structure decides the ranking instead of the businesses."""
+        pillars = (
+            scoring.REVIEW_TIERS[0][1]
+            + scoring.RATING_TIERS[0][1]
+            + scoring.BRANCH_TIERS[0][1]
+            + scoring.PHONE_VALID_POINTS
+            + scoring.PHONE_VERIFIED_POINTS
+            + scoring.GREENFIELD_POINTS
+        )
+        convenience = (
+            scoring.WEBSITE_POINTS
+            + scoring.EMAIL_POINTS
+            + scoring.INSTAGRAM_POINTS
+            + scoring.FACEBOOK_POINTS
+            + scoring.DIGITAL_PRESENCE_POINTS
+        )
+        assert pillars > 4 * convenience
+
+
 class TestLabels:
     @pytest.mark.parametrize(
         ("score", "expected"),
         [
             (100, enums.ScoreLabel.HOT),
-            (90, enums.ScoreLabel.HOT),
-            (89, enums.ScoreLabel.WARM),
-            (70, enums.ScoreLabel.WARM),
-            (69, enums.ScoreLabel.COLD),
-            (50, enums.ScoreLabel.COLD),
-            (49, enums.ScoreLabel.IGNORE),
+            (75, enums.ScoreLabel.HOT),
+            (74, enums.ScoreLabel.WARM),
+            (55, enums.ScoreLabel.WARM),
+            (54, enums.ScoreLabel.COLD),
+            (35, enums.ScoreLabel.COLD),
+            (34, enums.ScoreLabel.IGNORE),
             (0, enums.ScoreLabel.IGNORE),
         ],
     )

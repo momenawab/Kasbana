@@ -14,14 +14,30 @@ rather than an unexplained number.
 Weight design follows ``console.crm``'s precedent: the positives sum to exactly
 100, so a full bar means every signal fired and the total needs no clamping.
 
-One departure from the spec's table, deliberate: the spec puts the whole
-20-point phone weight on "Verified Phone", and its positives sum to 95. Since
-Hot starts at 90, that made Hot unreachable without verification — and in
-Phase 1, where verification is not yet wired, *nothing* could have scored above
-75 and the entire funnel would have read Cold. The weight is therefore split:
-a valid, parseable number earns 8, and provider-confirmed reachability earns
-the remaining 12. The useful property this buys is that **Hot now means
-verified** — no lead reaches 90 on unverified signals alone.
+**Traction-first, and that is a correction made against live data.** The spec's
+table put 25 of its 100 points on web presence (website, email, social). Run
+against 24 real Maadi cafes, only two had a website of their own — so 22 of 24
+scored "Ignore", including Beano's Café at 4,384 reviews across two branches.
+No rep would ever have opened that list.
+
+The deeper error was not calibration but direction. A busy cafe with thousands
+of reviews, no website and no loyalty programme is not a weak prospect for a
+loyalty product — it is the *ideal* one: real footfall, no digital layer, and
+nothing to displace. Scoring web presence as a pillar penalised exactly the
+greenfield opportunity Stampn exists to serve. So the pillars are now traction
+(reviews, rating), scale (branches) and reachability (a working phone), worth
+76 between them; web presence is demoted to 16 points of convenience signal;
+and an explicit greenfield signal rewards proven footfall with no incumbent
+loyalty vendor.
+
+The spec's phone weight is also split rather than placed entirely on "Verified
+Phone": a valid, parseable number earns 8 and provider-confirmed reachability
+earns 10. Under the original web-heavy weights this made Hot unreachable
+without verification, which was a useful guard. It no longer holds, and
+deliberately so: a business with thousands of reviews across several branches
+is a hot lead whether or not a provider has confirmed its number, and pretending
+otherwise would just re-introduce a threshold nobody in this market can clear.
+Verification now adds confidence to a good lead rather than gating the label.
 """
 
 from __future__ import annotations
@@ -52,35 +68,52 @@ class Signal:
         }
 
 
-# ── Weights ──────────────────────────────────────────────────────────────────
-WEBSITE_POINTS = 10
-EMAIL_POINTS = 10
-INSTAGRAM_POINTS = 5
-FACEBOOK_POINTS = 5
-PHONE_VALID_POINTS = 8
-PHONE_VERIFIED_POINTS = 12  # Phase 2 — awarded by the verification stage
-DIGITAL_PRESENCE_POINTS = 5  # on a delivery/reservation platform already
-
+# ── Pillars: traction, scale, reachability (76 points) ───────────────────────
 # Graduated rather than the spec's single ">500 reviews" cliff. At a cliff, 499
-# reviews scores 0 and 500 scores 15, which is noise masquerading as judgement;
-# a busy neighbourhood cafe with 300 reviews is plainly a better prospect than
-# one with 4, and the tiers say so.
-REVIEW_TIERS: tuple[tuple[int, int], ...] = ((500, 15), (200, 10), (50, 5))
-RATING_TIERS: tuple[tuple[float, int], ...] = ((4.5, 10), (4.0, 5))
+# reviews scores 0 and 500 scores 15, which is noise masquerading as judgement.
+# Review volume is the closest observable proxy for footfall, and footfall is
+# what a stamp-card business is worth — so it carries the most weight.
+REVIEW_TIERS: tuple[tuple[int, int], ...] = ((1000, 25), (500, 20), (200, 14), (50, 8))
+RATING_TIERS: tuple[tuple[float, int], ...] = ((4.5, 15), (4.2, 11), (4.0, 8), (3.5, 4))
 # Branch count comes from the dedupe stage, which collapses a chain's listings
-# into one lead. Multiple branches is the strongest single buying signal we can
-# observe: it means budget, process, and a reason to want cross-branch loyalty.
-BRANCH_TIERS: tuple[tuple[int, int], ...] = ((4, 20), (2, 10))
+# into one lead. Multiple branches means budget, process, and a concrete reason
+# to want cross-branch loyalty — one conversation worth several single sites.
+BRANCH_TIERS: tuple[tuple[int, int], ...] = ((4, 18), (2, 12))
 
-# Negatives. A business already running a loyalty programme is not worthless —
-# it has proven it wants one — but it is a displacement sale, which is slower.
+PHONE_VALID_POINTS = 8
+PHONE_VERIFIED_POINTS = 10  # Phase 2 — awarded by the verification stage
+
+# Proven footfall with no incumbent loyalty vendor: the easiest sale there is.
+# Stated as its own signal rather than left implicit so the breakdown can say
+# so in words, which is the line a rep can open with.
+GREENFIELD_POINTS = 8
+GREENFIELD_MIN_REVIEWS = 200
+
+# ── Convenience signals (16 points) ──────────────────────────────────────────
+# Useful for reaching a decision-maker, but not evidence of a good business.
+# Two thirds of Egyptian F&B has no site at all; weighting these as pillars
+# meant scoring most of the market as unsellable.
+WEBSITE_POINTS = 4
+EMAIL_POINTS = 4
+INSTAGRAM_POINTS = 3
+FACEBOOK_POINTS = 2
+DIGITAL_PRESENCE_POINTS = 3  # already on a delivery/reservation platform
+
+# ── Negatives ────────────────────────────────────────────────────────────────
+# A business already running loyalty is not worthless — it has proven it wants
+# the category — but it is a displacement sale, which is slower and cheaper.
+# It also forfeits the greenfield signal, so the swing is larger than it looks.
 ALREADY_LOYALTY_PENALTY = -15
 SPAM_PHONE_PENALTY = -50  # Phase 2 — set by the verification stage
 
 # ── Labels ───────────────────────────────────────────────────────────────────
-HOT_MIN = 90
-WARM_MIN = 70
-COLD_MIN = 50
+# Set against the observed distribution so all four buckets are populated by
+# real businesses. Under these, Beano's (4,384 reviews, 2 branches, no site)
+# reads Warm and reaches Hot once its phone is verified — which is the point:
+# the best business in the area should not be labelled "Ignore".
+HOT_MIN = 75
+WARM_MIN = 55
+COLD_MIN = 35
 
 
 def label_for(score: int) -> str:
@@ -214,8 +247,26 @@ def score_lead(lead) -> tuple[int, str, list[dict]]:
         )
     )
 
-    # ── Negative signals ─────────────────────────────────────────────────────
+    # ── Greenfield ───────────────────────────────────────────────────────────
+    # The thesis of the whole product: real footfall, no incumbent to displace.
     loyalty_vendors = list(profile.loyalty_vendors) if profile else []
+    greenfield = lead.reviews_count >= GREENFIELD_MIN_REVIEWS and not loyalty_vendors
+    signals.append(
+        Signal(
+            "greenfield",
+            "Proven footfall, no loyalty programme yet",
+            GREENFIELD_POINTS if greenfield else 0,
+            f"{lead.reviews_count} reviews and no loyalty vendor detected"
+            if greenfield
+            else (
+                ", ".join(loyalty_vendors)
+                if loyalty_vendors
+                else f"Only {lead.reviews_count} reviews — footfall unproven"
+            ),
+        )
+    )
+
+    # ── Negative signals ─────────────────────────────────────────────────────
     if loyalty_vendors:
         signals.append(
             Signal(
