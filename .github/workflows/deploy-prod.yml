@@ -106,6 +106,26 @@ jobs:
           # customer answers, and Hostinger only lets us put contact@ in From if
           # we authenticated as it.
           SUPPORT_EMAIL_HOST_PASSWORD: ${{ secrets.SUPPORT_EMAIL_HOST_PASSWORD }}
+          # ── Lead generation ──────────────────────────────────────────────
+          # Discovery cannot run without the Places key: a search job fails
+          # immediately with a configuration error rather than a confusing 400
+          # from Google. Geocoding falls back to the Places key when unset.
+          GOOGLE_PLACES_API_KEY: ${{ secrets.GOOGLE_PLACES_API_KEY }}
+          GOOGLE_GEOCODING_API_KEY: ${{ secrets.GOOGLE_GEOCODING_API_KEY }}
+          # The rest are optional — each stage degrades rather than breaks
+          # without them (AI enrichment reports "not configured"; phone and
+          # email verification fall back to offline checks capped at
+          # "possible"). Listed anyway so adding one later is a GitHub secret
+          # and a redeploy, not a workflow edit.
+          #
+          # GLM_BASE_URL is a secret rather than a hardcoded default because
+          # which endpoint serves a key depends on the plan behind it — a
+          # coding-plan key and a pay-as-you-go key use different hosts.
+          GLM_API_KEY: ${{ secrets.GLM_API_KEY }}
+          GLM_BASE_URL: ${{ secrets.GLM_BASE_URL }}
+          TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
+          TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
+          HUNTER_API_KEY: ${{ secrets.HUNTER_API_KEY }}
         run: |
           {
             printf 'WHATSAPP_ACCESS_TOKEN=%s\n'        "$WHATSAPP_ACCESS_TOKEN"
@@ -115,6 +135,13 @@ jobs:
             printf 'WHATSAPP_VERIFY_TOKEN=%s\n'        "$WHATSAPP_VERIFY_TOKEN"
             printf 'EMAIL_HOST_PASSWORD=%s\n'          "$EMAIL_HOST_PASSWORD"
             printf 'SUPPORT_EMAIL_HOST_PASSWORD=%s\n'  "$SUPPORT_EMAIL_HOST_PASSWORD"
+            printf 'GOOGLE_PLACES_API_KEY=%s\n'        "$GOOGLE_PLACES_API_KEY"
+            printf 'GOOGLE_GEOCODING_API_KEY=%s\n'     "$GOOGLE_GEOCODING_API_KEY"
+            printf 'GLM_API_KEY=%s\n'                  "$GLM_API_KEY"
+            printf 'GLM_BASE_URL=%s\n'                 "$GLM_BASE_URL"
+            printf 'TWILIO_ACCOUNT_SID=%s\n'           "$TWILIO_ACCOUNT_SID"
+            printf 'TWILIO_AUTH_TOKEN=%s\n'            "$TWILIO_AUTH_TOKEN"
+            printf 'HUNTER_API_KEY=%s\n'               "$HUNTER_API_KEY"
           } | ssh -i ~/.ssh/deploy_key "$EC2_USER@$EC2_HOST" \
                 'cd /opt/stampn/infra && bash scripts/upsert_env.sh'
 
