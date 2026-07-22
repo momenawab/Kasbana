@@ -83,6 +83,41 @@ jobs:
           tar -C infra -czf - . | \
             ssh -i ~/.ssh/deploy_key "$EC2_USER@$EC2_HOST" 'tar -C /opt/stampn/infra -xzf -'
 
+      # GitHub secrets are the source of truth for credentials; this pushes them
+      # into the server's .env before the stack rolls, so nobody has to hand-edit
+      # it over SSH. Values go over stdin, never argv — an argument would be
+      # visible in `ps` on the box while the command runs. An unset secret
+      # arrives empty and is SKIPPED, so adding one secret can't blank the rest.
+      - name: Sync secrets into the server .env
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+          WHATSAPP_ACCESS_TOKEN: ${{ secrets.WHATSAPP_ACCESS_TOKEN }}
+          WHATSAPP_PHONE_NUMBER_ID: ${{ secrets.WHATSAPP_PHONE_NUMBER_ID }}
+          WHATSAPP_BUSINESS_ACCOUNT_ID: ${{ secrets.WHATSAPP_BUSINESS_ACCOUNT_ID }}
+          WHATSAPP_APP_SECRET: ${{ secrets.WHATSAPP_APP_SECRET }}
+          WHATSAPP_VERIFY_TOKEN: ${{ secrets.WHATSAPP_VERIFY_TOKEN }}
+          # The SMTP mailbox password. Without it every send_mail in the product
+          # fails — password resets, the Convert-To-Merchant setup link, invites,
+          # the contact form. It lives here for the same reason the rest do: so
+          # nobody has to remember to hand-edit .env after a rebuild.
+          EMAIL_HOST_PASSWORD: ${{ secrets.EMAIL_HOST_PASSWORD }}
+          # The support mailbox's own login — contact@ sends the replies a
+          # customer answers, and Hostinger only lets us put contact@ in From if
+          # we authenticated as it.
+          SUPPORT_EMAIL_HOST_PASSWORD: ${{ secrets.SUPPORT_EMAIL_HOST_PASSWORD }}
+        run: |
+          {
+            printf 'WHATSAPP_ACCESS_TOKEN=%s\n'        "$WHATSAPP_ACCESS_TOKEN"
+            printf 'WHATSAPP_PHONE_NUMBER_ID=%s\n'     "$WHATSAPP_PHONE_NUMBER_ID"
+            printf 'WHATSAPP_BUSINESS_ACCOUNT_ID=%s\n' "$WHATSAPP_BUSINESS_ACCOUNT_ID"
+            printf 'WHATSAPP_APP_SECRET=%s\n'          "$WHATSAPP_APP_SECRET"
+            printf 'WHATSAPP_VERIFY_TOKEN=%s\n'        "$WHATSAPP_VERIFY_TOKEN"
+            printf 'EMAIL_HOST_PASSWORD=%s\n'          "$EMAIL_HOST_PASSWORD"
+            printf 'SUPPORT_EMAIL_HOST_PASSWORD=%s\n'  "$SUPPORT_EMAIL_HOST_PASSWORD"
+          } | ssh -i ~/.ssh/deploy_key "$EC2_USER@$EC2_HOST" \
+                'cd /opt/stampn/infra && bash scripts/upsert_env.sh'
+
       - name: Deploy on the server
         env:
           EC2_HOST: ${{ secrets.EC2_HOST }}

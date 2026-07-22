@@ -16,6 +16,7 @@ import { normalizeError } from '../../lib/api'
 export default function ConvertModal({ lead, choices, onClose, onConverted }) {
   const [planKey, setPlanKey] = useState('')
   const [err, setErr] = useState('')
+  const [undelivered, setUndelivered] = useState(false)
   const convert = useConvertLead()
   const { data: plans } = usePlans()
 
@@ -29,6 +30,13 @@ export default function ConvertModal({ lead, choices, onClose, onConverted }) {
     try {
       const result = await convert.mutateAsync({ leadId: lead.id, plan_key: planKey })
       onConverted?.(result)
+      // The merchant exists either way — but if the setup link never went out,
+      // closing on a green tick would leave Sales believing the owner had been
+      // handed their account when nobody has told them anything.
+      if (result?.email_sent === false) {
+        setUndelivered(true)
+        return
+      }
       onClose()
     } catch (e2) {
       setErr(normalizeError(e2).message)
@@ -56,7 +64,18 @@ export default function ConvertModal({ lead, choices, onClose, onConverted }) {
           </button>
         </div>
 
-        {blockedReason ? (
+        {undelivered ? (
+          <div className="flex items-start gap-2 rounded-ctl border border-warn/40 bg-warn/10 p-3 text-sm text-warn">
+            <AlertTriangle size={15} className="mt-0.5 shrink-0" />
+            <div>
+              <div className="font-semibold">Converted — but the setup email did not send</div>
+              <div className="mt-1 text-xs opacity-90">
+                {lead.business_name} is a live merchant and {lead.email} owns it, but they have
+                not been told. Re-send the link from Merchants → Support → Send password reset.
+              </div>
+            </div>
+          </div>
+        ) : blockedReason ? (
           <div className="flex items-start gap-2 rounded-ctl border border-warn/40 bg-warn/10 p-3 text-sm text-warn">
             <AlertTriangle size={15} className="mt-0.5 shrink-0" />
             {blockedReason}
@@ -112,10 +131,11 @@ export default function ConvertModal({ lead, choices, onClose, onConverted }) {
             onClick={onClose}
             className="rounded-ctl border border-line px-4 py-2 text-sm text-tx-2 hover:text-tx"
           >
-            Cancel
+            {undelivered ? 'Close' : 'Cancel'}
           </button>
           <button
             type="submit"
+            hidden={undelivered}
             disabled={convert.isPending || Boolean(blockedReason)}
             className="flex items-center gap-2 rounded-ctl bg-success px-4 py-2 text-sm font-semibold text-bg hover:opacity-90 disabled:opacity-50"
           >

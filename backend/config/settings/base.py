@@ -77,10 +77,23 @@ EMAIL_HOST = env("EMAIL_HOST", "smtp.hostinger.com")
 EMAIL_PORT = int(env("EMAIL_PORT", "465") or "465")
 EMAIL_USE_SSL = env_bool("EMAIL_USE_SSL", True)
 EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", False)
-EMAIL_HOST_USER = env("EMAIL_HOST_USER", "contact@stampn.net")
+# The mailbox we authenticate as, and therefore the only address Hostinger will
+# accept in From — a mismatch is rejected at the SMTP handshake, not delivered
+# and filed. So EMAIL_HOST_USER and DEFAULT_FROM_EMAIL must name the same box.
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", "donotreply@stampn.net")
 EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", "")
-DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", "Stampn Support <contact@stampn.net>")
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", "Stampn <donotreply@stampn.net>")
 EMAIL_TIMEOUT = int(env("EMAIL_TIMEOUT", "20") or "20")
+
+# The second mailbox — human correspondence (admin replies to contact-form
+# messages). Automated mail goes out as donotreply@ above; this one is for the
+# email a customer is meant to answer, so it must not come from a box named for
+# being ignored. It needs its own credentials because Hostinger requires the
+# From header to name the mailbox we authenticated as. See common/mail.py.
+SUPPORT_EMAIL = env("SUPPORT_EMAIL", "contact@stampn.net")
+SUPPORT_EMAIL_HOST_USER = env("SUPPORT_EMAIL_HOST_USER", SUPPORT_EMAIL)
+SUPPORT_EMAIL_HOST_PASSWORD = env("SUPPORT_EMAIL_HOST_PASSWORD", "")
+SUPPORT_FROM_EMAIL = env("SUPPORT_FROM_EMAIL", "Stampn Support <contact@stampn.net>")
 
 # ── Applications ──────────────────────────────────────────────────────────────
 DJANGO_APPS = [

@@ -28,6 +28,7 @@ lunch.
 
 from __future__ import annotations
 
+import logging
 from datetime import timedelta
 
 from django.conf import settings
@@ -43,6 +44,8 @@ from console import crm, crm_service
 from console.models import AdminUser, Lead
 from core.enums import PlanTier
 from core.models import Location, StaffUser
+
+logger = logging.getLogger(__name__)
 
 # What the first branch is called when the lead gives us nothing better. The
 # lead has an area and an address but never a branch name — a shop's first
@@ -111,31 +114,45 @@ def _apply_sold_plan(merchant, plan_key: str) -> Subscription:
     return sub
 
 
-def _send_setup_email(staff: StaffUser, merchant_name: str) -> None:
-    """Email the new owner a link to set their own password.
+def _send_setup_email(staff: StaffUser, merchant_name: str) -> bool:
+    """Email the new owner a link to set their own password. Returns whether it
+    went out.
 
     Best-effort by design: the merchant, branch and owner are already committed
     by the time this runs, and a bounced SMTP call must not roll that back and
     leave Sales staring at a lead that failed to convert for a reason they
     cannot act on. If it fails, the console's existing "Send password reset"
     support action re-sends it.
+
+    Best-effort is not the same as silent, though. ``fail_silently=True`` here
+    used to swallow a misconfigured SMTP host whole: no email, no log, and a
+    timeline entry claiming the link had been sent — the merchant simply never
+    heard from us and nobody knew. So we catch and *log* instead, and report the
+    outcome upward so the conversion response can say the link needs re-sending.
     """
     reset = PasswordResetToken.objects.create(
         user=staff.user,
         expires_at=timezone.now() + timedelta(days=INVITE_TTL_DAYS),
     )
-    send_mail(
-        subject=f"Welcome to Stampn — set up {merchant_name}",
-        message=(
-            f"Your Stampn account for {merchant_name} is ready.\n\n"
-            "Set your password to get started:\n\n"
-            f"{settings.DASHBOARD_BASE_URL}/reset/{reset.token}\n\n"
-            f"This link is valid for {INVITE_TTL_DAYS} days."
-        ),
-        from_email=None,
-        recipient_list=[staff.user.email],
-        fail_silently=True,
-    )
+    try:
+        sent = send_mail(
+            subject=f"Welcome to Stampn — set up {merchant_name}",
+            message=(
+                f"Your Stampn account for {merchant_name} is ready.\n\n"
+                "Set your password to get started:\n\n"
+                f"{settings.DASHBOARD_BASE_URL}/reset/{reset.token}\n\n"
+                f"This link is valid for {INVITE_TTL_DAYS} days."
+            ),
+            from_email=None,
+            recipient_list=[staff.user.email],
+            fail_silently=False,
+        )
+    except Exception:
+        logger.exception(
+            "convert: setup email to %s for %s failed", staff.user.email, merchant_name
+        )
+        return False
+    return bool(sent)
 
 
 @transaction.atomic
@@ -199,18 +216,31 @@ def convert_lead(lead: Lead, *, actor: AdminUser, plan_key: str = "") -> dict:
     lead.status = crm.LeadStatus.CONVERTED
     lead.save(update_fields=["converted_merchant", "converted_at", "status", "updated_at"])
 
+    # Before the timeline entry, because the entry now states which of the two
+    # things happened. A conversion whose email bounced still converted — it just
+    # leaves an owner who has heard nothing, and the timeline must say so rather
+    # than record a send that never occurred.
+    email_sent = _send_setup_email(staff, merchant.name)
+
     crm_service.log_activity(
         lead,
         crm.ActivityKind.CONVERTED_TO_MERCHANT,
         "Converted To Merchant",
         description=(
-            f"{merchant.name} created on the {sub.plan} plan. " f"Setup link sent to {lead.email}."
+            f"{merchant.name} created on the {sub.plan} plan. "
+            + (
+                f"Setup link sent to {lead.email}."
+                if email_sent
+                else f"Setup link to {lead.email} FAILED to send — re-send it from Support."
+            )
         ),
         actor=actor,
     )
 
-    # After the timeline entry, so a failed send cannot cost us the record of
-    # the conversion itself.
-    _send_setup_email(staff, merchant.name)
-
-    return {"merchant": merchant, "owner": staff, "branch": branch, "subscription": sub}
+    return {
+        "merchant": merchant,
+        "owner": staff,
+        "branch": branch,
+        "subscription": sub,
+        "email_sent": email_sent,
+    }

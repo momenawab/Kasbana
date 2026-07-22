@@ -469,6 +469,7 @@ class LeadConvertView(AdminAPIView):
                 "merchant_id": str(merchant.id),
                 "merchant_name": merchant.name,
                 "plan": result["subscription"].plan,
+                "email_sent": result["email_sent"],
             },
         )
         return Response(
@@ -480,6 +481,10 @@ class LeadConvertView(AdminAPIView):
                     "slug": merchant.slug,
                     "plan": result["subscription"].plan,
                 },
+                # False means the account exists but its owner was never told.
+                # Sales needs to know that at the moment of conversion, not when
+                # the merchant calls a week later asking why nothing arrived.
+                "email_sent": result["email_sent"],
             },
             status=201,
         )

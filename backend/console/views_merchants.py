@@ -12,6 +12,7 @@ from drf_spectacular.utils import extend_schema
 from rest_framework.request import Request
 from rest_framework.response import Response
 
+from accounts.models import MerchantSettings
 from billing import entitlements
 from billing.services import subscription_for
 from billing.wire import plan_to_wire
@@ -25,7 +26,6 @@ from console.serializers_merchants import (
     MerchantListSerializer,
     MerchantUpdateSerializer,
 )
-from accounts.models import MerchantSettings
 from core.models import Merchant
 
 
