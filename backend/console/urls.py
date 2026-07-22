@@ -425,4 +425,8 @@ urlpatterns = [
     # its own "stampn-ops/" prefix so it never collides with the platform
     # "ops/" routes above, which are a different feature.
     path("stampn-ops/", include("console_ops.urls")),
+    # Lead Generation — discovery, enrichment and CRM handover (leadgen app).
+    # Routes carry their own "leadgen/" prefix so the money-spending surface is
+    # obvious in the route list.
+    path("", include("leadgen.urls")),
 ]

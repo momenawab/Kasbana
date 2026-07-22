@@ -1095,6 +1095,229 @@ paths:
               schema:
                 $ref: '#/components/schemas/CheckoutResponse'
           description: ''
+  /api/admin/v1/leadgen/jobs:
+    get:
+      operationId: api_admin_v1_leadgen_jobs_list
+      description: GET the job list · POST to create and queue a new search.
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SearchJob'
+          description: ''
+    post:
+      operationId: api_admin_v1_leadgen_jobs_create
+      description: GET the job list · POST to create and queue a new search.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SearchJobCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SearchJobCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SearchJobCreate'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchJob'
+          description: ''
+  /api/admin/v1/leadgen/jobs/{job_id}:
+    get:
+      operationId: api_admin_v1_leadgen_jobs_retrieve
+      description: |-
+        Base for all ``/api/admin/v1`` endpoints.
+
+        - authenticates ONLY via the admin JWT boundary;
+        - requires an active admin whose role satisfies ``allowed_roles`` (None = any);
+        - intentionally does NO tenant scoping — admin views are cross-tenant.
+      parameters:
+      - in: path
+        name: job_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchJob'
+          description: ''
+  /api/admin/v1/leadgen/jobs/{job_id}/{action}:
+    post:
+      operationId: leadgen_job_action
+      description: |-
+        POST pause / resume / cancel / retry.
+
+        One endpoint rather than four: they are the same decision (change this
+        job's lifecycle state) and the service owns which transitions are legal, so
+        four near-identical views would only duplicate the error handling.
+      parameters:
+      - in: path
+        name: action
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: job_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchJob'
+          description: ''
+  /api/admin/v1/leadgen/jobs/{job_id}/logs:
+    get:
+      operationId: api_admin_v1_leadgen_jobs_logs_list
+      description: The operator log — what the pipeline did, and why it stalled.
+      parameters:
+      - in: path
+        name: job_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/JobLog'
+          description: ''
+  /api/admin/v1/leadgen/leads:
+    get:
+      operationId: api_admin_v1_leadgen_leads_list
+      description: |-
+        The results table, with the spec's filters.
+
+        Duplicates are hidden unless asked for. A collapsed branch is not a separate
+        prospect, and showing it would make a chain look like five opportunities.
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GeneratedLeadList'
+          description: ''
+  /api/admin/v1/leadgen/leads/{lead_id}:
+    get:
+      operationId: api_admin_v1_leadgen_leads_retrieve
+      description: |-
+        Base for all ``/api/admin/v1`` endpoints.
+
+        - authenticates ONLY via the admin JWT boundary;
+        - requires an active admin whose role satisfies ``allowed_roles`` (None = any);
+        - intentionally does NO tenant scoping — admin views are cross-tenant.
+      parameters:
+      - in: path
+        name: lead_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GeneratedLeadDetail'
+          description: ''
+  /api/admin/v1/leadgen/leads/{lead_id}/owner:
+    post:
+      operationId: api_admin_v1_leadgen_leads_owner_create
+      description: |-
+        POST an owner name a rep established themselves.
+
+        Deliberately a manual endpoint. Automated owner discovery is limited to what
+        a business publishes about itself; anything a rep learns by other means —
+        a phone call, a conversation, a tool on their own device — reaches the
+        record through here, and outranks every automated candidate.
+      parameters:
+      - in: path
+        name: lead_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OwnerName'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/OwnerName'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/OwnerName'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GeneratedLeadDetail'
+          description: ''
+  /api/admin/v1/leadgen/leads/import:
+    post:
+      operationId: api_admin_v1_leadgen_leads_import_create
+      description: POST to push one or many generated leads into the CRM.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Import'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Import'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Import'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportResult'
+          description: ''
   /api/admin/v1/leads:
     get:
       operationId: api_admin_v1_leads_list
@@ -1546,7 +1769,12 @@ paths:
   /api/admin/v1/merchants/{merchant_id}:
     get:
       operationId: api_admin_v1_merchants_retrieve
-      description: GET /merchants/{id} — the 360° merchant view.
+      description: |-
+        GET /merchants/{id} — the 360° merchant view.
+
+        PATCH edits the merchant's core profile (name / legal name / business
+        contact). Reads are open to any admin (the base gate); the edit is gated on
+        ``SUPPORT_TOOLS`` (super-admin + Support — an "account fix") and audited.
       parameters:
       - in: path
         name: merchant_id
@@ -1556,6 +1784,41 @@ paths:
         required: true
       tags:
       - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerchantDetail'
+          description: ''
+    patch:
+      operationId: api_admin_v1_merchants_partial_update
+      description: |-
+        GET /merchants/{id} — the 360° merchant view.
+
+        PATCH edits the merchant's core profile (name / legal name / business
+        contact). Reads are open to any admin (the base gate); the edit is gated on
+        ``SUPPORT_TOOLS`` (super-admin + Support — an "account fix") and audited.
+      parameters:
+      - in: path
+        name: merchant_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedMerchantUpdate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedMerchantUpdate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedMerchantUpdate'
       responses:
         '200':
           content:
@@ -5538,6 +5801,34 @@ components:
     BlankEnum:
       enum:
       - ''
+    BusinessTypesEnum:
+      enum:
+      - cafe
+      - coffee_shop
+      - restaurant
+      - bakery
+      - dessert
+      - pizza
+      - fast_food
+      - gym
+      - salon
+      - retail
+      - hotel
+      - hospital
+      type: string
+      description: |-
+        * `cafe` - Cafe
+        * `coffee_shop` - Coffee Shop
+        * `restaurant` - Restaurant
+        * `bakery` - Bakery
+        * `dessert` - Dessert
+        * `pizza` - Pizza
+        * `fast_food` - Fast Food
+        * `gym` - Gym
+        * `salon` - Salon
+        * `retail` - Retail
+        * `hotel` - Hotel
+        * `hospital` - Hospital
     ByLocationResponse:
       type: object
       properties:
@@ -5832,6 +6123,16 @@ components:
       required:
       - 'on'
       - reason
+    ConfidenceEnum:
+      enum:
+      - high
+      - medium
+      - low
+      type: string
+      description: |-
+        * `high` - High
+        * `medium` - Medium
+        * `low` - Low
     ConsentRecord:
       type: object
       description: A customer's PDPL consent state (from ``CustomerCard.consent_at``).
@@ -6352,6 +6653,20 @@ components:
       - last_failed_invoice
       - merchant
       - plan
+    DuplicateReasonEnum:
+      enum:
+      - place_id
+      - phone
+      - website
+      - coordinates
+      - similar_name
+      type: string
+      description: |-
+        * `place_id` - Same Google Place ID
+        * `phone` - Same phone number
+        * `website` - Same website domain
+        * `coordinates` - Same coordinates
+        * `similar_name` - Similar name at same location
     EmailTokenObtainPair:
       type: object
       description: |-
@@ -6650,6 +6965,344 @@ components:
       required:
       - count
       - stage
+    GeneratedLeadDetail:
+      type: object
+      description: The drawer. Everything, including the raw payload behind the Raw
+        Data tab.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        business_name:
+          type: string
+          readOnly: true
+        address:
+          type: string
+          readOnly: true
+        phone:
+          type: string
+          readOnly: true
+        phone_e164:
+          type: string
+          readOnly: true
+        website:
+          type: string
+          format: uri
+          readOnly: true
+        website_domain:
+          type: string
+          readOnly: true
+        rating:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,1}(?:\.\d{0,1})?$
+          readOnly: true
+          nullable: true
+        reviews_count:
+          type: integer
+          readOnly: true
+        category:
+          type: string
+          readOnly: true
+        business_status:
+          type: string
+          readOnly: true
+        branch_count:
+          type: integer
+          readOnly: true
+        state:
+          allOf:
+          - $ref: '#/components/schemas/StateEnum'
+          readOnly: true
+        fit_score:
+          type: integer
+          readOnly: true
+        score_label:
+          allOf:
+          - $ref: '#/components/schemas/ScoreLabelEnum'
+          readOnly: true
+        owner_name:
+          type: string
+          readOnly: true
+        owner_name_source:
+          allOf:
+          - $ref: '#/components/schemas/OwnerNameSourceEnum'
+          readOnly: true
+        owner_name_confidence:
+          allOf:
+          - $ref: '#/components/schemas/ConfidenceEnum'
+          readOnly: true
+        crm_match:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        crm_match_reason:
+          type: string
+          readOnly: true
+        imported_lead:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        imported_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        duplicate_of:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        duplicate_reason:
+          allOf:
+          - $ref: '#/components/schemas/DuplicateReasonEnum'
+          readOnly: true
+        has_website:
+          type: boolean
+          readOnly: true
+        has_email:
+          type: boolean
+          readOnly: true
+        social_platforms:
+          type: array
+          items:
+            type: string
+          readOnly: true
+        google_maps_url:
+          type: string
+          format: uri
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        lat:
+          type: number
+          format: double
+          readOnly: true
+          nullable: true
+        lng:
+          type: number
+          format: double
+          readOnly: true
+          nullable: true
+        photos_count:
+          type: integer
+          readOnly: true
+        opening_hours:
+          readOnly: true
+        normalized_name:
+          type: string
+          readOnly: true
+        score_breakdown:
+          readOnly: true
+        website_profile:
+          allOf:
+          - $ref: '#/components/schemas/WebsiteProfile'
+          readOnly: true
+        socials:
+          type: array
+          items:
+            $ref: '#/components/schemas/SocialProfile'
+          readOnly: true
+        owner_candidates:
+          type: array
+          items:
+            $ref: '#/components/schemas/OwnerCandidate'
+          readOnly: true
+        raw_places:
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - address
+      - branch_count
+      - business_name
+      - business_status
+      - category
+      - created_at
+      - crm_match
+      - crm_match_reason
+      - duplicate_of
+      - duplicate_reason
+      - fit_score
+      - google_maps_url
+      - has_email
+      - has_website
+      - id
+      - imported_at
+      - imported_lead
+      - lat
+      - lng
+      - normalized_name
+      - opening_hours
+      - owner_candidates
+      - owner_name
+      - owner_name_confidence
+      - owner_name_source
+      - phone
+      - phone_e164
+      - photos_count
+      - rating
+      - raw_places
+      - reviews_count
+      - score_breakdown
+      - score_label
+      - social_platforms
+      - socials
+      - state
+      - updated_at
+      - website
+      - website_domain
+      - website_profile
+    GeneratedLeadList:
+      type: object
+      description: The table row. Deliberately narrow — no crawl payload, no raw Places.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        business_name:
+          type: string
+          readOnly: true
+        address:
+          type: string
+          readOnly: true
+        phone:
+          type: string
+          readOnly: true
+        phone_e164:
+          type: string
+          readOnly: true
+        website:
+          type: string
+          format: uri
+          readOnly: true
+        website_domain:
+          type: string
+          readOnly: true
+        rating:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,1}(?:\.\d{0,1})?$
+          readOnly: true
+          nullable: true
+        reviews_count:
+          type: integer
+          readOnly: true
+        category:
+          type: string
+          readOnly: true
+        business_status:
+          type: string
+          readOnly: true
+        branch_count:
+          type: integer
+          readOnly: true
+        state:
+          allOf:
+          - $ref: '#/components/schemas/StateEnum'
+          readOnly: true
+        fit_score:
+          type: integer
+          readOnly: true
+        score_label:
+          allOf:
+          - $ref: '#/components/schemas/ScoreLabelEnum'
+          readOnly: true
+        owner_name:
+          type: string
+          readOnly: true
+        owner_name_source:
+          allOf:
+          - $ref: '#/components/schemas/OwnerNameSourceEnum'
+          readOnly: true
+        owner_name_confidence:
+          allOf:
+          - $ref: '#/components/schemas/ConfidenceEnum'
+          readOnly: true
+        crm_match:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        crm_match_reason:
+          type: string
+          readOnly: true
+        imported_lead:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        imported_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        duplicate_of:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        duplicate_reason:
+          allOf:
+          - $ref: '#/components/schemas/DuplicateReasonEnum'
+          readOnly: true
+        has_website:
+          type: boolean
+          readOnly: true
+        has_email:
+          type: boolean
+          readOnly: true
+        social_platforms:
+          type: array
+          items:
+            type: string
+          readOnly: true
+        google_maps_url:
+          type: string
+          format: uri
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - address
+      - branch_count
+      - business_name
+      - business_status
+      - category
+      - created_at
+      - crm_match
+      - crm_match_reason
+      - duplicate_of
+      - duplicate_reason
+      - fit_score
+      - google_maps_url
+      - has_email
+      - has_website
+      - id
+      - imported_at
+      - imported_lead
+      - owner_name
+      - owner_name_confidence
+      - owner_name_source
+      - phone
+      - phone_e164
+      - rating
+      - reviews_count
+      - score_label
+      - social_platforms
+      - state
+      - website
+      - website_domain
     GrowthPoint:
       type: object
       properties:
@@ -6733,6 +7386,59 @@ components:
           format: uuid
       required:
       - impersonation_id
+    Import:
+      type: object
+      properties:
+        lead_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          maxItems: 500
+        assigned_sales_id:
+          type: string
+          format: uuid
+          nullable: true
+        force:
+          type: boolean
+          default: false
+      required:
+      - lead_ids
+    ImportResult:
+      type: object
+      description: |-
+        Declared rather than inferred so the contract states what a partial
+        import returns — the skipped list is the useful half of a bulk response.
+      properties:
+        imported:
+          type: integer
+        crm_lead_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+        skipped:
+          type: array
+          items:
+            $ref: '#/components/schemas/ImportSkipped'
+      required:
+      - crm_lead_ids
+      - imported
+      - skipped
+    ImportSkipped:
+      type: object
+      properties:
+        lead_id:
+          type: string
+          format: uuid
+        business_name:
+          type: string
+        reason:
+          type: string
+      required:
+      - business_name
+      - lead_id
+      - reason
     InAppAnnouncement:
       type: object
       properties:
@@ -6899,6 +7605,43 @@ components:
         * `paid` - Paid
         * `pending` - Pending
         * `failed` - Failed
+    JobLog:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        stage:
+          allOf:
+          - $ref: '#/components/schemas/StageEnum'
+          readOnly: true
+        level:
+          allOf:
+          - $ref: '#/components/schemas/LevelEnum'
+          readOnly: true
+        message:
+          type: string
+          readOnly: true
+        context:
+          readOnly: true
+        lead:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - context
+      - created_at
+      - id
+      - lead
+      - level
+      - message
+      - stage
     KeyEnum:
       enum:
       - reward_ready
@@ -6959,7 +7702,7 @@ components:
           readOnly: true
         priority:
           allOf:
-          - $ref: '#/components/schemas/PriorityEnum'
+          - $ref: '#/components/schemas/ConfidenceEnum'
           readOnly: true
         status:
           allOf:
@@ -7239,7 +7982,7 @@ components:
           readOnly: true
         priority:
           allOf:
-          - $ref: '#/components/schemas/PriorityEnum'
+          - $ref: '#/components/schemas/ConfidenceEnum'
           readOnly: true
         status:
           allOf:
@@ -7488,8 +8231,17 @@ components:
           nullable: true
       required:
       - business_name
-      - name
       - phone
+    LevelEnum:
+      enum:
+      - info
+      - warning
+      - error
+      type: string
+      description: |-
+        * `info` - Info
+        * `warning` - Warning
+        * `error` - Error
     Location:
       type: object
       properties:
@@ -7625,6 +8377,22 @@ components:
       description: |-
         * `paid` - paid
         * `pending` - pending
+    MaxResultsEnum:
+      enum:
+      - 25
+      - 50
+      - 100
+      - 250
+      - 500
+      - 1000
+      type: integer
+      description: |-
+        * `25` - 25
+        * `50` - 50
+        * `100` - 100
+        * `250` - 250
+        * `500` - 500
+        * `1000` - 1000
     MeOut:
       type: object
       properties:
@@ -8036,6 +8804,91 @@ components:
         * `GROWTH` - Growth
         * `CHAIN` - Chain
         * `ENTERPRISE` - Enterprise
+    OwnerCandidate:
+      type: object
+      description: |-
+        Every candidate, not just the winner — a rep checking a name needs to
+        see what else was found and where each came from.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        role:
+          type: string
+          readOnly: true
+        source:
+          allOf:
+          - $ref: '#/components/schemas/SourceEaaEnum'
+          readOnly: true
+        source_display:
+          type: string
+          readOnly: true
+        confidence:
+          allOf:
+          - $ref: '#/components/schemas/ConfidenceEnum'
+          readOnly: true
+        evidence_url:
+          type: string
+          format: uri
+          readOnly: true
+        evidence_text:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - confidence
+      - created_at
+      - evidence_text
+      - evidence_url
+      - id
+      - name
+      - role
+      - source
+      - source_display
+    OwnerName:
+      type: object
+      description: |-
+        A rep recording an owner name they found themselves.
+
+        The manual path matters: it is how a name learned on a phone call — or from
+        any tool a rep uses on their own device — reaches the record, without this
+        system going and taking it. Manual entries outrank everything automated and
+        survive re-enrichment.
+      properties:
+        name:
+          type: string
+          maxLength: 160
+        role:
+          type: string
+          maxLength: 120
+        note:
+          type: string
+          maxLength: 500
+      required:
+      - name
+    OwnerNameSourceEnum:
+      enum:
+      - manual
+      - legal_page
+      - about_page
+      - footer
+      - review_response
+      - email_local_part
+      type: string
+      description: |-
+        * `manual` - Entered by rep
+        * `legal_page` - Privacy policy / terms
+        * `about_page` - About / team page
+        * `footer` - Website footer
+        * `review_response` - Signed Google review response
+        * `email_local_part` - Published email address
     PaginatedCampaignList:
       type: object
       required:
@@ -8677,6 +9530,25 @@ components:
         message:
           type: string
           default: ''
+    PatchedMerchantUpdate:
+      type: object
+      description: |-
+        Editable merchant-profile fields (admin). All optional — a PATCH sends
+        only what changed. ``name`` lives on ``Merchant``; the contact pair lives on
+        ``MerchantSettings`` (the sidecar).
+      properties:
+        name:
+          type: string
+          maxLength: 120
+        legal_name:
+          type: string
+          maxLength: 160
+        contact_email:
+          type: string
+          format: email
+        contact_phone:
+          type: string
+          maxLength: 20
     PatchedPartnerProgramConfig:
       type: object
       properties:
@@ -9175,14 +10047,6 @@ components:
       - top_merchants
       - totals
       - wallet
-    PlatformEnum:
-      enum:
-      - APPLE
-      - GOOGLE
-      type: string
-      description: |-
-        * `APPLE` - Apple Wallet
-        * `GOOGLE` - Google Wallet
     PlatformSetting:
       type: object
       properties:
@@ -9221,16 +10085,16 @@ components:
       - customers
       - redemptions
       - stamps
-    PriorityEnum:
+    Priority1a4Enum:
       enum:
       - high
-      - medium
-      - low
+      - normal
+      - background
       type: string
       description: |-
         * `high` - High
-        * `medium` - Medium
-        * `low` - Low
+        * `normal` - Normal
+        * `background` - Background
     Reason:
       type: object
       properties:
@@ -9591,6 +10455,198 @@ components:
       - created
       - scanned_cards
       - scanned_merchants
+    ScoreLabelEnum:
+      enum:
+      - hot
+      - warm
+      - cold
+      - ignore
+      type: string
+      description: |-
+        * `hot` - Hot
+        * `warm` - Warm
+        * `cold` - Cold
+        * `ignore` - Ignore
+    SearchJob:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        country:
+          type: string
+          readOnly: true
+        province:
+          type: string
+          readOnly: true
+        city:
+          type: string
+          readOnly: true
+        street:
+          type: string
+          readOnly: true
+        radius_km:
+          type: integer
+          readOnly: true
+        business_types:
+          readOnly: true
+        max_results:
+          type: integer
+          readOnly: true
+        priority:
+          allOf:
+          - $ref: '#/components/schemas/Priority1a4Enum'
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/SearchJobStatusEnum'
+          readOnly: true
+        stage:
+          allOf:
+          - $ref: '#/components/schemas/StageEnum'
+          readOnly: true
+        center_lat:
+          type: number
+          format: double
+          readOnly: true
+          nullable: true
+        center_lng:
+          type: number
+          format: double
+          readOnly: true
+          nullable: true
+        discovered_count:
+          type: integer
+          readOnly: true
+        duplicate_count:
+          type: integer
+          readOnly: true
+        crawled_count:
+          type: integer
+          readOnly: true
+        ready_count:
+          type: integer
+          readOnly: true
+        imported_count:
+          type: integer
+          readOnly: true
+        failed_count:
+          type: integer
+          readOnly: true
+        progress_percent:
+          type: integer
+          readOnly: true
+        started_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        finished_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        error:
+          type: string
+          readOnly: true
+        created_by_name:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - business_types
+      - center_lat
+      - center_lng
+      - city
+      - country
+      - crawled_count
+      - created_at
+      - created_by_name
+      - discovered_count
+      - duplicate_count
+      - error
+      - failed_count
+      - finished_at
+      - id
+      - imported_count
+      - max_results
+      - priority
+      - progress_percent
+      - province
+      - radius_km
+      - ready_count
+      - stage
+      - started_at
+      - status
+      - street
+      - updated_at
+    SearchJobCreate:
+      type: object
+      description: |-
+        Validates a new search before it costs anything.
+
+        Every constraint here exists to stop one job burning a day of Places quota:
+        the radius cap, the fixed max-results set, and the business-type vocabulary.
+      properties:
+        country:
+          type: string
+          maxLength: 2
+          minLength: 2
+        province:
+          type: string
+          maxLength: 120
+        city:
+          type: string
+          maxLength: 120
+        street:
+          type: string
+          maxLength: 200
+        radius_km:
+          type: integer
+          maximum: 50
+          minimum: 1
+          default: 5
+        business_types:
+          type: array
+          items:
+            $ref: '#/components/schemas/BusinessTypesEnum'
+          maxItems: 12
+        max_results:
+          allOf:
+          - $ref: '#/components/schemas/MaxResultsEnum'
+          default: 100
+        priority:
+          allOf:
+          - $ref: '#/components/schemas/Priority1a4Enum'
+          default: normal
+      required:
+      - business_types
+      - city
+      - country
+    SearchJobStatusEnum:
+      enum:
+      - queued
+      - running
+      - paused
+      - completed
+      - failed
+      - cancelled
+      type: string
+      description: |-
+        * `queued` - Queued
+        * `running` - Running
+        * `paused` - Paused
+        * `completed` - Completed
+        * `failed` - Failed
+        * `cancelled` - Cancelled
     Segment:
       type: object
       properties:
@@ -9636,6 +10692,39 @@ components:
       - owner_name
       - password
       - phone
+    SocialProfile:
+      type: object
+      properties:
+        platform:
+          $ref: '#/components/schemas/SocialProfilePlatformEnum'
+        handle:
+          type: string
+          maxLength: 160
+        url:
+          type: string
+          format: uri
+          maxLength: 500
+      required:
+      - platform
+      - url
+    SocialProfilePlatformEnum:
+      enum:
+      - instagram
+      - facebook
+      - tiktok
+      - linkedin
+      - whatsapp
+      - youtube
+      - x
+      type: string
+      description: |-
+        * `instagram` - Instagram
+        * `facebook` - Facebook
+        * `tiktok` - TikTok
+        * `linkedin` - LinkedIn
+        * `whatsapp` - WhatsApp
+        * `youtube` - YouTube
+        * `x` - X
     SourceE39Enum:
       enum:
       - website
@@ -9656,6 +10745,22 @@ components:
         * `walk_in` - Walk In
         * `manual` - Manual
         * `other` - Other
+    SourceEaaEnum:
+      enum:
+      - manual
+      - legal_page
+      - about_page
+      - footer
+      - review_response
+      - email_local_part
+      type: string
+      description: |-
+        * `manual` - Entered by rep
+        * `legal_page` - Privacy policy / terms
+        * `about_page` - About / team page
+        * `footer` - Website footer
+        * `review_response` - Signed Google review response
+        * `email_local_part` - Published email address
     Staff:
       type: object
       description: Read representation of a staff member.
@@ -9741,6 +10846,22 @@ components:
           type: boolean
       required:
       - role
+    StageEnum:
+      enum:
+      - discovery
+      - deduplication
+      - website_crawl
+      - owner_resolution
+      - scoring
+      - crm_match
+      type: string
+      description: |-
+        * `discovery` - Places Discovery
+        * `deduplication` - Deduplication
+        * `website_crawl` - Website Crawl
+        * `owner_resolution` - Owner Resolution
+        * `scoring` - Scoring
+        * `crm_match` - CRM Duplicate Check
     StampLayoutEnum:
       enum:
       - grid
@@ -9785,6 +10906,24 @@ components:
       - reward_ready
       - stamp_count
       - stamps_required
+    StateEnum:
+      enum:
+      - discovered
+      - enriching
+      - ready
+      - imported
+      - duplicate
+      - rejected
+      - failed
+      type: string
+      description: |-
+        * `discovered` - Discovered
+        * `enriching` - Enriching
+        * `ready` - Ready for CRM
+        * `imported` - Imported
+        * `duplicate` - Duplicate
+        * `rejected` - Rejected
+        * `failed` - Failed
     Status21dEnum:
       enum:
       - ACTIVE
@@ -10321,7 +11460,7 @@ components:
           readOnly: true
         platform:
           oneOf:
-          - $ref: '#/components/schemas/PlatformEnum'
+          - $ref: '#/components/schemas/WalletSyncFailurePlatformEnum'
           - $ref: '#/components/schemas/BlankEnum'
         operation:
           type: string
@@ -10345,6 +11484,14 @@ components:
       - id
       - merchant_id
       - operation
+    WalletSyncFailurePlatformEnum:
+      enum:
+      - APPLE
+      - GOOGLE
+      type: string
+      description: |-
+        * `APPLE` - Apple Wallet
+        * `GOOGLE` - Google Wallet
     WalletTemplateList:
       type: object
       description: |-
@@ -10416,6 +11563,64 @@ components:
         * `invalid` - Invalid signature
         * `disabled` - Provider disabled
         * `failed` - Processing failed
+    WebsiteProfile:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        fetched_at:
+          type: string
+          format: date-time
+          nullable: true
+        http_status:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+        error:
+          type: string
+          maxLength: 300
+        pages_crawled:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        emails: {}
+        phones: {}
+        logo_url:
+          type: string
+          format: uri
+          maxLength: 500
+        meta_description:
+          type: string
+          maxLength: 500
+        about_text:
+          type: string
+        legal_entity:
+          type: string
+          maxLength: 255
+        menu_urls: {}
+        reservation_platforms: {}
+        delivery_platforms: {}
+        technologies: {}
+        payment_providers: {}
+        pos_vendors: {}
+        loyalty_vendors: {}
+      required:
+      - created_at
+      - id
+      - updated_at
     _ActiveWithoutPaid:
       type: object
       properties:

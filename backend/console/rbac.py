@@ -38,6 +38,11 @@ class Permission:
     LEADS_MANAGE = "leads.manage"  # CRM — create/edit/assign leads, log calls
     LEADS_CONVERT = "leads.convert"  # CRM — convert a lead into a live merchant
     CRM_CONFIGURE = "crm.configure"  # CRM — edit the configurable dropdowns
+    # Lead generation. Running a job spends real money (Places is billed per
+    # call), so starting one is gated separately from reading the results —
+    # everyone can look at the pipeline, not everyone can put it on the bill.
+    LEADGEN_RUN = "leadgen.run"  # create/start/pause/cancel/retry a search job
+    LEADGEN_IMPORT = "leadgen.import"  # push a generated lead into the CRM
 
 
 ALL_PERMISSIONS: frozenset[str] = frozenset(
@@ -80,7 +85,16 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
     # ever create an account, never re-price or refund an existing one. Note the
     # absence of CRM_CONFIGURE: reshaping everyone's dropdowns is platform config,
     # so it stays super-admin-only alongside the other config keys.
-    AdminRole.SALES: frozenset({Permission.LEADS_MANAGE, Permission.LEADS_CONVERT}),
+    # Lead generation belongs to Sales for the same reason the CRM does: the
+    # people who work the pipeline are the ones who decide what should be in it.
+    AdminRole.SALES: frozenset(
+        {
+            Permission.LEADS_MANAGE,
+            Permission.LEADS_CONVERT,
+            Permission.LEADGEN_RUN,
+            Permission.LEADGEN_IMPORT,
+        }
+    ),
     AdminRole.READ_ONLY: frozenset(),  # view everything, mutate nothing
 }
 
