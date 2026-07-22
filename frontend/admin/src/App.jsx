@@ -4,6 +4,9 @@ import AdminShell from './layout/AdminShell'
 import Login from './features/auth/Login'
 import Home from './features/home/Home'
 import LeadsHome from './features/leads/LeadsHome'
+import LeadGenHome from './features/leadgen/LeadGenHome'
+import LeadGenJobDetail from './features/leadgen/JobDetail'
+import GeneratedLeadsHome from './features/leadgen/GeneratedLeadsHome'
 import LeadDetail from './features/leads/LeadDetail'
 import CrmSettings from './features/leads/CrmSettings'
 import MessagesHome from './features/messages/MessagesHome'
@@ -40,6 +43,10 @@ export default function App() {
         {/* Before /leads/:id — "settings" is not a lead id. */}
         <Route path="/leads/settings" element={<CrmSettings />} />
         <Route path="/leads/:id" element={<LeadDetail />} />
+        <Route path="/leadgen" element={<LeadGenHome />} />
+        {/* Before /leadgen/jobs/:id — "leads" is not a job id. */}
+        <Route path="/leadgen/leads" element={<GeneratedLeadsHome />} />
+        <Route path="/leadgen/jobs/:id" element={<LeadGenJobDetail />} />
         <Route path="/messages" element={<MessagesHome />} />
         <Route path="/merchants" element={<MerchantsList />} />
         <Route path="/merchants/:id" element={<MerchantDetail />} />

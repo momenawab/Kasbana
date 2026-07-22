@@ -18,6 +18,7 @@ import {
   ShieldAlert,
   Activity,
   Wrench,
+  Radar,
   Lock,
   LogOut,
   Loader2,
@@ -31,6 +32,7 @@ import { useAuth } from '../hooks/useAuth'
 const NAV = [
   { to: '/', key: 'Overview', Icon: LayoutDashboard, end: true, ready: true },
   { to: '/leads', key: 'Leads', Icon: UserPlus, ready: true },
+  { to: '/leadgen', key: 'Lead Generation', Icon: Radar, ready: true },
   { to: '/messages', key: 'Messages', Icon: MessageSquare, ready: true },
   { to: '/merchants', key: 'Merchants', Icon: Building2, ready: true },
   { to: '/plans', key: 'Plans', Icon: CreditCard, ready: true },
