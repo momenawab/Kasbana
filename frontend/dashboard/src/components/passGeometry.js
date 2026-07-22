@@ -18,13 +18,28 @@ export const GOOGLE_HERO = [1032, 336]
 // so the preview's stamps are the pass's stamps in shape AND in scale, not just
 // in arrangement. (The old preview drew fixed 20px glyphs, which on a 3-stamp
 // card came out roughly half the size the pass renders them.)
+// Mirrors STAMP_FILL / STAMP_ICON_FILL in wallets/stamp_grid.py. Diameter is
+// 2 × STAMP_FILL, so anything below 0.5 guarantees a gap between neighbours;
+// 0.40 leaves a fifth of the pitch as breathing room.
+export const STAMP_FILL = 0.4
+export const STAMP_ICON_FILL = 0.82
+
+// Vertical padding by row count — the port of _pad_y_factor. A single row sits
+// in the middle of the strip with nothing above or below it, so generous
+// padding is only wasted height; two rows genuinely need the space or they
+// crowd. Since the vertical axis binds for every card except 4 and 5 stamps,
+// this is what actually decides how big a stamp looks.
+function padYFactor(rows) {
+  return rows === 1 ? 0.07 : 0.09
+}
+
 export function stampGeometry(count, layout, size = APPLE_STRIP) {
   const [w, h] = size
   const n = Math.max(1, Math.min(count, 15)) // cap so a big card doesn't render dust
   const rows = n <= 5 ? 1 : 2
   const cols = Math.ceil(n / rows)
   const padX = Math.trunc(w * 0.06)
-  const padY = Math.trunc(h * 0.14)
+  const padY = Math.trunc(h * padYFactor(rows))
   const cellW = (w - 2 * padX) / cols
   const cellH = (h - 2 * padY) / rows
 
@@ -70,12 +85,12 @@ export function stampGeometry(count, layout, size = APPLE_STRIP) {
     }
   }
 
-  const radius = Math.trunc(Math.min(pitch, cellH) * 0.34)
+  const radius = Math.trunc(Math.min(pitch, cellH) * STAMP_FILL)
   return {
     centers,
     pitch,
     radius,
     ring: Math.max(4, Math.trunc(radius / 7)),
-    iconSize: Math.trunc(Math.min(pitch, cellH) * 0.82),
+    iconSize: Math.trunc(Math.min(pitch, cellH) * STAMP_ICON_FILL),
   }
 }

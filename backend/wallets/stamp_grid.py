@@ -19,6 +19,33 @@ LAYOUT_STAGGER = "stagger"  # as columns, but the lower row slides half a cell �
 LAYOUTS = (LAYOUT_GRID, LAYOUT_COLUMNS, LAYOUT_STAGGER)
 
 
+# ── Stamp sizing ──────────────────────────────────────────────────────────────
+# How much of the space available to one stamp the glyph actually occupies.
+# Diameter is 2 × STAMP_FILL, so anything below 0.5 guarantees a gap between
+# neighbours; 0.40 leaves a fifth of the pitch as breathing room.
+STAMP_FILL = 0.40
+# Custom icons are square and read smaller than a solid disc at the same
+# measurement, so they are given slightly more than the circle's diameter.
+STAMP_ICON_FILL = 0.82
+
+
+def _pad_y_factor(rows: int) -> float:
+    """Vertical padding as a fraction of canvas height, by row count.
+
+    Not a constant, because the two cases want opposite things. A single row of
+    stamps sits in the middle of the strip with nothing above or below it, so
+    generous padding is just wasted height — that was the old behaviour, and it
+    left a one-stamp card drawing a disc across less than half the strip while
+    989px of width went unused. Two rows genuinely need the breathing space, or
+    the rows crowd each other.
+
+    The vertical axis is the binding constraint for every card except 4 and 5
+    stamps, so this factor — not the fill ratio — is what actually decides how
+    big a stamp looks.
+    """
+    return 0.07 if rows == 1 else 0.09
+
+
 def hex_to_rgb(value: str | None, default: _RGB) -> _RGB:
     text = (value or "").lstrip("#")
     if len(text) != 6:
@@ -95,6 +122,34 @@ def _centers(
     return centers, cell_w
 
 
+def stamp_geometry(n: int, layout: str, size: tuple[int, int]) -> dict:
+    """Where every stamp sits and how big it is. Pure — no Pillow, no canvas.
+
+    Extracted from ``render_stamp_grid`` so the numbers can be asserted and
+    exported without drawing anything. The dashboard preview reimplements this
+    in JavaScript (``components/passGeometry.js``); ``tests/fixtures/
+    stamp_geometry.json`` is generated from here and asserted on both sides, so
+    the two cannot drift without a test failing.
+    """
+    w, h = size
+    n = max(1, min(n, 15))
+    rows = 1 if n <= 5 else 2
+    cols = (n + rows - 1) // rows
+    pad_x, pad_y = int(w * 0.06), int(h * _pad_y_factor(rows))
+    cell_w = (w - 2 * pad_x) / cols
+    cell_h = (h - 2 * pad_y) / rows
+
+    centers, pitch = _centers(n, rows, cols, w, pad_x, pad_y, cell_w, cell_h, layout)
+    radius = int(min(pitch, cell_h) * STAMP_FILL)
+    return {
+        "centers": [{"x": round(x, 4), "y": round(y, 4)} for x, y in centers],
+        "pitch": round(pitch, 4),
+        "radius": radius,
+        "ring": max(4, radius // 7),
+        "icon_size": int(min(pitch, cell_h) * STAMP_ICON_FILL),
+    }
+
+
 def render_stamp_grid(
     earned: int,
     required: int,
@@ -123,21 +178,15 @@ def render_stamp_grid(
 
     n = max(1, min(required, 15))  # cap so a big card doesn't render dust
     earned = max(0, min(earned, n))
-    rows = 1 if n <= 5 else 2
-    cols = (n + rows - 1) // rows
-    pad_x, pad_y = int(w * 0.06), int(h * 0.14)
-    cell_w = (w - 2 * pad_x) / cols
-    cell_h = (h - 2 * pad_y) / rows
 
-    centers, pitch = _centers(n, rows, cols, w, pad_x, pad_y, cell_w, cell_h, layout)
-    radius = int(min(pitch, cell_h) * 0.34)
-    ring = max(4, radius // 7)
+    geo = stamp_geometry(n, layout, size)
+    radius, ring, icon_size = geo["radius"], geo["ring"], geo["icon_size"]
 
     icon_filled, icon_empty = load_icon(filled_icon), load_icon(empty_icon)
     use_custom = icon_filled is not None and icon_empty is not None
-    icon_size = int(min(pitch, cell_h) * 0.82)
 
-    for i, (x0, cy) in enumerate(centers):
+    for i, point in enumerate(geo["centers"]):
+        x0, cy = point["x"], point["y"]
         if use_custom:
             icon = icon_filled if i < earned else icon_empty
             try:

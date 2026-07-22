@@ -61,15 +61,25 @@ describe('stamp arrangement', () => {
 })
 
 describe('stampGeometry', () => {
-  // Worked through by hand from wallets/stamp_grid.py::render_stamp_grid on the
-  // real 1125×369 strip: pad 67/51, cell 330.33×267, so radius = int(267 * 0.34).
-  // Not just the arrangement — the *scale*. The preview used to draw every stamp at
-  // a flat 20px, which on a 3-stamp card is less than half what the pass renders.
+  // From wallets/stamp_grid.py on the real 1125×369 strip: pad 67/25 (one row
+  // takes the narrower vertical padding), cell 330.33×319, so height binds and
+  // radius = int(319 × 0.40). Not just the arrangement — the *scale*.
+  //
+  // These literals are the readable statement of intent; passGeometry.test.jsx
+  // is what actually enforces parity, across all 60 generated cases.
   it('sizes stamps the way the backend does, not at a fixed size', () => {
     const { radius, ring, iconSize } = stampGeometry(3, 'grid', APPLE_STRIP)
-    expect(radius).toBe(90)
-    expect(ring).toBe(12)
-    expect(iconSize).toBe(218)
+    expect(radius).toBe(127)
+    expect(ring).toBe(18)
+    expect(iconSize).toBe(261)
+  })
+
+  it('fills a useful share of the strip rather than floating in empty panel', () => {
+    // The change these numbers were picked for: a 3-stamp card used to draw at
+    // 49% of strip height and a 6-stamp card at 24%, which read as mostly panel.
+    const [, h] = APPLE_STRIP
+    expect((2 * stampGeometry(3, 'grid', APPLE_STRIP).radius) / h).toBeGreaterThan(0.6)
+    expect((2 * stampGeometry(8, 'grid', APPLE_STRIP).radius) / h).toBeGreaterThan(0.3)
   })
 
   it('spreads the stamps across the full strip width', () => {
