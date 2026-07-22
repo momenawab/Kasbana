@@ -13,9 +13,8 @@ module.exports = {
   rules: {
     'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
     'react/prop-types': 'off',
-    // Dropping a key by destructuring it out and spreading the rest is a
-    // deliberate idiom here (e.g. Settings omits `name` from the PATCH body),
-    // never a leftover. The extracted name is unused by definition.
+    // Allow the destructure-to-omit pattern (`const { name, ...rest } = form`)
+    // where a field is pulled out purely to keep it OUT of the rest object.
     'no-unused-vars': ['error', { ignoreRestSiblings: true }],
   },
   ignorePatterns: ['dist', 'node_modules', 'public/mockServiceWorker.js'],

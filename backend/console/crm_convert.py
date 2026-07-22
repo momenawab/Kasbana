@@ -52,6 +52,18 @@ logger = logging.getLogger(__name__)
 # location is just "the shop".
 DEFAULT_BRANCH_NAME = "Main Branch"
 
+# Negotiated (enterprise) plans ride on schema the Paymob rollout owns —
+# ``PlanTier.ENTERPRISE`` and ``Subscription.enterprise_plan``. Both are absent
+# until that rollout is promoted, so Convert *feature-detects* them rather than
+# importing them directly: public-tier conversions work either way, negotiated
+# plans are cleanly refused while the schema is held back, and the moment it
+# lands they work again with no code change. This keeps one file valid on the
+# branch that has enterprise and the branch that does not.
+_ENTERPRISE_TIER: str | None = getattr(PlanTier, "ENTERPRISE", None)
+ENTERPRISE_SUPPORTED: bool = _ENTERPRISE_TIER is not None and any(
+    f.name == "enterprise_plan" for f in Subscription._meta.get_fields()
+)
+
 
 class ConversionError(Exception):
     """A lead that cannot be converted, with a reason meant for a salesperson."""
@@ -65,9 +77,10 @@ class ConversionError(Exception):
 def _resolve_plan(plan_key: str) -> tuple[str, Plan | None]:
     """Map a plan key from the Convert form onto (tier, negotiated plan row).
 
-    Enterprise is two-part in this codebase: the *tier* says ENTERPRISE and
-    ``Subscription.enterprise_plan`` names which negotiated deal. A public tier
-    (Starter/Growth/Chain) is just itself.
+    A public tier (Starter/Growth/Chain) is just itself. Enterprise is two-part
+    — the *tier* says ENTERPRISE and ``Subscription.enterprise_plan`` names the
+    negotiated deal — and only available once the Paymob rollout is promoted
+    (see ``ENTERPRISE_SUPPORTED``); until then a negotiated plan is refused.
     """
     if not plan_key:
         return "", None
@@ -87,7 +100,13 @@ def _resolve_plan(plan_key: str) -> tuple[str, Plan | None]:
             "PUBLIC_PLAN_NOT_NEGOTIABLE",
             f"{plan.key} is a public plan — pick its tier instead.",
         )
-    return PlanTier.ENTERPRISE, plan
+    if not ENTERPRISE_SUPPORTED:
+        raise ConversionError(
+            "ENTERPRISE_UNAVAILABLE",
+            "Enterprise plans aren't available yet — convert on a standard plan for now.",
+        )
+    assert _ENTERPRISE_TIER is not None  # guaranteed by ENTERPRISE_SUPPORTED
+    return _ENTERPRISE_TIER, plan
 
 
 def _apply_sold_plan(merchant, plan_key: str) -> Subscription:
@@ -103,8 +122,18 @@ def _apply_sold_plan(merchant, plan_key: str) -> Subscription:
         return sub  # no plan sold — the default trial stands
 
     sub.plan = tier
-    sub.enterprise_plan = negotiated
-    sub.save(update_fields=["plan", "enterprise_plan", "updated_at"])
+    fields = ["plan", "updated_at"]
+    # enterprise_plan only exists once Paymob's schema is promoted; touch it via
+    # setattr and only include it in update_fields when the column is really
+    # there, so this same code path is safe on the held-back branch.
+    if negotiated is not None and ENTERPRISE_SUPPORTED:
+        # setattr, not sub.enterprise_plan = …, on purpose: the attribute does
+        # not statically exist on the held-back branch, so direct access would
+        # fail type-checking there. (ruff B010 wants the direct form; here the
+        # indirection is the point.)
+        setattr(sub, "enterprise_plan", negotiated)  # noqa: B010
+        fields.insert(1, "enterprise_plan")
+    sub.save(update_fields=fields)
 
     # Merchant.plan mirrors the tier so the rest of the app reads it cheaply;
     # Subscription stays the source of truth for access.

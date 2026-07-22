@@ -9,7 +9,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('console', '0012_contactmessage_merchant_contactmessage_source'),
-        ('core', '0009_alter_merchant_plan_enterprise'),
+        ('core', '0008_remove_customercard_uniq_card_customer_phone_and_more'),
     ]
 
     operations = [
