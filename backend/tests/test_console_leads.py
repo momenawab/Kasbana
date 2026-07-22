@@ -169,6 +169,16 @@ def test_manual_lead_needs_no_email(sales):
     assert Lead.objects.get().email == ""
 
 
+def test_manual_lead_needs_no_owner_name(sales):
+    """A walk-in is often a shop name and a phone number; the owner's name comes
+    later. The Add Lead form marks it optional, so the write shape must agree."""
+    payload = _manual()
+    del payload["name"]
+    res = _admin(sales).post(ADMIN, payload, format="json")
+    assert res.status_code == 201
+    assert Lead.objects.get().name == ""
+
+
 def test_client_cannot_forge_provenance_or_score(sales):
     """lead_type / created_by / lead_score are the system's to decide. A client
     that claims them must be ignored, not obeyed."""
