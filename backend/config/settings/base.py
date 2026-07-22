@@ -133,6 +133,7 @@ LOCAL_APPS = [
     "console_ops",  # Stampn Ops — Super-Admin host/health control plane
     "partners",  # merchant-referral program (Phase E.1)
     "whatsapp",  # WhatsApp Cloud API phone verification (OTP)
+    "leadgen",  # AI lead generation — discovery, enrichment, CRM handover
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -378,12 +379,21 @@ CELERY_TASK_QUEUES: dict[str, dict] = {
     "default": {},
     "wallet": {},
     "messaging": {},
+    # Lead generation runs on its own queues so a 1,000-result sweep can never
+    # delay a wallet push or an OTP. Priority is a *queue* choice, not a sort:
+    # ``leadgen.tasks`` picks one per job at enqueue time (see JobPriority), and
+    # a worker can be pointed at the high queue alone when a rep is waiting.
+    "leadgen_high": {},
+    "leadgen": {},
+    "leadgen_bg": {},
 }
 # Route canonical tasks to their queues (contract §3.9).
 CELERY_TASK_ROUTES = {
     "wallets.tasks.*": {"queue": "wallet"},
     "messaging.tasks.*": {"queue": "messaging"},
     "core.tasks.*": {"queue": "default"},
+    # Default only — the dispatcher overrides per job priority at enqueue time.
+    "leadgen.tasks.*": {"queue": "leadgen"},
 }
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 CELERY_BEAT_SCHEDULE = {
@@ -515,3 +525,32 @@ WHATSAPP_BUSINESS_ACCOUNT_ID = env("WHATSAPP_BUSINESS_ACCOUNT_ID", "")
 WHATSAPP_VERIFY_TOKEN = env("WHATSAPP_VERIFY_TOKEN", "")
 WHATSAPP_APP_SECRET = env("WHATSAPP_APP_SECRET", "")
 WHATSAPP_API_VERSION = env("WHATSAPP_API_VERSION", "v23.0")
+
+# ── Lead generation — Google Maps Platform ────────────────────────────────────
+# Empty defaults keep the module installed but inert, matching WhatsApp above:
+# a search job fails with a clean configuration error rather than a 400 from
+# Google. Geocoding falls back to the Places key, since one restricted key
+# covering both APIs is the common setup.
+GOOGLE_PLACES_API_KEY = env("GOOGLE_PLACES_API_KEY", "")
+GOOGLE_GEOCODING_API_KEY = env("GOOGLE_GEOCODING_API_KEY", "") or GOOGLE_PLACES_API_KEY
+
+# Google bills at the *highest* SKU any requested field belongs to, so the field
+# mask is a cost decision, not a convenience. Requesting rating/hours/photos on
+# Text Search (New) returns everything we need 20 places at a time — roughly 50
+# billed calls for a 1,000-result job, against ~1,050 if each business needed a
+# follow-up Place Details call at the same Enterprise tier. Same data, an order
+# of magnitude cheaper. Only fields Text Search cannot supply trigger a Details
+# call; see ``leadgen.places``.
+LEADGEN_PLACES_TIMEOUT = float(env("LEADGEN_PLACES_TIMEOUT", "15") or "15")
+# Google caps Text Search pagination at 3 pages × 20 results per query, so a
+# large job fans out across business types and sub-areas rather than paging.
+LEADGEN_PLACES_MAX_PAGES = int(env("LEADGEN_PLACES_MAX_PAGES", "3") or "3")
+# Crawl politeness + blast radius. A lead-gen crawler that ignores these is how
+# a server IP ends up on a blocklist.
+LEADGEN_CRAWL_TIMEOUT = float(env("LEADGEN_CRAWL_TIMEOUT", "10") or "10")
+LEADGEN_CRAWL_MAX_PAGES = int(env("LEADGEN_CRAWL_MAX_PAGES", "6") or "6")
+LEADGEN_CRAWL_MAX_BYTES = int(env("LEADGEN_CRAWL_MAX_BYTES", "2000000") or "2000000")
+LEADGEN_CRAWL_USER_AGENT = env(
+    "LEADGEN_CRAWL_USER_AGENT",
+    "StampnLeadBot/1.0 (+https://stampn.net/bot)",
+)

@@ -52,3 +52,24 @@ sentry-sdk[django]>=2.0       # error + performance tracking, ties issues to the
 # formula. The old binary .xls format is deliberately unsupported — it needs
 # xlrd, which dropped .xls precisely because parsing it safely was a losing game.
 openpyxl>=3.1
+
+# --- Lead generation (discovery + enrichment) ---
+# Places returns phone numbers in whatever format the listing was created with
+# ("+20 2 1234 5678", "0100 123 4567", "02-12345678"). Dedupe compares numbers
+# across listings, so they have to reach a canonical form first, and E.164
+# parsing needs a real carrier/area-code database per region — not a regex.
+phonenumbers>=8.13
+# Registrable-domain extraction, and it earns its place on .com.eg alone:
+# a naive "last two labels" split turns every Egyptian business domain into
+# "com.eg" and collapses the entire result set into one duplicate. Correctness
+# here requires the Public Suffix List. Configured offline in leadgen.dedupe —
+# tldextract fetches the PSL on first use by default, which we do not want
+# happening inside a worker.
+tldextract>=5.1
+# Website crawl parsing. bs4 for tolerant HTML (small-business sites are rarely
+# well-formed) over lxml's fast C parser. No JS execution: a headless browser
+# would triple the crawl cost for the minority of sites that need it, and the
+# fields we read — contact details, footer entity, social links, meta tags —
+# are in the served HTML on essentially all of them.
+beautifulsoup4>=4.12
+lxml>=5.2
