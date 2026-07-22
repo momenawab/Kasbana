@@ -54,7 +54,12 @@ class GlmResult:
 
     @property
     def cost_usd(self) -> Decimal:
-        """Priced from real token counts, at the configured contract rates."""
+        """Priced from real token counts, at the configured contract rates.
+
+        ``tokens_out`` is the provider's ``completion_tokens``, which already
+        includes reasoning tokens — they are billed like any other output, so
+        the cost is right without adding them separately.
+        """
         rate_in = Decimal(str(settings.GLM_PRICE_PER_MTOK_IN))
         rate_out = Decimal(str(settings.GLM_PRICE_PER_MTOK_OUT))
         million = Decimal("1000000")
@@ -102,7 +107,7 @@ class GlmClient:
         self.base_url = settings.GLM_BASE_URL.rstrip("/")
         self.timeout = settings.LEADGEN_AI_TIMEOUT
 
-    def complete_json(self, *, system: str, user: str, max_tokens: int = 1200) -> GlmResult:
+    def complete_json(self, *, system: str, user: str, max_tokens: int | None = None) -> GlmResult:
         """Ask for a JSON object and return it parsed, with usage.
 
         Temperature is low but not zero. Zero buys reproducibility we cannot use
@@ -115,6 +120,10 @@ class GlmClient:
                 "a GLM Coding Plan subscription does not cover application traffic."
             )
 
+        # GLM-5.2 is a reasoning model: it spends completion tokens thinking
+        # before it writes anything, and those come out of the same budget. A
+        # tight max_tokens is silently consumed by reasoning and returns empty
+        # content — which looks like a broken model rather than a small budget.
         payload = {
             "model": self.model,
             "messages": [
@@ -122,7 +131,7 @@ class GlmClient:
                 {"role": "user", "content": user},
             ],
             "temperature": 0.2,
-            "max_tokens": max_tokens,
+            "max_tokens": max_tokens or settings.LEADGEN_AI_MAX_TOKENS,
             # Honoured by the OpenAI-compatible surface; the fence-tolerant
             # parser stays as a backstop for providers that ignore it.
             "response_format": {"type": "json_object"},
@@ -156,6 +165,17 @@ class GlmClient:
             raise GlmError(f"Unexpected GLM response shape: {str(body)[:300]}") from exc
 
         usage = body.get("usage") or {}
+        reasoning = (usage.get("completion_tokens_details") or {}).get("reasoning_tokens", 0)
+
+        # Distinguish "the model had nothing to say" from "the model never got
+        # to the answer". Only the second is actionable, and only by raising the
+        # budget — so say so rather than reporting an empty response.
+        if not (content or "").strip() and reasoning:
+            raise GlmError(
+                f"Model used all {usage.get('completion_tokens', 0)} completion tokens on "
+                f"reasoning ({reasoning}) and produced no answer. Raise LEADGEN_AI_MAX_TOKENS."
+            )
+
         return GlmResult(
             data=extract_json(content),
             tokens_in=usage.get("prompt_tokens", 0) or 0,
@@ -173,10 +193,13 @@ class GlmClient:
         button exists to distinguish them.
         """
         try:
+            # Not a tight budget: a reasoning model needs room to think even
+            # for a trivial answer, and a too-small ping fails for a reason that
+            # has nothing to do with whether the key works.
             result = self.complete_json(
-                system='Reply with JSON only.',
+                system="Reply with JSON only.",
                 user='Return exactly {"ok": true}.',
-                max_tokens=20,
+                max_tokens=512,
             )
         except GlmNotConfigured as exc:
             return False, str(exc)

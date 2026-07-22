@@ -565,7 +565,17 @@ LEADGEN_CRAWL_USER_AGENT = env(
 GLM_API_KEY = env("GLM_API_KEY", "")
 GLM_BASE_URL = env("GLM_BASE_URL", "https://api.z.ai/api/paas/v4")
 GLM_MODEL = env("GLM_MODEL", "glm-5.2")
-LEADGEN_AI_TIMEOUT = float(env("LEADGEN_AI_TIMEOUT", "60") or "60")
+LEADGEN_AI_TIMEOUT = float(env("LEADGEN_AI_TIMEOUT", "90") or "90")
+# Completion budget per analysis. GLM-5.2 reasons before it answers and both
+# come out of this allowance, so it is sized for thinking plus the JSON — a
+# budget that only fits the answer returns nothing at all.
+#
+# 8000 is measured, not guessed. On live Cairo cafes a lead with no website
+# spent ~540 completion tokens; one with a crawled website spent 4,067, of which
+# 3,769 was reasoning — the richer prompt makes the model think roughly four
+# times as hard. A 3,000 budget failed outright on exactly those leads, which
+# are the ones worth analysing most.
+LEADGEN_AI_MAX_TOKENS = int(env("LEADGEN_AI_MAX_TOKENS", "8000") or "8000")
 
 # USD per million tokens, used to price each call for the cost ledger. These are
 # ESTIMATES and must be set from the actual contract — an unset or stale rate
