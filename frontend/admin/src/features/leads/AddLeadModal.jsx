@@ -56,7 +56,14 @@ export default function AddLeadModal({ onClose, onCreated, choices }) {
         setDupes(data.duplicates ?? [])
         return
       }
-      setErr(normalizeError(e2).message)
+      // The envelope's top-level message for a 400 is always "Validation
+      // failed." — useless on its own. The `fields` map is where the actual
+      // reason is, so spell it out rather than making the user guess.
+      const { message, fields } = normalizeError(e2)
+      const detail = Object.entries(fields)
+        .map(([f, msgs]) => `${f.replace(/_/g, ' ')}: ${[].concat(msgs).join(' ')}`)
+        .join(' · ')
+      setErr(detail || message)
     }
   }
 

@@ -86,6 +86,11 @@ class LeadWriteSerializer(serializers.ModelSerializer):
     # runtime the metaclass pops declared fields off the class before that
     # attribute is ever read, so the lead's own source field wins as intended.
     source = _ChoiceField(crm.CrmChoiceKind.SOURCE, required=False)  # type: ignore[assignment]
+    # Optional here even though the model field is not blank-able: a manual lead
+    # is often a business name and a phone number off the street, with the owner's
+    # name still unknown. Same split as ``email`` — the model stays permissive and
+    # the rule lives in whichever serializer actually needs it.
+    name = serializers.CharField(max_length=120, required=False, allow_blank=True)
     category = _ChoiceField(crm.CrmChoiceKind.CATEGORY, required=False)
     expected_plan = _ChoiceField(crm.CrmChoiceKind.EXPECTED_PLAN, required=False)
     contact_method = _ChoiceField(crm.CrmChoiceKind.CONTACT_METHOD, required=False)
