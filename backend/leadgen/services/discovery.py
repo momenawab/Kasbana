@@ -84,23 +84,43 @@ class Cell:
         return self.depth < MAX_SPLIT_DEPTH and self.radius_m / math.sqrt(2) >= MIN_CELL_RADIUS_M
 
 
-def discover(job: SearchJob, client: PlacesClient | None = None) -> int:
+@dataclass
+class DiscoveryOutcome:
+    """What discovery did, beyond how many leads it made.
+
+    ``ok_queries`` vs ``failed_queries`` is the distinction that matters to the
+    caller: zero leads from queries that all *succeeded* is a legitimately empty
+    area, while zero leads because every query *failed* is a broken job — a bad
+    key, a rate limit — that must surface as a failure rather than a tidy
+    "complete, 0 found". Without this the two are indistinguishable.
+    """
+
+    created: int = 0
+    ok_queries: int = 0
+    failed_queries: int = 0
+
+    @property
+    def all_queries_failed(self) -> bool:
+        return self.ok_queries == 0 and self.failed_queries > 0
+
+
+def discover(job: SearchJob, client: PlacesClient | None = None) -> DiscoveryOutcome:
     """Run discovery for ``job``, creating leads as they are found.
 
-    Returns the number of leads created. Rows are written as each query returns
-    rather than at the end, so a running job's results are browsable
-    immediately and a job cancelled halfway keeps what it found.
+    Rows are written as each query returns rather than at the end, so a running
+    job's results are browsable immediately and a job cancelled halfway keeps
+    what it found.
     """
     client = client or PlacesClient()
     root = Cell(job.center_lat, job.center_lng, float(job.radius_km) * 1000)
 
-    created = 0
+    outcome = DiscoveryOutcome()
     for business_type in job.business_types:
-        if created >= job.max_results:
+        if outcome.created >= job.max_results:
             break
-        created += _discover_type(job, client, business_type, root, job.max_results - created)
+        _discover_type(job, client, business_type, root, job.max_results - outcome.created, outcome)
 
-    return created
+    return outcome
 
 
 def _discover_type(
@@ -109,8 +129,13 @@ def _discover_type(
     business_type: str,
     root: Cell,
     budget: int,
-) -> int:
-    """Discover one business type, splitting saturated areas. Returns rows created."""
+    outcome: "DiscoveryOutcome",
+) -> None:
+    """Discover one business type, splitting saturated areas.
+
+    Records per-query success/failure on ``outcome`` so the caller can tell a
+    genuinely empty search from one where every call errored.
+    """
     from leadgen.services import jobs as job_service  # circular at module level
 
     pending: list[Cell] = [root]
@@ -131,6 +156,7 @@ def _discover_type(
                 language_code="en",
             )
         except Exception as exc:  # noqa: BLE001 — one cell must not kill the job
+            outcome.failed_queries += 1
             logger.warning(
                 "leadgen.discovery.cell_failed",
                 extra={"job": str(job.id), "type": business_type, "error": str(exc)},
@@ -143,7 +169,10 @@ def _discover_type(
             )
             continue
 
-        created += _persist(job, results, business_type, budget - created)
+        outcome.ok_queries += 1
+        made = _persist(job, results, business_type, budget - created)
+        created += made
+        outcome.created += made
 
         # Saturated: Google had more than it would return, so look closer.
         if len(results) >= SATURATION_THRESHOLD and cell.splittable:
@@ -153,8 +182,6 @@ def _discover_type(
                 f"{business_type}: dense area split into 4 (depth {cell.depth + 1})",
                 stage=enums.PipelineStage.DISCOVERY,
             )
-
-    return created
 
 
 def _places_type(business_type: str) -> str:

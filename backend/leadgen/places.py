@@ -37,6 +37,19 @@ logger = logging.getLogger(__name__)
 SEARCH_TEXT_URL = "https://places.googleapis.com/v1/places:searchText"
 GEOCODE_URL = "https://maps.googleapis.com/maps/api/geocode/json"
 
+
+def _retry_after_seconds(response: httpx.Response) -> float:
+    """Seconds to wait from a 429's ``Retry-After`` header, or 0 if absent.
+
+    The header is either an integer number of seconds or an HTTP date. Only the
+    integer form is worth honouring inside a job — a date parses to the same
+    ~60s a per-minute quota needs, which is too long to hold the pipeline for.
+    """
+    value = response.headers.get("Retry-After", "").strip()
+    if value.isdigit():
+        return float(value)
+    return 0.0
+
 # Google's hard cap: 20 results per page, 3 pages per query.
 PAGE_SIZE = 20
 MAX_RADIUS_METERS = 50_000
@@ -193,13 +206,38 @@ class PlacesClient:
         self.api_key = api_key if api_key is not None else settings.GOOGLE_PLACES_API_KEY
         self.timeout = timeout or settings.LEADGEN_PLACES_TIMEOUT
         self.billed_calls = 0
+        # Monotonic timestamp of the last billed call, so ``_pace`` can space the
+        # next one out. Starts far in the past so the first call never waits.
+        self._last_call_at = 0.0
+
+    def _pace(self) -> None:
+        """Space calls out so a job's fan-out cannot machine-gun the per-minute
+        quota. Discovery fires a burst — several business types, up to three
+        pages each, plus dense-area splits — and Google's per-minute limit is
+        far lower than its per-day one, so without pacing a single job trips the
+        minute quota and every call in the burst comes back 429. The interval is
+        measured against the last call across the whole client instance, not
+        per-request, so it smooths the burst rather than slowing one call.
+        """
+        interval = settings.LEADGEN_PLACES_MIN_INTERVAL_S
+        if interval <= 0:
+            return
+        wait = interval - (time.monotonic() - self._last_call_at)
+        if wait > 0:
+            time.sleep(wait)
 
     def _post(self, url: str, payload: dict, field_mask: str) -> dict:
-        """POST with a bounded retry. Raises ``PlacesError`` on give-up.
+        """POST, distinguishing the three failure kinds that need three responses.
 
-        Retries only what retrying can fix: 429 and 5xx. A 400 means our request
-        is wrong and will be wrong again, so it fails immediately rather than
-        burning three attempts and delaying the operator's error message.
+        * **4xx that we caused** (400/401/403) — the request is wrong or the key
+          is; it will fail identically forever, so fail immediately with the
+          reason rather than burning attempts.
+        * **429 rate limit** — Google is saying "too fast", not "broken". A tight
+          retry loop makes it worse and, because every attempt is a billed call,
+          triple-charges the daily cap for something that cannot succeed inside a
+          few seconds. So we honour ``Retry-After`` once (capped), then stop with
+          a message that names the fix — raise the per-minute quota.
+        * **5xx / network** — genuinely transient; the short backoff is right.
         """
         if not self.api_key:
             raise PlacesNotConfigured(
@@ -214,35 +252,62 @@ class PlacesClient:
         }
 
         last_error = ""
+        rate_limited = False
         for attempt in range(3):
+            self._pace()
             try:
                 with httpx.Client(timeout=self.timeout) as client:
                     response = client.post(url, json=payload, headers=headers)
             except httpx.HTTPError as exc:  # network-level: worth retrying
                 last_error = f"network error: {exc}"
                 logger.warning("places.request.network_error", extra={"attempt": attempt})
-            else:
-                # Counted the moment Google answers: a 200 and a 429 both
-                # consume quota, and under-counting spend is worse than
-                # over-counting it.
-                self.billed_calls += 1
-                if response.status_code == 200:
-                    return response.json()
-                if response.status_code in (400, 401, 403):
-                    raise PlacesError(
-                        f"Google rejected the request ({response.status_code}). "
-                        f"Check the API key's restrictions and enabled APIs. "
-                        f"{response.text[:200]}"
-                    )
-                last_error = f"HTTP {response.status_code}: {response.text[:200]}"
-                logger.warning(
-                    "places.request.retryable",
-                    extra={"status": response.status_code, "attempt": attempt},
+                if attempt < 2:
+                    time.sleep(2**attempt)  # 1s, 2s
+                continue
+
+            # Counted the moment Google answers: a 200 and a 429 both consume
+            # quota, and under-counting spend is worse than over-counting it.
+            self.billed_calls += 1
+            self._last_call_at = time.monotonic()
+
+            if response.status_code == 200:
+                return response.json()
+
+            if response.status_code in (400, 401, 403):
+                raise PlacesError(
+                    f"Google rejected the request ({response.status_code}). "
+                    f"Check the API key's restrictions and enabled APIs. "
+                    f"{response.text[:200]}"
                 )
 
-            if attempt < 2:
-                time.sleep(2**attempt)  # 1s, 2s
+            if response.status_code == 429:
+                # A per-minute quota resets in ~60s, which is too long to hold a
+                # whole pipeline for. Wait a short Retry-After if Google gives one
+                # and it is within the cap; otherwise stop now rather than spend
+                # more billed calls that will only 429 again.
+                rate_limited = True
+                last_error = f"HTTP 429: {response.text[:200]}"
+                retry_after = _retry_after_seconds(response)
+                cap = settings.LEADGEN_PLACES_RETRY_AFTER_CAP_S
+                if attempt < 2 and 0 < retry_after <= cap:
+                    logger.warning("places.request.rate_limited", extra={"retry_after": retry_after})
+                    time.sleep(retry_after)
+                    continue
+                break  # no useful wait — stop instead of burning more calls
 
+            # 5xx and anything else transient.
+            last_error = f"HTTP {response.status_code}: {response.text[:200]}"
+            logger.warning("places.request.retryable", extra={"status": response.status_code})
+            if attempt < 2:
+                time.sleep(2**attempt)
+
+        if rate_limited:
+            raise PlacesError(
+                "Google Places rate-limited this job (HTTP 429 on "
+                "SearchTextRequest per minute). Raise the per-minute quota in the "
+                "Google Cloud console, or lower the job's size/priority. "
+                f"Detail: {last_error}"
+            )
         raise PlacesError(f"Google Places unreachable after 3 attempts — {last_error}")
 
     def search_text(

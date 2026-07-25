@@ -372,7 +372,11 @@ class TestRun:
         assert job.status == enums.JobStatus.CANCELLED
         assert job.leads.count() == 1  # discovery's work survives
 
-    def test_a_failing_stage_records_why_on_the_job(self):
+    def test_discovery_that_fails_every_query_fails_the_job(self):
+        """The production bug: every Places call 429'd and the job reported
+        "complete, 0 leads", indistinguishable from an empty area. A search that
+        found nothing because everything errored is a failure, not a result."""
+
         class Broken(FakePlaces):
             def search_all_pages(self, **kwargs):
                 raise RuntimeError("Places is down")
@@ -381,10 +385,31 @@ class TestRun:
         jobs.run(job, client=Broken())
 
         job.refresh_from_db()
-        # Discovery swallows per-cell failures, so the job completes with zero
-        # leads and the reason is on the log rather than the job's error field.
-        assert job.status == enums.JobStatus.COMPLETED
+        assert job.status == enums.JobStatus.FAILED
+        assert "failed every" in job.error
         assert job.logs.filter(level=enums.LogLevel.WARNING).exists()
+
+    def test_one_failed_query_among_successes_still_completes(self):
+        """A single bad cell must not fail a job that found real leads — the
+        distinction is *all* queries failing, not *any*."""
+
+        class Flaky(FakePlaces):
+            def __init__(self):
+                super().__init__([[place("p1", "Karam Cafe")]])
+                self._calls = 0
+
+            def search_all_pages(self, **kwargs):
+                self._calls += 1
+                if self._calls == 1:
+                    return super().search_all_pages(**kwargs)
+                raise RuntimeError("one flaky cell")
+
+        job = make_job(business_types=[enums.BusinessType.CAFE, enums.BusinessType.RESTAURANT])
+        jobs.run(job, client=Flaky())
+
+        job.refresh_from_db()
+        assert job.status == enums.JobStatus.COMPLETED
+        assert job.leads.count() == 1
 
     def test_cannot_run_a_completed_job(self):
         job = make_job()

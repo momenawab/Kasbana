@@ -545,6 +545,16 @@ LEADGEN_PLACES_TIMEOUT = float(env("LEADGEN_PLACES_TIMEOUT", "15") or "15")
 # Google caps Text Search pagination at 3 pages × 20 results per query, so a
 # large job fans out across business types and sub-areas rather than paging.
 LEADGEN_PLACES_MAX_PAGES = int(env("LEADGEN_PLACES_MAX_PAGES", "3") or "3")
+# Minimum seconds between billed Places calls, so a job's fan-out does not
+# machine-gun Google's *per-minute* quota (much lower than the per-day one) and
+# come back all-429. 0.6s ≈ 100 calls/minute, which sits under a 120/min quota
+# with margin. Set to 0 to disable pacing.
+LEADGEN_PLACES_MIN_INTERVAL_S = float(env("LEADGEN_PLACES_MIN_INTERVAL_S", "0.6") or "0.6")
+# Longest a 429's Retry-After is worth honouring inside a running job. Beyond
+# this the client stops rather than holding the pipeline — a per-minute quota's
+# ~60s reset is longer than a job should wait, and the real fix is a bigger
+# quota, which the error message says.
+LEADGEN_PLACES_RETRY_AFTER_CAP_S = float(env("LEADGEN_PLACES_RETRY_AFTER_CAP_S", "10") or "10")
 # Crawl politeness + blast radius. A lead-gen crawler that ignores these is how
 # a server IP ends up on a blocklist.
 LEADGEN_CRAWL_TIMEOUT = float(env("LEADGEN_CRAWL_TIMEOUT", "10") or "10")

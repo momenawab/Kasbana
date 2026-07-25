@@ -256,7 +256,7 @@ def _run_discovery(job: SearchJob, client: PlacesClient) -> None:
     log(job, "Discovery started", stage=enums.PipelineStage.DISCOVERY)
 
     before = client.billed_calls
-    created = discovery.discover(job, client)
+    outcome = discovery.discover(job, client)
 
     # The ledger is written from the client's own call counter, not from the
     # number of leads produced: a cell that returned nothing still cost a call,
@@ -265,9 +265,20 @@ def _run_discovery(job: SearchJob, client: PlacesClient) -> None:
 
     job.discovered_count = job.leads.count()
     job.save(update_fields=["discovered_count", "updated_at"])
+
+    # Every query failed — a broken job, not an empty area. Raise so ``run``
+    # marks it FAILED with the reason, instead of the pipeline continuing to a
+    # tidy "complete, 0 leads" that hides a bad key or a rate limit. The last
+    # query's error is already on the log; this names the class of problem.
+    if outcome.all_queries_failed:
+        raise JobError(
+            f"Discovery failed every one of its {outcome.failed_queries} Places "
+            "searches — see the log for the reason (commonly a rate limit or a "
+            "key/quota problem). No leads were found."
+        )
     log(
         job,
-        f"Discovery found {created} businesses in {client.billed_calls} billed calls",
+        f"Discovery found {outcome.created} businesses in {client.billed_calls} billed calls",
         stage=enums.PipelineStage.DISCOVERY,
         billed_calls=client.billed_calls,
     )
