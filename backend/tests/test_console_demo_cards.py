@@ -117,6 +117,74 @@ def test_pass_endpoint_rejects_a_real_merchants_card(admin_client, merchant):
     assert admin_client.get(f"{URL}/{card.id}/pass").status_code == 404
 
 
+# ── live stamping (the pitch demo) ────────────────────────────────────────────
+def test_stamp_adds_to_the_balance(admin_client):
+    created = admin_client.post(URL, PAYLOAD, format="json").json()
+    assert created["stamp_count"] == 0
+
+    resp = admin_client.post(f"{URL}/{created['card_id']}/stamp", {"delta": 1}, format="json")
+    assert resp.status_code == 200
+    assert resp.json()["stamp_count"] == 1
+    assert resp.json()["stamps_required"] == 8
+
+
+def test_stamp_accepts_a_delta(admin_client):
+    created = admin_client.post(URL, PAYLOAD, format="json").json()
+    body = admin_client.post(
+        f"{URL}/{created['card_id']}/stamp", {"delta": 5}, format="json"
+    ).json()
+    assert body["stamp_count"] == 5
+    assert body["reward_ready"] is False
+
+
+def test_stamping_to_the_threshold_flags_reward_ready(admin_client):
+    created = admin_client.post(URL, PAYLOAD, format="json").json()
+    body = admin_client.post(
+        f"{URL}/{created['card_id']}/stamp", {"delta": 8}, format="json"
+    ).json()
+    assert body["stamp_count"] == 8
+    assert body["reward_ready"] is True
+
+
+def test_repeated_stamps_are_not_blocked_by_anti_fraud(admin_client):
+    """The pitch must not stall on the 30s cooldown or the 12/day cap.
+
+    Both guards protect real reward economics; a demo card has none. Back-to-back
+    stamps here would raise CooldownActive on a real card.
+    """
+    created = admin_client.post(URL, PAYLOAD, format="json").json()
+    card_id = created["card_id"]
+
+    for _ in range(15):  # past MAX_STAMPS_PER_CARD_PER_DAY (12)
+        resp = admin_client.post(f"{URL}/{card_id}/stamp", {"delta": 1}, format="json")
+        assert resp.status_code == 200
+    assert resp.json()["stamp_count"] == 15
+
+
+def test_reset_zeroes_the_card_to_pitch_again(admin_client):
+    created = admin_client.post(URL, PAYLOAD, format="json").json()
+    admin_client.post(f"{URL}/{created['card_id']}/stamp", {"delta": 4}, format="json")
+
+    body = admin_client.post(f"{URL}/{created['card_id']}/reset", format="json").json()
+    assert body["stamp_count"] == 0
+    assert body["reward_ready"] is False
+
+
+def test_stamp_rejects_a_real_merchants_card(admin_client, merchant):
+    """The console's demo stamper must never touch a real customer's balance."""
+    card = factories.CardFactory(merchant=merchant)
+    resp = admin_client.post(f"{URL}/{card.id}/stamp", {"delta": 1}, format="json")
+    assert resp.status_code == 404
+
+
+def test_read_only_cannot_stamp(admin_client):
+    created = admin_client.post(URL, PAYLOAD, format="json").json()
+    ro = _client(AdminRole.READ_ONLY)
+    assert (
+        ro.post(f"{URL}/{created['card_id']}/stamp", {"delta": 1}, format="json").status_code == 403
+    )
+
+
 # ── access ────────────────────────────────────────────────────────────────────
 def test_sales_can_create(admin_client):
     sales = _client(AdminRole.SALES)

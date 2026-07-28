@@ -4,6 +4,8 @@
 ``POST /demo-cards``            — create one (demo merchant + card + holder) and
                                   return its Apple/Google add-to-wallet URLs.
 ``GET  /demo-cards/{id}/pass``  — re-fetch those URLs for an existing card.
+``POST /demo-cards/{id}/stamp`` — stamp the pass live during the pitch.
+``POST /demo-cards/{id}/reset`` — zero the stamps to run the pitch again.
 ``DELETE /demo-cards/{id}``     — clean one up.
 
 Gated on ``DEMO_CARDS_MANAGE`` (super-admin + Sales) and audited: the tool writes
@@ -24,6 +26,8 @@ from console.serializers_demo_cards import (
     DemoCardCreateSerializer,
     DemoCardPassSerializer,
     DemoCardSerializer,
+    DemoStampRequestSerializer,
+    DemoStampSerializer,
 )
 from core.models import Card
 
@@ -64,6 +68,35 @@ class DemoCardPassView(AdminAPIView):
     def get(self, request: Request, card_id: str) -> Response:
         card = get_object_or_404(Card, pk=card_id, merchant__is_demo=True)
         return Response(DemoCardPassSerializer(demo_cards.pass_urls(card)).data)
+
+
+class DemoCardStampView(AdminAPIView):
+    """POST /demo-cards/{card_id}/stamp — stamp the demo pass live in a pitch.
+
+    ``{"delta": n}`` adds n stamps (default 1) and pushes the wallet update, so
+    the prospect watches their own pass tick over on the phone in front of them.
+    """
+
+    permission_classes = [IsAdminUser, require(Permission.DEMO_CARDS_MANAGE)]
+
+    @extend_schema(request=DemoStampRequestSerializer, responses=DemoStampSerializer)
+    def post(self, request: Request, card_id: str) -> Response:
+        card = get_object_or_404(Card, pk=card_id, merchant__is_demo=True)
+        body = DemoStampRequestSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+        result = demo_cards.stamp_demo_card(card, delta=body.validated_data["delta"])
+        return Response(DemoStampSerializer(result).data)
+
+
+class DemoCardResetView(AdminAPIView):
+    """POST /demo-cards/{card_id}/reset — zero the stamps to run the pitch again."""
+
+    permission_classes = [IsAdminUser, require(Permission.DEMO_CARDS_MANAGE)]
+
+    @extend_schema(request=None, responses=DemoStampSerializer)
+    def post(self, request: Request, card_id: str) -> Response:
+        card = get_object_or_404(Card, pk=card_id, merchant__is_demo=True)
+        return Response(DemoStampSerializer(demo_cards.reset_demo_card(card)).data)
 
 
 class DemoCardDetailView(AdminAPIView):

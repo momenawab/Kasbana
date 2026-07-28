@@ -222,7 +222,10 @@ export default function TestCardsHome() {
                 <div className="min-w-0">
                   <div className="truncate text-sm font-medium text-tx">{c.merchant_name}</div>
                   <div className="truncate text-xs text-tx-3">
-                    {c.card_name} · {shortDate(c.created_at)}
+                    {c.card_name} · {shortDate(c.created_at)} ·{' '}
+                    <span className="font-num">
+                      {c.stamp_count}/{c.stamps_required} stamps
+                    </span>
                   </div>
                 </div>
                 <div className="flex gap-2">

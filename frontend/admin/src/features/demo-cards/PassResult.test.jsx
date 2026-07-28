@@ -4,11 +4,21 @@ import PassResult from './PassResult.jsx'
 import CardPreview from './CardPreview.jsx'
 
 const RESULT = {
+  card_id: 'card-1',
   merchant_name: 'Cafe Blooms',
   card_name: 'Coffee Club',
   apple_pass_url: 'https://example.test/pass.pkpass',
   google_save_url: 'https://pay.google.com/save/123',
+  stamp_count: 3,
+  stamps_required: 8,
 }
+
+// The stamper talks to the API through react-query; this suite only asserts what
+// renders, so the hooks are stubbed rather than wiring a QueryClientProvider.
+vi.mock('./api', () => ({
+  useStampDemoCard: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useResetDemoCard: () => ({ mutateAsync: vi.fn(), isPending: false }),
+}))
 
 describe('<PassResult>', () => {
   it('renders both wallet tiles with an add button per platform', () => {
@@ -37,6 +47,22 @@ describe('<PassResult>', () => {
     expect(screen.getByText('Add to Apple Wallet')).toBeInTheDocument()
     expect(screen.queryByText('Add to Google Wallet')).not.toBeInTheDocument()
     expect(screen.getByText(/Google Wallet credentials are not configured/)).toBeInTheDocument()
+  })
+})
+
+describe('<Stamper> (inside the pass panel)', () => {
+  it('shows the live balance so the pitch can be stamped', () => {
+    render(<PassResult result={RESULT} onClose={vi.fn()} />)
+    expect(screen.getByText('Stamp it live')).toBeInTheDocument()
+    expect(screen.getByText('3 / 8')).toBeInTheDocument()
+    expect(screen.getByText('Add 1 stamp')).toBeInTheDocument()
+  })
+
+  it('announces the reward once the card is full', () => {
+    render(
+      <PassResult result={{ ...RESULT, stamp_count: 8 }} onClose={vi.fn()} />,
+    )
+    expect(screen.getByText('Reward unlocked')).toBeInTheDocument()
   })
 })
 

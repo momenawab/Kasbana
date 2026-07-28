@@ -31,6 +31,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from accounts.services import unique_slug
+from core import ledger
 from core.enums import CardStatus
 from core.models import Card, CustomerCard, EnrollmentToken, Merchant
 from wallets import service as wallet
@@ -120,6 +121,8 @@ def create_demo_card(*, merchant_name: str, card_fields: dict[str, Any]) -> dict
         "enroll_token": token,
         "apple_pass_url": apple_url,
         "google_save_url": google_url,
+        "stamp_count": holder.stamp_count,
+        "stamps_required": card.stamps_required,
         "created_at": card.created_at,
     }
 
@@ -143,6 +146,8 @@ def demo_card_rows() -> list[dict[str, Any]]:
                 "merchant_name": card.merchant.name,
                 "card_name": card.name,
                 "enroll_token": token.token if token else "",
+                "stamp_count": holder.stamp_count if holder else 0,
+                "stamps_required": card.stamps_required,
                 "created_at": card.created_at,
             }
         )
@@ -158,6 +163,63 @@ def pass_urls(card: Card) -> dict[str, str | None]:
     return {
         "apple_pass_url": result.apple_pass_url,
         "google_save_url": result.google_save_url,
+    }
+
+
+def _holder(card: Card) -> CustomerCard | None:
+    return card.customer_cards.order_by("created_at").first()
+
+
+@transaction.atomic
+def stamp_demo_card(card: Card, *, delta: int = 1) -> dict[str, Any]:
+    """Add ``delta`` stamps to the demo card and push the pass update live.
+
+    This is the moment that sells the product in a proposal — the rep taps
+    "stamp" and the prospect watches their own wallet pass tick over. It runs the
+    real ledger path (so the demo behaves exactly like production), but with the
+    anti-fraud guards off: the 30-second cooldown and 12-per-day cap exist to
+    protect real reward economics, and would otherwise stall the pitch. A demo
+    card has nothing to defraud.
+    """
+    holder = _holder(card)
+    if holder is None:
+        return {"stamp_count": 0, "stamps_required": card.stamps_required, "reward_ready": False}
+
+    ledger.add_stamp(holder, delta=delta, note="Demo stamp (console)", skip_guards=True)
+    holder.refresh_from_db(fields=["stamp_count", "last_event_at"])
+
+    # Best-effort: the pass refreshes on its next device pull even if the push
+    # fails, and a failed push must not read as a failed stamp.
+    try:
+        wallet.push_update(holder)
+    except Exception:  # pragma: no cover - broker/credentials unavailable
+        logger.exception("demo card pass push failed (card=%s)", card.id)
+
+    return {
+        "stamp_count": holder.stamp_count,
+        "stamps_required": card.stamps_required,
+        "reward_ready": holder.stamp_count >= card.stamps_required,
+    }
+
+
+@transaction.atomic
+def reset_demo_card(card: Card) -> dict[str, Any]:
+    """Zero the demo card's stamps so the same pass can be pitched again."""
+    holder = _holder(card)
+    if holder is None:
+        return {"stamp_count": 0, "stamps_required": card.stamps_required, "reward_ready": False}
+
+    holder.stamp_count = 0
+    holder.save(update_fields=["stamp_count", "updated_at"])
+    try:
+        wallet.push_update(holder)
+    except Exception:  # pragma: no cover - broker/credentials unavailable
+        logger.exception("demo card pass push failed (card=%s)", card.id)
+
+    return {
+        "stamp_count": 0,
+        "stamps_required": card.stamps_required,
+        "reward_ready": False,
     }
 
 

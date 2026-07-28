@@ -88,6 +88,8 @@ from console.views_demo_cards import (
     DemoCardDetailView,
     DemoCardListView,
     DemoCardPassView,
+    DemoCardResetView,
+    DemoCardStampView,
 )
 from console.views_merchants import MerchantDetailView, MerchantListView
 from console.views_ops import (
@@ -436,6 +438,16 @@ urlpatterns = [
         "demo-cards/<uuid:card_id>/pass",
         DemoCardPassView.as_view(),
         name="admin-demo-card-pass",
+    ),
+    path(
+        "demo-cards/<uuid:card_id>/stamp",
+        DemoCardStampView.as_view(),
+        name="admin-demo-card-stamp",
+    ),
+    path(
+        "demo-cards/<uuid:card_id>/reset",
+        DemoCardResetView.as_view(),
+        name="admin-demo-card-reset",
     ),
     path(
         "demo-cards/<uuid:card_id>",

@@ -26,6 +26,25 @@ export function useDemoCardPass(cardId) {
   })
 }
 
+// Stamp the demo pass live in a pitch — the prospect watches their own wallet
+// pass tick over. Refreshes the list so its balance stays truthful.
+export function useStampDemoCard(cardId) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (delta = 1) =>
+      (await api.post(`/demo-cards/${cardId}/stamp`, { delta })).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['demo-cards'] }),
+  })
+}
+
+export function useResetDemoCard(cardId) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async () => (await api.post(`/demo-cards/${cardId}/reset`)).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['demo-cards'] }),
+  })
+}
+
 export function useDeleteDemoCard() {
   const qc = useQueryClient()
   return useMutation({

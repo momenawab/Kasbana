@@ -68,16 +68,24 @@ def add_stamp(
     delta: int = 1,
     note: str = "",
     force: bool = False,
+    skip_guards: bool = False,
 ) -> StampLedger:
     """Append a STAMP event, update cached ``stamp_count``, return the row.
 
     Raises CooldownActive / RateLimited (contract §3.3 / §3.7). ``force`` skips
     only the soft per-card cooldown (cashier-confirmed repeat stamp); the daily
     and per-staff rate limits still apply.
+
+    ``skip_guards`` drops the anti-fraud guards entirely and is **only** for
+    demo/test cards (``console.demo_cards``), which have no reward economics to
+    protect: a rep stamping a pass live in a proposal would otherwise trip the
+    30-second cooldown and the 12-per-day cap mid-pitch. Never pass it on a real
+    merchant's card — the caller, not this function, owns that check.
     """
     with transaction.atomic():
         card = _lock(customer_card)
-        _enforce_stamp_guards(card, staff, force=force)
+        if not skip_guards:
+            _enforce_stamp_guards(card, staff, force=force)
 
         new_balance = card.stamp_count + delta
         entry = _append(

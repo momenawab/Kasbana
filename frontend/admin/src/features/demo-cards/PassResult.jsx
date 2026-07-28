@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 import { Apple, Check, Copy, Smartphone, X } from 'lucide-react'
+import Stamper from './Stamper'
 
 // Post-creation panel: the two add-to-wallet buttons plus a QR code.
 //
@@ -92,6 +93,15 @@ export default function PassResult({ result, onClose }) {
         <div className="grid gap-3 sm:grid-cols-2">
           <WalletTile platform="apple" url={result.apple_pass_url} />
           <WalletTile platform="google" url={result.google_save_url} />
+        </div>
+
+        {/* Live stamping — once the pass is on a phone, this is the demo. */}
+        <div className="mt-3">
+          <Stamper
+            cardId={result.card_id}
+            initialCount={result.stamp_count ?? 0}
+            stampsRequired={result.stamps_required ?? 8}
+          />
         </div>
 
         <div className="mt-5 flex justify-end">

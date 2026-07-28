@@ -43,6 +43,8 @@ class DemoCardSerializer(serializers.Serializer):
     merchant_name = serializers.CharField()
     card_name = serializers.CharField()
     enroll_token = serializers.CharField(allow_blank=True)
+    stamp_count = serializers.IntegerField()
+    stamps_required = serializers.IntegerField()
     created_at = serializers.DateTimeField()
     # Present on create + the pass endpoint; null when wallet creds are absent.
     apple_pass_url = serializers.CharField(allow_null=True, required=False)
@@ -54,3 +56,17 @@ class DemoCardPassSerializer(serializers.Serializer):
 
     apple_pass_url = serializers.CharField(allow_null=True)
     google_save_url = serializers.CharField(allow_null=True)
+
+
+class DemoStampRequestSerializer(serializers.Serializer):
+    """How many stamps to add in one tap (the till's ``delta``)."""
+
+    delta = serializers.IntegerField(min_value=1, max_value=30, default=1)
+
+
+class DemoStampSerializer(serializers.Serializer):
+    """The demo card's balance after a stamp / reset."""
+
+    stamp_count = serializers.IntegerField()
+    stamps_required = serializers.IntegerField()
+    reward_ready = serializers.BooleanField()
