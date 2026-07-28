@@ -56,6 +56,13 @@ from console.views_coupons import (
     CouponRedemptionsView,
 )
 from console.views_crm_config import CrmChoiceDetailView, CrmChoiceListView
+from console.views_demo_cards import (
+    DemoCardDetailView,
+    DemoCardListView,
+    DemoCardPassView,
+    DemoCardResetView,
+    DemoCardStampView,
+)
 from console.views_invoices import (
     InvoiceDetailView,
     InvoiceListView,
@@ -63,6 +70,7 @@ from console.views_invoices import (
     MerchantInvoiceCreateView,
 )
 from console.views_leads import (
+    LeadBulkDeleteView,
     LeadCallView,
     LeadConvertView,
     LeadDetailView,
@@ -83,13 +91,6 @@ from console.views_lifecycle import (
     ResolveFlagView,
     SuspendView,
     UnsuspendView,
-)
-from console.views_demo_cards import (
-    DemoCardDetailView,
-    DemoCardListView,
-    DemoCardPassView,
-    DemoCardResetView,
-    DemoCardStampView,
 )
 from console.views_merchants import MerchantDetailView, MerchantListView
 from console.views_ops import (
@@ -310,6 +311,7 @@ urlpatterns = [
     path("leads/kpis", LeadKpiView.as_view(), name="admin-lead-kpis"),
     path("leads/duplicates", LeadDuplicateCheckView.as_view(), name="admin-lead-duplicates"),
     path("leads/sales-users", LeadSalesUsersView.as_view(), name="admin-lead-sales-users"),
+    path("leads/bulk-delete", LeadBulkDeleteView.as_view(), name="admin-lead-bulk-delete"),
     path("leads/import/preview", LeadImportPreviewView.as_view(), name="admin-lead-import-preview"),
     path("leads/import", LeadImportView.as_view(), name="admin-lead-import"),
     path("leads/<uuid:lead_id>", LeadDetailView.as_view(), name="admin-lead-detail"),

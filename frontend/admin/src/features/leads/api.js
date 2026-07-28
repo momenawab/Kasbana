@@ -82,6 +82,18 @@ export function useDeleteLead() {
   })
 }
 
+// Purge leads in bulk from the CRM settings screen. `scope` is 'all' (empty the
+// pipeline) or 'closed' (every finished lead — the terminal statuses). Super-
+// admin only server-side; irreversible, so the UI gates it behind a typed
+// confirmation. Returns { deleted } so the screen can report the count.
+export function useBulkDeleteLeads() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (scope) => (await api.post('/leads/bulk-delete', { scope })).data,
+    onSuccess: () => invalidateLeads(qc),
+  })
+}
+
 // Probe for duplicates as the Add Lead form is filled, so a collision surfaces
 // while the user is still typing rather than as a 409 after they submit.
 export function useDuplicateCheck({ phone, email, business_name }) {

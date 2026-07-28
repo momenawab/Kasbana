@@ -1015,6 +1015,139 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/admin/v1/demo-cards:
+    get:
+      operationId: api_admin_v1_demo_cards_list
+      description: GET/POST /demo-cards — list or build a prospect test card.
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DemoCard'
+          description: ''
+    post:
+      operationId: api_admin_v1_demo_cards_create
+      description: GET/POST /demo-cards — list or build a prospect test card.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DemoCardCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DemoCardCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DemoCardCreate'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DemoCard'
+          description: ''
+  /api/admin/v1/demo-cards/{card_id}:
+    delete:
+      operationId: api_admin_v1_demo_cards_destroy
+      description: DELETE /demo-cards/{card_id} — remove a test card and its demo
+        merchant.
+      parameters:
+      - in: path
+        name: card_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      responses:
+        '204':
+          description: No response body
+  /api/admin/v1/demo-cards/{card_id}/pass:
+    get:
+      operationId: api_admin_v1_demo_cards_pass_retrieve
+      description: GET /demo-cards/{card_id}/pass — add-to-wallet URLs for an existing
+        card.
+      parameters:
+      - in: path
+        name: card_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DemoCardPass'
+          description: ''
+  /api/admin/v1/demo-cards/{card_id}/reset:
+    post:
+      operationId: api_admin_v1_demo_cards_reset_create
+      description: POST /demo-cards/{card_id}/reset — zero the stamps to run the pitch
+        again.
+      parameters:
+      - in: path
+        name: card_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DemoStamp'
+          description: ''
+  /api/admin/v1/demo-cards/{card_id}/stamp:
+    post:
+      operationId: api_admin_v1_demo_cards_stamp_create
+      description: |-
+        POST /demo-cards/{card_id}/stamp — stamp the demo pass live in a pitch.
+
+        ``{"delta": n}`` adds n stamps (default 1) and pushes the wallet update, so
+        the prospect watches their own pass tick over on the phone in front of them.
+      parameters:
+      - in: path
+        name: card_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DemoStampRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DemoStampRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DemoStampRequest'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DemoStamp'
+          description: ''
   /api/admin/v1/impersonate/end:
     post:
       operationId: api_admin_v1_impersonate_end_create
@@ -1817,6 +1950,27 @@ paths:
               schema:
                 $ref: '#/components/schemas/LeadDetail'
           description: ''
+  /api/admin/v1/leads/bulk-delete:
+    post:
+      operationId: api_admin_v1_leads_bulk_delete_create
+      description: |-
+        POST /leads/bulk-delete {scope: "all" | "closed"} — purge leads in bulk.
+
+        Super-admin only (``CRM_CONFIGURE``). Deleting a *single* lead is Sales'
+        to do (``LEADS_MANAGE``), but emptying the pipeline — or every finished
+        lead in it — is a settings-screen hammer held by the same role that
+        reshapes the CRM's vocabulary. It is irreversible, so it lives behind the
+        same gate as the rest of the destructive config.
+
+        ``closed`` means the pipeline's terminal statuses (Converted, Customer, Not
+        Interested, Do Not Call Again, Closed) — the leads the board already treats
+        as done. Deleting a converted lead removes only the lead row; the merchant
+        it created is a separate record and is untouched.
+      tags:
+      - api
+      responses:
+        '200':
+          description: No response body
   /api/admin/v1/leads/duplicates:
     get:
       operationId: api_admin_v1_leads_duplicates_list
@@ -7176,6 +7330,154 @@ components:
       - owner_sources
       - score_distribution
       - web_presence
+    DemoCard:
+      type: object
+      description: A demo card row / creation result.
+      properties:
+        merchant_id:
+          type: string
+          format: uuid
+        card_id:
+          type: string
+          format: uuid
+        customer_card_id:
+          type: string
+          format: uuid
+          nullable: true
+        merchant_name:
+          type: string
+        card_name:
+          type: string
+        enroll_token:
+          type: string
+        stamp_count:
+          type: integer
+        stamps_required:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        apple_pass_url:
+          type: string
+          nullable: true
+        google_save_url:
+          type: string
+          nullable: true
+      required:
+      - card_id
+      - card_name
+      - created_at
+      - customer_card_id
+      - enroll_token
+      - merchant_id
+      - merchant_name
+      - stamp_count
+      - stamps_required
+    DemoCardCreate:
+      type: object
+      description: |-
+        The Card Designer's fields, plus the prospect's business name.
+
+        ``merchant_name`` is free text on purpose: the whole point is to brand a pass
+        for a business that has not signed up yet, so it never resolves to a real
+        merchant record.
+      properties:
+        merchant_name:
+          type: string
+          maxLength: 120
+        name:
+          type: string
+          maxLength: 120
+        type:
+          allOf:
+          - $ref: '#/components/schemas/DemoCardCreateTypeEnum'
+          default: STAMP
+        stamps_required:
+          type: integer
+          maximum: 30
+          minimum: 1
+          default: 8
+        reward_title:
+          type: string
+          maxLength: 120
+        reward_description:
+          type: string
+          default: ''
+        color_bg:
+          type: string
+          default: ''
+          maxLength: 7
+        color_fg:
+          type: string
+          default: ''
+          maxLength: 7
+        logo_url:
+          type: string
+          format: uri
+          default: ''
+        hero_image_url:
+          type: string
+          format: uri
+          default: ''
+        single_use:
+          type: boolean
+          default: false
+        referral_enabled:
+          type: boolean
+          default: false
+        preview_stamps:
+          type: integer
+          maximum: 30
+          minimum: 0
+          default: 0
+      required:
+      - merchant_name
+      - name
+      - reward_title
+    DemoCardCreateTypeEnum:
+      enum:
+      - STAMP
+      - POINTS
+      type: string
+      description: |-
+        * `STAMP` - STAMP
+        * `POINTS` - POINTS
+    DemoCardPass:
+      type: object
+      description: Add-to-wallet URLs for an existing demo card.
+      properties:
+        apple_pass_url:
+          type: string
+          nullable: true
+        google_save_url:
+          type: string
+          nullable: true
+      required:
+      - apple_pass_url
+      - google_save_url
+    DemoStamp:
+      type: object
+      description: The demo card's balance after a stamp / reset.
+      properties:
+        stamp_count:
+          type: integer
+        stamps_required:
+          type: integer
+        reward_ready:
+          type: boolean
+      required:
+      - reward_ready
+      - stamp_count
+      - stamps_required
+    DemoStampRequest:
+      type: object
+      description: How many stamps to add in one tap (the till's ``delta``).
+      properties:
+        delta:
+          type: integer
+          maximum: 30
+          minimum: 1
+          default: 1
     DunningRow:
       type: object
       properties:
