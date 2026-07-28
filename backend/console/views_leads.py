@@ -128,6 +128,50 @@ class LeadKpiView(AdminAPIView):
         return Response(lead_query.kpis(qs))
 
 
+class LeadBulkDeleteView(AdminAPIView):
+    """POST /leads/bulk-delete {scope: "all" | "closed"} — purge leads in bulk.
+
+    Super-admin only (``CRM_CONFIGURE``). Deleting a *single* lead is Sales'
+    to do (``LEADS_MANAGE``), but emptying the pipeline — or every finished
+    lead in it — is a settings-screen hammer held by the same role that
+    reshapes the CRM's vocabulary. It is irreversible, so it lives behind the
+    same gate as the rest of the destructive config.
+
+    ``closed`` means the pipeline's terminal statuses (Converted, Customer, Not
+    Interested, Do Not Call Again, Closed) — the leads the board already treats
+    as done. Deleting a converted lead removes only the lead row; the merchant
+    it created is a separate record and is untouched.
+    """
+
+    permission_classes = [require(Permission.CRM_CONFIGURE)]
+
+    @extend_schema(request=None, responses=None)
+    def post(self, request: Request) -> Response:
+        scope = (request.data.get("scope") or "").strip()
+        qs = Lead.objects.all()
+        if scope == "closed":
+            qs = qs.filter(status__in=crm.TERMINAL_STATUSES)
+        elif scope != "all":
+            return Response(
+                {"error": {"code": "BAD_SCOPE", "message": "scope must be 'all' or 'closed'."}},
+                status=400,
+            )
+
+        # Count before the delete — .delete() returns a total across cascaded
+        # rows (activities + calls), not the number of leads, which is the only
+        # figure that means anything to the person who pressed the button.
+        deleted = qs.count()
+        qs.delete()  # cascades each lead's timeline and calls
+        audit.record(
+            request,
+            "lead.bulk_delete",
+            target_type="lead",
+            target_id="",
+            metadata={"scope": scope, "deleted": deleted},
+        )
+        return Response({"deleted": deleted})
+
+
 class LeadSalesUsersView(AdminAPIView):
     """GET /leads/sales-users — who a lead may be assigned to.
 

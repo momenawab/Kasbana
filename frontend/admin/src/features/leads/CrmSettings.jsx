@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowLeft, GripVertical, Loader2, Lock, Plus, Trash2, X } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, GripVertical, Loader2, Lock, Plus, Trash2, X } from 'lucide-react'
 import {
   KIND,
   slugify,
@@ -9,7 +9,7 @@ import {
   useDeleteCrmChoice,
   useUpdateCrmChoice,
 } from './crm'
-import { useSalesUsers } from './api'
+import { useBulkDeleteLeads, useSalesUsers } from './api'
 import { useAuth } from '../../hooks/useAuth'
 import { normalizeError } from '../../lib/api'
 import Badge from '../../components/Badge'
@@ -80,8 +80,126 @@ export default function CrmSettings() {
           ))}
 
           <SalesUsersCard users={salesUsers ?? []} />
+
+          {canConfigure && <DangerZone />}
         </div>
       )}
+    </div>
+  )
+}
+
+// Danger Zone — bulk-delete the pipeline. Super-admin only (both here and on the
+// server): wiping every lead, or every finished one, is a settings-screen hammer
+// with no undo, so each action arms behind a typed "DELETE" before it fires.
+function DangerZone() {
+  return (
+    <div className="rounded-card border border-danger/40 bg-danger/5 p-4">
+      <div className="mb-1 flex items-center gap-2">
+        <AlertTriangle size={15} className="text-danger" />
+        <span className="font-head text-sm font-semibold text-danger">Danger Zone</span>
+      </div>
+      <p className="mb-3 text-xs text-tx-3">
+        Bulk-delete leads from the pipeline. This cannot be undone — a lead, its
+        entire call log and its timeline are removed together. Merchants created
+        from converted leads are separate records and are never affected.
+      </p>
+      <div className="flex flex-col gap-2">
+        <DangerAction
+          scope="closed"
+          label="Delete all closed leads"
+          hint="Converted, Customer, Not Interested, Do Not Call Again and Closed."
+        />
+        <DangerAction
+          scope="all"
+          label="Delete ALL leads"
+          hint="Empties the entire pipeline — every lead, every status."
+        />
+      </div>
+    </div>
+  )
+}
+
+function DangerAction({ scope, label, hint }) {
+  const bulkDelete = useBulkDeleteLeads()
+  const [arming, setArming] = useState(false)
+  const [text, setText] = useState('')
+  const [result, setResult] = useState('')
+  const [err, setErr] = useState('')
+  const ready = text.trim().toUpperCase() === 'DELETE'
+
+  const run = async () => {
+    if (!ready) return
+    setErr('')
+    try {
+      const { deleted } = await bulkDelete.mutateAsync(scope)
+      setResult(`Deleted ${deleted} lead${deleted === 1 ? '' : 's'}.`)
+      setArming(false)
+      setText('')
+    } catch (e) {
+      setErr(normalizeError(e).message)
+    }
+  }
+
+  return (
+    <div className="rounded-ctl border border-line bg-bg p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="min-w-0">
+          <div className="text-sm font-medium text-tx">{label}</div>
+          <div className="text-xs text-tx-3">{hint}</div>
+        </div>
+        {!arming && (
+          <button
+            onClick={() => {
+              setArming(true)
+              setResult('')
+              setErr('')
+            }}
+            className="flex shrink-0 items-center gap-1.5 rounded-ctl border border-danger/50 px-3 py-1.5 text-sm text-danger hover:bg-danger/10"
+          >
+            <Trash2 size={13} /> Delete
+          </button>
+        )}
+      </div>
+
+      {arming && (
+        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-line pt-3">
+          <span className="text-xs text-tx-2">
+            Type <code className="font-mono text-danger">DELETE</code> to confirm:
+          </span>
+          <input
+            autoFocus
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && run()}
+            placeholder="DELETE"
+            className="w-28 rounded-ctl border border-line bg-surface px-2 py-1 text-sm text-tx focus:border-danger focus:outline-none"
+          />
+          <button
+            onClick={run}
+            disabled={!ready || bulkDelete.isPending}
+            className="flex items-center gap-1.5 rounded-ctl bg-danger px-3 py-1.5 text-sm font-medium text-white disabled:opacity-40"
+          >
+            {bulkDelete.isPending ? (
+              <Loader2 size={13} className="animate-spin" />
+            ) : (
+              <Trash2 size={13} />
+            )}
+            Confirm delete
+          </button>
+          <button
+            onClick={() => {
+              setArming(false)
+              setText('')
+            }}
+            className="rounded-ctl px-3 py-1.5 text-sm text-tx-3 hover:text-tx"
+          >
+            Cancel
+          </button>
+        </div>
+      )}
+
+      {result && <div className="mt-2 text-xs text-brand">{result}</div>}
+      {err && <div className="mt-2 text-xs text-danger">{err}</div>}
     </div>
   )
 }

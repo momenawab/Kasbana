@@ -840,3 +840,60 @@ def test_sales_role_holds_the_crm_permissions_but_not_config():
     assert role_can(AdminRole.SALES, Permission.LEADS_CONVERT)
     assert not role_can(AdminRole.SALES, Permission.CRM_CONFIGURE)
     assert not role_can(AdminRole.SALES, Permission.BILLING_MANAGE)
+
+
+# ── Bulk delete — the CRM settings "Danger Zone" ────────────────────────────
+BULK_DELETE = f"{ADMIN}/bulk-delete"
+
+
+def _seed_mixed_pipeline():
+    """A few open leads plus one in every terminal status."""
+    Lead.objects.create(**_manual(phone="1"), status="interested")
+    Lead.objects.create(**_manual(phone="2"), status="new_lead")
+    for i, status in enumerate(sorted(crm.TERMINAL_STATUSES), start=3):
+        Lead.objects.create(**_manual(phone=str(i)), status=status)
+
+
+def test_bulk_delete_all_wipes_every_lead(super_admin):
+    _seed_mixed_pipeline()
+    total = Lead.objects.count()
+    res = _admin(super_admin).post(BULK_DELETE, {"scope": "all"}, format="json")
+    assert res.status_code == 200
+    assert res.data["deleted"] == total
+    assert Lead.objects.count() == 0
+
+
+def test_bulk_delete_closed_keeps_open_leads(super_admin):
+    _seed_mixed_pipeline()
+    terminal = Lead.objects.filter(status__in=crm.TERMINAL_STATUSES).count()
+    res = _admin(super_admin).post(BULK_DELETE, {"scope": "closed"}, format="json")
+    assert res.status_code == 200
+    assert res.data["deleted"] == terminal
+    # The two open leads survive; nothing terminal remains.
+    assert Lead.objects.count() == 2
+    assert not Lead.objects.filter(status__in=crm.TERMINAL_STATUSES).exists()
+
+
+def test_bulk_delete_rejects_an_unknown_scope(super_admin):
+    Lead.objects.create(**_manual())
+    res = _admin(super_admin).post(BULK_DELETE, {"scope": "everything"}, format="json")
+    assert res.status_code == 400
+    assert res.data["error"]["code"] == "BAD_SCOPE"
+    assert Lead.objects.count() == 1  # nothing deleted on a bad request
+
+
+def test_bulk_delete_is_super_admin_only(sales):
+    # Sales holds LEADS_MANAGE (single-lead delete) but not CRM_CONFIGURE, which
+    # gates the pipeline-wide hammer.
+    Lead.objects.create(**_manual())
+    res = _admin(sales).post(BULK_DELETE, {"scope": "all"}, format="json")
+    assert res.status_code == 403
+    assert Lead.objects.count() == 1
+
+
+def test_bulk_delete_records_one_audit_entry(super_admin):
+    _seed_mixed_pipeline()
+    _admin(super_admin).post(BULK_DELETE, {"scope": "closed"}, format="json")
+    entry = AdminAuditLog.objects.get(action="lead.bulk_delete")
+    assert entry.metadata["scope"] == "closed"
+    assert entry.metadata["deleted"] == len(crm.TERMINAL_STATUSES)
