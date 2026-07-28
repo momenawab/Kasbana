@@ -29,6 +29,7 @@ from accounts.models import MerchantSettings
 from billing.models import Invoice, InvoiceStatus, Subscription
 from billing.plans import BillingStatus
 from core.enums import CardType, LedgerEvent, MerchantStatus, WalletPlatform
+from console.merchants import real_merchants
 from core.models import Card, CustomerCard, Merchant, Redemption, StampLedger, WalletRegistration
 from messaging.models import Automation, Campaign
 
@@ -47,7 +48,7 @@ def platform_analytics() -> dict[str, Any]:
         return cached
 
     now = timezone.now()
-    total_merchants = Merchant.objects.count()
+    total_merchants = real_merchants().count()
 
     # ── merchant lifecycle (subscription state + suspension) ────────────────────
     merchants = {
@@ -60,7 +61,7 @@ def platform_analytics() -> dict[str, Any]:
         "churned": Subscription.objects.filter(
             status__in=[BillingStatus.LOCKED, BillingStatus.CANCELED]
         ).count(),
-        "suspended": Merchant.objects.filter(status=MerchantStatus.SUSPENDED).count(),
+        "suspended": real_merchants().filter(status=MerchantStatus.SUSPENDED).count(),
     }
 
     # ── platform-wide loyalty totals ────────────────────────────────────────────
@@ -101,7 +102,7 @@ def platform_analytics() -> dict[str, Any]:
 
     # ── growth over time (merchant signups by month, cumulative) ────────────────
     signup_rows = (
-        Merchant.objects.annotate(month=TruncMonth("created_at"))
+        real_merchants().annotate(month=TruncMonth("created_at"))
         .values("month")
         .annotate(n=Count("id"))
         .order_by("month")
@@ -130,7 +131,7 @@ def platform_analytics() -> dict[str, Any]:
         StampLedger.objects.values("merchant").annotate(events=Count("id")).order_by("-events")[:10]
     )
     top_ids = [r["merchant"] for r in top_rows]
-    names = {m.id: m for m in Merchant.objects.filter(id__in=top_ids)}
+    names = {m.id: m for m in real_merchants().filter(id__in=top_ids)}
     customers_by_merchant = {
         r["merchant"]: r["n"]
         for r in CustomerCard.objects.filter(merchant_id__in=top_ids)

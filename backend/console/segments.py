@@ -14,6 +14,7 @@ from django.utils import timezone
 
 from billing.plans import BillingStatus
 from console import lifecycle
+from console.merchants import real_merchants
 from console.models import Announcement
 from core.enums import LedgerEvent
 from core.models import Merchant, StampLedger
@@ -26,10 +27,10 @@ def resolve(audience: str, param: str = "") -> QuerySet[Merchant]:
     now = timezone.now()
 
     if audience == Announcement.Segment.PLAN and param:
-        return Merchant.objects.filter(subscription__plan=param)
+        return real_merchants().filter(subscription__plan=param)
 
     if audience == Announcement.Segment.TRIAL_ENDING:
-        return Merchant.objects.filter(
+        return real_merchants().filter(
             subscription__status=BillingStatus.TRIALING,
             subscription__trial_ends_at__gt=now,
             subscription__trial_ends_at__lte=now + timedelta(days=lifecycle.TRIAL_ENDING_DAYS),
@@ -37,7 +38,7 @@ def resolve(audience: str, param: str = "") -> QuerySet[Merchant]:
 
     if audience == Announcement.Segment.AT_RISK:
         ids = [row["id"] for row in lifecycle.at_risk()]
-        return Merchant.objects.filter(id__in=ids)
+        return real_merchants().filter(id__in=ids)
 
     if audience == Announcement.Segment.ACTIVE:
         recent = (
@@ -48,7 +49,7 @@ def resolve(audience: str, param: str = "") -> QuerySet[Merchant]:
             .values_list("merchant_id", flat=True)
             .distinct()
         )
-        return Merchant.objects.filter(id__in=list(recent))
+        return real_merchants().filter(id__in=list(recent))
 
     # ALL (and any unknown key) → everyone.
-    return Merchant.objects.all()
+    return real_merchants()

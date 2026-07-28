@@ -19,6 +19,7 @@ import {
   Activity,
   Wrench,
   Radar,
+  WalletCards,
   Lock,
   LogOut,
   Loader2,
@@ -35,6 +36,7 @@ const NAV = [
   { to: '/leadgen', key: 'Lead Generation', Icon: Radar, ready: true },
   { to: '/messages', key: 'Messages', Icon: MessageSquare, ready: true },
   { to: '/merchants', key: 'Merchants', Icon: Building2, ready: true },
+  { to: '/test-cards', key: 'Test Cards', Icon: WalletCards, ready: true, salesOnly: true },
   { to: '/plans', key: 'Plans', Icon: CreditCard, ready: true },
   { to: '/billing', key: 'Billing', Icon: Receipt, ready: true },
   { to: '/revenue', key: 'Revenue', Icon: BarChart3, ready: true, financeOnly: true },
@@ -59,6 +61,8 @@ function itemClass({ isActive }) {
 }
 
 const FINANCE_ROLES = ['SUPER_ADMIN', 'FINANCE']
+// Test cards are a pitch tool — Sales owns them (the route also guards).
+const SALES_ROLES = ['SUPER_ADMIN', 'SALES']
 
 function Brand() {
   return (
@@ -117,6 +121,7 @@ export default function AdminShell() {
   const nav = NAV.filter(
     (item) =>
       (!item.financeOnly || FINANCE_ROLES.includes(role)) &&
+      (!item.salesOnly || SALES_ROLES.includes(role)) &&
       (!item.superOnly || role === 'SUPER_ADMIN'),
   )
 

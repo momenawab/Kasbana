@@ -15,6 +15,7 @@ from uuid import UUID
 from django.db import IntegrityError, transaction
 
 from console.models import ContentFlag
+from console.merchants import real_merchants
 from core.models import Card, Merchant
 
 # Lowercased substrings that warrant a human look. Intentionally small + obvious;
@@ -67,7 +68,7 @@ def run_scan() -> dict[str, int]:
             created += 1
 
     scanned_merchants = 0
-    for merchant in Merchant.objects.all():
+    for merchant in real_merchants():
         scanned_merchants += 1
         kw = _match(f"{merchant.name} {merchant.legal_name}")
         if kw and _raise_flag(

@@ -38,6 +38,7 @@ class Permission:
     LEADS_MANAGE = "leads.manage"  # CRM — create/edit/assign leads, log calls
     LEADS_CONVERT = "leads.convert"  # CRM — convert a lead into a live merchant
     CRM_CONFIGURE = "crm.configure"  # CRM — edit the configurable dropdowns
+    DEMO_CARDS_MANAGE = "demo_cards.manage"  # Sales — build a prospect's test wallet card
     # Lead generation. Running a job spends real money (Places is billed per
     # call), so starting one is gated separately from reading the results —
     # everyone can look at the pipeline, not everyone can put it on the bill.
@@ -93,6 +94,9 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
             Permission.LEADS_CONVERT,
             Permission.LEADGEN_RUN,
             Permission.LEADGEN_IMPORT,
+            # Building a prospect's branded test card is a pitch tool: it creates
+            # only demo data (excluded from every real count), never a customer.
+            Permission.DEMO_CARDS_MANAGE,
         }
     ),
     AdminRole.READ_ONLY: frozenset(),  # view everything, mutate nothing

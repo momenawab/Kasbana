@@ -84,6 +84,11 @@ from console.views_lifecycle import (
     SuspendView,
     UnsuspendView,
 )
+from console.views_demo_cards import (
+    DemoCardDetailView,
+    DemoCardListView,
+    DemoCardPassView,
+)
 from console.views_merchants import MerchantDetailView, MerchantListView
 from console.views_ops import (
     FeatureFlagDetailView,
@@ -425,6 +430,18 @@ urlpatterns = [
     # its own "stampn-ops/" prefix so it never collides with the platform
     # "ops/" routes above, which are a different feature.
     path("stampn-ops/", include("console_ops.urls")),
+    # Test cards — build a prospect's branded wallet pass for a proposal.
+    path("demo-cards", DemoCardListView.as_view(), name="admin-demo-cards"),
+    path(
+        "demo-cards/<uuid:card_id>/pass",
+        DemoCardPassView.as_view(),
+        name="admin-demo-card-pass",
+    ),
+    path(
+        "demo-cards/<uuid:card_id>",
+        DemoCardDetailView.as_view(),
+        name="admin-demo-card-detail",
+    ),
     # Lead Generation — discovery, enrichment and CRM handover (leadgen app).
     # Routes carry their own "leadgen/" prefix so the money-spending surface is
     # obvious in the route list.

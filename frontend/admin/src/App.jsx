@@ -9,6 +9,7 @@ import LeadGenJobDetail from './features/leadgen/JobDetail'
 import GeneratedLeadsHome from './features/leadgen/GeneratedLeadsHome'
 import LeadGenQueues from './features/leadgen/QueuesHome'
 import LeadGenSettings from './features/leadgen/SettingsHome'
+import TestCardsHome from './features/demo-cards/TestCardsHome'
 import LeadDetail from './features/leads/LeadDetail'
 import CrmSettings from './features/leads/CrmSettings'
 import MessagesHome from './features/messages/MessagesHome'
@@ -45,6 +46,7 @@ export default function App() {
         {/* Before /leads/:id — "settings" is not a lead id. */}
         <Route path="/leads/settings" element={<CrmSettings />} />
         <Route path="/leads/:id" element={<LeadDetail />} />
+        <Route path="/test-cards" element={<TestCardsHome />} />
         <Route path="/leadgen" element={<LeadGenHome />} />
         {/* Before /leadgen/jobs/:id — "leads" is not a job id. */}
         <Route path="/leadgen/leads" element={<GeneratedLeadsHome />} />

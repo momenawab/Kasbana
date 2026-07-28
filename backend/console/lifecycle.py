@@ -21,6 +21,7 @@ from django.utils import timezone
 
 from billing.models import Invoice, InvoiceStatus, Subscription
 from billing.plans import BillingStatus
+from console.merchants import real_merchants
 from core.models import Merchant, StampLedger
 
 AT_RISK_THRESHOLD = 70
@@ -52,7 +53,7 @@ def pipeline() -> dict[str, Any]:
         "active": [],
         "churned": [],
     }
-    for m in Merchant.objects.all().order_by("-created_at"):
+    for m in real_merchants().order_by("-created_at"):
         stage = _stage(subs.get(m.id), now)
         stages[stage].append({"id": m.id, "name": m.name, "slug": m.slug})
 
@@ -117,7 +118,7 @@ def at_risk() -> list[dict[str, Any]]:
         last_activity[row["merchant"]] = row["last"]
 
     rows: list[dict[str, Any]] = []
-    for m in Merchant.objects.all():
+    for m in real_merchants():
         sub = subs.get(m.id)
         if _stage(sub, now) == "churned":
             continue
