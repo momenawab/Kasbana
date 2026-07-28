@@ -53,6 +53,13 @@ class Merchant(UUIDModel, TimeStampedModel):
     logo_url = models.URLField(blank=True)
     color_bg = models.CharField(max_length=7, blank=True)  # hex #RRGGBB
     color_fg = models.CharField(max_length=7, blank=True)  # hex #RRGGBB
+    # Demo/sales merchant, created by the console's test-card tool to show a
+    # prospect their branded wallet pass before they sign up. Never a real
+    # customer: excluded from the merchant directory, analytics, revenue,
+    # lifecycle and moderation (see ``console.merchants.real_merchants``), and
+    # its cards bypass plan limits. Flagged rather than kept in a separate table
+    # so the wallet pipeline (which reads ``merchant.name``) works unchanged.
+    is_demo = models.BooleanField(default=False)
 
     def __str__(self) -> str:
         return self.name

@@ -14,9 +14,21 @@ from core.enums import Role, WalletPlatform
 from core.models import CustomerCard, Merchant, StaffUser, WalletRegistration
 
 
+def real_merchants() -> QuerySet[Merchant]:
+    """Every *real* merchant — demo/sales accounts excluded.
+
+    Demo merchants exist only to render a prospect's branded wallet pass in the
+    console's test-card tool (``console.demo_cards``). They are not customers, so
+    every console surface that counts, ranks or reviews merchants starts here
+    rather than at ``Merchant.objects`` — otherwise a sales demo would inflate
+    signup counts, revenue cohorts and the lifecycle board.
+    """
+    return Merchant.objects.exclude(is_demo=True)
+
+
 def merchant_queryset() -> QuerySet[Merchant]:
     """All merchants with directory aggregates annotated (cross-tenant)."""
-    return Merchant.objects.annotate(
+    return real_merchants().annotate(
         cards_count=Count("cards", distinct=True),
         customers_count=Count("customer_cards", distinct=True),
         staff_count=Count("staff", distinct=True),

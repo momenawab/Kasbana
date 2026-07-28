@@ -34,6 +34,7 @@ from django.utils import timezone
 from billing.models import Invoice, InvoiceStatus, Subscription
 from billing.plans import BillingInterval, BillingStatus, plan_price
 from core.enums import PlanTier
+from console.merchants import real_merchants
 from core.models import Merchant
 
 _CACHE_TTL = 300  # seconds
@@ -108,7 +109,7 @@ def revenue_analytics(date_from: date, date_to: date) -> dict[str, Any]:
     ever_paid_ids = set(
         Invoice.objects.filter(status=InvoiceStatus.PAID).values_list("merchant_id", flat=True)
     )
-    total_merchants = Merchant.objects.count()
+    total_merchants = real_merchants().count()
     # Eligible to have converted = everyone who isn't still inside a live trial.
     eligible = total_merchants - active_trials
     trial_to_paid_conversion = (len(ever_paid_ids) / eligible) if eligible > 0 else 0.0
@@ -199,7 +200,7 @@ def revenue_analytics(date_from: date, date_to: date) -> dict[str, Any]:
 
     # ── cohort retention by signup month ───────────────────────────────────────
     cohorts: dict[str, dict[str, int]] = defaultdict(lambda: {"size": 0, "still_paying": 0})
-    for m in Merchant.objects.values_list("id", "created_at"):
+    for m in real_merchants().values_list("id", "created_at"):
         merchant_id, created_at = m
         key = _month_key(created_at)
         cohorts[key]["size"] += 1
