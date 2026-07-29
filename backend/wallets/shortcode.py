@@ -24,12 +24,26 @@ def _random_code() -> str:
     return "".join(secrets.choice(_ALPHABET) for _ in range(_LENGTH))
 
 
+# Shown under the QR on a preview pass. Never allocated, never resolvable — the
+# admin Wallet Studio renders against an *unsaved* sample customer, so there is no
+# row to hang a real code off (and allocating one would leave litter behind every
+# preview). Six chars from the same alphabet so it measures like the real thing.
+PREVIEW_CODE = "PREV24"
+
+
 def code_for(customer_card: CustomerCard) -> str:
     """Return the card's short code, creating it on first use.
 
     Idempotent and race-safe: a concurrent create loses the ``unique`` race and
     re-reads the winning row. Retries on the (astronomically rare) code clash.
+
+    An unsaved customer card (the Wallet Studio preview sample) gets
+    :data:`PREVIEW_CODE` instead: creating a row would violate the foreign key,
+    and a preview must not write anything.
     """
+    if customer_card._state.adding:
+        return PREVIEW_CODE
+
     existing = CardShortCode.objects.filter(customer_card=customer_card).first()
     if existing is not None:
         return existing.code

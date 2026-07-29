@@ -21,6 +21,16 @@ export default {
         warn: '#E0A23B',
         danger: '#E5776B',
         info: '#6EA8F0',
+        // Aliases for the Wallet Studio components copied from the merchant
+        // dashboard (frontend/dashboard/src/components). Those files are shared
+        // by sight with their originals, so mapping the dashboard's palette
+        // names here keeps the copies textually identical to their source
+        // instead of scattering hand-renamed classes through 1,600 lines — which
+        // is what makes a later diff against the dashboard readable at all.
+        violet: { DEFAULT: '#845AEA', d: '#6E42D6' }, // = brand
+        teal: '#4DB6A8', // = success
+        paper: '#262238', // = surface-2 (the inset well behind controls)
+        slate: '#EDEBF5', // = tx (ink on a light chip)
       },
       fontFamily: {
         head: ['"Space Grotesk"', 'system-ui', 'sans-serif'],

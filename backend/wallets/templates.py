@@ -46,6 +46,8 @@ TEMPLATES: dict[str, dict[str, Any]] = {
             "stamp_icon",
             "stamp_color",
             "stamp_layout",
+            "strip_bg_image_url",
+            "strip_stamps_visible",
             "logo",
         ],
         "apple": {
@@ -74,6 +76,8 @@ TEMPLATES: dict[str, dict[str, Any]] = {
             "stamp_icon",
             "stamp_color",
             "stamp_layout",
+            "strip_bg_image_url",
+            "strip_stamps_visible",
             "logo",
         ],
         "apple": {

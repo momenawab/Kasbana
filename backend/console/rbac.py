@@ -39,6 +39,10 @@ class Permission:
     LEADS_CONVERT = "leads.convert"  # CRM — convert a lead into a live merchant
     CRM_CONFIGURE = "crm.configure"  # CRM — edit the configurable dropdowns
     DEMO_CARDS_MANAGE = "demo_cards.manage"  # Sales — build a prospect's test wallet card
+    # Wallet Studio — author a merchant's pass design and its raw pass JSON overlay.
+    # Super-admin-only (absent from every role set below): an overlay rewrites the
+    # payload of passes already sitting in real customers' wallets.
+    WALLET_STUDIO_MANAGE = "wallet_studio.manage"
     # Lead generation. Running a job spends real money (Places is billed per
     # call), so starting one is gated separately from reading the results —
     # everyone can look at the pipeline, not everyone can put it on the bill.
@@ -61,6 +65,8 @@ ALL_PERMISSIONS: frozenset[str] = frozenset(
 # deliberately in NO role's set below: they are super-admin-only. Merchant delete
 # is irreversible and export dumps cross-tenant PII, so these stay the sharpest
 # tools in the box — held only by the role that implicitly holds everything.
+# WALLET_STUDIO_MANAGE joins them for the same reason: a saved overlay re-renders
+# every pass on that card, including the ones already in customers' wallets.
 ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
     AdminRole.FINANCE: frozenset(
         {

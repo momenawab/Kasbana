@@ -2224,6 +2224,164 @@ paths:
       responses:
         '200':
           description: No response body
+  /api/admin/v1/merchants/{merchant_id}/cards:
+    get:
+      operationId: api_admin_v1_merchants_cards_list
+      description: GET /merchants/{merchant_id}/cards — the studio's card rail.
+      parameters:
+      - in: path
+        name: merchant_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MerchantCardRow'
+          description: ''
+  /api/admin/v1/merchants/{merchant_id}/cards/{card_id}/pass-preview:
+    post:
+      operationId: api_admin_v1_merchants_cards_pass_preview_create
+      description: |-
+        POST /…/pass-preview — render the pass payloads without saving anything.
+
+        The body may carry a candidate ``design``; it is validated and applied to an
+        in-memory design row so the studio can show the result of an edit — and any
+        validation error — before it is committed. Nothing is written either way.
+      parameters:
+      - in: path
+        name: card_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: merchant_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PassPreviewRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PassPreviewRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PassPreviewRequest'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PassPreview'
+          description: ''
+  /api/admin/v1/merchants/{merchant_id}/cards/{card_id}/republish:
+    post:
+      operationId: api_admin_v1_merchants_cards_republish_create
+      description: |-
+        POST /…/republish — push the saved design to every live pass on this card.
+
+        Deliberately explicit rather than a side effect of saving: an admin iterating
+        on a design would otherwise fire a wallet push to every holder on each
+        keystroke-to-save. Returns the number of passes queued so the cost is visible
+        before and after.
+      parameters:
+      - in: path
+        name: card_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: merchant_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RepublishResult'
+          description: ''
+  /api/admin/v1/merchants/{merchant_id}/cards/{card_id}/wallet-design:
+    get:
+      operationId: api_admin_v1_merchants_cards_wallet_design_retrieve
+      description: GET/PATCH one card's wallet design + raw pass overlays.
+      parameters:
+      - in: path
+        name: card_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: merchant_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminWalletCardDesign'
+          description: ''
+    patch:
+      operationId: api_admin_v1_merchants_cards_wallet_design_partial_update
+      description: GET/PATCH one card's wallet design + raw pass overlays.
+      parameters:
+      - in: path
+        name: card_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: merchant_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedAdminWalletCardDesign'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedAdminWalletCardDesign'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedAdminWalletCardDesign'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminWalletCardDesign'
+          description: ''
   /api/admin/v1/merchants/{merchant_id}/consent:
     get:
       operationId: api_admin_v1_merchants_consent_list
@@ -3792,6 +3950,39 @@ paths:
       operationId: api_admin_v1_stampn_ops_widget_retrieve
       description: Authenticated for now; mobile clients will use scoped device tokens
         later.
+      tags:
+      - api
+      responses:
+        '200':
+          description: No response body
+  /api/admin/v1/wallet-studio/templates:
+    get:
+      operationId: api_admin_v1_wallet_studio_templates_retrieve
+      description: |-
+        GET /wallet-studio/templates — the layout-locked template catalog.
+
+        The merchant dashboard reads the same catalog from ``/api/v1/wallet-templates``,
+        but that route authenticates as a merchant. This is the admin-authenticated
+        door to the identical payload (``wallets.templates`` is the one source of
+        truth for the backend renderers and both frontends).
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WalletTemplateList'
+          description: ''
+  /api/admin/v1/wallet-studio/uploads:
+    post:
+      operationId: api_admin_v1_wallet_studio_uploads_create
+      description: |-
+        POST /wallet-studio/uploads — store stamp icons / strip artwork.
+
+        The merchant dashboard has its own ``/uploads``; the studio needs the same
+        capability behind admin auth. Both route through ``common.uploads``, so the
+        two endpoints can never disagree about what image is acceptable.
       tags:
       - api
       responses:
@@ -5820,6 +6011,82 @@ components:
       - id
       - mfa_required
       - permissions
+    AdminWalletCardDesign:
+      type: object
+      description: |-
+        The design serializer plus the admin-only raw pass JSON overlays.
+
+        Two things separate it from the merchant serializer:
+
+        * ``apple_overlay``/``google_overlay`` are writable. They are deliberately
+          absent from the merchant serializer — a raw pass payload is a platform-admin
+          tool, and exposing it on the dashboard endpoint would let any merchant author
+          arbitrary pass content.
+        * The template ``editable`` allowlist is not applied. An admin building a
+          bespoke card is authoring *past* the template registry by definition, so
+          locking them to a template's editable set would defeat the feature.
+      properties:
+        label_color:
+          type: string
+          pattern: ^#(?:[0-9a-fA-F]{6})$
+          maxLength: 7
+        apple_logo_text:
+          type: string
+          maxLength: 40
+        apple_header: {}
+        apple_primary: {}
+        apple_secondary: {}
+        apple_auxiliary: {}
+        apple_back: {}
+        apple_strip_enabled:
+          type: boolean
+        strip_bg_color:
+          type: string
+          pattern: ^#(?:[0-9a-fA-F]{6})$
+          maxLength: 7
+        strip_empty_url:
+          type: string
+          format: uri
+          maxLength: 200
+        strip_filled_url:
+          type: string
+          format: uri
+          maxLength: 200
+        stamp_icon:
+          type: string
+          maxLength: 20
+        stamp_color:
+          type: string
+          pattern: ^#(?:[0-9a-fA-F]{6})$
+          maxLength: 7
+        stamp_layout:
+          oneOf:
+          - $ref: '#/components/schemas/StampLayoutEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        google_title:
+          type: string
+          maxLength: 40
+        google_subtitle:
+          type: string
+          maxLength: 60
+        google_rows: {}
+        google_stamp_hero:
+          type: boolean
+        template_key:
+          type: string
+          maxLength: 40
+        bottom_image_url:
+          type: string
+          format: uri
+          maxLength: 200
+        strip_bg_image_url:
+          type: string
+          format: uri
+          maxLength: 200
+        strip_stamps_visible:
+          type: boolean
+        apple_overlay: {}
+        google_overlay: {}
     AiEnrichment:
       type: object
       description: |-
@@ -9491,6 +9758,48 @@ components:
       - entitlements
       - merchant
       - staff
+    MerchantCardRow:
+      type: object
+      description: One of a merchant's cards, as listed in the studio's left rail.
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        type:
+          type: string
+        status:
+          type: string
+        stamps_required:
+          type: integer
+        reward_title:
+          type: string
+        color_bg:
+          type: string
+        color_fg:
+          type: string
+        logo_url:
+          type: string
+        template_key:
+          type: string
+        has_overlay:
+          type: boolean
+        customers_count:
+          type: integer
+      required:
+      - color_bg
+      - color_fg
+      - customers_count
+      - has_overlay
+      - id
+      - logo_url
+      - name
+      - reward_title
+      - stamps_required
+      - status
+      - template_key
+      - type
     MerchantCounts:
       type: object
       properties:
@@ -10227,6 +10536,52 @@ components:
       - created_at
       - id
       - referred_merchant
+    PassPreview:
+      type: object
+      description: The payloads a card renders for one sample balance.
+      properties:
+        stamp_count:
+          type: integer
+        stamps_required:
+          type: integer
+        apple:
+          type: object
+          additionalProperties: {}
+          nullable: true
+        google_class:
+          type: object
+          additionalProperties: {}
+          nullable: true
+        google_object:
+          type: object
+          additionalProperties: {}
+          nullable: true
+        errors:
+          type: object
+          additionalProperties: {}
+      required:
+      - apple
+      - errors
+      - google_class
+      - google_object
+      - stamp_count
+      - stamps_required
+    PassPreviewRequest:
+      type: object
+      description: |-
+        Dry-run a design without saving it.
+
+        ``design`` is an optional unsaved candidate: the studio posts the editor's
+        current state so an admin sees the result — and any validation error — before
+        committing. Omit it to preview exactly what is stored.
+      properties:
+        design:
+          type: object
+          additionalProperties: {}
+        stamp_count:
+          type: integer
+          minimum: 0
+          nullable: true
     PasswordChange:
       type: object
       properties:
@@ -10276,6 +10631,82 @@ components:
         reason:
           type: string
           maxLength: 500
+    PatchedAdminWalletCardDesign:
+      type: object
+      description: |-
+        The design serializer plus the admin-only raw pass JSON overlays.
+
+        Two things separate it from the merchant serializer:
+
+        * ``apple_overlay``/``google_overlay`` are writable. They are deliberately
+          absent from the merchant serializer — a raw pass payload is a platform-admin
+          tool, and exposing it on the dashboard endpoint would let any merchant author
+          arbitrary pass content.
+        * The template ``editable`` allowlist is not applied. An admin building a
+          bespoke card is authoring *past* the template registry by definition, so
+          locking them to a template's editable set would defeat the feature.
+      properties:
+        label_color:
+          type: string
+          pattern: ^#(?:[0-9a-fA-F]{6})$
+          maxLength: 7
+        apple_logo_text:
+          type: string
+          maxLength: 40
+        apple_header: {}
+        apple_primary: {}
+        apple_secondary: {}
+        apple_auxiliary: {}
+        apple_back: {}
+        apple_strip_enabled:
+          type: boolean
+        strip_bg_color:
+          type: string
+          pattern: ^#(?:[0-9a-fA-F]{6})$
+          maxLength: 7
+        strip_empty_url:
+          type: string
+          format: uri
+          maxLength: 200
+        strip_filled_url:
+          type: string
+          format: uri
+          maxLength: 200
+        stamp_icon:
+          type: string
+          maxLength: 20
+        stamp_color:
+          type: string
+          pattern: ^#(?:[0-9a-fA-F]{6})$
+          maxLength: 7
+        stamp_layout:
+          oneOf:
+          - $ref: '#/components/schemas/StampLayoutEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        google_title:
+          type: string
+          maxLength: 40
+        google_subtitle:
+          type: string
+          maxLength: 60
+        google_rows: {}
+        google_stamp_hero:
+          type: boolean
+        template_key:
+          type: string
+          maxLength: 40
+        bottom_image_url:
+          type: string
+          format: uri
+          maxLength: 200
+        strip_bg_image_url:
+          type: string
+          format: uri
+          maxLength: 200
+        strip_stamps_visible:
+          type: boolean
+        apple_overlay: {}
+        google_overlay: {}
     PatchedAnnouncementWrite:
       type: object
       properties:
@@ -10941,6 +11372,12 @@ components:
           type: string
           format: uri
           maxLength: 200
+        strip_bg_image_url:
+          type: string
+          format: uri
+          maxLength: 200
+        strip_stamps_visible:
+          type: boolean
     PaymentMethod:
       type: object
       properties:
@@ -11328,6 +11765,17 @@ components:
           type: string
           format: uri
           maxLength: 200
+    RepublishResult:
+      type: object
+      description: How many live passes a republish touched.
+      properties:
+        customer_cards:
+          type: integer
+        google_class_synced:
+          type: boolean
+      required:
+      - customer_cards
+      - google_class_synced
     ResendInvite:
       type: object
       properties:
@@ -12713,6 +13161,12 @@ components:
           type: string
           format: uri
           maxLength: 200
+        strip_bg_image_url:
+          type: string
+          format: uri
+          maxLength: 200
+        strip_stamps_visible:
+          type: boolean
     WalletSplit:
       type: object
       properties:

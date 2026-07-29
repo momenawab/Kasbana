@@ -224,8 +224,25 @@ def build_pass_json(customer_card: CustomerCard) -> dict:
         payload["logoText"] = design.apple_logo_text
     elif merchant.name:
         payload["logoText"] = merchant.name
+    # Custom strip artwork needs Apple's default gloss gradient turned off, or the
+    # shine washes the photo out. Only set when there *is* artwork, so a plain
+    # color strip keeps the stock PassKit look.
+    if design and design.strip_bg_image_url:
+        payload["suppressStripShine"] = True
     # Void a no-longer-active pass (single-use completion / blocked) — iOS greys
     # it out and marks it expired.
     if customer_card.status != CustomerCardStatus.ACTIVE:
         payload["voided"] = True
-    return payload
+
+    # Admin-authored overlay, merged last so it wins over every generated default
+    # — except the locked identity keys, which ``overlay`` strips. See
+    # ``wallets.overlay`` for why serialNumber/authenticationToken/webServiceURL/
+    # barcodes can never be overridden.
+    from wallets import overlay as overlay_mod
+
+    return overlay_mod.apply(
+        payload,
+        design.apple_overlay if design else None,
+        ctx,
+        overlay_mod.LOCKED_APPLE,
+    )

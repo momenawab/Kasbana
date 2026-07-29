@@ -145,6 +145,10 @@ def stamp_hero_url(customer_card: CustomerCard, *, force: bool = False) -> str |
                 # Google would keep serving the cached hero — the edit would look
                 # like it silently did nothing.
                 design.stamp_layout if design else "",
+                # Same trap for the strip artwork and the stamps-visible toggle:
+                # both change the pixels, so both must change the digest.
+                design.strip_bg_image_url if design else "",
+                str(design.strip_stamps_visible) if design else "",
             ]
         )
         digest = hashlib.sha1(fingerprint.encode("utf-8")).hexdigest()[:16]
@@ -160,6 +164,10 @@ def stamp_hero_url(customer_card: CustomerCard, *, force: bool = False) -> str |
                 empty_icon=empty_icon,
                 filled_icon=filled_icon,
                 layout=(design.stamp_layout if design else "") or LAYOUT_GRID,
+                # The same upload as the Apple strip, cover-cropped to the hero's
+                # own (narrower) ratio rather than distorted to fit it.
+                background=_local_media_bytes(design.strip_bg_image_url) if design else None,
+                stamps_visible=(design.strip_stamps_visible if design else True),
             )
             # Platform watermark at the bottom-right of the banner.
             img = apply_watermark(img, fg)

@@ -57,7 +57,14 @@ def build_loyalty_class(card: Card) -> dict:
                 "defaultValue": {"language": "en", "value": f"{card.name} banner"}
             },
         }
-    return payload
+    # Admin overlay, "class" half. No value context: a LoyaltyClass is per-Card
+    # program-level content shared by every member, so there is no customer whose
+    # balance a {token} could resolve against — class overlays are literal.
+    from wallets import overlay as overlay_mod
+
+    return overlay_mod.apply_google(
+        payload, design.google_overlay if design else None, None, "class"
+    )
 
 
 def unit_label(card: Card) -> str:
@@ -156,4 +163,13 @@ def build_loyalty_object(customer_card: CustomerCard) -> dict:
             },
         }
 
-    return payload
+    # Admin overlay, "object" half — merged last, identity keys stripped, and
+    # {tokens} resolved against this customer's balance.
+    from wallets import overlay as overlay_mod
+
+    return overlay_mod.apply_google(
+        payload,
+        design.google_overlay if design else None,
+        design_mod.field_context(customer_card),
+        "object",
+    )

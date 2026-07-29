@@ -407,7 +407,11 @@
     "tok_reward": "Reward",
     "tok_merchant": "Business name",
     "tok_program": "Program name",
-    "tok_text": "Custom text"
+    "tok_text": "Custom text",
+    "stripArtwork": "Stamp strip photo",
+    "stripArtworkHint": "A photo behind the stamps. Cropped to fill the strip (Apple) and the banner (Google) — use a wide image for best results.",
+    "stripArtworkRemove": "Remove photo",
+    "stripStampsVisible": "Show stamps on the photo"
   },
   "walletTemplates": {
     "choose": "Choose a template",

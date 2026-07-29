@@ -73,6 +73,27 @@ def load_icon(data: bytes | None):  # type: ignore[no-untyped-def]
         return None
 
 
+def cover_crop(img, size: tuple[int, int]):  # type: ignore[no-untyped-def]
+    """Scale ``img`` to fill ``size`` completely, then centre-crop the overflow.
+
+    Cover, not fit: the strip band is full-bleed on a real pass, so letterbox
+    bars would read as a rendering bug. One upload therefore works at both
+    canvases this module draws — the Apple strip (1125x369, very wide) and the
+    Google hero (1032x336) — because each crops its own overflow rather than
+    distorting the artwork to a different aspect ratio.
+    """
+    from PIL import Image
+
+    w, h = size
+    if img.width <= 0 or img.height <= 0:  # pragma: no cover - defensive
+        return Image.new("RGBA", size, (0, 0, 0, 0))
+    scale = max(w / img.width, h / img.height)
+    new_w, new_h = max(1, round(img.width * scale)), max(1, round(img.height * scale))
+    resized = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+    left, top = (new_w - w) // 2, (new_h - h) // 2
+    return resized.crop((left, top, left + w, top + h))
+
+
 def _centers(
     n: int,
     rows: int,
@@ -159,6 +180,8 @@ def render_stamp_grid(
     empty_icon: bytes | None = None,
     filled_icon: bytes | None = None,
     layout: str = LAYOUT_GRID,
+    background: bytes | None = None,
+    stamps_visible: bool = True,
 ):  # type: ignore[no-untyped-def]
     """Draw the stamp grid on a brand-color panel (earned filled, remaining outline).
 
@@ -169,15 +192,28 @@ def render_stamp_grid(
     ``layout`` arranges the cells — see ``LAYOUTS``. It only bites on cards that
     wrap to two rows (>5 stamps); a single row has nothing to alternate or offset,
     so it always renders as a plain row.
+
+    ``background`` replaces the flat ``bg`` panel with cover-cropped artwork, and
+    ``stamps_visible=False`` draws that artwork alone — a photo band on a card
+    whose progress is carried by the pass fields instead. Unusable image bytes
+    fall back to the flat panel rather than raising, so a bad upload degrades to
+    the old look instead of breaking every pass on the card.
     """
     from PIL import Image, ImageDraw
 
     w, h = size
     canvas = Image.new("RGBA", (w, h), (*bg, 255))
+    art = load_icon(background)
+    if art is not None:
+        art = cover_crop(art, (w, h))
+        canvas.alpha_composite(art)
     draw = ImageDraw.Draw(canvas)
 
     n = max(1, min(required, 15))  # cap so a big card doesn't render dust
     earned = max(0, min(earned, n))
+
+    if not stamps_visible:
+        return canvas
 
     geo = stamp_geometry(n, layout, size)
     radius, ring, icon_size = geo["radius"], geo["ring"], geo["icon_size"]

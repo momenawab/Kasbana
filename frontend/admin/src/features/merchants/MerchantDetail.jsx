@@ -1,6 +1,15 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Loader2, Apple, Smartphone, Ban, ShieldCheck, Ticket, Pencil } from 'lucide-react'
+import {
+  ArrowLeft,
+  Loader2,
+  Apple,
+  Smartphone,
+  Ban,
+  ShieldCheck,
+  Ticket,
+  Pencil,
+} from 'lucide-react'
 import { useMerchant } from './api'
 import EditMerchantModal from './EditMerchantModal'
 import { useSuspendMerchant } from '../lifecycle/api'
@@ -14,6 +23,7 @@ import MerchantBillingTab from './MerchantBillingTab'
 import SupportTab from './SupportTab'
 import ActivityTab from './ActivityTab'
 import MerchantComplianceTab from '../compliance/MerchantComplianceTab'
+import WalletStudioTab from '../wallet-studio/WalletStudioTab'
 
 const TABS = [
   { key: 'overview', label: 'Overview', ready: true },
@@ -23,6 +33,11 @@ const TABS = [
   { key: 'activity', label: 'Activity', ready: true },
   { key: 'compliance', label: 'Compliance', ready: true },
 ]
+
+// Wallet Studio writes raw pass JSON onto passes already in customers' wallets,
+// so the tab is hidden from roles the backend would reject anyway
+// (WALLET_STUDIO_MANAGE is super-admin-only).
+const WALLET_STUDIO_TAB = { key: 'wallet', label: 'Wallet Studio', ready: true }
 
 function Stat({ label, value }) {
   return (
@@ -50,6 +65,7 @@ export default function MerchantDetail() {
   const usage = m.usage || {}
   const isSuspended = m.status === 'SUSPENDED'
   const canSuspend = role === 'SUPER_ADMIN'
+  const tabs = canSuspend ? [...TABS, WALLET_STUDIO_TAB] : TABS
   const canApplyCoupon = ['SUPER_ADMIN', 'FINANCE'].includes(role)
   const canEdit = ['SUPER_ADMIN', 'SUPPORT'].includes(role)
 
@@ -111,7 +127,9 @@ export default function MerchantDetail() {
         </div>
         <div className="flex flex-col items-end gap-2 text-right text-sm text-tx-2">
           <div>Joined {shortDate(m.created_at)}</div>
-          {m.trial_ends_at && <div className="text-tx-3">Trial ends {shortDate(m.trial_ends_at)}</div>}
+          {m.trial_ends_at && (
+            <div className="text-tx-3">Trial ends {shortDate(m.trial_ends_at)}</div>
+          )}
           <div className="flex gap-2">
             {canEdit && (
               <button
@@ -151,7 +169,7 @@ export default function MerchantDetail() {
 
       {/* Tabs */}
       <div className="flex gap-1 border-b border-line">
-        {TABS.map((t) => (
+        {tabs.map((t) => (
           <button
             key={t.key}
             onClick={() => t.ready && setTab(t.key)}
@@ -218,6 +236,7 @@ export default function MerchantDetail() {
       {tab === 'billing' && <MerchantBillingTab merchantId={id} />}
       {tab === 'support' && <SupportTab merchantId={id} merchantName={m.name} />}
       {tab === 'activity' && <ActivityTab merchantId={id} />}
+      {tab === 'wallet' && <WalletStudioTab merchantId={id} merchantName={m.name} />}
       {tab === 'compliance' && (
         <MerchantComplianceTab merchantId={id} slug={m.slug} name={m.name} />
       )}

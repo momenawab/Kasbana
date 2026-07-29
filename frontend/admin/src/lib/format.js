@@ -15,6 +15,18 @@ export function num(n) {
   return n == null ? '—' : Number(n).toLocaleString('en-US')
 }
 
+// Eastern-Arabic digits. Ported from the merchant dashboard's lib/format so the
+// Wallet Studio's copied WalletPreview renders identically to the merchant's —
+// the console itself is English-only, but the preview must be able to show a
+// pass exactly as an Arabic-locale customer will see it.
+const AR_DIGITS = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩']
+
+export function arDigits(value, lang) {
+  const s = String(value ?? '')
+  if (lang !== 'ar') return s
+  return s.replace(/[0-9]/g, (d) => AR_DIGITS[Number(d)])
+}
+
 // Map a billing/merchant/invoice status string to a Badge tone.
 export function statusTone(status) {
   const s = (status || '').toLowerCase()

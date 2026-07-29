@@ -174,6 +174,26 @@ class WalletCardDesign(UUIDModel, TimeStampedModel):
     # Full-width bottom image for image-style templates (uploaded via /uploads).
     bottom_image_url = models.URLField(blank=True)
 
+    # ── Strip artwork (Apple strip + Google hero share one renderer) ─────────
+    # Photo behind the stamp grid. Blank = the flat brand-color panel that the
+    # strip has always drawn. Cover-cropped to each canvas, so the same upload
+    # works at the Apple strip and Google hero aspect ratios. When set, the Apple
+    # pass also gets ``suppressStripShine`` — Apple's default gloss gradient
+    # washes out real artwork.
+    strip_bg_image_url = models.URLField(blank=True)
+    # Draw the stamps on top of that artwork. False = the artwork alone, for a
+    # pure-image band on a card whose progress is shown in the fields instead.
+    strip_stamps_visible = models.BooleanField(default=True)
+
+    # ── Admin-authored pass JSON overlays (platform admin only) ─────────────
+    # Partial JSON merged over the generated payload as the last build step —
+    # the escape hatch to pass features the template registry doesn't expose.
+    # RFC 7386 semantics with identity keys locked; see ``wallets.overlay``.
+    # Not merchant-editable: written only from the admin console Wallet Studio.
+    apple_overlay = models.JSONField(default=dict, blank=True)
+    # ``{"class": {...}, "object": {...}}`` — Google splits one pass in two.
+    google_overlay = models.JSONField(default=dict, blank=True)
+
     objects = TenantManager()
 
     def __str__(self) -> str:

@@ -14,7 +14,7 @@
 // barcode is pinned to the bottom.
 // Pure/presentational — updates as props change.
 import { useLayoutEffect, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '../lib/i18n'
 import { QRCodeSVG } from 'qrcode.react'
 import { arDigits } from '../lib/format'
 import { isStampIcon, STAMP_ICON_PATHS } from './stampIcons'
