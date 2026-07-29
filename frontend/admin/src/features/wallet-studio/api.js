@@ -75,6 +75,33 @@ export function usePassScaffold(merchantId, cardId) {
   })
 }
 
+/**
+ * The whole card as one document — {card, design, apple_overlay, google_overlay}
+ * plus read-only {platform, assets}. Everything that shapes the card in one place,
+ * so an admin doesn't have to know which row a given knob lives in.
+ */
+export function useCardJson(merchantId, cardId) {
+  return useQuery({
+    queryKey: ['wallet-studio', merchantId, cardId, 'card-json'],
+    queryFn: async () => (await api.get(`/merchants/${merchantId}/cards/${cardId}/card-json`)).data,
+    enabled: Boolean(merchantId && cardId),
+  })
+}
+
+export function useSaveCardJson(merchantId, cardId) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (document) =>
+      (await api.put(`/merchants/${merchantId}/cards/${cardId}/card-json`, document)).data,
+    onSuccess: (data) => {
+      qc.setQueryData(['wallet-studio', merchantId, cardId, 'card-json'], data)
+      // A card-json save can move anything — the rail, the Editor's design and
+      // the scaffold are all downstream of it.
+      qc.invalidateQueries({ queryKey: ['wallet-studio', merchantId] })
+    },
+  })
+}
+
 /** Push the saved design to every live pass on this card. Deliberately manual. */
 export function useRepublish(merchantId, cardId) {
   return useMutation({

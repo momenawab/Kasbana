@@ -5,6 +5,7 @@
 ``PATCH /merchants/{id}/cards/{card_id}/wallet-design``  — save them.
 ``POST  /merchants/{id}/cards/{card_id}/pass-preview``   — dry-run, unsaved.
 ``GET   /merchants/{id}/cards/{card_id}/pass-scaffold``  — current pass as JSON.
+``GET/PUT /merchants/{id}/cards/{card_id}/card-json``    — the WHOLE card as JSON.
 ``POST  /merchants/{id}/cards/{card_id}/republish``      — push to live passes.
 
 This is the same editor the merchant uses on their dashboard, plus the raw
@@ -25,6 +26,7 @@ Every mutation is audited.
 
 from __future__ import annotations
 
+from django.db import transaction
 from django.db.models import Count
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema
@@ -33,10 +35,11 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 from common import uploads
-from console import audit
+from console import audit, card_json
 from console.permissions import AdminAPIView, IsAdminUser, require
 from console.rbac import Permission
 from console.serializers_wallet_studio import (
+    CardJsonSerializer,
     MerchantCardRowSerializer,
     PassPreviewRequestSerializer,
     PassPreviewSerializer,
@@ -179,6 +182,55 @@ class MerchantCardPassPreviewView(AdminAPIView):
 
         result = preview_mod.build_preview(card, body.validated_data.get("stamp_count"))
         return Response(PassPreviewSerializer(result).data)
+
+
+class MerchantCardJsonView(AdminAPIView):
+    """GET/PUT /…/card-json — the whole card as one editable JSON document.
+
+    Everything that shapes a wallet card in one place: the program itself, how it
+    renders, and the raw pass overlays. An admin should not have to know which
+    row a given knob lives in.
+
+    PUT runs the same post-save work a merchant's own card edit does
+    (``_sync_primary_reward`` keeps the redeem flow working when the goal moves,
+    ``sync_google_class`` re-pushes the program-level design), so editing here
+    can't leave the card in a state the dashboard would never produce.
+    """
+
+    permission_classes = _STUDIO
+
+    @extend_schema(responses=CardJsonSerializer)
+    def get(self, request: Request, merchant_id: str, card_id: str) -> Response:
+        card = _card_for(merchant_id, card_id)
+        return Response(card_json.to_document(card, _design_for(card)))
+
+    @extend_schema(request=CardJsonSerializer, responses=CardJsonSerializer)
+    def put(self, request: Request, merchant_id: str, card_id: str) -> Response:
+        card = _card_for(merchant_id, card_id)
+        design = _design_for(card)
+
+        body = CardJsonSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+
+        with transaction.atomic():
+            changed = card_json.apply_document(card, design, body.validated_data)
+
+        from dashboard.views import _sync_primary_reward
+        from wallets.tasks import sync_google_class
+
+        card.refresh_from_db()
+        _sync_primary_reward(card)
+        sync_google_class.delay(str(card.id))
+
+        audit.record(
+            request,
+            "wallet_studio.card_json.update",
+            target_type="card",
+            target_id=str(card.id),
+            metadata={"merchant_id": str(card.merchant_id), **changed},
+        )
+        design.refresh_from_db()
+        return Response(card_json.to_document(card, design))
 
 
 class MerchantCardPassScaffoldView(AdminAPIView):

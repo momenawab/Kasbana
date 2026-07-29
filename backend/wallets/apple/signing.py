@@ -74,12 +74,18 @@ def build_pass_images(customer_card: CustomerCard) -> dict[str, bytes]:
     fg = _hex_to_rgb(card.color_fg or merchant.color_fg, (255, 255, 255))
     logo_bytes = _local_media_bytes(card.logo_url or merchant.logo_url)
 
+    from wallets import design as design_mod
+
+    design = design_mod.get_design(card)
+    # Resolved here, not inside _logo, so the closure stays a pure renderer.
+    logo_scale = float((design.logo_scale if design else 1.0) or 1.0)
+
     def _png(img: Image.Image) -> bytes:
         out = io.BytesIO()
         img.save(out, format="PNG")
         return out.getvalue()
 
-    def _from_logo(w: int, h: int, align: str = "center") -> bytes | None:
+    def _from_logo(w: int, h: int, align: str = "center", scale: float = 1.0) -> bytes | None:
         if not logo_bytes:
             return None
         try:
@@ -90,7 +96,18 @@ def build_pass_images(customer_card: CustomerCard) -> dict[str, bytes]:
             bbox = src.getbbox()
             if bbox:
                 src = src.crop(bbox)
-            src.thumbnail((w, h))
+            # Fit to the slot, scaling UP as well as down. ``Image.thumbnail`` only
+            # ever shrinks, so a merchant whose logo file happened to be smaller
+            # than the slot got a permanently undersized logo on the pass no matter
+            # what they did — the slot is a budget, not a maximum to shrink toward.
+            # ``scale`` then trims it back if a card wants a smaller mark; it is
+            # capped at 1.0 because Apple's slot is a hard ceiling.
+            box_w, box_h = max(1, int(w * min(scale, 1.0))), max(1, int(h * min(scale, 1.0)))
+            ratio = min(box_w / src.width, box_h / src.height)
+            src = src.resize(
+                (max(1, round(src.width * ratio)), max(1, round(src.height * ratio))),
+                Image.Resampling.LANCZOS,
+            )
             if align == "left":
                 # Size the canvas to the mark's real width (not the full 160px
                 # slot) so Apple renders logoText immediately after it — otherwise
@@ -123,7 +140,7 @@ def build_pass_images(customer_card: CustomerCard) -> dict[str, bytes]:
         return _png(canvas)
 
     def _logo(w: int, h: int) -> bytes:
-        from_logo = _from_logo(w, h, align="left")
+        from_logo = _from_logo(w, h, align="left", scale=logo_scale)
         if from_logo is not None:
             return from_logo
         canvas = Image.new("RGBA", (w, h), (0, 0, 0, 0))
@@ -150,9 +167,7 @@ def build_pass_images(customer_card: CustomerCard) -> dict[str, bytes]:
     # Templates pin the strip to their ``bottom_visual``: ``stamps`` → the stamp
     # grid, ``image`` → the uploaded bottom image (letterboxed on the strip band).
     from core.enums import CardType
-    from wallets import design as design_mod
 
-    design = design_mod.get_design(card)
     template = design_mod.template_for(card)
     if template is not None:
         bottom_visual = template.get("bottom_visual", "none")
@@ -197,6 +212,7 @@ def build_pass_images(customer_card: CustomerCard) -> dict[str, bytes]:
                 layout=(design.stamp_layout if design else "") or _LAYOUT_GRID,
                 background=_local_media_bytes(design.strip_bg_image_url) if design else None,
                 stamps_visible=(design.strip_stamps_visible if design else True),
+                scale=float((design.stamp_scale if design else 1.0) or 1.0),
             )
         images["strip@3x.png"] = _png(base)
         images["strip@2x.png"] = _png(base.resize((750, 246), Image.Resampling.LANCZOS))

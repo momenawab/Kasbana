@@ -149,6 +149,7 @@ def stamp_hero_url(customer_card: CustomerCard, *, force: bool = False) -> str |
                 # both change the pixels, so both must change the digest.
                 design.strip_bg_image_url if design else "",
                 str(design.strip_stamps_visible) if design else "",
+                str(design.stamp_scale) if design else "",
             ]
         )
         digest = hashlib.sha1(fingerprint.encode("utf-8")).hexdigest()[:16]
@@ -168,6 +169,7 @@ def stamp_hero_url(customer_card: CustomerCard, *, force: bool = False) -> str |
                 # own (narrower) ratio rather than distorted to fit it.
                 background=_local_media_bytes(design.strip_bg_image_url) if design else None,
                 stamps_visible=(design.strip_stamps_visible if design else True),
+                scale=float((design.stamp_scale if design else 1.0) or 1.0),
             )
             # Platform watermark at the bottom-right of the banner.
             img = apply_watermark(img, fg)

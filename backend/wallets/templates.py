@@ -48,7 +48,9 @@ TEMPLATES: dict[str, dict[str, Any]] = {
             "stamp_layout",
             "strip_bg_image_url",
             "strip_stamps_visible",
+            "stamp_scale",
             "logo",
+            "logo_scale",
         ],
         "apple": {
             "header": [{"label": "STAMPS", "source": "balance"}],
@@ -78,7 +80,9 @@ TEMPLATES: dict[str, dict[str, Any]] = {
             "stamp_layout",
             "strip_bg_image_url",
             "strip_stamps_visible",
+            "stamp_scale",
             "logo",
+            "logo_scale",
         ],
         "apple": {
             "header": [{"label": "VISITS", "source": "balance"}],
@@ -96,7 +100,7 @@ TEMPLATES: dict[str, dict[str, Any]] = {
         "name": "Points — reward",
         "card_types": [CardType.POINTS],
         "bottom_visual": _BOTTOM_NONE,
-        "editable": ["color_bg", "color_fg", "label_color", "logo"],
+        "editable": ["color_bg", "color_fg", "label_color", "logo", "logo_scale"],
         "apple": {
             "header": [{"label": "POINTS", "source": "balance"}],
             "primary": [{"label": "Balance", "source": "points"}],
@@ -113,7 +117,14 @@ TEMPLATES: dict[str, dict[str, Any]] = {
         "name": "Store card — image",
         "card_types": [CardType.STAMP, CardType.POINTS],
         "bottom_visual": _BOTTOM_IMAGE,
-        "editable": ["color_bg", "color_fg", "label_color", "bottom_image_url", "logo"],
+        "editable": [
+            "color_bg",
+            "color_fg",
+            "label_color",
+            "bottom_image_url",
+            "logo",
+            "logo_scale",
+        ],
         "apple": {
             "header": [{"label": "POINTS", "source": "balance"}],
             "primary": [{"label": "REWARD", "source": "reward"}],
@@ -130,7 +141,7 @@ TEMPLATES: dict[str, dict[str, Any]] = {
         "name": "Minimal",
         "card_types": [CardType.STAMP, CardType.POINTS],
         "bottom_visual": _BOTTOM_NONE,
-        "editable": ["color_bg", "color_fg", "label_color", "logo"],
+        "editable": ["color_bg", "color_fg", "label_color", "logo", "logo_scale"],
         "apple": {
             "header": [{"label": "BALANCE", "source": "balance"}],
             "primary": [],

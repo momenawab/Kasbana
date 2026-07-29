@@ -136,6 +136,7 @@ from console.views_support import (
     SupportNotesView,
 )
 from console.views_wallet_studio import (
+    MerchantCardJsonView,
     MerchantCardListView,
     MerchantCardPassPreviewView,
     MerchantCardPassScaffoldView,
@@ -460,6 +461,11 @@ urlpatterns = [
         "merchants/<uuid:merchant_id>/cards/<uuid:card_id>/pass-preview",
         MerchantCardPassPreviewView.as_view(),
         name="admin-merchant-card-pass-preview",
+    ),
+    path(
+        "merchants/<uuid:merchant_id>/cards/<uuid:card_id>/card-json",
+        MerchantCardJsonView.as_view(),
+        name="admin-merchant-card-json",
     ),
     path(
         "merchants/<uuid:merchant_id>/cards/<uuid:card_id>/pass-scaffold",

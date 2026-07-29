@@ -6,12 +6,13 @@
 //   Editor — the merchant's own WalletDesignEditor, copied verbatim from
 //            frontend/dashboard/src/features/cards. What the merchant can do,
 //            the platform can do, with the same controls and the same preview.
-//   JSON   — the admin-only raw pass overlay, merged over the generated payload.
-//            This is the escape hatch to pass features no template exposes
-//            (locations, semantics, per-field alignment, …). It opens on the
-//            card's CURRENT pass (ScaffoldPanel) rather than an empty document,
-//            so a card designed in the Editor can be picked up and edited
-//            instead of retyped.
+//   JSON   — the WHOLE card as one document: the program (name, goal, reward,
+//            colours, image URLs), how it renders (template, stamp style, sizes,
+//            strip artwork) and the raw pass overlays. Anything about the card is
+//            reachable here, so an admin never has to know which row a knob lives
+//            in. The generated pass is shown above it (ScaffoldPanel) as the
+//            starting point, and the platform-managed identity keys are echoed
+//            read-only so nothing looks missing.
 //
 // Saving is cheap and does NOT touch live passes. Republish is a separate,
 // explicit action, because a card can have tens of thousands of holders and an
@@ -24,7 +25,7 @@ import { useToast } from '../../hooks/useToast'
 import Toaster from '../../components/Toaster'
 import { num } from '../../lib/format'
 import WalletDesignEditor from './WalletDesignEditor'
-import JsonEditor from './JsonEditor'
+import CardJsonEditor from './CardJsonEditor'
 import OverlayGuide from './OverlayGuide'
 import ScaffoldPanel from './ScaffoldPanel'
 import {
@@ -32,7 +33,6 @@ import {
   usePassPreview,
   useRepublish,
   usePassScaffold,
-  useSaveWalletDesign,
   useWalletDesign,
 } from './api'
 
@@ -114,78 +114,37 @@ function CardStudio({ merchantId, merchantName, card }) {
   const [view, setView] = useState('editor')
   const { data: saved } = useWalletDesign(merchantId, card.id)
   const { data: scaffold, isLoading: scaffoldLoading } = usePassScaffold(merchantId, card.id)
-  const save = useSaveWalletDesign(merchantId, card.id)
   const preview = usePassPreview(merchantId, card.id)
   const republish = useRepublish(merchantId, card.id)
 
-  // Overlay state is owned here, not by the copied editor — the editor knows
-  // nothing about overlays, and keeping them out of it is what lets it stay a
-  // verbatim copy of the merchant's.
-  const [apple, setApple] = useState({})
-  const [google, setGoogle] = useState({})
-  const [appleOk, setAppleOk] = useState(true)
-  const [googleOk, setGoogleOk] = useState(true)
-  const [dirty, setDirty] = useState(false)
+  // The document itself is owned by CardJsonEditor — it is the single source of
+  // truth for what gets saved. Copy-to-overlay and snippet inserts therefore
+  // travel as an *injection* rather than as competing state up here; the nonce
+  // is what lets the same insert fire twice in a row.
+  const [injection, setInjection] = useState(null)
 
-  useEffect(() => {
-    if (!saved) return
-    setApple(saved.apple_overlay || {})
-    setGoogle(saved.google_overlay || {})
-    setDirty(false)
-  }, [saved])
+  const hasOverlay = Boolean(
+    saved &&
+    (Object.keys(saved.apple_overlay || {}).length ||
+      Object.keys(saved.google_overlay || {}).length)
+  )
 
-  const onApple = (value, ok) => {
-    setAppleOk(ok)
-    if (ok && value) {
-      setApple(value)
-      setDirty(true)
-    }
-  }
-  const onGoogle = (value, ok) => {
-    setGoogleOk(ok)
-    if (ok && value) {
-      setGoogle(value)
-      setDirty(true)
-    }
-  }
+  const insert = (json) =>
+    setInjection({ section: 'apple_overlay', value: json, merge: true, nonce: Date.now() })
 
-  const insert = (json) => {
-    setApple((current) => ({ ...current, ...json }))
-    setDirty(true)
-  }
-
-  // Adopt the generated pass into the overlay. Google arrives as one half at a
-  // time (class or object), so it merges into its own section rather than
-  // replacing the whole document and wiping the other half.
-  const adopt = (target, body, section) => {
+  // Adopt the generated pass. Google arrives one half at a time (class or
+  // object), so it merges into its own half rather than wiping the other.
+  const adopt = (target, body, half) => {
     if (!body) return
-    if (target === 'apple') {
-      setApple(body)
-    } else {
-      setGoogle((current) => ({ ...current, [section]: body }))
-    }
-    setDirty(true)
-    toast.success('Copied into the overlay. Review it, then Save.')
-  }
-
-  const saveOverlays = () => {
-    save.mutate(
-      { apple_overlay: apple, google_overlay: google },
-      {
-        onSuccess: () => {
-          setDirty(false)
-          toast.success('Pass JSON saved. Use Republish to push it to live passes.')
-        },
-        onError: (err) => toast.error(normalizeError(err).message),
-      }
+    setInjection(
+      target === 'apple'
+        ? { section: 'apple_overlay', value: body, nonce: Date.now() }
+        : { section: 'google_overlay', half, value: body, nonce: Date.now() }
     )
   }
 
   const runPreview = () => {
-    preview.mutate(
-      { design: { apple_overlay: apple, google_overlay: google } },
-      { onError: (err) => toast.error(normalizeError(err).message) }
-    )
+    preview.mutate({}, { onError: (err) => toast.error(normalizeError(err).message) })
   }
 
   const doRepublish = () => {
@@ -201,15 +160,13 @@ function CardStudio({ merchantId, merchantName, card }) {
     })
   }
 
-  const canSave = appleOk && googleOk && dirty && !save.isPending
-
   return (
     <div className="min-w-0 flex-1">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-line">
         <div className="flex gap-1">
           {[
             ['editor', 'Editor'],
-            ['json', 'Pass JSON'],
+            ['json', 'Card JSON'],
           ].map(([key, label]) => (
             <button
               key={key}
@@ -250,48 +207,11 @@ function CardStudio({ merchantId, merchantName, card }) {
             <ScaffoldPanel
               scaffold={scaffold}
               isLoading={scaffoldLoading}
-              hasOverlay={Object.keys(apple).length > 0 || Object.keys(google).length > 0}
+              hasOverlay={hasOverlay}
               onAdopt={adopt}
             />
-            <JsonEditor
-              label="Apple — pass.json overlay"
-              hint="Merged over the generated pass.json. Anything PassKit accepts on a storeCard."
-              value={apple}
-              onChange={onApple}
-            />
-            <JsonEditor
-              label="Google — class / object overlay"
-              hint='Two halves: {"class": {…}, "object": {…}}.'
-              value={google}
-              onChange={onGoogle}
-              rows={10}
-            />
-
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                onClick={saveOverlays}
-                disabled={!canSave}
-                className="flex items-center gap-1.5 rounded-ctl bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-d disabled:opacity-50"
-              >
-                {save.isPending && <Loader2 size={14} className="animate-spin" />}
-                Save pass JSON
-              </button>
-              <button
-                onClick={runPreview}
-                disabled={!appleOk || !googleOk || preview.isPending}
-                className="flex items-center gap-1.5 rounded-ctl border border-line px-3 py-2 text-sm font-semibold text-tx-2 hover:border-brand hover:text-brand disabled:opacity-50"
-              >
-                {preview.isPending ? (
-                  <Loader2 size={14} className="animate-spin" />
-                ) : (
-                  <RefreshCw size={14} />
-                )}
-                Preview resolved pass
-              </button>
-              {dirty && <span className="text-xs text-warn">Unsaved changes</span>}
-            </div>
-
-            {preview.data && <PreviewResult data={preview.data} />}
+            <CardJsonEditor merchantId={merchantId} card={card} injection={injection} />
+            <PreviewBar onPreview={runPreview} pending={preview.isPending} data={preview.data} />
           </div>
 
           <div className="w-full shrink-0 xl:w-96">
@@ -306,8 +226,29 @@ function CardStudio({ merchantId, merchantName, card }) {
 // The resolved payloads, exactly as the phone will receive them — tokens already
 // substituted for a sample customer. This is the thing worth reading before a
 // republish: it is the merge result, not what was typed.
-function PreviewResult({ data }) {
+// The resolved payloads, exactly as the phone will receive them — tokens already
+// substituted for a sample customer. Worth reading before a republish: it is the
+// merge result, not what was typed.
+function PreviewBar({ onPreview, pending, data }) {
   const [tab, setTab] = useState('apple')
+
+  if (!data) {
+    return (
+      <div>
+        <button
+          onClick={onPreview}
+          disabled={pending}
+          className="flex items-center gap-1.5 rounded-ctl border border-line px-3 py-2 text-sm font-semibold text-tx-2 hover:border-brand hover:text-brand disabled:opacity-50"
+        >
+          {pending ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+          Preview resolved pass
+        </button>
+        <p className="mt-1 text-xs text-tx-3">
+          Renders the saved card for a sample customer — the merge result, not what you typed.
+        </p>
+      </div>
+    )
+  }
   const panes = [
     ['apple', 'Apple pass.json', data.apple],
     ['google_class', 'Google class', data.google_class],
@@ -332,6 +273,14 @@ function PreviewResult({ data }) {
         <span className="ml-auto pe-1 text-[11px] text-tx-3">
           sample: {data.stamp_count}/{data.stamps_required} stamps
         </span>
+        <button
+          onClick={onPreview}
+          disabled={pending}
+          title="Re-run against the saved card"
+          className="rounded p-1 text-tx-3 hover:text-brand disabled:opacity-50"
+        >
+          <RefreshCw size={12} className={pending ? 'animate-spin' : undefined} />
+        </button>
       </div>
       {Object.keys(data.errors || {}).length > 0 && (
         <div className="border-b border-danger/30 bg-danger/10 px-3 py-2">

@@ -143,8 +143,11 @@ def _centers(
     return centers, cell_w
 
 
-def stamp_geometry(n: int, layout: str, size: tuple[int, int]) -> dict:
+def stamp_geometry(n: int, layout: str, size: tuple[int, int], scale: float = 1.0) -> dict:
     """Where every stamp sits and how big it is. Pure — no Pillow, no canvas.
+
+    ``scale`` multiplies the glyph size only (default 1.0 = unchanged, which is
+    what keeps the generated JS fixture valid).
 
     Extracted from ``render_stamp_grid`` so the numbers can be asserted and
     exported without drawing anything. The dashboard preview reimplements this
@@ -161,13 +164,16 @@ def stamp_geometry(n: int, layout: str, size: tuple[int, int]) -> dict:
     cell_h = (h - 2 * pad_y) / rows
 
     centers, pitch = _centers(n, rows, cols, w, pad_x, pad_y, cell_w, cell_h, layout)
-    radius = int(min(pitch, cell_h) * STAMP_FILL)
+    # ``scale`` only resizes the glyphs — never the centres. Moving the centres
+    # would change the arrangement, which is the template's job, not a size
+    # control's; this way a bigger stamp grows in place.
+    radius = int(min(pitch, cell_h) * STAMP_FILL * scale)
     return {
         "centers": [{"x": round(x, 4), "y": round(y, 4)} for x, y in centers],
         "pitch": round(pitch, 4),
         "radius": radius,
         "ring": max(4, radius // 7),
-        "icon_size": int(min(pitch, cell_h) * STAMP_ICON_FILL),
+        "icon_size": int(min(pitch, cell_h) * STAMP_ICON_FILL * scale),
     }
 
 
@@ -182,6 +188,7 @@ def render_stamp_grid(
     layout: str = LAYOUT_GRID,
     background: bytes | None = None,
     stamps_visible: bool = True,
+    scale: float = 1.0,
 ):  # type: ignore[no-untyped-def]
     """Draw the stamp grid on a brand-color panel (earned filled, remaining outline).
 
@@ -215,7 +222,7 @@ def render_stamp_grid(
     if not stamps_visible:
         return canvas
 
-    geo = stamp_geometry(n, layout, size)
+    geo = stamp_geometry(n, layout, size, scale)
     radius, ring, icon_size = geo["radius"], geo["ring"], geo["icon_size"]
 
     icon_filled, icon_empty = load_icon(filled_icon), load_icon(empty_icon)
