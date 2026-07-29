@@ -27,13 +27,29 @@ from leadgen.crawl import ROLE_EMAIL_PREFIXES, CrawlResult
 # Roles that indicate the person who can sign. Ordered by decisiveness — a
 # founder outranks a manager when both appear on the same page.
 _OWNER_ROLES: tuple[tuple[str, int], ...] = (
-    ("founder", 3), ("co-founder", 3), ("owner", 3), ("proprietor", 3),
-    ("ceo", 3), ("chairman", 3), ("managing director", 3), ("md", 2),
-    ("general manager", 2), ("gm", 2), ("director", 2), ("partner", 2),
-    ("operations manager", 1), ("branch manager", 1), ("manager", 1),
+    ("founder", 3),
+    ("co-founder", 3),
+    ("owner", 3),
+    ("proprietor", 3),
+    ("ceo", 3),
+    ("chairman", 3),
+    ("managing director", 3),
+    ("md", 2),
+    ("general manager", 2),
+    ("gm", 2),
+    ("director", 2),
+    ("partner", 2),
+    ("operations manager", 1),
+    ("branch manager", 1),
+    ("manager", 1),
     # Arabic
-    ("المالك", 3), ("صاحب", 3), ("المؤسس", 3), ("مؤسس", 3),
-    ("الرئيس التنفيذي", 3), ("المدير العام", 2), ("مدير", 1),
+    ("المالك", 3),
+    ("صاحب", 3),
+    ("المؤسس", 3),
+    ("مؤسس", 3),
+    ("الرئيس التنفيذي", 3),
+    ("المدير العام", 2),
+    ("مدير", 1),
 )
 
 _ROLE_ALTERNATION = "|".join(re.escape(role) for role, _ in _OWNER_ROLES)
@@ -58,10 +74,35 @@ _ARABIC_ROLE_THEN_NAME = re.compile(
 # Story" and "Privacy Policy" become candidate owners on almost every site.
 _NAME_STOPWORDS: frozenset[str] = frozenset(
     {
-        "our", "story", "about", "us", "privacy", "policy", "terms", "service",
-        "conditions", "contact", "home", "menu", "all", "rights", "reserved",
-        "copyright", "company", "group", "restaurant", "cafe", "coffee",
-        "the", "team", "read", "more", "learn", "follow", "order", "now",
+        "our",
+        "story",
+        "about",
+        "us",
+        "privacy",
+        "policy",
+        "terms",
+        "service",
+        "conditions",
+        "contact",
+        "home",
+        "menu",
+        "all",
+        "rights",
+        "reserved",
+        "copyright",
+        "company",
+        "group",
+        "restaurant",
+        "cafe",
+        "coffee",
+        "the",
+        "team",
+        "read",
+        "more",
+        "learn",
+        "follow",
+        "order",
+        "now",
     }
 )
 
@@ -184,9 +225,7 @@ def extract_from_emails(emails: list[str], url: str = "") -> list[dict]:
             continue
 
         name = " ".join(part.capitalize() for part in parts[:3])
-        candidates.append(
-            _candidate(name, "", enums.OwnerNameSource.EMAIL_LOCAL_PART, url, email)
-        )
+        candidates.append(_candidate(name, "", enums.OwnerNameSource.EMAIL_LOCAL_PART, url, email))
 
     return candidates
 

@@ -102,7 +102,8 @@ def platform_analytics() -> dict[str, Any]:
 
     # ── growth over time (merchant signups by month, cumulative) ────────────────
     signup_rows = (
-        real_merchants().annotate(month=TruncMonth("created_at"))
+        real_merchants()
+        .annotate(month=TruncMonth("created_at"))
         .values("month")
         .annotate(n=Count("id"))
         .order_by("month")

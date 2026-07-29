@@ -126,9 +126,10 @@ def test_patch_read_only_role_forbidden(api_client, merchant):
     api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {issue_admin_tokens(ro)['access']}")
 
     assert api_client.get(f"{LIST}/{merchant.id}").status_code == 200  # read ok
-    assert api_client.patch(
-        f"{LIST}/{merchant.id}", {"name": "Nope"}, format="json"
-    ).status_code == 403  # edit gated
+    assert (
+        api_client.patch(f"{LIST}/{merchant.id}", {"name": "Nope"}, format="json").status_code
+        == 403
+    )  # edit gated
 
 
 # ── security ──────────────────────────────────────────────────────────────────

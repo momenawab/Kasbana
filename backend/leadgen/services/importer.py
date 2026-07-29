@@ -162,9 +162,7 @@ def _opening_note(lead: GeneratedLead) -> str:
             f"(from {source.lower()}, {lead.owner_name_confidence} confidence) — worth confirming."
         )
     else:
-        lines.append(
-            "No owner name published — ask who owns the place on the first call."
-        )
+        lines.append("No owner name published — ask who owns the place on the first call.")
 
     profile = getattr(lead, "website_profile", None)
     if profile and profile.pos_vendors:

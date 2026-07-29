@@ -190,11 +190,7 @@ def score_lead(lead) -> tuple[int, str, list[dict]]:
     # number *could* exist, not that anyone answers, and paying it the same
     # weight would make the signal mean nothing.
     phone_check = next(
-        (
-            check
-            for check in lead.verifications.all()
-            if check.kind == enums.VerificationKind.PHONE
-        ),
+        (check for check in lead.verifications.all() if check.kind == enums.VerificationKind.PHONE),
         None,
     )
     verified = phone_check is not None and phone_check.result == enums.VerificationResult.VERIFIED
@@ -238,9 +234,11 @@ def score_lead(lead) -> tuple[int, str, list[dict]]:
             "instagram",
             "Instagram profile",
             INSTAGRAM_POINTS if enums.SocialPlatform.INSTAGRAM in platforms else 0,
-            "Linked from the website"
-            if enums.SocialPlatform.INSTAGRAM in platforms
-            else "None found",
+            (
+                "Linked from the website"
+                if enums.SocialPlatform.INSTAGRAM in platforms
+                else "None found"
+            ),
         )
     )
     signals.append(
@@ -248,9 +246,11 @@ def score_lead(lead) -> tuple[int, str, list[dict]]:
             "facebook",
             "Facebook page",
             FACEBOOK_POINTS if enums.SocialPlatform.FACEBOOK in platforms else 0,
-            "Linked from the website"
-            if enums.SocialPlatform.FACEBOOK in platforms
-            else "None found",
+            (
+                "Linked from the website"
+                if enums.SocialPlatform.FACEBOOK in platforms
+                else "None found"
+            ),
         )
     )
 
@@ -281,15 +281,15 @@ def score_lead(lead) -> tuple[int, str, list[dict]]:
     )
 
     # ── Digital maturity ─────────────────────────────────────────────────────
-    on_platform = bool(profile and (profile.delivery_platforms or profile.reservation_platforms))
+    delivery = profile.delivery_platforms if profile else []
+    reservation = profile.reservation_platforms if profile else []
+    on_platform = bool(delivery or reservation)
     signals.append(
         Signal(
             "digital_presence",
             "Already on a delivery or booking platform",
             DIGITAL_PRESENCE_POINTS if on_platform else 0,
-            ", ".join(profile.delivery_platforms + profile.reservation_platforms)
-            if on_platform
-            else "None detected",
+            (", ".join(delivery + reservation) if on_platform else "None detected"),
         )
     )
 
@@ -302,12 +302,14 @@ def score_lead(lead) -> tuple[int, str, list[dict]]:
             "greenfield",
             "Proven footfall, no loyalty programme yet",
             GREENFIELD_POINTS if greenfield else 0,
-            f"{lead.reviews_count} reviews and no loyalty vendor detected"
-            if greenfield
-            else (
-                ", ".join(loyalty_vendors)
-                if loyalty_vendors
-                else f"Only {lead.reviews_count} reviews — footfall unproven"
+            (
+                f"{lead.reviews_count} reviews and no loyalty vendor detected"
+                if greenfield
+                else (
+                    ", ".join(loyalty_vendors)
+                    if loyalty_vendors
+                    else f"Only {lead.reviews_count} reviews — footfall unproven"
+                )
             ),
         )
     )

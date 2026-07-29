@@ -49,9 +49,7 @@ def verify_lead(lead: GeneratedLead) -> list[Verification]:
 
 
 def verify_target(lead: GeneratedLead, kind: str, target: str) -> Verification:
-    record, _ = Verification.objects.get_or_create(
-        lead=lead, kind=kind, target=target[:254]
-    )
+    record, _ = Verification.objects.get_or_create(lead=lead, kind=kind, target=target[:254])
     record.status = enums.TaskStatus.RUNNING
     record.attempts += 1
     record.error = ""
@@ -63,9 +61,7 @@ def verify_target(lead: GeneratedLead, kind: str, target: str) -> Verification:
         else:
             outcome = verify.verify_email(target)
     except Exception as exc:  # noqa: BLE001 — one bad contact is not a job failure
-        logger.warning(
-            "leadgen.verify.failed", extra={"lead": str(lead.id), "error": str(exc)}
-        )
+        logger.warning("leadgen.verify.failed", extra={"lead": str(lead.id), "error": str(exc)})
         record.status = enums.TaskStatus.FAILED
         record.error = str(exc)[:500]
         record.save(update_fields=["status", "error", "updated_at"])
@@ -104,9 +100,7 @@ def verify_target(lead: GeneratedLead, kind: str, target: str) -> Verification:
 
 def verify_job(job) -> int:
     """Verify every surviving lead on a job. Returns rows completed."""
-    leads = job.leads.filter(duplicate_of__isnull=True).select_related(
-        "website_profile", "job"
-    )
+    leads = job.leads.filter(duplicate_of__isnull=True).select_related("website_profile", "job")
     completed = 0
     for lead in leads.iterator(chunk_size=50):
         for record in verify_lead(lead):

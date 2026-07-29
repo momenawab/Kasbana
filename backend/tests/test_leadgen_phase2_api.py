@@ -136,9 +136,7 @@ class TestRunStage:
     def test_running_a_stage_is_audited(self, sales):
         job = SearchJob.objects.create(country="EG", city="Cairo", business_types=["cafe"])
         with patch("leadgen.views.tasks.enqueue_stage", return_value="queued"):
-            client_for(sales).post(
-                f"/api/admin/v1/leadgen/jobs/{job.id}/run/ai", {}, format="json"
-            )
+            client_for(sales).post(f"/api/admin/v1/leadgen/jobs/{job.id}/run/ai", {}, format="json")
         assert AdminAuditLog.objects.filter(action="leadgen.stage.ai").exists()
 
     def test_the_run_route_is_not_swallowed_by_the_action_route(self, sales):

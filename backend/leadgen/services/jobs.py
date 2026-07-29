@@ -320,9 +320,7 @@ def _run_enrichment(job: SearchJob) -> None:
                 ready += 1
         except Exception as exc:  # noqa: BLE001 — one bad site is not a job failure
             failed += 1
-            logger.warning(
-                "leadgen.enrich.failed", extra={"lead": str(lead.id), "error": str(exc)}
-            )
+            logger.warning("leadgen.enrich.failed", extra={"lead": str(lead.id), "error": str(exc)})
             log(
                 job,
                 f"{lead.business_name}: enrichment failed — {exc}",

@@ -105,9 +105,7 @@ class TestMetrics:
         )
         assert analytics.metrics()["verified"] == 0
 
-        Verification.objects.filter(lead=lead).update(
-            result=enums.VerificationResult.VERIFIED
-        )
+        Verification.objects.filter(lead=lead).update(result=enums.VerificationResult.VERIFIED)
         assert analytics.metrics()["verified"] == 1
 
     def test_cost_and_token_totals_come_from_the_ledger(self, job):
@@ -146,7 +144,9 @@ class TestCharts:
     def test_conversion_funnel_reads_through_to_the_crm(self, job):
         merchant = Merchant.objects.create(name="Karam", slug="karam")
         crm_lead = CrmLead.objects.create(
-            business_name="Karam", name="A", phone="+201001234567",
+            business_name="Karam",
+            name="A",
+            phone="+201001234567",
             converted_merchant=merchant,
         )
         make_lead(job, place_id="p1", imported_lead=crm_lead, state=enums.LeadState.IMPORTED)
@@ -164,8 +164,12 @@ class TestCharts:
     def test_sources_chart_reports_owner_provenance(self, job):
         """Discovery source is always Google Places here, so it would be a
         single bar. Owner provenance is the source dimension that varies."""
-        make_lead(job, place_id="p1", owner_name="Ahmed",
-                  owner_name_source=enums.OwnerNameSource.LEGAL_PAGE)
+        make_lead(
+            job,
+            place_id="p1",
+            owner_name="Ahmed",
+            owner_name_source=enums.OwnerNameSource.LEGAL_PAGE,
+        )
         make_lead(job, place_id="p2")
 
         sources = {row["source"]: row["count"] for row in analytics.owner_sources()}
@@ -187,8 +191,15 @@ class TestCharts:
         make_lead(job, place_id="p1")
         data = client_for(sales).get(DASHBOARD).data
         for key in (
-            "metrics", "leads_per_day", "leads_by_city", "score_distribution",
-            "by_label", "conversion", "owner_sources", "by_category", "web_presence",
+            "metrics",
+            "leads_per_day",
+            "leads_by_city",
+            "score_distribution",
+            "by_label",
+            "conversion",
+            "owner_sources",
+            "by_category",
+            "web_presence",
         ):
             assert key in data
 
@@ -251,8 +262,10 @@ class TestBulkActions:
     def test_selection_is_capped(self, sales):
         response = client_for(sales).post(
             BULK,
-            {"lead_ids": [f"00000000-0000-0000-0000-{i:012d}" for i in range(600)],
-             "action": "reject"},
+            {
+                "lead_ids": [f"00000000-0000-0000-0000-{i:012d}" for i in range(600)],
+                "action": "reject",
+            },
             format="json",
         )
         assert response.status_code == 400
@@ -313,10 +326,12 @@ class TestExports:
         assert row["Rating"] == ""
 
     def test_verification_state_is_exported_verbatim(self, sales, job):
-        """"possible" must not be exported as if it were "verified"."""
+        """ "possible" must not be exported as if it were "verified"."""
         lead = make_lead(job, place_id="p1", phone_e164="+201001234567")
         Verification.objects.create(
-            lead=lead, kind=enums.VerificationKind.PHONE, target="+201001234567",
+            lead=lead,
+            kind=enums.VerificationKind.PHONE,
+            target="+201001234567",
             result=enums.VerificationResult.POSSIBLE,
         )
         row = self._rows(client_for(sales).get(f"{EXPORT}/csv"))[0]

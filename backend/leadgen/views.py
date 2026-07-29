@@ -162,9 +162,7 @@ class SearchJobLogView(AdminAPIView):
 
         paginator = DefaultCursorPagination()
         page = paginator.paginate_queryset(logs, request, view=self)
-        return paginator.get_paginated_response(
-            serializers.JobLogSerializer(page, many=True).data
-        )
+        return paginator.get_paginated_response(serializers.JobLogSerializer(page, many=True).data)
 
 
 # ── Generated leads ──────────────────────────────────────────────────────────
@@ -256,8 +254,9 @@ class GeneratedLeadDetailView(AdminAPIView):
     @extend_schema(responses=serializers.GeneratedLeadDetailSerializer)
     def get(self, request: Request, lead_id) -> Response:
         lead = get_object_or_404(
-            GeneratedLead.objects.select_related("website_profile", "job", "ai_enrichment")
-            .prefetch_related("socials", "owner_candidates", "verifications"),
+            GeneratedLead.objects.select_related(
+                "website_profile", "job", "ai_enrichment"
+            ).prefetch_related("socials", "owner_candidates", "verifications"),
             pk=lead_id,
         )
         return Response(serializers.GeneratedLeadDetailSerializer(lead).data)
@@ -298,9 +297,7 @@ class GeneratedLeadOwnerView(AdminAPIView):
         lead.owner_name_source = enums.OwnerNameSource.MANUAL
         lead.owner_name_confidence = enums.Confidence.HIGH
         lead.save(
-            update_fields=[
-                "owner_name", "owner_name_source", "owner_name_confidence", "updated_at"
-            ]
+            update_fields=["owner_name", "owner_name_source", "owner_name_confidence", "updated_at"]
         )
 
         return Response(serializers.GeneratedLeadDetailSerializer(lead).data)
@@ -327,9 +324,7 @@ class GeneratedLeadImportView(AdminAPIView):
             .filter(id__in=data["lead_ids"])
         )
         if not leads:
-            return Response(
-                {"detail": "No matching leads."}, status=status.HTTP_404_NOT_FOUND
-            )
+            return Response({"detail": "No matching leads."}, status=status.HTTP_404_NOT_FOUND)
 
         assigned = None
         if data.get("assigned_sales_id"):
@@ -506,8 +501,11 @@ class ApiKeyTestView(AdminAPIView):
     def get_permissions(self):
         return [IsSuperAdmin()]
 
-    @extend_schema(operation_id="leadgen_test_provider", request=None,
-                   responses=serializers.TestConnectionSerializer)
+    @extend_schema(
+        operation_id="leadgen_test_provider",
+        request=None,
+        responses=serializers.TestConnectionSerializer,
+    )
     def post(self, request: Request, provider: str) -> Response:
         ok, message = apikeys.test_connection(provider)
         audit.record(

@@ -238,9 +238,7 @@ def enrich(lead: GeneratedLead, *, client: GlmClient | None = None) -> AiEnrichm
     client = client or GlmClient()
 
     try:
-        result = client.complete_json(
-            system=SYSTEM_PROMPT, user=build_user_prompt(lead)
-        )
+        result = client.complete_json(system=SYSTEM_PROMPT, user=build_user_prompt(lead))
     except (GlmError, GlmNotConfigured) as exc:
         logger.warning("leadgen.ai.failed", extra={"lead": str(lead.id), "error": str(exc)})
         record.status = enums.TaskStatus.FAILED

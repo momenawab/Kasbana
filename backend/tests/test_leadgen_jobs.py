@@ -81,7 +81,9 @@ class TestCreate:
 
         with pytest.raises(jobs.JobError, match="could not place"):
             jobs.create(
-                country="EG", city="Nowhere", business_types=[enums.BusinessType.CAFE],
+                country="EG",
+                city="Nowhere",
+                business_types=[enums.BusinessType.CAFE],
                 client=NoMatch(),
             )
 
@@ -99,13 +101,17 @@ class TestCreate:
         """A free-text maximum lets one job exhaust a day of Places quota."""
         with pytest.raises(jobs.JobError, match="Max results"):
             jobs.create(
-                country="EG", city="Cairo", business_types=[enums.BusinessType.CAFE],
-                max_results=999, client=FakePlaces(),
+                country="EG",
+                city="Cairo",
+                business_types=[enums.BusinessType.CAFE],
+                max_results=999,
+                client=FakePlaces(),
             )
 
     def test_duplicate_business_types_collapse(self):
         job = jobs.create(
-            country="EG", city="Cairo",
+            country="EG",
+            city="Cairo",
             business_types=[enums.BusinessType.CAFE, enums.BusinessType.CAFE],
             client=FakePlaces(),
         )
@@ -225,9 +231,7 @@ class TestDeduplicate:
     def _job_with(self, *leads: dict) -> SearchJob:
         job = make_job()
         for index, fields in enumerate(leads):
-            GeneratedLead.objects.create(
-                job=job, place_id=f"p{index}", **fields
-            )
+            GeneratedLead.objects.create(job=job, place_id=f"p{index}", **fields)
         return job
 
     def test_shared_phone_collapses(self):
@@ -334,10 +338,12 @@ class TestRun:
     def test_full_run_reaches_completed_with_counters(self):
         job = make_job()
         client = FakePlaces(
-            [[
-                place("p1", "Karam Cafe", reviews_count=900),
-                place("p2", "Beanos", reviews_count=40),
-            ]]
+            [
+                [
+                    place("p1", "Karam Cafe", reviews_count=900),
+                    place("p2", "Beanos", reviews_count=40),
+                ]
+            ]
         )
 
         jobs.run(job, client=client)
@@ -449,8 +455,9 @@ class TestEnqueueConsumerCheck:
         from leadgen import tasks
 
         job = self._job()
-        with patch.object(tasks.run_search_job, "apply_async"), patch.object(
-            tasks, "consumers_for", return_value=1
+        with (
+            patch.object(tasks.run_search_job, "apply_async"),
+            patch.object(tasks, "consumers_for", return_value=1),
         ):
             assert tasks.enqueue(job) == "queued"
 
@@ -462,8 +469,9 @@ class TestEnqueueConsumerCheck:
         from leadgen import tasks
 
         job = self._job()
-        with patch.object(tasks.run_search_job, "apply_async"), patch.object(
-            tasks, "consumers_for", return_value=0
+        with (
+            patch.object(tasks.run_search_job, "apply_async"),
+            patch.object(tasks, "consumers_for", return_value=0),
         ):
             assert tasks.enqueue(job) == "unconsumed"
 
@@ -479,9 +487,11 @@ class TestEnqueueConsumerCheck:
         from leadgen import tasks
 
         job = self._job()
-        with patch.object(tasks.run_search_job, "apply_async"), patch.object(
-            tasks, "consumers_for", return_value=0
-        ), patch.object(tasks.job_service, "run") as ran:
+        with (
+            patch.object(tasks.run_search_job, "apply_async"),
+            patch.object(tasks, "consumers_for", return_value=0),
+            patch.object(tasks.job_service, "run") as ran,
+        ):
             tasks.enqueue(job)
 
         assert not ran.called
@@ -492,8 +502,9 @@ class TestEnqueueConsumerCheck:
         from leadgen import tasks
 
         job = self._job()
-        with patch.object(tasks.run_search_job, "apply_async"), patch.object(
-            tasks, "consumers_for", return_value=None
+        with (
+            patch.object(tasks.run_search_job, "apply_async"),
+            patch.object(tasks, "consumers_for", return_value=None),
         ):
             assert tasks.enqueue(job) == "queued"
 
@@ -507,9 +518,12 @@ class TestEnqueueConsumerCheck:
         from leadgen import tasks
 
         job = self._job()
-        with patch.object(
-            tasks.run_search_job, "apply_async", side_effect=OperationalError("no broker")
-        ), patch.object(tasks.job_service, "run") as ran:
+        with (
+            patch.object(
+                tasks.run_search_job, "apply_async", side_effect=OperationalError("no broker")
+            ),
+            patch.object(tasks.job_service, "run") as ran,
+        ):
             assert tasks.enqueue(job) == "inline"
 
         assert ran.called
@@ -518,8 +532,9 @@ class TestEnqueueConsumerCheck:
         from leadgen import tasks
 
         job = make_job(priority=enums.JobPriority.BACKGROUND)
-        with patch.object(tasks.run_search_job, "apply_async"), patch.object(
-            tasks, "consumers_for", return_value=0
+        with (
+            patch.object(tasks.run_search_job, "apply_async"),
+            patch.object(tasks, "consumers_for", return_value=0),
         ):
             tasks.enqueue(job)
 

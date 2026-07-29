@@ -190,9 +190,7 @@ def _places_type(business_type: str) -> str:
     return PLACES_TYPES.get(business_type, "")
 
 
-def _persist(
-    job: SearchJob, results: list[PlaceResult], business_type: str, budget: int
-) -> int:
+def _persist(job: SearchJob, results: list[PlaceResult], business_type: str, budget: int) -> int:
     """Write results as leads, skipping any already on this job. Returns count."""
     created = 0
 

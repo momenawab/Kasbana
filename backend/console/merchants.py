@@ -28,12 +28,16 @@ def real_merchants() -> QuerySet[Merchant]:
 
 def merchant_queryset() -> QuerySet[Merchant]:
     """All merchants with directory aggregates annotated (cross-tenant)."""
-    return real_merchants().annotate(
-        cards_count=Count("cards", distinct=True),
-        customers_count=Count("customer_cards", distinct=True),
-        staff_count=Count("staff", distinct=True),
-        locations_count=Count("locations", distinct=True),
-    ).order_by("-created_at")
+    return (
+        real_merchants()
+        .annotate(
+            cards_count=Count("cards", distinct=True),
+            customers_count=Count("customer_cards", distinct=True),
+            staff_count=Count("staff", distinct=True),
+            locations_count=Count("locations", distinct=True),
+        )
+        .order_by("-created_at")
+    )
 
 
 def apply_filters(qs: QuerySet[Merchant], params: Any) -> QuerySet[Merchant]:

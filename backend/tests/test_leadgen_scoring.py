@@ -104,9 +104,10 @@ class TestWeightBudget:
 
 class TestSignals:
     def test_valid_phone_scores_and_unparseable_does_not(self):
-        assert points_for(
-            scoring.score_lead(make_lead(phone_e164="+201001234567"))[2], "phone_valid"
-        ) == scoring.PHONE_VALID_POINTS
+        assert (
+            points_for(scoring.score_lead(make_lead(phone_e164="+201001234567"))[2], "phone_valid")
+            == scoring.PHONE_VALID_POINTS
+        )
         assert points_for(scoring.score_lead(make_lead(phone="0100 bad"))[2], "phone_valid") == 0
 
     def test_website_scores_on_domain_not_raw_url(self):
@@ -122,8 +123,18 @@ class TestSignals:
 
     @pytest.mark.parametrize(
         ("reviews", "expected"),
-        [(0, 0), (49, 0), (50, 8), (199, 8), (200, 14), (499, 14),
-         (500, 20), (999, 20), (1000, 25), (5000, 25)],
+        [
+            (0, 0),
+            (49, 0),
+            (50, 8),
+            (199, 8),
+            (200, 14),
+            (499, 14),
+            (500, 20),
+            (999, 20),
+            (1000, 25),
+            (5000, 25),
+        ],
     )
     def test_review_tiers_are_graduated(self, reviews, expected):
         """Graduated rather than the spec's single 500-review cliff: a cafe with
@@ -227,8 +238,10 @@ class TestMarketReality:
         """Two thirds of Egyptian F&B has no site. Absence must be a small
         deduction, not a disqualification."""
         busy = make_lead(
-            place_id="p-busy", reviews_count=3000,
-            rating="4.6", phone_e164="+201001234567",
+            place_id="p-busy",
+            reviews_count=3000,
+            rating="4.6",
+            phone_e164="+201001234567",
         )
         quiet = make_lead(
             place_id="p-quiet",

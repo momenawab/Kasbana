@@ -228,9 +228,7 @@ class GeneratedLead(UUIDModel, TimeStampedModel):
         db_table = "lead_generation_leads"
         ordering = ["-fit_score", "-created_at"]
         constraints = [
-            models.UniqueConstraint(
-                fields=["job", "place_id"], name="uniq_leadgen_lead_job_place"
-            ),
+            models.UniqueConstraint(fields=["job", "place_id"], name="uniq_leadgen_lead_job_place"),
         ]
         indexes = [
             # The results table: filter by job, sort by score.
@@ -503,9 +501,7 @@ class Verification(UUIDModel, TimeStampedModel):
     them null in production while implying we tried.
     """
 
-    lead = models.ForeignKey(
-        GeneratedLead, on_delete=models.CASCADE, related_name="verifications"
-    )
+    lead = models.ForeignKey(GeneratedLead, on_delete=models.CASCADE, related_name="verifications")
     kind = models.CharField(max_length=8, choices=enums.VerificationKind.choices)
     # The number or address as checked — E.164 for phones, lowercased for email.
     target = models.CharField(max_length=254)
@@ -513,15 +509,11 @@ class Verification(UUIDModel, TimeStampedModel):
     status = models.CharField(
         max_length=16, choices=enums.TaskStatus.choices, default=enums.TaskStatus.QUEUED
     )
-    result = models.CharField(
-        max_length=16, choices=enums.VerificationResult.choices, blank=True
-    )
+    result = models.CharField(max_length=16, choices=enums.VerificationResult.choices, blank=True)
     provider = models.CharField(max_length=24, choices=enums.ApiProvider.choices, blank=True)
 
     # ── Phone findings ───────────────────────────────────────────────────────
-    line_type = models.CharField(
-        max_length=16, choices=enums.PhoneLineType.choices, blank=True
-    )
+    line_type = models.CharField(max_length=16, choices=enums.PhoneLineType.choices, blank=True)
     carrier = models.CharField(max_length=120, blank=True)
 
     # ── Email findings ───────────────────────────────────────────────────────

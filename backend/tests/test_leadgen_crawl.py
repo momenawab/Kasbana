@@ -36,7 +36,7 @@ class TestEmailExtraction:
         assert crawl._extract_emails(soup_of(html), html) == []
 
     def test_does_not_mistake_retina_image_names_for_emails(self):
-        """"logo@2x.png" matches the email shape and appears on a lot of sites."""
+        """ "logo@2x.png" matches the email shape and appears on a lot of sites."""
         html = '<img src="/img/logo@2x.png">'
         assert crawl._extract_emails(soup_of(html), html) == []
 

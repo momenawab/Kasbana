@@ -117,12 +117,18 @@ class TestCoercion:
         assert parsed["estimated_daily_visitors"] is None
 
     def test_numeric_string_and_float_are_accepted(self):
-        assert ai.parse_analysis({**GOOD, "estimated_daily_visitors": "180"})[
-            "estimated_daily_visitors"
-        ] == 180
-        assert ai.parse_analysis({**GOOD, "estimated_daily_visitors": 180.0})[
-            "estimated_daily_visitors"
-        ] == 180
+        assert (
+            ai.parse_analysis({**GOOD, "estimated_daily_visitors": "180"})[
+                "estimated_daily_visitors"
+            ]
+            == 180
+        )
+        assert (
+            ai.parse_analysis({**GOOD, "estimated_daily_visitors": 180.0})[
+                "estimated_daily_visitors"
+            ]
+            == 180
+        )
 
     def test_negative_numbers_are_rejected(self):
         assert ai.parse_analysis({**GOOD, "estimated_branches": -3})["estimated_branches"] is None

@@ -53,13 +53,32 @@ class SearchJobSerializer(serializers.ModelSerializer):
     class Meta:
         model = SearchJob
         fields = (
-            "id", "country", "province", "city", "street", "radius_km",
-            "business_types", "max_results", "priority", "status", "stage",
-            "center_lat", "center_lng",
-            "discovered_count", "duplicate_count", "crawled_count",
-            "ready_count", "imported_count", "failed_count",
-            "progress_percent", "started_at", "finished_at", "error",
-            "created_by_name", "created_at", "updated_at",
+            "id",
+            "country",
+            "province",
+            "city",
+            "street",
+            "radius_km",
+            "business_types",
+            "max_results",
+            "priority",
+            "status",
+            "stage",
+            "center_lat",
+            "center_lng",
+            "discovered_count",
+            "duplicate_count",
+            "crawled_count",
+            "ready_count",
+            "imported_count",
+            "failed_count",
+            "progress_percent",
+            "started_at",
+            "finished_at",
+            "error",
+            "created_by_name",
+            "created_at",
+            "updated_at",
         )
         read_only_fields = fields
 
@@ -86,8 +105,15 @@ class OwnerCandidateSerializer(serializers.ModelSerializer):
     class Meta:
         model = OwnerCandidate
         fields = (
-            "id", "name", "role", "source", "source_display", "confidence",
-            "evidence_url", "evidence_text", "created_at",
+            "id",
+            "name",
+            "role",
+            "source",
+            "source_display",
+            "confidence",
+            "evidence_url",
+            "evidence_text",
+            "created_at",
         )
         read_only_fields = fields
 
@@ -108,15 +134,35 @@ class GeneratedLeadListSerializer(serializers.ModelSerializer):
     class Meta:
         model = GeneratedLead
         fields = (
-            "id", "business_name", "address", "phone", "phone_e164",
-            "website", "website_domain", "rating", "reviews_count",
-            "category", "business_status", "branch_count",
-            "state", "fit_score", "score_label",
-            "owner_name", "owner_name_source", "owner_name_confidence",
-            "crm_match", "crm_match_reason", "imported_lead", "imported_at",
-            "duplicate_of", "duplicate_reason",
-            "has_website", "has_email", "social_platforms",
-            "google_maps_url", "created_at",
+            "id",
+            "business_name",
+            "address",
+            "phone",
+            "phone_e164",
+            "website",
+            "website_domain",
+            "rating",
+            "reviews_count",
+            "category",
+            "business_status",
+            "branch_count",
+            "state",
+            "fit_score",
+            "score_label",
+            "owner_name",
+            "owner_name_source",
+            "owner_name_confidence",
+            "crm_match",
+            "crm_match_reason",
+            "imported_lead",
+            "imported_at",
+            "duplicate_of",
+            "duplicate_reason",
+            "has_website",
+            "has_email",
+            "social_platforms",
+            "google_maps_url",
+            "created_at",
         )
         read_only_fields = fields
 
@@ -160,10 +206,19 @@ class GeneratedLeadDetailSerializer(GeneratedLeadListSerializer):
 
     class Meta(GeneratedLeadListSerializer.Meta):
         fields = GeneratedLeadListSerializer.Meta.fields + (
-            "lat", "lng", "photos_count", "opening_hours", "normalized_name",
-            "score_breakdown", "website_profile", "socials", "owner_candidates",
-            "ai_enrichment", "verifications",
-            "raw_places", "updated_at",
+            "lat",
+            "lng",
+            "photos_count",
+            "opening_hours",
+            "normalized_name",
+            "score_breakdown",
+            "website_profile",
+            "socials",
+            "owner_candidates",
+            "ai_enrichment",
+            "verifications",
+            "raw_places",
+            "updated_at",
         )
         read_only_fields = fields
 
@@ -326,9 +381,7 @@ class BulkActionSerializer(serializers.Serializer):
     lead_ids = serializers.ListField(
         child=serializers.UUIDField(), allow_empty=False, max_length=500
     )
-    action = serializers.ChoiceField(
-        choices=["verify", "rerun_ai", "reject", "restore", "delete"]
-    )
+    action = serializers.ChoiceField(choices=["verify", "rerun_ai", "reject", "restore", "delete"])
 
 
 class BulkResultSerializer(serializers.Serializer):

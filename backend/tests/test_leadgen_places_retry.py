@@ -63,9 +63,10 @@ class TestRateLimit:
         one wait, one retry, no more."""
         c = client()
         responses = [response(429, headers={"Retry-After": "2"}), response(200)]
-        with patch("httpx.Client.post", side_effect=responses), patch(
-            "leadgen.places.time.sleep"
-        ) as slept:
+        with (
+            patch("httpx.Client.post", side_effect=responses),
+            patch("leadgen.places.time.sleep") as slept,
+        ):
             result = c._post("url", {}, "mask")
 
         assert result == {"places": []}
@@ -76,9 +77,12 @@ class TestRateLimit:
         """A 60s reset is longer than a job should hold the pipeline for."""
         settings.LEADGEN_PLACES_RETRY_AFTER_CAP_S = 10
         c = client()
-        with patch(
-            "httpx.Client.post", return_value=response(429, headers={"Retry-After": "60"})
-        ) as post, patch("leadgen.places.time.sleep") as slept:
+        with (
+            patch(
+                "httpx.Client.post", return_value=response(429, headers={"Retry-After": "60"})
+            ) as post,
+            patch("leadgen.places.time.sleep") as slept,
+        ):
             with pytest.raises(PlacesError, match="rate-limited"):
                 c._post("url", {}, "mask")
 
@@ -105,19 +109,20 @@ class TestOtherFailures:
         """Server errors are genuinely transient — the short backoff is right."""
         c = client()
         responses = [response(503), response(503), response(200)]
-        with patch("httpx.Client.post", side_effect=responses), patch(
-            "leadgen.places.time.sleep"
-        ):
+        with patch("httpx.Client.post", side_effect=responses), patch("leadgen.places.time.sleep"):
             result = c._post("url", {}, "mask")
         assert result == {"places": []}
         assert c.billed_calls == 3
 
     def test_a_network_error_is_retried(self):
         c = client()
-        with patch(
-            "httpx.Client.post",
-            side_effect=[httpx.ConnectError("down"), httpx.ConnectError("down"), response(200)],
-        ), patch("leadgen.places.time.sleep"):
+        with (
+            patch(
+                "httpx.Client.post",
+                side_effect=[httpx.ConnectError("down"), httpx.ConnectError("down"), response(200)],
+            ),
+            patch("leadgen.places.time.sleep"),
+        ):
             assert c._post("url", {}, "mask") == {"places": []}
 
     def test_a_missing_key_raises_before_any_call(self):
@@ -137,9 +142,11 @@ class TestPacing:
         c = client()
 
         clock = {"t": 100.0}
-        with patch("leadgen.places.time.monotonic", lambda: clock["t"]), patch(
-            "leadgen.places.time.sleep"
-        ) as slept, patch("httpx.Client.post", return_value=response(200)):
+        with (
+            patch("leadgen.places.time.monotonic", lambda: clock["t"]),
+            patch("leadgen.places.time.sleep") as slept,
+            patch("httpx.Client.post", return_value=response(200)),
+        ):
             c._last_call_at = 100.0  # a call just happened
             c._pace()
 
@@ -151,9 +158,10 @@ class TestPacing:
         settings.LEADGEN_PLACES_MIN_INTERVAL_S = 0.6
         c = client()
         clock = {"t": 200.0}
-        with patch("leadgen.places.time.monotonic", lambda: clock["t"]), patch(
-            "leadgen.places.time.sleep"
-        ) as slept:
+        with (
+            patch("leadgen.places.time.monotonic", lambda: clock["t"]),
+            patch("leadgen.places.time.sleep") as slept,
+        ):
             c._last_call_at = 100.0  # 100s ago — well past the interval
             c._pace()
         slept.assert_not_called()

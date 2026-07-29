@@ -95,7 +95,7 @@ class TestExtractFromEmails:
         assert owner.extract_from_emails([email]) == []
 
     def test_single_token_local_part_is_not_offered(self):
-        """"ahmed@" could be a person, but equally a brand or a department —
+        """ "ahmed@" could be a person, but equally a brand or a department —
         not enough to put a name in front of a rep."""
         assert owner.extract_from_emails(["ahmed@karam.com.eg"]) == []
 
@@ -127,11 +127,13 @@ class TestDeduplicate:
 
     def test_different_people_are_both_kept(self):
         candidates = owner.extract_from_pages(
-            result_with((
-                "https://karam.com.eg/team",
-                "about",
-                "Ahmed Karam, Founder. Mona Sayed, Director.",
-            ))
+            result_with(
+                (
+                    "https://karam.com.eg/team",
+                    "about",
+                    "Ahmed Karam, Founder. Mona Sayed, Director.",
+                )
+            )
         )
         assert len({c["name"] for c in owner.deduplicate(candidates)}) == 2
 

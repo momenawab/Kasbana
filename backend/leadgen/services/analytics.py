@@ -98,10 +98,7 @@ def leads_by_city(limit: int = 10) -> list[dict]:
     the unit an operator actually thinks in.
     """
     return list(
-        _usable()
-        .values(city=F("job__city"))
-        .annotate(count=Count("id"))
-        .order_by("-count")[:limit]
+        _usable().values(city=F("job__city")).annotate(count=Count("id")).order_by("-count")[:limit]
     )
 
 
@@ -113,10 +110,7 @@ def score_distribution() -> list[dict]:
     cut awkwardly — which is exactly how the Phase 1 weighting problem showed up.
     """
     buckets = {f"{low}-{low + 9}": 0 for low in range(0, 100, 10)}
-    rows = (
-        _usable()
-        .values_list("fit_score", flat=True)
-    )
+    rows = _usable().values_list("fit_score", flat=True)
     for value in rows:
         low = min(int(value) // 10 * 10, 90)
         buckets[f"{low}-{low + 9}"] += 1
@@ -125,13 +119,13 @@ def score_distribution() -> list[dict]:
 
 def by_label() -> list[dict]:
     labels = dict(enums.ScoreLabel.choices)
-    rows = (
-        _usable().values("score_label").annotate(count=Count("id")).order_by("-count")
-    )
+    rows = _usable().values("score_label").annotate(count=Count("id")).order_by("-count")
     return [
-        {"label": row["score_label"] or "unscored",
-         "label_display": labels.get(row["score_label"], "Unscored"),
-         "count": row["count"]}
+        {
+            "label": row["score_label"] or "unscored",
+            "label_display": labels.get(row["score_label"], "Unscored"),
+            "count": row["count"],
+        }
         for row in rows
     ]
 
@@ -146,9 +140,7 @@ def conversion_funnel() -> dict:
     """
     usable = _usable()
     discovered = usable.count()
-    ready = usable.filter(
-        state__in=[enums.LeadState.READY, enums.LeadState.IMPORTED]
-    ).count()
+    ready = usable.filter(state__in=[enums.LeadState.READY, enums.LeadState.IMPORTED]).count()
     imported = usable.filter(imported_lead__isnull=False).count()
     converted = usable.filter(imported_lead__converted_merchant__isnull=False).count()
 
@@ -176,9 +168,7 @@ def owner_sources() -> list[dict]:
     asking rather than from a page.
     """
     sources = dict(enums.OwnerNameSource.choices)
-    rows = (
-        _usable().values("owner_name_source").annotate(count=Count("id")).order_by("-count")
-    )
+    rows = _usable().values("owner_name_source").annotate(count=Count("id")).order_by("-count")
     return [
         {
             "source": row["owner_name_source"] or "none",

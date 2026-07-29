@@ -366,11 +366,12 @@ class TestImport:
         """Forty-nine good leads must not be refused because one is a duplicate."""
         job = make_job()
         good = make_lead(job, place_id="p1", business_name="Fresh Cafe")
-        existing = CrmLead.objects.create(
-            business_name="Karam", name="A", phone="+201009999999"
-        )
+        existing = CrmLead.objects.create(business_name="Karam", name="A", phone="+201009999999")
         blocked = make_lead(
-            job, place_id="p2", business_name="Karam", crm_match=existing,
+            job,
+            place_id="p2",
+            business_name="Karam",
+            crm_match=existing,
             crm_match_reason="phone",
         )
 

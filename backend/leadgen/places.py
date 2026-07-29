@@ -50,6 +50,7 @@ def _retry_after_seconds(response: httpx.Response) -> float:
         return float(value)
     return 0.0
 
+
 # Google's hard cap: 20 results per page, 3 pages per query.
 PAGE_SIZE = 20
 MAX_RADIUS_METERS = 50_000
@@ -87,6 +88,7 @@ def bounding_box(lat: float, lng: float, radius_m: float) -> dict[str, dict[str,
             "longitude": min(lng + lng_delta, 180.0),
         },
     }
+
 
 # Exactly the fields a lead needs, and nothing else. Every addition here can
 # move the request to a pricier SKU, so this list is reviewed as a cost change.
@@ -173,8 +175,7 @@ class PlaceResult:
             lng=location.get("longitude"),
             # International form first: it is already close to E.164, so
             # ``dedupe.normalize_phone`` has less to guess at.
-            phone=payload.get("internationalPhoneNumber")
-            or payload.get("nationalPhoneNumber", ""),
+            phone=payload.get("internationalPhoneNumber") or payload.get("nationalPhoneNumber", ""),
             website=payload.get("websiteUri", ""),
             rating=payload.get("rating"),
             reviews_count=payload.get("userRatingCount", 0) or 0,

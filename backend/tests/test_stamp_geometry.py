@@ -51,9 +51,9 @@ class TestFixtureContract:
         for case in load_cases():
             actual = stamp_geometry(case["n"], case["layout"], tuple(case["size"]))
             expected = {k: case[k] for k in ("pitch", "radius", "ring", "icon_w", "icon_h")}
-            assert {k: actual[k] for k in expected} == expected, (
-                f"{case['size_name']} {case['layout']} n={case['n']}"
-            )
+            assert {
+                k: actual[k] for k in expected
+            } == expected, f"{case['size_name']} {case['layout']} n={case['n']}"
             assert actual["centers"] == case["centers"]
 
     def test_fixture_covers_both_canvases_and_every_layout(self):
@@ -69,9 +69,9 @@ class TestSizing:
         """The invariant the fill factor exists to protect: a stamp's diameter
         must stay inside the pitch, or neighbouring circles overlap."""
         for case in load_cases():
-            assert 2 * case["radius"] < case["pitch"], (
-                f"{case['layout']} n={case['n']}: Ø{2 * case['radius']} ≥ pitch {case['pitch']}"
-            )
+            assert (
+                2 * case["radius"] < case["pitch"]
+            ), f"{case['layout']} n={case['n']}: Ø{2 * case['radius']} ≥ pitch {case['pitch']}"
 
     def test_stamps_stay_inside_the_canvas(self):
         for case in load_cases():

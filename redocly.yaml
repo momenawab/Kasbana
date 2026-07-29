@@ -1,0 +1,17 @@
+# Redocly configuration for the Kasbana API contract.
+# Lint:  npx @redocly/cli@latest lint contracts/openapi.yaml
+extends:
+  - minimal
+
+apis:
+  kasbana:
+    root: contracts/openapi.yaml
+
+rules:
+  # The frozen v1 contract predates some rules; keep signal focused on
+  # structural correctness + the dashboard-proposed additions.
+  operation-summary: error
+  operation-operationId-unique: error
+  path-params-defined: error
+  # localhost:8000 is the legitimate local Django dev server (frozen v1).
+  no-server-example.com: off

@@ -101,9 +101,7 @@ def _name_match(
             continue
 
         if None not in (lead.lat, lead.lng, candidate.lat, candidate.lng):
-            distance = dedupe.haversine_meters(
-                lead.lat, lead.lng, candidate.lat, candidate.lng
-            )
+            distance = dedupe.haversine_meters(lead.lat, lead.lng, candidate.lat, candidate.lng)
             reason = (
                 enums.DedupeReason.COORDINATES
                 if distance <= dedupe.SAME_LOCATION_METERS

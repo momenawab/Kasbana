@@ -161,9 +161,7 @@ class TestVerificationStage:
 
     def test_email_count_is_capped(self):
         lead = make_lead()
-        WebsiteProfile.objects.create(
-            lead=lead, emails=[f"a{i}@karam.com.eg" for i in range(10)]
-        )
+        WebsiteProfile.objects.create(lead=lead, emails=[f"a{i}@karam.com.eg" for i in range(10)])
         lead.refresh_from_db()
         emails = [t for t in verification.targets_for(lead) if t[0] == "email"]
         assert len(emails) == verification.MAX_EMAILS_PER_LEAD
@@ -222,9 +220,7 @@ class TestScoringIntegration:
         from leadgen import scoring
 
         lead = make_lead(phone_e164="+201001234567")
-        unchecked = next(
-            r for r in scoring.score_lead(lead)[2] if r["key"] == "phone_verified"
-        )
+        unchecked = next(r for r in scoring.score_lead(lead)[2] if r["key"] == "phone_verified")
         assert unchecked["detail"] == "Not verified yet"
 
         verification.verify_lead(lead)

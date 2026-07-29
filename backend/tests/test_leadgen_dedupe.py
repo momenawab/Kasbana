@@ -23,7 +23,7 @@ class TestNormalizeName:
         assert dedupe.normalize_name("The Karam Company") == "karam"
 
     def test_business_type_words_are_kept(self):
-        """"Kitchen" and "grill" look generic but distinguish real businesses —
+        """ "Kitchen" and "grill" look generic but distinguish real businesses —
         stripping them would merge "Cairo Kitchen" into "Cairo Grill"."""
         assert "kitchen" in dedupe.normalize_name("Cairo Kitchen")
         assert dedupe.normalize_name("Cairo Kitchen") != dedupe.normalize_name("Cairo Grill")
@@ -101,7 +101,7 @@ class TestNameSimilarity:
         assert dedupe.name_similarity(left, right) >= dedupe.NAME_MATCH_THRESHOLD
 
     def test_extra_distinguishing_word_lowers_similarity(self):
-        """"Karam" is not "Karam Express" — a subset must not score as a match."""
+        """ "Karam" is not "Karam Express" — a subset must not score as a match."""
         left = dedupe.normalize_name("Karam")
         right = dedupe.normalize_name("Karam Express Delivery")
         assert dedupe.name_similarity(left, right) < dedupe.NAME_MATCH_THRESHOLD

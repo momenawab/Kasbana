@@ -125,9 +125,9 @@ def _calls(queryset) -> int:
 
 
 def _cost(queryset) -> Decimal:
-    return queryset.aggregate(
-        total=Coalesce(Sum("cost_usd"), _ZERO, output_field=DecimalField())
-    )["total"]
+    return queryset.aggregate(total=Coalesce(Sum("cost_usd"), _ZERO, output_field=DecimalField()))[
+        "total"
+    ]
 
 
 def test_connection(provider: str) -> tuple[bool, str]:

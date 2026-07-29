@@ -82,9 +82,7 @@ def consumers_for(queue: str) -> int | None:
 
     if active is None:
         return 0  # broker reachable, nobody answered → no workers at all
-    return sum(
-        1 for queues in active.values() if any(q.get("name") == queue for q in queues)
-    )
+    return sum(1 for queues in active.values() if any(q.get("name") == queue for q in queues))
 
 
 def enqueue(job: SearchJob) -> str:
@@ -112,9 +110,7 @@ def enqueue(job: SearchJob) -> str:
     except OperationalError as exc:
         # No broker. Expected on a developer machine; alarming in production,
         # hence the error-level log either way.
-        logger.error(
-            "leadgen.enqueue.no_broker", extra={"job": str(job.id), "error": str(exc)}
-        )
+        logger.error("leadgen.enqueue.no_broker", extra={"job": str(job.id), "error": str(exc)})
         job_service.log(
             job,
             "No Celery broker reachable — running synchronously",
@@ -165,7 +161,8 @@ def run_ai_enrichment(job_id: str) -> dict:
 
     completed = ai.enrich_job(job)
     job_service.log(
-        job, f"AI enrichment finished — {completed} leads analysed",
+        job,
+        f"AI enrichment finished — {completed} leads analysed",
         stage=enums.PipelineStage.SCORING,
     )
     return {"job": str(job.id), "enriched": completed}
@@ -216,9 +213,7 @@ def enqueue_stage(job: SearchJob, task, label: str) -> str:
     try:
         task.apply_async(args=[str(job.id)], queue="leadgen_bg")
     except OperationalError as exc:
-        logger.error(
-            "leadgen.enqueue.no_broker", extra={"job": str(job.id), "error": str(exc)}
-        )
+        logger.error("leadgen.enqueue.no_broker", extra={"job": str(job.id), "error": str(exc)})
         job_service.log(
             job,
             f"No Celery broker reachable — running {label} synchronously",

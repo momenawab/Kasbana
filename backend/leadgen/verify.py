@@ -113,9 +113,7 @@ def verify_phone(e164: str, *, region: str = "EG") -> VerifyOutcome:
     valid = bool(body.get("valid"))
 
     return VerifyOutcome(
-        result=(
-            enums.VerificationResult.VERIFIED if valid else enums.VerificationResult.INVALID
-        ),
+        result=(enums.VerificationResult.VERIFIED if valid else enums.VerificationResult.INVALID),
         provider=enums.ApiProvider.TWILIO_LOOKUP,
         line_type=_TWILIO_TYPES.get(
             (intelligence.get("type") or "").lower(), enums.PhoneLineType.UNKNOWN
@@ -139,9 +137,7 @@ def _phone_offline(e164: str, region: str) -> VerifyOutcome:
     try:
         parsed = phonenumbers.parse(e164, region.upper() or None)
     except NumberParseException as exc:
-        return VerifyOutcome(
-            result=enums.VerificationResult.INVALID, error=f"Unparseable: {exc}"
-        )
+        return VerifyOutcome(result=enums.VerificationResult.INVALID, error=f"Unparseable: {exc}")
 
     if not phonenumbers.is_valid_number(parsed):
         return VerifyOutcome(
@@ -168,17 +164,42 @@ _EMAIL_SYNTAX = re.compile(r"^[^@\s]+@[^@\s]+\.[A-Za-z]{2,}$")
 # Hunter covers the rest when configured.
 _DISPOSABLE_DOMAINS = frozenset(
     {
-        "mailinator.com", "guerrillamail.com", "10minutemail.com", "tempmail.com",
-        "temp-mail.org", "throwawaymail.com", "yopmail.com", "trashmail.com",
-        "sharklasers.com", "getnada.com", "maildrop.cc", "dispostable.com",
+        "mailinator.com",
+        "guerrillamail.com",
+        "10minutemail.com",
+        "tempmail.com",
+        "temp-mail.org",
+        "throwawaymail.com",
+        "yopmail.com",
+        "trashmail.com",
+        "sharklasers.com",
+        "getnada.com",
+        "maildrop.cc",
+        "dispostable.com",
     }
 )
 
 _ROLE_LOCAL_PARTS = frozenset(
     {
-        "info", "contact", "hello", "sales", "support", "admin", "office",
-        "reservations", "booking", "bookings", "orders", "marketing", "hr",
-        "careers", "jobs", "team", "help", "enquiries", "inquiries",
+        "info",
+        "contact",
+        "hello",
+        "sales",
+        "support",
+        "admin",
+        "office",
+        "reservations",
+        "booking",
+        "bookings",
+        "orders",
+        "marketing",
+        "hr",
+        "careers",
+        "jobs",
+        "team",
+        "help",
+        "enquiries",
+        "inquiries",
     }
 )
 
@@ -244,9 +265,7 @@ def _email_offline(address: str) -> VerifyOutcome:
     """
     address = address.strip().lower()
     if not _EMAIL_SYNTAX.match(address):
-        return VerifyOutcome(
-            result=enums.VerificationResult.INVALID, error="Not a valid address."
-        )
+        return VerifyOutcome(result=enums.VerificationResult.INVALID, error="Not a valid address.")
 
     local, _, domain = address.partition("@")
     is_role = local in _ROLE_LOCAL_PARTS
@@ -266,9 +285,7 @@ def _email_offline(address: str) -> VerifyOutcome:
     domain_valid = _domain_resolves(domain)
     return VerifyOutcome(
         result=(
-            enums.VerificationResult.POSSIBLE
-            if domain_valid
-            else enums.VerificationResult.INVALID
+            enums.VerificationResult.POSSIBLE if domain_valid else enums.VerificationResult.INVALID
         ),
         is_disposable=False,
         is_role_address=is_role,

@@ -44,19 +44,41 @@ logger = logging.getLogger(__name__)
 # and terms pages are obliged to name the operating entity, and almost nobody
 # thinks to look there.
 CANDIDATE_PATHS: tuple[str, ...] = (
-    "/privacy", "/privacy-policy", "/terms", "/terms-of-service", "/legal",
-    "/about", "/about-us", "/our-story", "/team",
-    "/contact", "/contact-us",
+    "/privacy",
+    "/privacy-policy",
+    "/terms",
+    "/terms-of-service",
+    "/legal",
+    "/about",
+    "/about-us",
+    "/our-story",
+    "/team",
+    "/contact",
+    "/contact-us",
 )
 
 # Link text that marks a page worth following, in both languages. Matching on
 # link text as well as path catches the many sites whose URLs are opaque
 # (/page/12) but whose navigation is clear.
 _LINK_HINTS: tuple[str, ...] = (
-    "about", "about us", "our story", "team", "contact", "contact us",
-    "privacy", "terms", "legal",
-    "من نحن", "عن", "من نحن؟", "اتصل بنا", "تواصل معنا", "الخصوصية",
-    "سياسة الخصوصية", "الشروط", "فريق",
+    "about",
+    "about us",
+    "our story",
+    "team",
+    "contact",
+    "contact us",
+    "privacy",
+    "terms",
+    "legal",
+    "من نحن",
+    "عن",
+    "من نحن؟",
+    "اتصل بنا",
+    "تواصل معنا",
+    "الخصوصية",
+    "سياسة الخصوصية",
+    "الشروط",
+    "فريق",
 )
 
 _EMAIL_RE = re.compile(r"[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}")
@@ -68,15 +90,36 @@ _PHONE_RE = re.compile(r"(?:\+?\d[\d\s\-().]{7,}\d)")
 # aliases every hosting package creates. Kept out of the lead's contact list so
 # a rep never emails a black hole.
 _JUNK_EMAIL_PREFIXES: tuple[str, ...] = (
-    "noreply", "no-reply", "donotreply", "do-not-reply", "postmaster",
-    "abuse", "webmaster", "hostmaster", "mailer-daemon",
+    "noreply",
+    "no-reply",
+    "donotreply",
+    "do-not-reply",
+    "postmaster",
+    "abuse",
+    "webmaster",
+    "hostmaster",
+    "mailer-daemon",
 )
 # Role addresses: real, but a department rather than a person. Kept — for a
 # small cafe info@ is often the owner — but flagged so owner resolution does
 # not mistake "info" for somebody's name.
 ROLE_EMAIL_PREFIXES: frozenset[str] = frozenset(
-    {"info", "contact", "hello", "sales", "support", "admin", "office",
-     "reservations", "booking", "orders", "marketing", "hr", "careers", "jobs"}
+    {
+        "info",
+        "contact",
+        "hello",
+        "sales",
+        "support",
+        "admin",
+        "office",
+        "reservations",
+        "booking",
+        "orders",
+        "marketing",
+        "hr",
+        "careers",
+        "jobs",
+    }
 )
 
 # Asset filenames match the email pattern exactly: "logo@2x.png" parses as a
@@ -84,9 +127,25 @@ ROLE_EMAIL_PREFIXES: frozenset[str] = frozenset(
 # is-alphabetic test does not catch it — "png" passes both — so the extension
 # has to be named. Retina image suffixes appear on a large share of sites.
 _ASSET_EXTENSIONS: tuple[str, ...] = (
-    ".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".avif", ".ico",
-    ".css", ".js", ".json", ".woff", ".woff2", ".ttf", ".eot",
-    ".pdf", ".mp4", ".webm", ".zip",
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".gif",
+    ".svg",
+    ".webp",
+    ".avif",
+    ".ico",
+    ".css",
+    ".js",
+    ".json",
+    ".woff",
+    ".woff2",
+    ".ttf",
+    ".eot",
+    ".pdf",
+    ".mp4",
+    ".webm",
+    ".zip",
 )
 
 # Vendor fingerprints. Detection is by the markup a vendor's embed leaves
@@ -451,9 +510,23 @@ _ENTITY_PATTERNS: tuple[re.Pattern, ...] = (
 # "developed/designed/powered by" is called out separately: those name the web
 # agency, and an agency is emphatically not the business we are selling to.
 _ENTITY_NOISE: tuple[str, ...] = (
-    "privacy", "policy", "terms", "conditions", "cookie", "developed by",
-    "designed by", "powered by", "item was", "successfully", "all rights",
-    "reserved", "sign in", "log in", "add to cart", "read more", "menu",
+    "privacy",
+    "policy",
+    "terms",
+    "conditions",
+    "cookie",
+    "developed by",
+    "designed by",
+    "powered by",
+    "item was",
+    "successfully",
+    "all rights",
+    "reserved",
+    "sign in",
+    "log in",
+    "add to cart",
+    "read more",
+    "menu",
 )
 
 # A company name is a handful of words. Beyond this the capture has plainly run
@@ -491,9 +564,15 @@ def _plausible_entity(entity: str) -> bool:
 def _dedupe_lists(result: CrawlResult) -> None:
     """Collapse repeats picked up across pages, preserving first-seen order."""
     for attribute in (
-        "emails", "phones", "menu_urls", "reservation_platforms",
-        "delivery_platforms", "technologies", "payment_providers",
-        "pos_vendors", "loyalty_vendors",
+        "emails",
+        "phones",
+        "menu_urls",
+        "reservation_platforms",
+        "delivery_platforms",
+        "technologies",
+        "payment_providers",
+        "pos_vendors",
+        "loyalty_vendors",
     ):
         seen: dict[str, None] = {}
         for item in getattr(result, attribute):

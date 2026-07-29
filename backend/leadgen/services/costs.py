@@ -27,9 +27,9 @@ _ZERO = Decimal("0")
 
 
 def _sum(queryset, field: str) -> Decimal:
-    return queryset.aggregate(
-        total=Coalesce(Sum(field), _ZERO, output_field=DecimalField())
-    )["total"]
+    return queryset.aggregate(total=Coalesce(Sum(field), _ZERO, output_field=DecimalField()))[
+        "total"
+    ]
 
 
 def summary(*, days: int = 30) -> dict:
@@ -43,9 +43,7 @@ def summary(*, days: int = 30) -> dict:
     usage = ApiUsage.objects.filter(created_at__gte=since)
 
     total_cost = _sum(usage, "cost_usd")
-    leads = GeneratedLead.objects.filter(
-        created_at__gte=since, duplicate_of__isnull=True
-    ).count()
+    leads = GeneratedLead.objects.filter(created_at__gte=since, duplicate_of__isnull=True).count()
     imported = GeneratedLead.objects.filter(
         imported_at__gte=since, imported_lead__isnull=False
     ).count()

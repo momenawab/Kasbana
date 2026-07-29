@@ -1,0 +1,1 @@
+make button for main qr and i can set any card as main to pervent print qr many times 

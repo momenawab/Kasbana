@@ -61,9 +61,7 @@ def row_for(lead) -> dict:
     """
     profile = getattr(lead, "website_profile", None)
     socials = {s.platform: s.url for s in lead.socials.all()}
-    phone_check = next(
-        (v for v in lead.verifications.all() if v.kind == "phone"), None
-    )
+    phone_check = next((v for v in lead.verifications.all() if v.kind == "phone"), None)
 
     return {
         "business_name": lead.business_name,
