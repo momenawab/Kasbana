@@ -32,9 +32,13 @@ Three rules make this safe:
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from wallets import templates as templates_mod
+
+# A string consisting of exactly one token and nothing else — see interpolate_deep.
+_SOLE_TOKEN = re.compile(r"^\{(\w+)\}$")
 
 # ── Locked keys ───────────────────────────────────────────────────────────────
 # Top-level keys an overlay may never set. All of these are either pass identity
@@ -93,8 +97,18 @@ def interpolate_deep(value: Any, ctx: dict[str, Any]) -> Any:
     {points}, {goal}, {remaining}, {reward}, {merchant}, {program}) and an
     unknown token leaves the string untouched rather than raising. Dict *keys*
     are never interpolated — they are pass field names, not content.
+
+    A string that is *nothing but* one token resolves to that token's **typed**
+    value: ``"{remaining}"`` becomes the integer ``3``, not ``"3"``. Apple applies
+    ``numberStyle``/``currencyCode`` formatting only to numeric field values, so
+    stringifying here would quietly disable it — and it is also what makes a
+    scaffold adopted as an overlay render byte-identically to the pass it came
+    from. Mixed strings ("{remaining} to go") stay strings, as they must.
     """
     if isinstance(value, str):
+        sole = _SOLE_TOKEN.match(value)
+        if sole is not None and sole.group(1) in ctx:
+            return ctx[sole.group(1)]
         return templates_mod.interpolate(value, ctx)
     if isinstance(value, dict):
         return {k: interpolate_deep(v, ctx) for k, v in value.items()}

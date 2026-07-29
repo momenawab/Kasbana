@@ -55,6 +55,20 @@ class PassPreviewSerializer(serializers.Serializer):
     errors = serializers.DictField()
 
 
+class PassScaffoldSerializer(serializers.Serializer):
+    """The card's current pass payloads, in a form an overlay can adopt.
+
+    Same shape as the preview but token-preserving ({balance} rather than "3/8")
+    and with the locked keys already removed, so a copy of it is directly
+    editable and directly saveable.
+    """
+
+    apple = serializers.DictField(allow_null=True)
+    google_class = serializers.DictField(allow_null=True)
+    google_object = serializers.DictField(allow_null=True)
+    errors = serializers.DictField()
+
+
 class RepublishResultSerializer(serializers.Serializer):
     """How many live passes a republish touched."""
 

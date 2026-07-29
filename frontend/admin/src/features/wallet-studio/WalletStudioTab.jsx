@@ -8,7 +8,10 @@
 //            the platform can do, with the same controls and the same preview.
 //   JSON   — the admin-only raw pass overlay, merged over the generated payload.
 //            This is the escape hatch to pass features no template exposes
-//            (locations, semantics, per-field alignment, …).
+//            (locations, semantics, per-field alignment, …). It opens on the
+//            card's CURRENT pass (ScaffoldPanel) rather than an empty document,
+//            so a card designed in the Editor can be picked up and edited
+//            instead of retyped.
 //
 // Saving is cheap and does NOT touch live passes. Republish is a separate,
 // explicit action, because a card can have tens of thousands of holders and an
@@ -23,10 +26,12 @@ import { num } from '../../lib/format'
 import WalletDesignEditor from './WalletDesignEditor'
 import JsonEditor from './JsonEditor'
 import OverlayGuide from './OverlayGuide'
+import ScaffoldPanel from './ScaffoldPanel'
 import {
   useMerchantCards,
   usePassPreview,
   useRepublish,
+  usePassScaffold,
   useSaveWalletDesign,
   useWalletDesign,
 } from './api'
@@ -108,6 +113,7 @@ function CardStudio({ merchantId, merchantName, card }) {
   const toast = useToast()
   const [view, setView] = useState('editor')
   const { data: saved } = useWalletDesign(merchantId, card.id)
+  const { data: scaffold, isLoading: scaffoldLoading } = usePassScaffold(merchantId, card.id)
   const save = useSaveWalletDesign(merchantId, card.id)
   const preview = usePassPreview(merchantId, card.id)
   const republish = useRepublish(merchantId, card.id)
@@ -146,6 +152,20 @@ function CardStudio({ merchantId, merchantName, card }) {
   const insert = (json) => {
     setApple((current) => ({ ...current, ...json }))
     setDirty(true)
+  }
+
+  // Adopt the generated pass into the overlay. Google arrives as one half at a
+  // time (class or object), so it merges into its own section rather than
+  // replacing the whole document and wiping the other half.
+  const adopt = (target, body, section) => {
+    if (!body) return
+    if (target === 'apple') {
+      setApple(body)
+    } else {
+      setGoogle((current) => ({ ...current, [section]: body }))
+    }
+    setDirty(true)
+    toast.success('Copied into the overlay. Review it, then Save.')
   }
 
   const saveOverlays = () => {
@@ -227,6 +247,12 @@ function CardStudio({ merchantId, merchantName, card }) {
       ) : (
         <div className="flex flex-col gap-4 xl:flex-row">
           <div className="flex min-w-0 flex-1 flex-col gap-4">
+            <ScaffoldPanel
+              scaffold={scaffold}
+              isLoading={scaffoldLoading}
+              hasOverlay={Object.keys(apple).length > 0 || Object.keys(google).length > 0}
+              onAdopt={adopt}
+            />
             <JsonEditor
               label="Apple — pass.json overlay"
               hint="Merged over the generated pass.json. Anything PassKit accepts on a storeCard."

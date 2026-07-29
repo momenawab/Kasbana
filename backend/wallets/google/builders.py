@@ -82,7 +82,12 @@ def object_state_for(customer_card: CustomerCard) -> str:
     return "ACTIVE" if customer_card.status == CustomerCardStatus.ACTIVE else "EXPIRED"
 
 
-def build_loyalty_object(customer_card: CustomerCard) -> dict:
+def build_loyalty_object(customer_card: CustomerCard, ctx: dict | None = None) -> dict:
+    """The LoyaltyObject for one customer.
+
+    ``ctx`` overrides the value context module rows resolve against — see
+    ``build_pass_json`` for why the Wallet Studio needs that.
+    """
     from wallets import design as design_mod
     from wallets.shortcode import code_for
 
@@ -120,7 +125,8 @@ def build_loyalty_object(customer_card: CustomerCard) -> dict:
     template = design_mod.template_for(card)
     modules: list[dict] = []
     if template is not None:
-        ctx = design_mod.field_context(customer_card)
+        if ctx is None:
+            ctx = design_mod.field_context(customer_card)
         google = template.get("google", {})
         if google.get("subtitle"):
             body = str(design_mod.render_value(google["subtitle"], ctx))
@@ -131,7 +137,8 @@ def build_loyalty_object(customer_card: CustomerCard) -> dict:
         if design.google_subtitle:
             modules.append({"id": "subtitle", "header": "", "body": design.google_subtitle})
         if design.google_rows:
-            ctx = design_mod.field_context(customer_card)
+            if ctx is None:
+                ctx = design_mod.field_context(customer_card)
             for slot in design_mod.render_slots(design.google_rows, ctx):
                 modules.append(
                     {"id": slot["key"], "header": slot["label"], "body": str(slot["value"])}
@@ -170,6 +177,6 @@ def build_loyalty_object(customer_card: CustomerCard) -> dict:
     return overlay_mod.apply_google(
         payload,
         design.google_overlay if design else None,
-        design_mod.field_context(customer_card),
+        ctx if ctx is not None else design_mod.field_context(customer_card),
         "object",
     )

@@ -17,6 +17,8 @@ from typing import Any
 
 from core.enums import CustomerCardStatus
 from core.models import Card, CustomerCard
+from wallets import overlay as overlay_mod
+from wallets.design import VALUE_TOKENS
 
 # The sample holder. A recognisably fake name keeps a screenshot of the preview
 # from ever being mistaken for a real member's pass.
@@ -42,6 +44,51 @@ def sample_customer_card(card: Card, stamp_count: int | None = None) -> Customer
         stamp_count=max(0, min(stamp_count, goal) if goal else max(0, stamp_count)),
         status=CustomerCardStatus.ACTIVE,
     )
+
+
+def token_context() -> dict[str, str]:
+    """A value context that resolves every token to *itself*.
+
+    Feeding this to the pass builders renders the pass's real structure with
+    ``{balance}`` / ``{remaining}`` still in place instead of one customer's
+    numbers. That is what makes the result safe to adopt as an overlay: a
+    scaffold full of literal numbers would freeze every holder at the sample
+    balance, which is the whole failure mode the token system exists to prevent.
+    """
+    return {token: "{" + token + "}" for token in VALUE_TOKENS}
+
+
+def build_scaffold(card: Card) -> dict[str, Any]:
+    """The card's current pass payloads in editable, token-preserving form.
+
+    The Wallet Studio shows this when a card was built in the Editor and has no
+    overlay yet, so an admin starts from the real pass rather than an empty
+    document. Locked keys are stripped: they can never be part of an overlay, so
+    including them would only produce a validation error the moment the admin
+    copied it across.
+    """
+    from wallets.apple.passdata import build_pass_json
+    from wallets.google.builders import build_loyalty_class, build_loyalty_object
+
+    sample = sample_customer_card(card)
+    ctx = token_context()
+
+    out: dict[str, Any] = {"errors": {}}
+    for key, build, locked in (
+        ("apple", lambda: build_pass_json(sample, ctx), overlay_mod.LOCKED_APPLE),
+        ("google_class", lambda: build_loyalty_class(card), overlay_mod.LOCKED_GOOGLE_CLASS),
+        (
+            "google_object",
+            lambda: build_loyalty_object(sample, ctx),
+            overlay_mod.LOCKED_GOOGLE_OBJECT,
+        ),
+    ):
+        try:
+            out[key] = overlay_mod.strip_locked(build(), locked)
+        except Exception as exc:
+            out[key] = None
+            out["errors"][key] = f"{type(exc).__name__}: {exc}"
+    return out
 
 
 def build_preview(card: Card, stamp_count: int | None = None) -> dict[str, Any]:

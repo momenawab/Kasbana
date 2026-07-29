@@ -59,7 +59,14 @@ def _unit_label(card: Card) -> str:
     return "Points" if card.type == CardType.POINTS else "Stamps"
 
 
-def build_pass_json(customer_card: CustomerCard) -> dict:
+def build_pass_json(customer_card: CustomerCard, ctx: dict | None = None) -> dict:
+    """The pass.json for one customer.
+
+    ``ctx`` overrides the value context field slots resolve against. Real passes
+    always leave it ``None`` (this customer's balance). The Wallet Studio passes
+    a self-referencing token context so it can render the *shape* of the pass
+    with ``{balance}`` still in place — see ``wallets.preview.build_scaffold``.
+    """
     from core.enums import CardType, CustomerCardStatus
     from wallets import design as design_mod
 
@@ -75,7 +82,8 @@ def build_pass_json(customer_card: CustomerCard) -> dict:
 
     # Merchant overrides (notes 2-4): any blank/empty slot keeps the smart default.
     design = design_mod.get_design(card)
-    ctx = design_mod.field_context(customer_card)
+    if ctx is None:
+        ctx = design_mod.field_context(customer_card)
     label_color = _rgb(design.label_color, "#ffffff") if (design and design.label_color) else fg
     # A layout-locked template overrides the freeform regions entirely (its
     # positions are fixed) and pins the strip behaviour to its bottom_visual.
