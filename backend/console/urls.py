@@ -135,6 +135,14 @@ from console.views_support import (
     SendPasswordResetView,
     SupportNotesView,
 )
+from console.views_wallet_studio import (
+    MerchantCardListView,
+    MerchantCardPassPreviewView,
+    MerchantCardRepublishView,
+    MerchantCardWalletDesignView,
+    WalletStudioTemplateListView,
+    WalletStudioUploadView,
+)
 
 urlpatterns = [
     path("auth/login", AdminLoginView.as_view(), name="admin-login"),
@@ -434,6 +442,39 @@ urlpatterns = [
     # its own "stampn-ops/" prefix so it never collides with the platform
     # "ops/" routes above, which are a different feature.
     path("stampn-ops/", include("console_ops.urls")),
+    # Wallet Studio — author a merchant's pass design + raw pass JSON overlay.
+    # Nested under the merchant so a card can never be edited from the wrong
+    # tenant's page (the view asserts the pair, it isn't just cosmetic).
+    path(
+        "merchants/<uuid:merchant_id>/cards",
+        MerchantCardListView.as_view(),
+        name="admin-merchant-cards",
+    ),
+    path(
+        "merchants/<uuid:merchant_id>/cards/<uuid:card_id>/wallet-design",
+        MerchantCardWalletDesignView.as_view(),
+        name="admin-merchant-card-wallet-design",
+    ),
+    path(
+        "merchants/<uuid:merchant_id>/cards/<uuid:card_id>/pass-preview",
+        MerchantCardPassPreviewView.as_view(),
+        name="admin-merchant-card-pass-preview",
+    ),
+    path(
+        "merchants/<uuid:merchant_id>/cards/<uuid:card_id>/republish",
+        MerchantCardRepublishView.as_view(),
+        name="admin-merchant-card-republish",
+    ),
+    path(
+        "wallet-studio/templates",
+        WalletStudioTemplateListView.as_view(),
+        name="admin-wallet-studio-templates",
+    ),
+    path(
+        "wallet-studio/uploads",
+        WalletStudioUploadView.as_view(),
+        name="admin-wallet-studio-upload",
+    ),
     # Test cards — build a prospect's branded wallet pass for a proposal.
     path("demo-cards", DemoCardListView.as_view(), name="admin-demo-cards"),
     path(

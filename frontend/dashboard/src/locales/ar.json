@@ -407,7 +407,11 @@
     "tok_reward": "المكافأة",
     "tok_merchant": "اسم النشاط",
     "tok_program": "اسم البرنامج",
-    "tok_text": "نص مخصص"
+    "tok_text": "نص مخصص",
+    "stripArtwork": "صورة شريط الأختام",
+    "stripArtworkHint": "صورة خلف الأختام. يتم قصّها لملء الشريط (Apple) والبانر (Google) — استخدم صورة عريضة لأفضل نتيجة.",
+    "stripArtworkRemove": "إزالة الصورة",
+    "stripStampsVisible": "إظهار الأختام فوق الصورة"
   },
   "walletTemplates": {
     "choose": "اختر قالبًا",

@@ -13,10 +13,12 @@ layout). ``template_key == "custom"`` keeps the freeform editor untouched.
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from rest_framework import serializers
 
+from wallets import overlay as overlay_mod
 from wallets import stamp_icons as stamp_icons_mod
 from wallets import templates as templates_mod
 from wallets.design import VALUE_TOKENS
@@ -75,6 +77,8 @@ class WalletCardDesignSerializer(serializers.ModelSerializer):
             "google_stamp_hero",
             "template_key",
             "bottom_image_url",
+            "strip_bg_image_url",
+            "strip_stamps_visible",
         ]
 
     def validate_stamp_icon(self, value: Any) -> str:
@@ -121,3 +125,88 @@ class WalletCardDesignSerializer(serializers.ModelSerializer):
 
     def validate_google_rows(self, v: Any) -> list[dict[str, str]]:
         return _validate_slots(v, _REGION_CAPS["google_rows"])
+
+
+def _validate_overlay(value: Any, locked: frozenset[str], label: str) -> dict[str, Any]:
+    """Validate one admin-authored pass overlay.
+
+    Rejects the locked identity keys **by name** rather than dropping them
+    silently — an admin who thinks they set ``serialNumber`` and sees it vanish
+    would keep trying. Also bounds size and nesting, because whatever is written
+    here ends up inside every signed .pkpass for the card.
+    """
+    if value in (None, ""):
+        return {}
+    if not isinstance(value, dict):
+        raise serializers.ValidationError(f"{label} must be a JSON object.")
+
+    violations = overlay_mod.locked_violations(value, locked)
+    if violations:
+        raise serializers.ValidationError(
+            f"These keys are managed by the platform and cannot be set: "
+            f"{', '.join(violations)}. They control pass identity, updates and "
+            f"scanning — overriding them would break passes already in wallets."
+        )
+
+    if len(json.dumps(value)) > overlay_mod.MAX_OVERLAY_BYTES:
+        raise serializers.ValidationError(
+            f"{label} is too large (max {overlay_mod.MAX_OVERLAY_BYTES:,} bytes)."
+        )
+    if _depth(value) > overlay_mod.MAX_OVERLAY_DEPTH:
+        raise serializers.ValidationError(f"{label} is nested too deeply.")
+    return value
+
+
+def _depth(value: Any, level: int = 1) -> int:
+    """Deepest nesting level in a JSON value (guards pathological documents)."""
+    if isinstance(value, dict):
+        children = value.values()
+    elif isinstance(value, list):
+        children = value
+    else:
+        return level
+    return max((_depth(v, level + 1) for v in children), default=level)
+
+
+class AdminWalletCardDesignSerializer(WalletCardDesignSerializer):
+    """The design serializer plus the admin-only raw pass JSON overlays.
+
+    Two things separate it from the merchant serializer:
+
+    * ``apple_overlay``/``google_overlay`` are writable. They are deliberately
+      absent from the merchant serializer — a raw pass payload is a platform-admin
+      tool, and exposing it on the dashboard endpoint would let any merchant author
+      arbitrary pass content.
+    * The template ``editable`` allowlist is not applied. An admin building a
+      bespoke card is authoring *past* the template registry by definition, so
+      locking them to a template's editable set would defeat the feature.
+    """
+
+    class Meta(WalletCardDesignSerializer.Meta):
+        fields = [*WalletCardDesignSerializer.Meta.fields, "apple_overlay", "google_overlay"]
+
+    def validate_apple_overlay(self, v: Any) -> dict[str, Any]:
+        return _validate_overlay(v, overlay_mod.LOCKED_APPLE, "Apple overlay")
+
+    def validate_google_overlay(self, v: Any) -> dict[str, Any]:
+        if v in (None, ""):
+            return {}
+        if not isinstance(v, dict):
+            raise serializers.ValidationError("Google overlay must be a JSON object.")
+        unknown = sorted(set(v) - set(overlay_mod.GOOGLE_SECTIONS))
+        if unknown:
+            raise serializers.ValidationError(
+                f"Unknown section(s): {', '.join(unknown)}. A Google overlay has two "
+                f'halves — {{"class": {{...}}, "object": {{...}}}} — because Google '
+                f"splits one pass into a per-card class and a per-customer object."
+            )
+        return {
+            section: _validate_overlay(
+                v[section], overlay_mod.GOOGLE_SECTIONS[section], f"Google {section} overlay"
+            )
+            for section in v
+        }
+
+    def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
+        """Skip the template allowlist — an admin authors past the templates."""
+        return attrs

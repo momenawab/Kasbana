@@ -11,7 +11,7 @@
 //            is what lets the whole design be set at create time instead of forcing
 //            a save-then-go-edit round trip.
 import { useEffect, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '../../lib/i18n'
 import { useWalletDesign, useSaveWalletDesign, useWalletTemplates } from './api'
 import { usePlan } from '../../hooks/usePlan'
 import { useToast } from '../../hooks/useToast'
@@ -100,14 +100,14 @@ function TemplateThumb({ tpl, colorBg, colorFg }) {
   )
 }
 
-export default function WalletDesignEditor({ cardId, card, value, onChange }) {
+export default function WalletDesignEditor({ merchantId, cardId, card, value, onChange }) {
   const { t } = useTranslation()
   const toast = useToast()
   const { can, requireFeature } = usePlan()
   const branded = can('custom_branding')
-  const { data: loaded } = useWalletDesign(cardId) // no-op without a cardId
+  const { data: loaded } = useWalletDesign(merchantId, cardId) // no-op without a cardId
   const { data: tplData } = useWalletTemplates()
-  const save = useSaveWalletDesign(cardId)
+  const save = useSaveWalletDesign(merchantId, cardId)
 
   const templates = useMemo(() => tplData?.templates || [], [tplData])
   const platformLogoUrl = tplData?.platform_logo_url || ''

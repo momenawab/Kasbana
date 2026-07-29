@@ -183,6 +183,9 @@ def build_pass_images(customer_card: CustomerCard) -> dict[str, bytes]:
                 design.bottom_image_url if design else "", strip_bg, (1125, 369)
             )
         else:
+            # Optional photo behind the stamps (cover-cropped to the band). The
+            # pass also sets suppressStripShine when this is present — see
+            # wallets.apple.passdata — or Apple's gloss washes the artwork out.
             base = _render_stamp_strip(
                 customer_card.stamp_count,
                 card.stamps_required,
@@ -192,6 +195,8 @@ def build_pass_images(customer_card: CustomerCard) -> dict[str, bytes]:
                 empty_icon=empty_icon,
                 filled_icon=filled_icon,
                 layout=(design.stamp_layout if design else "") or _LAYOUT_GRID,
+                background=_local_media_bytes(design.strip_bg_image_url) if design else None,
+                stamps_visible=(design.strip_stamps_visible if design else True),
             )
         images["strip@3x.png"] = _png(base)
         images["strip@2x.png"] = _png(base.resize((750, 246), Image.Resampling.LANCZOS))
