@@ -14,12 +14,11 @@ and bounded.
 from __future__ import annotations
 
 import logging
+from decimal import Decimal
 
 from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
-
-from decimal import Decimal
 
 from leadgen import enums
 from leadgen.models import ApiUsage, GeneratedLead, JobLog, SearchJob

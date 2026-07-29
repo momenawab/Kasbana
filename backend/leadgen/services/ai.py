@@ -23,8 +23,6 @@ from __future__ import annotations
 import logging
 from decimal import Decimal
 
-from django.utils import timezone
-
 from leadgen import enums
 from leadgen.glm import PROMPT_VERSION, GlmClient, GlmError, GlmNotConfigured
 from leadgen.models import AiEnrichment, ApiUsage, GeneratedLead

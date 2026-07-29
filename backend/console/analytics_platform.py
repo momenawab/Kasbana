@@ -28,9 +28,9 @@ from django.utils import timezone
 from accounts.models import MerchantSettings
 from billing.models import Invoice, InvoiceStatus, Subscription
 from billing.plans import BillingStatus
-from core.enums import CardType, LedgerEvent, MerchantStatus, WalletPlatform
 from console.merchants import real_merchants
-from core.models import Card, CustomerCard, Merchant, Redemption, StampLedger, WalletRegistration
+from core.enums import CardType, LedgerEvent, MerchantStatus, WalletPlatform
+from core.models import Card, CustomerCard, Redemption, StampLedger, WalletRegistration
 from messaging.models import Automation, Campaign
 
 _CACHE_TTL = 300  # seconds

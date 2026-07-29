@@ -14,8 +14,8 @@ from uuid import UUID
 
 from django.db import IntegrityError, transaction
 
-from console.models import ContentFlag
 from console.merchants import real_merchants
+from console.models import ContentFlag
 from core.models import Card, Merchant
 
 # Lowercased substrings that warrant a human look. Intentionally small + obvious;

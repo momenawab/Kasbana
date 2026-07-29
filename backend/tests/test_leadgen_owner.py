@@ -61,7 +61,11 @@ class TestExtractFromPages:
 
     def test_decisive_role_outranks_vague_one_on_the_same_page(self):
         res = result_with(
-            ("https://karam.com.eg/team", "about", "Sara Nabil, Branch Manager. Ahmed Karam, Founder.")
+            (
+                "https://karam.com.eg/team",
+                "about",
+                "Sara Nabil, Branch Manager. Ahmed Karam, Founder.",
+            )
         )
         assert owner.resolve(owner.extract_from_pages(res))["name"] == "Ahmed Karam"
 
@@ -123,7 +127,11 @@ class TestDeduplicate:
 
     def test_different_people_are_both_kept(self):
         candidates = owner.extract_from_pages(
-            result_with(("https://karam.com.eg/team", "about", "Ahmed Karam, Founder. Mona Sayed, Director."))
+            result_with((
+                "https://karam.com.eg/team",
+                "about",
+                "Ahmed Karam, Founder. Mona Sayed, Director.",
+            ))
         )
         assert len({c["name"] for c in owner.deduplicate(candidates)}) == 2
 

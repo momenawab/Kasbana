@@ -163,7 +163,7 @@ class PlaceResult:
     raw: dict = field(default_factory=dict)
 
     @classmethod
-    def from_api(cls, payload: dict[str, Any]) -> "PlaceResult":
+    def from_api(cls, payload: dict[str, Any]) -> PlaceResult:
         location = payload.get("location") or {}
         return cls(
             place_id=payload.get("id", ""),
@@ -290,7 +290,10 @@ class PlacesClient:
                 retry_after = _retry_after_seconds(response)
                 cap = settings.LEADGEN_PLACES_RETRY_AFTER_CAP_S
                 if attempt < 2 and 0 < retry_after <= cap:
-                    logger.warning("places.request.rate_limited", extra={"retry_after": retry_after})
+                    logger.warning(
+                        "places.request.rate_limited",
+                        extra={"retry_after": retry_after},
+                    )
                     time.sleep(retry_after)
                     continue
                 break  # no useful wait — stop instead of burning more calls

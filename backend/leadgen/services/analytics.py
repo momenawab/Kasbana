@@ -19,7 +19,7 @@ from django.db.models import Avg, Count, DecimalField, F, Sum
 from django.db.models.functions import Coalesce, TruncDate
 from django.utils import timezone
 
-from leadgen import enums, scoring
+from leadgen import enums
 from leadgen.models import ApiUsage, GeneratedLead, SearchJob, Verification
 
 _ZERO = Decimal("0")

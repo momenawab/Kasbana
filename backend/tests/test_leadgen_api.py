@@ -17,7 +17,8 @@ from console import crm
 from console.auth import issue_admin_tokens
 from console.crm_seed import ensure_seeded
 from console.enums import AdminRole
-from console.models import AdminAuditLog, AdminUser, Lead as CrmLead, LeadActivity
+from console.models import AdminAuditLog, AdminUser, LeadActivity
+from console.models import Lead as CrmLead
 from leadgen import enums
 from leadgen.models import GeneratedLead, SearchJob, SocialProfile, WebsiteProfile
 

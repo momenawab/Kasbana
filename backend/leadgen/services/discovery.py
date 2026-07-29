@@ -55,7 +55,7 @@ class Cell:
     radius_m: float
     depth: int = 0
 
-    def quarter(self) -> list["Cell"]:
+    def quarter(self) -> list[Cell]:
         """Four overlapping sub-cells covering this one.
 
         Offsets are half the radius on each axis, and each child keeps a radius
@@ -129,7 +129,7 @@ def _discover_type(
     business_type: str,
     root: Cell,
     budget: int,
-    outcome: "DiscoveryOutcome",
+    outcome: DiscoveryOutcome,
 ) -> None:
     """Discover one business type, splitting saturated areas.
 

@@ -23,8 +23,7 @@ from console import audit
 from console.models import AdminUser
 from console.permissions import AdminAPIView, IsSuperAdmin, require
 from console.rbac import Permission
-from leadgen import enums, serializers
-from leadgen import tasks
+from leadgen import enums, serializers, tasks
 from leadgen.models import AiEnrichment, GeneratedLead, SearchJob, Verification
 from leadgen.services import analytics, apikeys, costs, exports, importer
 from leadgen.services import jobs as job_service

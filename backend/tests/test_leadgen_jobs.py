@@ -251,7 +251,11 @@ class TestDeduplicate:
     def test_shared_domain_collapses(self):
         job = self._job_with(
             {"business_name": "Karam Maadi", "website_domain": "karam.com.eg", "reviews_count": 50},
-            {"business_name": "Karam Zamalek", "website_domain": "karam.com.eg", "reviews_count": 5},
+            {
+                "business_name": "Karam Zamalek",
+                "website_domain": "karam.com.eg",
+                "reviews_count": 5,
+            },
         )
         assert pipeline.deduplicate(job) == 1
 
@@ -330,7 +334,10 @@ class TestRun:
     def test_full_run_reaches_completed_with_counters(self):
         job = make_job()
         client = FakePlaces(
-            [[place("p1", "Karam Cafe", reviews_count=900), place("p2", "Beanos", reviews_count=40)]]
+            [[
+                place("p1", "Karam Cafe", reviews_count=900),
+                place("p2", "Beanos", reviews_count=40),
+            ]]
         )
 
         jobs.run(job, client=client)

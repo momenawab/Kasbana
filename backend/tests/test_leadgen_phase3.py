@@ -17,7 +17,8 @@ from rest_framework.test import APIClient
 
 from console.auth import issue_admin_tokens
 from console.enums import AdminRole
-from console.models import AdminAuditLog, AdminUser, Lead as CrmLead
+from console.models import AdminAuditLog, AdminUser
+from console.models import Lead as CrmLead
 from core.models import Merchant
 from leadgen import enums
 from leadgen.models import (
@@ -28,7 +29,7 @@ from leadgen.models import (
     Verification,
     WebsiteProfile,
 )
-from leadgen.services import analytics, exports
+from leadgen.services import analytics
 
 pytestmark = pytest.mark.django_db
 

@@ -238,7 +238,9 @@ def score_lead(lead) -> tuple[int, str, list[dict]]:
             "instagram",
             "Instagram profile",
             INSTAGRAM_POINTS if enums.SocialPlatform.INSTAGRAM in platforms else 0,
-            "Linked from the website" if enums.SocialPlatform.INSTAGRAM in platforms else "None found",
+            "Linked from the website"
+            if enums.SocialPlatform.INSTAGRAM in platforms
+            else "None found",
         )
     )
     signals.append(
@@ -246,7 +248,9 @@ def score_lead(lead) -> tuple[int, str, list[dict]]:
             "facebook",
             "Facebook page",
             FACEBOOK_POINTS if enums.SocialPlatform.FACEBOOK in platforms else 0,
-            "Linked from the website" if enums.SocialPlatform.FACEBOOK in platforms else "None found",
+            "Linked from the website"
+            if enums.SocialPlatform.FACEBOOK in platforms
+            else "None found",
         )
     )
 
@@ -283,7 +287,7 @@ def score_lead(lead) -> tuple[int, str, list[dict]]:
             "digital_presence",
             "Already on a delivery or booking platform",
             DIGITAL_PRESENCE_POINTS if on_platform else 0,
-            ", ".join((profile.delivery_platforms + profile.reservation_platforms))
+            ", ".join(profile.delivery_platforms + profile.reservation_platforms)
             if on_platform
             else "None detected",
         )

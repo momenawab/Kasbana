@@ -24,7 +24,8 @@ from django.db import transaction
 from django.utils import timezone
 
 from console import crm, crm_service
-from console.models import AdminUser, Lead as CrmLead
+from console.models import AdminUser
+from console.models import Lead as CrmLead
 from leadgen import enums
 from leadgen.models import GeneratedLead
 

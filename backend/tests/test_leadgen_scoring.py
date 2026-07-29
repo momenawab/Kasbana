@@ -226,7 +226,10 @@ class TestMarketReality:
     def test_no_website_costs_less_than_the_traction_it_would_replace(self):
         """Two thirds of Egyptian F&B has no site. Absence must be a small
         deduction, not a disqualification."""
-        busy = make_lead(place_id="p-busy", reviews_count=3000, rating="4.6", phone_e164="+201001234567")
+        busy = make_lead(
+            place_id="p-busy", reviews_count=3000,
+            rating="4.6", phone_e164="+201001234567",
+        )
         quiet = make_lead(
             place_id="p-quiet",
             reviews_count=8,

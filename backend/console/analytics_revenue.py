@@ -33,9 +33,8 @@ from django.utils import timezone
 
 from billing.models import Invoice, InvoiceStatus, Subscription
 from billing.plans import BillingInterval, BillingStatus, plan_price
-from core.enums import PlanTier
 from console.merchants import real_merchants
-from core.models import Merchant
+from core.enums import PlanTier
 
 _CACHE_TTL = 300  # seconds
 

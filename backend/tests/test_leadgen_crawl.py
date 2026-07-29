@@ -53,7 +53,10 @@ class TestLegalEntity:
         [
             ("© 2026 Karam Group for Restaurants", "Karam Group for Restaurants"),
             ("© 2019-2026 Karam Group", "Karam Group"),
-            ("This site is operated by Karam Group for Restaurants.", "Karam Group for Restaurants"),
+            (
+                "This site is operated by Karam Group for Restaurants.",
+                "Karam Group for Restaurants",
+            ),
             ("All rights reserved to Karam Group", "Karam Group"),
         ],
     )
@@ -71,7 +74,10 @@ class TestLegalEntity:
         sentence punctuation, so the © capture ran 80 chars into the nav bar.
         This value reaches the CRM's company field, so noise is worse than "".
         """
-        text = "© 2024 Privacy Policy Developed By Shoman Systems Item was added successfully Continu"
+        text = (
+            "© 2024 Privacy Policy Developed By Shoman Systems"
+            " Item was added successfully Continu"
+        )
         assert crawl._legal_entity(text) == ""
 
     @pytest.mark.parametrize(
