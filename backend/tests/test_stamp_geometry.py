@@ -27,8 +27,9 @@ from pathlib import Path
 import pytest
 
 from wallets.stamp_grid import (
+    ICON_H_FILL,
+    ICON_W_FILL,
     STAMP_FILL,
-    STAMP_ICON_FILL,
     _pad_y_factor,
     stamp_geometry,
 )
@@ -49,7 +50,7 @@ class TestFixtureContract:
         Both are bugs, and both would let the preview drift from the pass."""
         for case in load_cases():
             actual = stamp_geometry(case["n"], case["layout"], tuple(case["size"]))
-            expected = {k: case[k] for k in ("pitch", "radius", "ring", "icon_size")}
+            expected = {k: case[k] for k in ("pitch", "radius", "ring", "icon_w", "icon_h")}
             assert {k: actual[k] for k in expected} == expected, (
                 f"{case['size_name']} {case['layout']} n={case['n']}"
             )
@@ -88,9 +89,7 @@ class TestSizing:
         going *up* would mean the layout is fighting itself.
         """
         for layout in ("grid", "columns", "stagger"):
-            radii = [
-                stamp_geometry(n, layout, APPLE_STRIP)["radius"] for n in range(1, 16)
-            ]
+            radii = [stamp_geometry(n, layout, APPLE_STRIP)["radius"] for n in range(1, 16)]
             assert radii == sorted(radii, reverse=True), f"{layout}: {radii}"
 
     @pytest.mark.parametrize(
@@ -112,9 +111,28 @@ class TestSizing:
         """Diameter is 2 × STAMP_FILL of the available space, so ≥ 0.5 would
         guarantee collisions regardless of layout."""
         assert STAMP_FILL < 0.5
-        # Icons are square and read smaller than a disc, so they get slightly
-        # more than the circle's diameter — but not unboundedly more.
-        assert 2 * STAMP_FILL <= STAMP_ICON_FILL <= 1.0
+        # Icons fill nearly the whole cell — that is the point — but staying
+        # under 1.0 keeps a hairline between neighbouring glyphs.
+        assert 0.8 <= ICON_W_FILL < 1.0
+        assert 0.8 <= ICON_H_FILL < 1.0
+
+    @pytest.mark.parametrize("n", [1, 3, 5])
+    def test_a_single_row_of_icons_uses_the_band_height(self, n):
+        """The bug this replaced: a square icon sized by the horizontal pitch
+        covered ~44% of the strip height and left the rest empty, so a card read
+        as a sparse dotted line rather than as artwork."""
+        geo = stamp_geometry(n, "grid", APPLE_STRIP)
+        assert geo["icon_h"] / APPLE_STRIP[1] >= 0.75
+
+    def test_icons_span_almost_the_full_width(self):
+        geo = stamp_geometry(5, "grid", APPLE_STRIP)
+        xs = [c["x"] for c in geo["centers"]]
+        span = (xs[-1] + geo["icon_w"] / 2) - (xs[0] - geo["icon_w"] / 2)
+        assert span / APPLE_STRIP[0] >= 0.88
+
+    def test_icon_boxes_do_not_overlap(self):
+        for case in load_cases():
+            assert case["icon_w"] <= case["pitch"], f"{case['layout']} n={case['n']}"
 
 
 class TestGeometryShape:

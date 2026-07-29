@@ -573,7 +573,8 @@ def test_stamp_scale_changes_the_glyph_but_not_the_positions():
     small = stamp_grid.stamp_geometry(6, "grid", (1125, 369), 0.8)
     big = stamp_grid.stamp_geometry(6, "grid", (1125, 369), 1.4)
     assert big["radius"] > small["radius"]
-    assert big["icon_size"] > small["icon_size"]
+    assert big["icon_w"] > small["icon_w"]
+    assert big["icon_h"] > small["icon_h"]
     # Arrangement is the template's job — a size control must not move anything.
     assert big["centers"] == small["centers"]
 

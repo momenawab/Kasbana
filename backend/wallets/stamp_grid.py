@@ -22,11 +22,22 @@ LAYOUTS = (LAYOUT_GRID, LAYOUT_COLUMNS, LAYOUT_STAGGER)
 # ── Stamp sizing ──────────────────────────────────────────────────────────────
 # How much of the space available to one stamp the glyph actually occupies.
 # Diameter is 2 × STAMP_FILL, so anything below 0.5 guarantees a gap between
-# neighbours; 0.40 leaves a fifth of the pitch as breathing room.
-STAMP_FILL = 0.40
-# Custom icons are square and read smaller than a solid disc at the same
-# measurement, so they are given slightly more than the circle's diameter.
-STAMP_ICON_FILL = 0.82
+# neighbours.
+STAMP_FILL = 0.44
+
+# Uploaded icons are fitted to a BOX, not squashed into a square.
+#
+# They used to be sized ``min(pitch, cell_h) × STAMP_ICON_FILL`` — one square
+# side, taken from whichever axis was tighter. On a strip that is far wider than
+# it is tall, that axis is always the horizontal pitch, so a 5-stamp card drew
+# 162px glyphs into a 369px band: the artwork covered 44% of the height and the
+# rest was empty. It also silently distorted any icon that was not square.
+#
+# Fitting the icon's real aspect ratio into a (pitch × cell_h) box uses the
+# vertical room a tall glyph — a coffee cup, say — actually wants, which is what
+# makes the row read as full-width artwork instead of a sparse dotted line.
+ICON_W_FILL = 0.94  # of the horizontal pitch — neighbours nearly touch
+ICON_H_FILL = 0.92  # of the row height
 
 
 def _pad_y_factor(rows: int) -> float:
@@ -43,7 +54,7 @@ def _pad_y_factor(rows: int) -> float:
     stamps, so this factor — not the fill ratio — is what actually decides how
     big a stamp looks.
     """
-    return 0.07 if rows == 1 else 0.09
+    return 0.06 if rows == 1 else 0.09
 
 
 def hex_to_rgb(value: str | None, default: _RGB) -> _RGB:
@@ -62,13 +73,22 @@ def darken(rgb: _RGB, factor: float = 0.82) -> _RGB:
 
 
 def load_icon(data: bytes | None):  # type: ignore[no-untyped-def]
-    """Decode custom stamp-icon bytes to an RGBA image, or None if unusable."""
+    """Decode custom stamp-icon bytes to an RGBA image, or None if unusable.
+
+    Fully-transparent padding is cropped off first. Exported artwork very often
+    carries a wide transparent margin, and without this the margin is what gets
+    scaled to fill the cell — so the visible glyph lands far smaller than asked
+    for, and by an amount that varies per upload. The Apple logo path already
+    does this (``wallets.apple.signing._from_logo``); stamps did not.
+    """
     if not data:
         return None
     try:
         from PIL import Image
 
-        return Image.open(io.BytesIO(data)).convert("RGBA")
+        img = Image.open(io.BytesIO(data)).convert("RGBA")
+        bbox = img.getbbox()
+        return img.crop(bbox) if bbox else img
     except Exception:  # pragma: no cover - bad image bytes
         return None
 
@@ -159,7 +179,7 @@ def stamp_geometry(n: int, layout: str, size: tuple[int, int], scale: float = 1.
     n = max(1, min(n, 15))
     rows = 1 if n <= 5 else 2
     cols = (n + rows - 1) // rows
-    pad_x, pad_y = int(w * 0.06), int(h * _pad_y_factor(rows))
+    pad_x, pad_y = int(w * 0.04), int(h * _pad_y_factor(rows))
     cell_w = (w - 2 * pad_x) / cols
     cell_h = (h - 2 * pad_y) / rows
 
@@ -167,13 +187,18 @@ def stamp_geometry(n: int, layout: str, size: tuple[int, int], scale: float = 1.
     # ``scale`` only resizes the glyphs — never the centres. Moving the centres
     # would change the arrangement, which is the template's job, not a size
     # control's; this way a bigger stamp grows in place.
+    #
+    # A circle stays bound by the tighter axis (it is round — letting it use the
+    # taller axis would just overlap its neighbours). An icon gets the full box
+    # and keeps its own aspect ratio, fitted at draw time.
     radius = int(min(pitch, cell_h) * STAMP_FILL * scale)
     return {
         "centers": [{"x": round(x, 4), "y": round(y, 4)} for x, y in centers],
         "pitch": round(pitch, 4),
         "radius": radius,
         "ring": max(4, radius // 7),
-        "icon_size": int(min(pitch, cell_h) * STAMP_ICON_FILL * scale),
+        "icon_w": int(pitch * ICON_W_FILL * scale),
+        "icon_h": int(cell_h * ICON_H_FILL * scale),
     }
 
 
@@ -223,7 +248,8 @@ def render_stamp_grid(
         return canvas
 
     geo = stamp_geometry(n, layout, size, scale)
-    radius, ring, icon_size = geo["radius"], geo["ring"], geo["icon_size"]
+    radius, ring = geo["radius"], geo["ring"]
+    box_w, box_h = geo["icon_w"], geo["icon_h"]
 
     icon_filled, icon_empty = load_icon(filled_icon), load_icon(empty_icon)
     use_custom = icon_filled is not None and icon_empty is not None
@@ -233,8 +259,16 @@ def render_stamp_grid(
         if use_custom:
             icon = icon_filled if i < earned else icon_empty
             try:
-                glyph = icon.resize((icon_size, icon_size), Image.Resampling.LANCZOS)
-                canvas.paste(glyph, (int(x0 - icon_size / 2), int(cy - icon_size / 2)), glyph)
+                # Fit into the box, never distort: whichever axis runs out first
+                # decides the scale, so a tall cup grows until it is nearly the
+                # full band height and a wide mark grows until it nearly touches
+                # its neighbours. The JS preview mirrors this with SVG's
+                # preserveAspectRatio="xMidYMid meet" over the same box.
+                ratio = min(box_w / icon.width, box_h / icon.height)
+                gw = max(1, round(icon.width * ratio))
+                gh = max(1, round(icon.height * ratio))
+                glyph = icon.resize((gw, gh), Image.Resampling.LANCZOS)
+                canvas.paste(glyph, (int(x0 - gw / 2), int(cy - gh / 2)), glyph)
                 continue
             except Exception:  # pragma: no cover - fall back to drawn circle
                 use_custom = False

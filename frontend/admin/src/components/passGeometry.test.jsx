@@ -32,7 +32,8 @@ describe('passGeometry matches the backend renderer', () => {
 
       expect(actual.radius).toBe(expected.radius)
       expect(actual.ring).toBe(expected.ring)
-      expect(actual.iconSize).toBe(expected.icon_size)
+      expect(actual.iconW).toBe(expected.icon_w)
+      expect(actual.iconH).toBe(expected.icon_h)
       expect(actual.pitch).toBeCloseTo(expected.pitch, 3)
 
       expect(actual.centers).toHaveLength(expected.centers.length)

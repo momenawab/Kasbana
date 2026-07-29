@@ -18,11 +18,16 @@ export const GOOGLE_HERO = [1032, 336]
 // so the preview's stamps are the pass's stamps in shape AND in scale, not just
 // in arrangement. (The old preview drew fixed 20px glyphs, which on a 3-stamp
 // card came out roughly half the size the pass renders them.)
-// Mirrors STAMP_FILL / STAMP_ICON_FILL in wallets/stamp_grid.py. Diameter is
-// 2 × STAMP_FILL, so anything below 0.5 guarantees a gap between neighbours;
-// 0.40 leaves a fifth of the pitch as breathing room.
-export const STAMP_FILL = 0.4
-export const STAMP_ICON_FILL = 0.82
+// Mirrors STAMP_FILL / ICON_W_FILL / ICON_H_FILL in wallets/stamp_grid.py.
+// Diameter is 2 × STAMP_FILL, so anything below 0.5 guarantees a gap between
+// neighbours.
+export const STAMP_FILL = 0.44
+// Uploaded icons are fitted to a BOX and keep their own aspect ratio, rather
+// than being squashed into a square sized by the tighter axis. On a strip far
+// wider than it is tall that axis was always the pitch, so artwork covered ~44%
+// of the band height and the rest sat empty.
+export const ICON_W_FILL = 0.94
+export const ICON_H_FILL = 0.92
 
 // Vertical padding by row count — the port of _pad_y_factor. A single row sits
 // in the middle of the strip with nothing above or below it, so generous
@@ -30,7 +35,7 @@ export const STAMP_ICON_FILL = 0.82
 // crowd. Since the vertical axis binds for every card except 4 and 5 stamps,
 // this is what actually decides how big a stamp looks.
 function padYFactor(rows) {
-  return rows === 1 ? 0.07 : 0.09
+  return rows === 1 ? 0.06 : 0.09
 }
 
 export function stampGeometry(count, layout, size = APPLE_STRIP) {
@@ -38,7 +43,7 @@ export function stampGeometry(count, layout, size = APPLE_STRIP) {
   const n = Math.max(1, Math.min(count, 15)) // cap so a big card doesn't render dust
   const rows = n <= 5 ? 1 : 2
   const cols = Math.ceil(n / rows)
-  const padX = Math.trunc(w * 0.06)
+  const padX = Math.trunc(w * 0.04)
   const padY = Math.trunc(h * padYFactor(rows))
   const cellW = (w - 2 * padX) / cols
   const cellH = (h - 2 * padY) / rows
@@ -85,12 +90,16 @@ export function stampGeometry(count, layout, size = APPLE_STRIP) {
     }
   }
 
+  // A circle stays bound by the tighter axis (it is round — using the taller
+  // axis would just overlap its neighbours). An icon gets the full box and keeps
+  // its own aspect ratio, fitted at draw time.
   const radius = Math.trunc(Math.min(pitch, cellH) * STAMP_FILL)
   return {
     centers,
     pitch,
     radius,
     ring: Math.max(4, Math.trunc(radius / 7)),
-    iconSize: Math.trunc(Math.min(pitch, cellH) * STAMP_ICON_FILL),
+    iconW: Math.trunc(pitch * ICON_W_FILL),
+    iconH: Math.trunc(cellH * ICON_H_FILL),
   }
 }

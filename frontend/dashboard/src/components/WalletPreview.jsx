@@ -73,7 +73,10 @@ function StampStrip({
   const custom = emptyUrl && filledUrl
   const paths = !custom && isStampIcon(stampIcon) ? STAMP_ICON_PATHS[stampIcon] : null
   const tint = stampColor || fg
-  const { centers, radius, ring, iconSize } = stampGeometry(n, layout, size)
+  const { centers, radius, ring, iconW, iconH } = stampGeometry(n, layout, size)
+  // The built-in glyphs are authored square on a 256×256 viewBox, so they take
+  // the smaller side of the box; only uploaded artwork uses the full rectangle.
+  const glyphSize = Math.min(iconW, iconH)
   // Artwork can hide the stamps entirely (a plain photo band); without artwork
   // the toggle is meaningless, so an empty strip is never rendered by accident.
   const showStamps = stampsVisible || !bgImage
@@ -108,10 +111,12 @@ function StampStrip({
               <image
                 key={i}
                 href={filled ? filledUrl : emptyUrl}
-                x={x - iconSize / 2}
-                y={y - iconSize / 2}
-                width={iconSize}
-                height={iconSize}
+                x={x - iconW / 2}
+                y={y - iconH / 2}
+                width={iconW}
+                height={iconH}
+                /* "meet" fits the artwork inside the box without distorting it —
+                   the SVG equivalent of the backend's aspect-preserving resize. */
                 preserveAspectRatio="xMidYMid meet"
               />
             )
@@ -121,7 +126,7 @@ function StampStrip({
             return (
               <g
                 key={i}
-                transform={`translate(${x - iconSize / 2} ${y - iconSize / 2}) scale(${iconSize / 256})`}
+                transform={`translate(${x - glyphSize / 2} ${y - glyphSize / 2}) scale(${glyphSize / 256})`}
                 opacity={filled ? 1 : 0.45}
               >
                 <path d={filled ? paths.filled : paths.outline} fill={tint} />

@@ -15,7 +15,7 @@ import { APPLE_STRIP, stampGeometry } from './passGeometry'
 function stampRows(n, layout) {
   const rows = []
   for (const c of stampGeometry(n, layout).centers) {
-    (rows[c.row] ||= []).push(c.i)
+    ;(rows[c.row] ||= []).push(c.i)
   }
   return rows
 }
@@ -61,17 +61,19 @@ describe('stamp arrangement', () => {
 })
 
 describe('stampGeometry', () => {
-  // From wallets/stamp_grid.py on the real 1125×369 strip: pad 67/25 (one row
-  // takes the narrower vertical padding), cell 330.33×319, so height binds and
-  // radius = int(319 × 0.40). Not just the arrangement — the *scale*.
+  // From wallets/stamp_grid.py on the real 1125×369 strip: pad 45/22 (one row
+  // takes the narrower vertical padding), so a 3-stamp card gets a 324×299 icon
+  // box and radius = int(min(pitch, cellH) × 0.44). Not just the arrangement —
+  // the *scale*.
   //
   // These literals are the readable statement of intent; passGeometry.test.jsx
   // is what actually enforces parity, across all 60 generated cases.
   it('sizes stamps the way the backend does, not at a fixed size', () => {
-    const { radius, ring, iconSize } = stampGeometry(3, 'grid', APPLE_STRIP)
-    expect(radius).toBe(127)
-    expect(ring).toBe(18)
-    expect(iconSize).toBe(261)
+    const { radius, ring, iconW, iconH } = stampGeometry(3, 'grid', APPLE_STRIP)
+    expect(radius).toBe(143)
+    expect(ring).toBe(20)
+    expect(iconW).toBe(324)
+    expect(iconH).toBe(299)
   })
 
   it('fills a useful share of the strip rather than floating in empty panel', () => {
@@ -80,6 +82,23 @@ describe('stampGeometry', () => {
     const [, h] = APPLE_STRIP
     expect((2 * stampGeometry(3, 'grid', APPLE_STRIP).radius) / h).toBeGreaterThan(0.6)
     expect((2 * stampGeometry(8, 'grid', APPLE_STRIP).radius) / h).toBeGreaterThan(0.3)
+  })
+
+  it('gives an uploaded icon the band height, not a square capped by the pitch', () => {
+    // The bug this replaced: a square icon sized by the horizontal pitch covered
+    // ~44% of the strip height, so a card read as a sparse dotted line instead of
+    // as artwork. A single row must now use most of the band.
+    const [, h] = APPLE_STRIP
+    for (const n of [1, 3, 5]) {
+      expect(stampGeometry(n, 'grid', APPLE_STRIP).iconH / h).toBeGreaterThan(0.75)
+    }
+  })
+
+  it('lets an uploaded icon span almost the whole strip width', () => {
+    const [w] = APPLE_STRIP
+    const { centers, iconW } = stampGeometry(5, 'grid', APPLE_STRIP)
+    const span = centers[4].x + iconW / 2 - (centers[0].x - iconW / 2)
+    expect(span / w).toBeGreaterThan(0.88)
   })
 
   it('spreads the stamps across the full strip width', () => {
