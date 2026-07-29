@@ -126,6 +126,10 @@ export default function OverlayGuide({ onInsert }) {
           powered-by, the message field) survives. Nested objects merge, arrays replace whole, and{' '}
           <code className="text-brand">null</code> deletes a key.
         </p>
+        <p className="mt-1.5 text-xs leading-relaxed text-tx-3">
+          The <strong className="text-tx-2">Current pass</strong> panel above shows what this card
+          renders today — copy from it rather than writing from scratch.
+        </p>
       </div>
 
       <Section title="Value tokens — resolve per customer" icon={Sparkles} open>

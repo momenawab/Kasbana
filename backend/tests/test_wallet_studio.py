@@ -14,6 +14,7 @@ Three things are load-bearing and get the most attention here:
 from __future__ import annotations
 
 import io
+import json
 
 import pytest
 from rest_framework.test import APIClient
@@ -109,6 +110,19 @@ def test_interpolate_deep_resolves_tokens_at_any_depth():
 
 def test_interpolate_deep_leaves_unknown_tokens_alone():
     assert overlay_mod.interpolate_deep({"v": "{nope}"}, {"goal": 1})["v"] == "{nope}"
+
+
+def test_a_lone_token_keeps_its_type():
+    """Apple only applies numberStyle to numeric values, so "{remaining}" must
+    resolve to the int 3 — not the string "3"."""
+    out = overlay_mod.interpolate_deep({"value": "{remaining}"}, {"remaining": 3})
+    assert out["value"] == 3
+    assert isinstance(out["value"], int)
+
+
+def test_a_token_inside_a_sentence_stays_a_string():
+    out = overlay_mod.interpolate_deep({"value": "{remaining} to go"}, {"remaining": 3})
+    assert out["value"] == "3 to go"
 
 
 def test_interpolate_deep_does_not_touch_keys():
@@ -432,6 +446,92 @@ def test_republish_counts_the_passes_it_queued(admin_client, card, monkeypatch):
     assert resp.status_code == 200
     assert resp.json()["customer_cards"] == 2
     assert len(pushed) == 2
+
+
+# ── pass scaffold (the JSON tab's starting point) ─────────────────────────────
+def _scaffold_url(card) -> str:
+    return f"/api/admin/v1/merchants/{card.merchant_id}/cards/{card.id}/pass-scaffold"
+
+
+def test_scaffold_keeps_tokens_instead_of_one_customer_s_numbers(admin_client, card):
+    """The whole point: a scaffold full of literal numbers would freeze every
+    holder at the sample balance the moment it was adopted as an overlay."""
+    resp = admin_client.get(_scaffold_url(card))
+    assert resp.status_code == 200, resp.content
+    body = resp.json()
+    blob = json.dumps(body["apple"])
+    # The default stamp template puts {balance} in the header and {remaining} in
+    # a secondary field; at least one token must survive un-resolved.
+    assert "{balance}" in blob or "{remaining}" in blob
+
+
+def test_scaffold_strips_locked_keys_so_it_can_be_copied_wholesale(admin_client, card):
+    resp = admin_client.get(_scaffold_url(card))
+    apple = resp.json()["apple"]
+    for key in overlay_mod.LOCKED_APPLE:
+        assert key not in apple
+
+
+def test_scaffold_output_is_accepted_as_an_overlay(admin_client, card, monkeypatch):
+    """Copy → Save has to work in one hop, or the feature is theatre."""
+    from wallets.tasks import sync_google_class
+
+    monkeypatch.setattr(sync_google_class, "delay", lambda card_id: None)
+    scaffold = admin_client.get(_scaffold_url(card)).json()
+
+    resp = admin_client.patch(
+        _design_url(card), {"apple_overlay": scaffold["apple"]}, format="json"
+    )
+    assert resp.status_code == 200, resp.content
+
+
+def test_scaffold_round_trips_back_to_real_values(admin_client, card, monkeypatch):
+    """Adopting the scaffold must not change what a customer sees — the tokens it
+    preserved resolve again on render."""
+    from wallets.tasks import sync_google_class
+
+    monkeypatch.setattr(sync_google_class, "delay", lambda card_id: None)
+    holder = factories.CustomerCardFactory(card=card, merchant=card.merchant, stamp_count=2)
+    before = build_pass_json(holder)
+
+    scaffold = admin_client.get(_scaffold_url(card)).json()
+    admin_client.patch(_design_url(card), {"apple_overlay": scaffold["apple"]}, format="json")
+
+    holder.refresh_from_db()
+    after = build_pass_json(holder)
+    assert after["storeCard"] == before["storeCard"]
+
+
+def test_scaffold_reflects_the_saved_design(admin_client, card, monkeypatch):
+    from wallets.tasks import sync_google_class
+
+    monkeypatch.setattr(sync_google_class, "delay", lambda card_id: None)
+    admin_client.patch(_design_url(card), {"label_color": "#123456"}, format="json")
+    apple = admin_client.get(_scaffold_url(card)).json()["apple"]
+    assert apple["labelColor"] == "rgb(18, 52, 86)"
+
+
+def test_scaffold_creates_nothing(admin_client, card):
+    from core.models import CustomerCard
+    from wallets.models import CardShortCode
+
+    assert admin_client.get(_scaffold_url(card)).status_code == 200
+    assert not CustomerCard.objects.filter(card=card).exists()
+    assert not CardShortCode.objects.exists()
+
+
+def test_scaffold_is_super_admin_only(card):
+    assert _client(AdminRole.SUPPORT).get(_scaffold_url(card)).status_code == 403
+
+
+def test_token_context_covers_every_value_token():
+    """A token missing here would silently render as an empty string."""
+    from wallets.design import VALUE_TOKENS
+    from wallets.preview import token_context
+
+    ctx = token_context()
+    assert set(ctx) == set(VALUE_TOKENS)
+    assert all(ctx[token] == "{" + token + "}" for token in VALUE_TOKENS)
 
 
 def test_template_catalog_matches_the_merchant_one(admin_client):

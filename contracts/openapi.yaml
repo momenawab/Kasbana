@@ -2288,6 +2288,38 @@ paths:
               schema:
                 $ref: '#/components/schemas/PassPreview'
           description: ''
+  /api/admin/v1/merchants/{merchant_id}/cards/{card_id}/pass-scaffold:
+    get:
+      operationId: api_admin_v1_merchants_cards_pass_scaffold_retrieve
+      description: |-
+        GET /…/pass-scaffold — the card's current pass, ready to adopt as an overlay.
+
+        A card designed in the Editor has no overlay, so the JSON tab would otherwise
+        open on an empty document. This returns what the card renders *today* — real
+        structure, ``{tokens}`` intact, locked keys removed — so the admin edits the
+        pass they already have instead of retyping it.
+      parameters:
+      - in: path
+        name: card_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: merchant_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PassScaffold'
+          description: ''
   /api/admin/v1/merchants/{merchant_id}/cards/{card_id}/republish:
     post:
       operationId: api_admin_v1_merchants_cards_republish_create
@@ -10582,6 +10614,35 @@ components:
           type: integer
           minimum: 0
           nullable: true
+    PassScaffold:
+      type: object
+      description: |-
+        The card's current pass payloads, in a form an overlay can adopt.
+
+        Same shape as the preview but token-preserving ({balance} rather than "3/8")
+        and with the locked keys already removed, so a copy of it is directly
+        editable and directly saveable.
+      properties:
+        apple:
+          type: object
+          additionalProperties: {}
+          nullable: true
+        google_class:
+          type: object
+          additionalProperties: {}
+          nullable: true
+        google_object:
+          type: object
+          additionalProperties: {}
+          nullable: true
+        errors:
+          type: object
+          additionalProperties: {}
+      required:
+      - apple
+      - errors
+      - google_class
+      - google_object
     PasswordChange:
       type: object
       properties:

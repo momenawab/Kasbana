@@ -4,6 +4,7 @@
 ``GET   /merchants/{id}/cards/{card_id}/wallet-design``  — design + raw overlays.
 ``PATCH /merchants/{id}/cards/{card_id}/wallet-design``  — save them.
 ``POST  /merchants/{id}/cards/{card_id}/pass-preview``   — dry-run, unsaved.
+``GET   /merchants/{id}/cards/{card_id}/pass-scaffold``  — current pass as JSON.
 ``POST  /merchants/{id}/cards/{card_id}/republish``      — push to live passes.
 
 This is the same editor the merchant uses on their dashboard, plus the raw
@@ -39,6 +40,7 @@ from console.serializers_wallet_studio import (
     MerchantCardRowSerializer,
     PassPreviewRequestSerializer,
     PassPreviewSerializer,
+    PassScaffoldSerializer,
     RepublishResultSerializer,
 )
 from core.models import Card, CustomerCard, Merchant
@@ -177,6 +179,25 @@ class MerchantCardPassPreviewView(AdminAPIView):
 
         result = preview_mod.build_preview(card, body.validated_data.get("stamp_count"))
         return Response(PassPreviewSerializer(result).data)
+
+
+class MerchantCardPassScaffoldView(AdminAPIView):
+    """GET /…/pass-scaffold — the card's current pass, ready to adopt as an overlay.
+
+    A card designed in the Editor has no overlay, so the JSON tab would otherwise
+    open on an empty document. This returns what the card renders *today* — real
+    structure, ``{tokens}`` intact, locked keys removed — so the admin edits the
+    pass they already have instead of retyping it.
+    """
+
+    permission_classes = _STUDIO
+
+    @extend_schema(responses=PassScaffoldSerializer)
+    def get(self, request: Request, merchant_id: str, card_id: str) -> Response:
+        card = _card_for(merchant_id, card_id)
+        # Read-only: the scaffold reflects the SAVED design, so it is a truthful
+        # "here is your card" rather than a snapshot of unsaved editor state.
+        return Response(PassScaffoldSerializer(preview_mod.build_scaffold(card)).data)
 
 
 class WalletStudioTemplateListView(AdminAPIView):

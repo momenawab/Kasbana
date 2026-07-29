@@ -35,6 +35,9 @@ export function useSaveWalletDesign(merchantId, cardId) {
       qc.setQueryData(designKey(merchantId, cardId), data)
       // The rail badges cards that carry an overlay — keep that truthful.
       qc.invalidateQueries({ queryKey: ['wallet-studio', merchantId, 'cards'] })
+      // The scaffold renders the SAVED design, so an Editor save changes it.
+      // Without this the JSON tab would keep offering the pre-edit pass.
+      qc.invalidateQueries({ queryKey: ['wallet-studio', merchantId, cardId, 'scaffold'] })
     },
   })
 }
@@ -55,6 +58,20 @@ export function usePassPreview(merchantId, cardId) {
   return useMutation({
     mutationFn: async (body) =>
       (await api.post(`/merchants/${merchantId}/cards/${cardId}/pass-preview`, body ?? {})).data,
+  })
+}
+
+/**
+ * The card's pass as it renders today, in token-preserving form with the locked
+ * keys removed — the starting point for a card that was built in the Editor and
+ * has no overlay yet. Reflects the SAVED design, so it is refetched after a save.
+ */
+export function usePassScaffold(merchantId, cardId) {
+  return useQuery({
+    queryKey: ['wallet-studio', merchantId, cardId, 'scaffold'],
+    queryFn: async () =>
+      (await api.get(`/merchants/${merchantId}/cards/${cardId}/pass-scaffold`)).data,
+    enabled: Boolean(merchantId && cardId),
   })
 }
 
