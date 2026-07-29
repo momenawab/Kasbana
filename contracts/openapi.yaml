@@ -2246,6 +2246,88 @@ paths:
                 items:
                   $ref: '#/components/schemas/MerchantCardRow'
           description: ''
+  /api/admin/v1/merchants/{merchant_id}/cards/{card_id}/card-json:
+    get:
+      operationId: api_admin_v1_merchants_cards_card_json_retrieve
+      description: |-
+        GET/PUT /…/card-json — the whole card as one editable JSON document.
+
+        Everything that shapes a wallet card in one place: the program itself, how it
+        renders, and the raw pass overlays. An admin should not have to know which
+        row a given knob lives in.
+
+        PUT runs the same post-save work a merchant's own card edit does
+        (``_sync_primary_reward`` keeps the redeem flow working when the goal moves,
+        ``sync_google_class`` re-pushes the program-level design), so editing here
+        can't leave the card in a state the dashboard would never produce.
+      parameters:
+      - in: path
+        name: card_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: merchant_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CardJson'
+          description: ''
+    put:
+      operationId: api_admin_v1_merchants_cards_card_json_update
+      description: |-
+        GET/PUT /…/card-json — the whole card as one editable JSON document.
+
+        Everything that shapes a wallet card in one place: the program itself, how it
+        renders, and the raw pass overlays. An admin should not have to know which
+        row a given knob lives in.
+
+        PUT runs the same post-save work a merchant's own card edit does
+        (``_sync_primary_reward`` keeps the redeem flow working when the goal moves,
+        ``sync_google_class`` re-pushes the program-level design), so editing here
+        can't leave the card in a state the dashboard would never produce.
+      parameters:
+      - in: path
+        name: card_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - in: path
+        name: merchant_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CardJson'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CardJson'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CardJson'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CardJson'
+          description: ''
   /api/admin/v1/merchants/{merchant_id}/cards/{card_id}/pass-preview:
     post:
       operationId: api_admin_v1_merchants_cards_pass_preview_create
@@ -6117,6 +6199,12 @@ components:
           maxLength: 200
         strip_stamps_visible:
           type: boolean
+        stamp_scale:
+          type: number
+          format: double
+        logo_scale:
+          type: number
+          format: double
         apple_overlay: {}
         google_overlay: {}
     AiEnrichment:
@@ -6858,6 +6946,48 @@ components:
       - stamps_issued
       - stamps_required
       - updated_at
+    CardJson:
+      type: object
+      description: |-
+        The whole card as one editable document.
+
+        Four sections, because they are four different kinds of thing and collapsing
+        them would hide which edits are risky:
+
+        * ``card``   — the program itself (name, goal, reward, colours, image URLs).
+          Editing ``stamps_required`` here changes the goal for every existing holder.
+        * ``design`` — how the pass is rendered (template, stamp style, sizes, strip
+          artwork). Everything the Editor tab writes.
+        * ``apple_overlay`` / ``google_overlay`` — raw pass payload merged last.
+
+        ``platform`` is read-only: the identity keys the platform owns, echoed back
+        so the document shows the complete pass rather than looking half-missing.
+      properties:
+        card:
+          type: object
+          additionalProperties: {}
+        design:
+          type: object
+          additionalProperties: {}
+        apple_overlay:
+          type: object
+          additionalProperties: {}
+        google_overlay:
+          type: object
+          additionalProperties: {}
+        platform:
+          type: object
+          additionalProperties: {}
+          readOnly: true
+        assets:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+          readOnly: true
+      required:
+      - assets
+      - platform
     CardQR:
       type: object
       description: GET /cards/{id}/qr response.
@@ -10766,6 +10896,12 @@ components:
           maxLength: 200
         strip_stamps_visible:
           type: boolean
+        stamp_scale:
+          type: number
+          format: double
+        logo_scale:
+          type: number
+          format: double
         apple_overlay: {}
         google_overlay: {}
     PatchedAnnouncementWrite:
@@ -11439,6 +11575,12 @@ components:
           maxLength: 200
         strip_stamps_visible:
           type: boolean
+        stamp_scale:
+          type: number
+          format: double
+        logo_scale:
+          type: number
+          format: double
     PaymentMethod:
       type: object
       properties:
@@ -13228,6 +13370,12 @@ components:
           maxLength: 200
         strip_stamps_visible:
           type: boolean
+        stamp_scale:
+          type: number
+          format: double
+        logo_scale:
+          type: number
+          format: double
     WalletSplit:
       type: object
       properties:

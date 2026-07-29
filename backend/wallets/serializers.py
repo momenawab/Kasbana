@@ -35,6 +35,22 @@ _REGION_CAPS = {
 }
 
 
+def _bounded_scale(value: Any, low: float, high: float, label: str) -> float:
+    """A size multiplier inside sane bounds.
+
+    Bounded rather than free because the failure is silent: too large and the
+    stamps overlap into an unreadable smear, too small and they vanish against
+    the strip — neither raises, both just ship a broken-looking pass.
+    """
+    try:
+        scale = float(value)
+    except (TypeError, ValueError):
+        raise serializers.ValidationError(f"{label} must be a number.") from None
+    if not low <= scale <= high:
+        raise serializers.ValidationError(f"{label} must be between {low} and {high}.")
+    return scale
+
+
 def _validate_slots(value: Any, cap: int) -> list[dict[str, str]]:
     if not isinstance(value, list):
         raise serializers.ValidationError("Expected a list of fields.")
@@ -79,7 +95,17 @@ class WalletCardDesignSerializer(serializers.ModelSerializer):
             "bottom_image_url",
             "strip_bg_image_url",
             "strip_stamps_visible",
+            "stamp_scale",
+            "logo_scale",
         ]
+
+    def validate_stamp_scale(self, value: Any) -> float:
+        return _bounded_scale(value, 0.5, 1.6, "Stamp size")
+
+    def validate_logo_scale(self, value: Any) -> float:
+        # Capped at 1.0: Apple's logo slot is 160x50 pt and nothing renders past
+        # it, so allowing 1.4 here would silently do nothing and read as a bug.
+        return _bounded_scale(value, 0.4, 1.0, "Logo size")
 
     def validate_stamp_icon(self, value: Any) -> str:
         key = str(value or "").strip()

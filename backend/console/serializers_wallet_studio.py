@@ -69,6 +69,30 @@ class PassScaffoldSerializer(serializers.Serializer):
     errors = serializers.DictField()
 
 
+class CardJsonSerializer(serializers.Serializer):
+    """The whole card as one editable document.
+
+    Four sections, because they are four different kinds of thing and collapsing
+    them would hide which edits are risky:
+
+    * ``card``   — the program itself (name, goal, reward, colours, image URLs).
+      Editing ``stamps_required`` here changes the goal for every existing holder.
+    * ``design`` — how the pass is rendered (template, stamp style, sizes, strip
+      artwork). Everything the Editor tab writes.
+    * ``apple_overlay`` / ``google_overlay`` — raw pass payload merged last.
+
+    ``platform`` is read-only: the identity keys the platform owns, echoed back
+    so the document shows the complete pass rather than looking half-missing.
+    """
+
+    card = serializers.DictField(required=False)
+    design = serializers.DictField(required=False)
+    apple_overlay = serializers.DictField(required=False)
+    google_overlay = serializers.DictField(required=False)
+    platform = serializers.DictField(read_only=True)
+    assets = serializers.ListField(child=serializers.DictField(), read_only=True)
+
+
 class RepublishResultSerializer(serializers.Serializer):
     """How many live passes a republish touched."""
 

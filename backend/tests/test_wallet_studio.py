@@ -448,6 +448,192 @@ def test_republish_counts_the_passes_it_queued(admin_client, card, monkeypatch):
     assert len(pushed) == 2
 
 
+# ── the whole card as one JSON document ───────────────────────────────────────
+def _json_url(card) -> str:
+    return f"/api/admin/v1/merchants/{card.merchant_id}/cards/{card.id}/card-json"
+
+
+@pytest.fixture
+def no_sync(monkeypatch):
+    from wallets.tasks import sync_google_class
+
+    monkeypatch.setattr(sync_google_class, "delay", lambda card_id: None)
+
+
+def test_document_carries_every_section(admin_client, card):
+    body = admin_client.get(_json_url(card)).json()
+    assert set(body) == {
+        "card",
+        "design",
+        "apple_overlay",
+        "google_overlay",
+        "platform",
+        "assets",
+    }
+    assert body["card"]["stamps_required"] == card.stamps_required
+    assert "template_key" in body["design"]
+
+
+def test_document_shows_the_platform_keys_it_will_not_let_you_write(admin_client, card):
+    """The complaint this answers: the pass looked half-missing without them."""
+    platform = admin_client.get(_json_url(card)).json()["platform"]
+    for key in ("passTypeIdentifier", "teamIdentifier", "webServiceURL", "barcodes"):
+        assert key in platform
+
+
+def test_document_redacts_the_per_pass_secret(admin_client, card):
+    platform = admin_client.get(_json_url(card)).json()["platform"]
+    assert "secret" in platform["authenticationToken"]
+    # The real token must not be echoed to a screen.
+    assert len(platform["authenticationToken"]) > 20
+    assert platform["serialNumber"].startswith("<")
+
+
+def test_document_lists_the_image_slots(admin_client, card):
+    """Pixels are not JSON — but which upload feeds which file is."""
+    assets = admin_client.get(_json_url(card)).json()["assets"]
+    files = {a["file"] for a in assets}
+    assert {"icon.png", "logo.png", "strip.png"} <= files
+    assert all(a["source_field"] for a in assets)
+
+
+def test_put_writes_card_design_and_overlay_in_one_go(admin_client, card, no_sync):
+    resp = admin_client.put(
+        _json_url(card),
+        {
+            "card": {"name": "Renamed", "reward_title": "Free pastry"},
+            "design": {"stamp_scale": 1.3, "stamp_color": "#FFAA00"},
+            "apple_overlay": {"maxDistance": 120},
+        },
+        format="json",
+    )
+    assert resp.status_code == 200, resp.content
+    card.refresh_from_db()
+    design = WalletCardDesign.objects.get(card=card)
+    assert card.name == "Renamed"
+    assert card.reward_title == "Free pastry"
+    assert design.stamp_scale == 1.3
+    assert design.apple_overlay == {"maxDistance": 120}
+
+
+def test_put_rejects_a_bad_card_field_under_its_own_section(admin_client, card, no_sync):
+    """The editor has to be able to say WHICH half is wrong."""
+    resp = admin_client.put(_json_url(card), {"card": {"type": "NONSENSE"}}, format="json")
+    assert resp.status_code == 400
+    assert "card" in resp.json().get("error", {}).get("fields", resp.json())
+
+
+def test_put_rejects_a_locked_overlay_key_under_design(admin_client, card, no_sync):
+    resp = admin_client.put(
+        _json_url(card), {"apple_overlay": {"serialNumber": "x"}}, format="json"
+    )
+    assert resp.status_code == 400
+    assert "serialNumber" in resp.content.decode()
+
+
+def test_put_ignores_provisioning_output(admin_client, card, no_sync):
+    """google_class_id is written by the sync task; editing it orphans the pass."""
+    before = card.google_class_id
+    admin_client.put(_json_url(card), {"card": {"google_class_id": "hijacked"}}, format="json")
+    card.refresh_from_db()
+    assert card.google_class_id == before
+
+
+def test_put_keeps_the_reward_row_in_step_with_the_goal(admin_client, card, no_sync):
+    """Changing the goal from JSON must not break the till's redeem button."""
+    from core.models import Reward
+
+    admin_client.put(_json_url(card), {"card": {"stamps_required": 12}}, format="json")
+    card.refresh_from_db()
+    assert card.stamps_required == 12
+    assert Reward.objects.filter(card=card, threshold=12).exists()
+
+
+def test_put_audits_holder_affecting_edits(admin_client, card, no_sync):
+    from console.models import AdminAuditLog
+
+    admin_client.put(_json_url(card), {"card": {"stamps_required": 9}}, format="json")
+    entry = AdminAuditLog.objects.filter(action="wallet_studio.card_json.update").first()
+    assert entry is not None
+    assert "stamps_required" in entry.metadata["holder_affecting"]
+
+
+def test_card_json_is_super_admin_only(card):
+    assert _client(AdminRole.SUPPORT).get(_json_url(card)).status_code == 403
+
+
+def test_card_json_is_tenant_scoped(admin_client, card):
+    other = factories.CardFactory()
+    url = f"/api/admin/v1/merchants/{card.merchant_id}/cards/{other.id}/card-json"
+    assert admin_client.get(url).status_code == 404
+
+
+# ── sizing ────────────────────────────────────────────────────────────────────
+def test_stamp_scale_changes_the_glyph_but_not_the_positions():
+    small = stamp_grid.stamp_geometry(6, "grid", (1125, 369), 0.8)
+    big = stamp_grid.stamp_geometry(6, "grid", (1125, 369), 1.4)
+    assert big["radius"] > small["radius"]
+    assert big["icon_size"] > small["icon_size"]
+    # Arrangement is the template's job — a size control must not move anything.
+    assert big["centers"] == small["centers"]
+
+
+def test_default_scale_is_byte_identical_to_before():
+    """1.0 must render exactly what every existing card renders today."""
+    assert stamp_grid.stamp_geometry(6, "grid", (1125, 369)) == stamp_grid.stamp_geometry(
+        6, "grid", (1125, 369), 1.0
+    )
+
+
+@pytest.mark.parametrize("bad", [0.1, 3.0, "big"])
+def test_out_of_range_stamp_scale_is_rejected(design, bad):
+    ser = AdminWalletCardDesignSerializer(design, data={"stamp_scale": bad}, partial=True)
+    assert not ser.is_valid()
+
+
+def test_logo_scale_cannot_exceed_the_apple_slot(design):
+    """Apple caps the logo at 160x50 pt; allowing 1.4 would silently do nothing."""
+    assert not AdminWalletCardDesignSerializer(
+        design, data={"logo_scale": 1.4}, partial=True
+    ).is_valid()
+    assert AdminWalletCardDesignSerializer(
+        design, data={"logo_scale": 1.0}, partial=True
+    ).is_valid()
+
+
+def test_a_small_logo_is_scaled_up_to_fill_the_slot(customer_card, monkeypatch, tmp_path):
+    """thumbnail() only ever shrinks, so a modest upload used to render undersized."""
+    from PIL import Image
+
+    from wallets.apple import signing
+
+    buf = io.BytesIO()
+    Image.new("RGBA", (40, 12), (255, 0, 0, 255)).save(buf, format="PNG")
+    monkeypatch.setattr(signing, "_local_media_bytes", lambda url: buf.getvalue())
+    customer_card.card.logo_url = "https://cdn.example/logo.png"
+    customer_card.card.save()
+
+    images = signing.build_pass_images(customer_card)
+    logo = Image.open(io.BytesIO(images["logo.png"]))
+    # 40x12 fitted into the 160x50 slot is height-bound: 12 -> 50, i.e. ~166 wide
+    # capped by width 160. Either way it must be far larger than the 40px source.
+    assert logo.width > 100
+
+
+def test_google_hero_fingerprint_covers_stamp_scale(customer_card, monkeypatch):
+    from wallets.google import hero
+
+    monkeypatch.setattr(hero, "_local_media_bytes", lambda url: None)
+    design = WalletCardDesign.objects.create(
+        card=customer_card.card, merchant=customer_card.merchant, google_stamp_hero=True
+    )
+    first = hero.stamp_hero_url(customer_card)
+    design.stamp_scale = 1.3
+    design.save()
+    customer_card.card.refresh_from_db()
+    assert first != hero.stamp_hero_url(customer_card)
+
+
 # ── pass scaffold (the JSON tab's starting point) ─────────────────────────────
 def _scaffold_url(card) -> str:
     return f"/api/admin/v1/merchants/{card.merchant_id}/cards/{card.id}/pass-scaffold"

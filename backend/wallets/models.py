@@ -185,6 +185,17 @@ class WalletCardDesign(UUIDModel, TimeStampedModel):
     # pure-image band on a card whose progress is shown in the fields instead.
     strip_stamps_visible = models.BooleanField(default=True)
 
+    # ── Sizing ──────────────────────────────────────────────────────────────
+    # Neither wallet exposes image dimensions in its pass payload — Apple and
+    # Google size the artwork themselves — so these are the only way to change
+    # how big things look, and they work by changing the pixels we render.
+    #
+    # 1.0 keeps exactly what every card rendered before these existed. Bounds are
+    # enforced in the serializer: past ~1.5 the stamps collide with each other,
+    # and Apple hard-caps the logo slot at 160x50 pt regardless of what is asked.
+    stamp_scale = models.FloatField(default=1.0)
+    logo_scale = models.FloatField(default=1.0)
+
     # ── Admin-authored pass JSON overlays (platform admin only) ─────────────
     # Partial JSON merged over the generated payload as the last build step —
     # the escape hatch to pass features the template registry doesn't expose.
