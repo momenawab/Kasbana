@@ -125,11 +125,14 @@ TEMPLATES: dict[str, dict[str, Any]] = {
             "logo",
             "logo_scale",
         ],
+        # The photo owns the strip band, so the primary (over-strip) area stays
+        # clear: the balance reads below it in secondary and the reward below
+        # that in auxiliary, so neither sits on top of the artwork.
         "apple": {
             "header": [{"label": "POINTS", "source": "balance"}],
-            "primary": [{"label": "REWARD", "source": "reward"}],
-            "secondary": [],
-            "auxiliary": [],
+            "primary": [],
+            "secondary": [{"label": "POINTS", "source": "points"}],
+            "auxiliary": [{"label": "REWARD", "source": "reward"}],
         },
         "google": {
             "title": "merchant",
