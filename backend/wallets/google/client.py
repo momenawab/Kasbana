@@ -191,7 +191,10 @@ class GoogleWalletBackend:
                 "header": header or customer_card.card.merchant.name,
                 "body": body,
                 "id": f"msg-{customer_card.id.hex}-{int(time.time())}",
-                "messageType": "TEXT",
+                # TEXT_AND_NOTIFY, not TEXT: plain TEXT appends the message to the
+                # pass silently, which is why campaigns reported "sent" while no
+                # customer ever got a notification.
+                "messageType": "TEXT_AND_NOTIFY",
             }
         }
         with client:

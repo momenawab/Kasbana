@@ -1,0 +1,189 @@
+{
+  "apple_overlay" : {
+    "backgroundColor" : "rgb(171, 123, 91)",
+    "description" : "Free Coffee",
+    "foregroundColor" : "rgb(255, 255, 255)",
+    "labelColor" : "rgb(255, 255, 255)",
+    "logoText" : "Griffin",
+    "organizationName" : "Griffin",
+    "sharingProhibited" : true,
+    "storeCard" : {
+      "auxiliaryFields" : [
+        {
+          "key" : "x0",
+          "label" : "REWARD",
+          "value" : "{reward}"
+        }
+      ],
+      "backFields" : [
+        {
+          "key" : "reward_back",
+          "label" : "Your reward",
+          "value" : "Free Coffee"
+        },
+        {
+          "key" : "howto",
+          "label" : "How it works",
+          "value" : "Collect 8 stamps to earn your reward. Show this pass at checkout to get stamped."
+        },
+        {
+          "key" : "merchant",
+          "label" : "Merchant",
+          "value" : "Griffin"
+        },
+        {
+          "key" : "phone",
+          "label" : "Phone",
+          "value" : "+201015425155"
+        },
+        {
+          "attributedValue" : "Powered by <a href=\"https:\/\/stampn.net\">Stampn<\/a>",
+          "key" : "powered",
+          "label" : "",
+          "value" : "Powered by Stampn"
+        }
+      ],
+      "headerFields" : [
+
+      ],
+      "primaryFields" : [
+
+      ],
+      "secondaryFields" : [
+        {
+          "key" : "s0",
+          "label" : "{goal} FOR A REWARD",
+          "value" : "{remaining}"
+        }
+      ]
+    },
+    "suppressStripShine" : true
+  },
+  "backgroundColor" : "rgb(229,229,229)",
+  "card" : {
+    "color_bg" : "#ab7b5b",
+    "color_fg" : "#FFFFFF",
+    "hero_image_url" : "https:\/\/api.stampn.net\/media\/uploads\/1785322924.218556_471651770_571210669050080_5759126121728767242_n.jpg",
+    "logo_url" : "https:\/\/api.stampn.net\/media\/uploads\/1785322810.20607_311722432_126129590224859_5916221799859283_n.jpg",
+    "name" : "Free Coffee",
+    "referral_enabled" : false,
+    "reward_description" : "",
+    "reward_title" : "Free Coffee",
+    "single_use" : true,
+    "stamps_required" : 8,
+    "type" : "STAMP"
+  },
+  "description" : "",
+  "design" : {
+    "apple_auxiliary" : [
+
+    ],
+    "apple_back" : [
+
+    ],
+    "apple_header" : [
+
+    ],
+    "apple_logo_text" : "",
+    "apple_overlay" : {
+      "backgroundColor" : "rgb(171, 123, 91)",
+      "description" : "Free Coffee",
+      "foregroundColor" : "rgb(255, 255, 255)",
+      "labelColor" : "rgb(255, 255, 255)",
+      "logoText" : "Griffin",
+      "organizationName" : "Griffin",
+      "sharingProhibited" : true,
+      "storeCard" : {
+        "auxiliaryFields" : [
+          {
+            "key" : "x0",
+            "label" : "REWARD",
+            "value" : "{reward}"
+          }
+        ],
+        "backFields" : [
+          {
+            "key" : "reward_back",
+            "label" : "Your reward",
+            "value" : "Free Coffee"
+          },
+          {
+            "key" : "howto",
+            "label" : "How it works",
+            "value" : "Collect 8 stamps to earn your reward. Show this pass at checkout to get stamped."
+          },
+          {
+            "key" : "merchant",
+            "label" : "Merchant",
+            "value" : "Griffin"
+          },
+          {
+            "key" : "phone",
+            "label" : "Phone",
+            "value" : "+201015425155"
+          },
+          {
+            "attributedValue" : "Powered by <a href=\"https:\/\/stampn.net\">Stampn<\/a>",
+            "key" : "powered",
+            "label" : "",
+            "value" : "Powered by Stampn"
+          }
+        ],
+        "headerFields" : [
+
+        ],
+        "primaryFields" : [
+
+        ],
+        "secondaryFields" : [
+          {
+            "key" : "s0",
+            "label" : "{goal} FOR A REWARD",
+            "value" : "{remaining}"
+          }
+        ]
+      },
+      "suppressStripShine" : true
+    },
+    "apple_primary" : [
+
+    ],
+    "apple_secondary" : [
+
+    ],
+    "apple_strip_enabled" : true,
+    "bottom_image_url" : "",
+    "google_overlay" : {
+
+    },
+    "google_rows" : [
+
+    ],
+    "google_stamp_hero" : false,
+    "google_subtitle" : "",
+    "google_title" : "",
+    "label_color" : "",
+    "logo_scale" : 1,
+    "stamp_color" : "",
+    "stamp_icon" : "",
+    "stamp_layout" : "stagger",
+    "stamp_scale" : 1,
+    "strip_bg_color" : "#4e5050",
+    "strip_bg_image_url" : "https:\/\/api.stampn.net\/media\/uploads\/1785335330.796082_471651770_571210669050080_5759126121728767242_n.jpg",
+    "strip_empty_url" : "https:\/\/api.stampn.net\/media\/uploads\/1785332212.306834_ChatGPT_Image_Jul_29__2026__04_35_51_PM.png",
+    "strip_filled_url" : "https:\/\/api.stampn.net\/media\/uploads\/1785332214.535515_ChatGPT_Image_Jul_29__2026__04_33_03_PM.png",
+    "strip_stamps_visible" : true,
+    "template_key" : "loyalty_stamps"
+  },
+  "formatVersion" : 1,
+  "generic" : {
+
+  },
+  "google_overlay" : {
+
+  },
+  "organizationName" : "",
+  "passTypeIdentifier" : "pass.",
+  "serialNumber" : "",
+  "teamIdentifier" : ""
+}

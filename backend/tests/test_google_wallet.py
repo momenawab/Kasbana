@@ -103,3 +103,39 @@ def test_backend_degrades_without_credentials(settings):
     backend = GoogleWalletBackend()
     assert backend.provision(cc) is None
     backend.push_update(cc)  # no-op, must not raise
+
+
+def test_add_message_asks_google_to_notify(settings, google_creds, monkeypatch):
+    """The message must be TEXT_AND_NOTIFY, not TEXT.
+
+    Plain ``TEXT`` appends the message to the pass without notifying the device,
+    so a campaign reports "sent" while no customer ever hears about it.
+    """
+    card = factories.CardFactory()
+    cc = factories.CustomerCardFactory(card=card, merchant=card.merchant)
+    captured: dict = {}
+
+    class _Resp:
+        status_code = 200
+
+        @staticmethod
+        def raise_for_status() -> None:
+            return None
+
+    class _Client:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc: object) -> None:
+            return None
+
+        def post(self, url: str, json: dict) -> _Resp:
+            captured["url"] = url
+            captured["json"] = json
+            return _Resp()
+
+    monkeypatch.setattr(client, "_api", lambda: _Client())
+    GoogleWalletBackend().add_message(cc, header="Hi", body="2-for-1 today")
+
+    assert captured["json"]["message"]["messageType"] == "TEXT_AND_NOTIFY"
+    assert captured["json"]["message"]["body"] == "2-for-1 today"
