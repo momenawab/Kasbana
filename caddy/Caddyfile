@@ -1,0 +1,58 @@
+# Caddy reverse proxy + automatic HTTPS (Let's Encrypt).
+#
+# Only ONE hostname actually points here (A record):
+#   api.stampn.net   -> REST API (+ Apple Wallet web service; needs valid HTTPS)
+#
+# admin.stampn.net does NOT resolve to this box — it is a static SPA on Hostinger
+# (82.198.227.4) that calls api.stampn.net from the browser. The admin block below
+# is therefore dead config: it never serves traffic, and Caddy will log a failed
+# ACME attempt for that name on every start. Harmless; kept only to avoid a
+# behaviour change during the host migration. Remove it once that has settled.
+#
+# Certs are issued automatically once DNS resolves to this server. The bare-IP
+# HTTP block is a fallback for health checks before/without DNS.
+
+api.stampn.net {
+	encode zstd gzip
+
+	# User uploads (logos) are written by the app to the shared `media` volume
+	# and served as static files here — Django doesn't serve /media in prod.
+	handle_path /media/* {
+		root * /srv/media
+		file_server
+	}
+
+	reverse_proxy web:8000 {
+		header_up X-Forwarded-Proto {scheme}
+		header_up X-Forwarded-For {remote_host}
+	}
+}
+
+admin.stampn.net {
+	encode zstd gzip
+	@root path /
+	redir @root /admin/ 308
+	reverse_proxy web:8000 {
+		header_up X-Forwarded-Proto {scheme}
+		header_up X-Forwarded-For {remote_host}
+	}
+}
+
+# Plain-HTTP access by IP (health checks / fallback) — no TLS on a bare IP.
+# This is the bring-up path on a new host BEFORE DNS is repointed, so it must
+# name the current server. 204.168.234.205 = Hetzner CX33; 13.49.70.197 was EC2.
+#
+# NOTE: with HTTPS_ENABLED=true this block returns 301, not 200, and that is
+# correct — Django's SECURE_SSL_REDIRECT sends you to https://<ip>/ (no cert).
+# You CANNOT work around it with `curl -H "X-Forwarded-Proto: https"`: caddy's
+# reverse_proxy overwrites that header with the real request scheme (http).
+# To health-check, go around caddy the way the compose healthcheck does:
+#   docker compose -f compose.prod.yml exec -T web python -c "
+#     import urllib.request
+#     r = urllib.request.Request('http://localhost:8000/api/health/',
+#                                headers={'X-Forwarded-Proto':'https'})
+#     print(urllib.request.urlopen(r).status)" < /dev/null
+# ...or just read `docker compose ps` — web reporting (healthy) IS that check.
+http://204.168.234.205 {
+	reverse_proxy web:8000
+}

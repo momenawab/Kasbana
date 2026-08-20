@@ -1,0 +1,114 @@
+# Stampn production stack for the EC2 box (t3.small).
+# Run from this directory so the sibling .env is loaded for ${...} interpolation:
+#   IMAGE_TAG=<sha> docker compose -f compose.prod.yml up -d
+#
+# The web/worker/beat images are pulled from GHCR (built in CI). Postgres, Redis
+# and Caddy run alongside. Memory is kept modest to fit 2 GB + swap.
+
+name: stampn
+
+x-app: &app
+  image: ghcr.io/momenawab/stampn-backend:${IMAGE_TAG:-latest}
+  restart: unless-stopped
+  # The host uses systemd-resolved (127.0.0.53 stub) which is unreachable from
+  # inside a container, so Docker's copied resolv.conf breaks outbound DNS
+  # (Apple APNS, Google Wallet, Sentry, ACME). Pin public resolvers.
+  dns: ["8.8.8.8", "1.1.1.1"]
+  env_file: [.env]
+  environment:
+    DJANGO_SETTINGS_MODULE: config.settings.prod
+    # Tie Sentry issues to the exact deploy (same tag pulled for the image).
+    SENTRY_RELEASE: ${IMAGE_TAG:-latest}
+  # Wallet certs/keys (Phase 1.1) live outside the image. Drop them in
+  # /opt/stampn/secrets on the host; the env paths (APPLE_PASS_CERT_PATH,
+  # GOOGLE_SA_KEY_PATH, …) point at /secrets/<file>. Read-only.
+  volumes:
+    - /opt/stampn/secrets:/secrets:ro
+    # User uploads (logos) — persisted across redeploys; Caddy serves it at /media.
+    - media:/app/media
+  depends_on:
+    db:
+      condition: service_healthy
+    redis:
+      condition: service_started
+
+services:
+  web:
+    <<: *app
+    expose: ["8000"]
+    healthcheck:
+      # Send X-Forwarded-Proto so SECURE_SSL_REDIRECT (HTTPS_ENABLED=true) treats
+      # this internal request as secure and returns 200 instead of a 308 to https.
+      test: ["CMD", "python", "-c",
+             "import urllib.request,sys; r=urllib.request.Request('http://localhost:8000/api/health/', headers={'X-Forwarded-Proto':'https'}); sys.exit(0 if urllib.request.urlopen(r).status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+  worker:
+    <<: *app
+    command: celery -A config worker -Q default,wallet,messaging --concurrency 2 -l info
+
+  # Lead generation runs on its own worker, not on the one above. A 1,000-result
+  # sweep occupies a slot for minutes at a time, and sharing would let it delay a
+  # wallet push or an OTP — which is the whole reason these queues are separate
+  # in the first place (see CELERY_TASK_QUEUES in config/settings/base.py).
+  #
+  # Concurrency 1 is deliberate: discovery is rate-limited by Google and AI
+  # enrichment is sequential by design, so extra slots would buy nothing but
+  # memory and a faster path to a quota error.
+  leadgen-worker:
+    <<: *app
+    command: celery -A config worker -Q leadgen_high,leadgen,leadgen_bg --concurrency 1 -l info
+
+  beat:
+    <<: *app
+    command: celery -A config beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --save "" --appendonly no
+    volumes:
+      - redisdata:/data
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    # Needs working outbound DNS to reach Let's Encrypt (ACME); see x-app note.
+    dns: ["8.8.8.8", "1.1.1.1"]
+    depends_on: [web]
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+      # Serve user uploads directly from the shared media volume (read-only).
+      - media:/srv/media:ro
+
+volumes:
+  pgdata:
+  redisdata:
+  caddy_data:
+  caddy_config:
+  media:
