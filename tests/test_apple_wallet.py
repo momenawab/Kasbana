@@ -1,0 +1,298 @@
+"""Tests for the Apple Wallet backend: pass build/sign + the 5 web-service endpoints."""
+
+from __future__ import annotations
+
+import datetime
+import io
+import json
+import zipfile
+
+import pytest
+from cryptography import x509
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives.serialization import pkcs12
+from cryptography.x509.oid import NameOID
+
+from core.enums import WalletPlatform
+from core.models import WalletRegistration
+from tests import factories
+from wallets.apple import passdata
+from wallets.apple.signing import build_pkpass
+
+pytestmark = pytest.mark.django_db
+
+
+def _self_signed_p12(password: str = "") -> bytes:
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "Stampn Test Pass")])
+    now = datetime.datetime.now(datetime.UTC)
+    cert = (
+        x509.CertificateBuilder()
+        .subject_name(name)
+        .issuer_name(name)
+        .public_key(key.public_key())
+        .serial_number(x509.random_serial_number())
+        .not_valid_before(now - datetime.timedelta(days=1))
+        .not_valid_after(now + datetime.timedelta(days=365))
+        .sign(key, hashes.SHA256())
+    )
+    enc = (
+        serialization.BestAvailableEncryption(password.encode())
+        if password
+        else serialization.NoEncryption()
+    )
+    return pkcs12.serialize_key_and_certificates(b"stampn", key, cert, None, enc)
+
+
+@pytest.fixture
+def apple_configured(tmp_path, settings):
+    p12 = tmp_path / "pass.p12"
+    p12.write_bytes(_self_signed_p12(password="secret"))
+    settings.BASE_URL = "https://api.stampn.net"
+    settings.WALLET = {
+        **settings.WALLET,
+        "APPLE": {
+            "PASS_TYPE_ID": "pass.net.stampn.loyalty",
+            "TEAM_ID": "TEAM123456",
+            "PASS_CERT_PATH": str(p12),
+            "PASS_CERT_PASSWORD": "secret",
+            "WWDR_CERT_PATH": "",
+            "APNS_USE_SANDBOX": True,
+        },
+    }
+    return settings
+
+
+@pytest.fixture
+def customer_card(apple_configured):
+    card = factories.CardFactory(stamps_required=6)
+    return factories.CustomerCardFactory(card=card, merchant=card.merchant, stamp_count=2)
+
+
+# ── pass.json + signing ──────────────────────────────────────────────────────
+def test_pass_json_has_required_fields(customer_card):
+    p = passdata.build_pass_json(customer_card)
+    assert p["serialNumber"] == str(customer_card.id)
+    assert p["passTypeIdentifier"] == "pass.net.stampn.loyalty"
+    assert p["teamIdentifier"] == "TEAM123456"
+    assert p["authenticationToken"] == customer_card.auth_token
+    assert p["webServiceURL"] == "https://api.stampn.net/api/v1/wallet/apple"
+    # The top-right header carries the platform brand; the stamp count is shown by
+    # the cup strip + the "N for a reward" secondary field, not a header balance.
+    assert p["storeCard"]["headerFields"][0]["value"] == "Stampn"
+
+
+def test_pass_json_has_no_message_field_without_a_message(customer_card):
+    p = passdata.build_pass_json(customer_card)
+    back = p["storeCard"]["backFields"]
+    # Back fields now include reward/how-it-works/merchant, but none is a wallet
+    # message (a message field is the one carrying changeMessage "%@").
+    assert all(f.get("changeMessage") != "%@" for f in back)
+
+
+def test_active_pass_is_not_voided(customer_card):
+    assert "voided" not in passdata.build_pass_json(customer_card)
+
+
+def test_pass_back_has_contact_links_and_powered_by(customer_card):
+    """Merchant contact/social links render on the back (Facebook as a link, phone
+    as plain text) and "Powered by Stampn" is always the last back field."""
+    from accounts.models import MerchantSettings
+
+    MerchantSettings.objects.update_or_create(
+        merchant=customer_card.card.merchant,
+        defaults={
+            "contact_phone": "+201234567890",
+            "facebook_url": "https://facebook.com/acme",
+            "terms_url": "https://acme.test/terms",
+            "branches": "Maadi\nZamalek",
+        },
+    )
+    back = passdata.build_pass_json(customer_card)["storeCard"]["backFields"]
+    by_key = {f["key"]: f for f in back}
+    assert by_key["phone"]["value"] == "+201234567890"
+    assert 'href="https://facebook.com/acme"' in by_key["facebook"]["attributedValue"]
+    assert "branches" in by_key
+    assert "terms" in by_key
+    # Powered by Stampn is dead last, with only "Stampn" hyperlinked.
+    assert back[-1]["key"] == "powered"
+    assert 'href="https://stampn.net"' in back[-1]["attributedValue"]
+
+
+def test_pass_back_powered_by_present_without_contact(customer_card):
+    """With no contact settings, only the Powered by Stampn footer is appended."""
+    back = passdata.build_pass_json(customer_card)["storeCard"]["backFields"]
+    assert back[-1]["key"] == "powered"
+
+
+def test_completed_pass_is_voided(customer_card):
+    from core.enums import CustomerCardStatus
+
+    customer_card.status = CustomerCardStatus.COMPLETED
+    customer_card.save(update_fields=["status"])
+    assert passdata.build_pass_json(customer_card)["voided"] is True
+
+
+def test_pass_json_surfaces_latest_message_with_change_message(customer_card):
+    from wallets.models import WalletMessage
+
+    WalletMessage.objects.create(customer_card=customer_card, body="Old offer")
+    WalletMessage.objects.create(customer_card=customer_card, title="Promo", body="Free coffee!")
+
+    back = passdata.build_pass_json(customer_card)["storeCard"]["backFields"]
+    # The message field is the one carrying changeMessage "%@".
+    msg = [f for f in back if f.get("changeMessage") == "%@"]
+    assert len(msg) == 1
+    assert msg[0]["value"] == "Free coffee!"  # newest wins
+    assert msg[0]["label"] == "Promo"
+
+
+def test_build_pkpass_is_valid_zip_with_matching_manifest(customer_card):
+    raw = build_pkpass(customer_card)
+    zf = zipfile.ZipFile(io.BytesIO(raw))
+    names = set(zf.namelist())
+    assert {"pass.json", "manifest.json", "signature", "icon.png"} <= names
+
+    manifest = json.loads(zf.read("manifest.json"))
+    import hashlib
+
+    for fname, digest in manifest.items():
+        assert hashlib.sha1(zf.read(fname)).hexdigest() == digest
+    assert len(zf.read("signature")) > 0
+
+
+def test_signature_carries_authenticated_attributes(customer_card):
+    """iOS requires the signing-time / content-type / message-digest attrs; a
+    NoAttributes signature verifies in openssl but iOS rejects the pass."""
+    raw = build_pkpass(customer_card)
+    signature = zipfile.ZipFile(io.BytesIO(raw)).read("signature").hex()
+    assert "2a864886f70d010905" in signature  # signing-time  (OID 1.2.840.113549.1.9.5)
+    assert "2a864886f70d010903" in signature  # content-type  (OID 1.2.840.113549.1.9.3)
+    assert "2a864886f70d010904" in signature  # message-digest (OID 1.2.840.113549.1.9.4)
+
+
+# ── web service ──────────────────────────────────────────────────────────────
+def _auth(cc):
+    return {"HTTP_AUTHORIZATION": f"ApplePass {cc.auth_token}"}
+
+
+def _base(cc):
+    pt = "pass.net.stampn.loyalty"
+    return f"/api/v1/wallet/apple/v1/devices/DEV123/registrations/{pt}/{cc.id}"
+
+
+def test_register_requires_auth(client, customer_card):
+    resp = client.post(
+        _base(customer_card), data=json.dumps({"pushToken": "tok"}), content_type="application/json"
+    )
+    assert resp.status_code == 401
+
+
+def test_register_then_reregister(client, customer_card):
+    url = _base(customer_card)
+    r1 = client.post(
+        url,
+        data=json.dumps({"pushToken": "tok1"}),
+        content_type="application/json",
+        **_auth(customer_card),
+    )
+    assert r1.status_code == 201
+    reg = WalletRegistration.objects.get(customer_card=customer_card, device_library_id="DEV123")
+    assert reg.platform == WalletPlatform.APPLE
+    assert reg.push_token == "tok1"
+
+    r2 = client.post(
+        url,
+        data=json.dumps({"pushToken": "tok2"}),
+        content_type="application/json",
+        **_auth(customer_card),
+    )
+    assert r2.status_code == 200
+    reg.refresh_from_db()
+    assert reg.push_token == "tok2"
+
+
+def test_list_updated_serials(client, customer_card):
+    client.post(
+        _base(customer_card),
+        data=json.dumps({"pushToken": "tok"}),
+        content_type="application/json",
+        **_auth(customer_card),
+    )
+    pt = "pass.net.stampn.loyalty"
+    list_url = f"/api/v1/wallet/apple/v1/devices/DEV123/registrations/{pt}"
+    resp = client.get(list_url)
+    assert resp.status_code == 200
+    body = resp.json()
+    assert str(customer_card.id) in body["serialNumbers"]
+    assert "lastUpdated" in body
+
+    # Nothing newer than 'now' -> 204.
+    resp2 = client.get(list_url, {"passesUpdatedSince": body["lastUpdated"]})
+    assert resp2.status_code == 204
+
+
+def test_get_pass_requires_auth_and_returns_pkpass(client, customer_card):
+    pt = "pass.net.stampn.loyalty"
+    url = f"/api/v1/wallet/apple/v1/passes/{pt}/{customer_card.id}"
+    assert client.get(url).status_code == 401
+
+    resp = client.get(url, **_auth(customer_card))
+    assert resp.status_code == 200
+    assert resp["Content-Type"] == "application/vnd.apple.pkpass"
+    assert zipfile.ZipFile(io.BytesIO(resp.content)).read("pass.json")
+
+
+def test_unregister_device(client, customer_card):
+    client.post(
+        _base(customer_card),
+        data=json.dumps({"pushToken": "tok"}),
+        content_type="application/json",
+        **_auth(customer_card),
+    )
+    resp = client.delete(_base(customer_card), **_auth(customer_card))
+    assert resp.status_code == 200
+    assert not WalletRegistration.objects.get(customer_card=customer_card).is_active
+
+
+def test_log_endpoint(client):
+    resp = client.post(
+        "/api/v1/wallet/apple/v1/log",
+        data=json.dumps({"logs": ["hi"]}),
+        content_type="application/json",
+    )
+    assert resp.status_code == 200
+
+
+def test_download_pass(client, customer_card):
+    resp = client.get(f"/api/v1/wallet/apple/download/{customer_card.id}")
+    assert resp.status_code == 200
+    assert resp["Content-Type"] == "application/vnd.apple.pkpass"
+
+
+def test_pkpass_icons_are_real_images(customer_card):
+    """iOS rejects a 1x1 icon ("Safari cannot download this file"); guard sizes."""
+    import io
+
+    from PIL import Image
+
+    from wallets.apple.signing import build_pass_images
+
+    imgs = build_pass_images(customer_card)
+    assert {"icon.png", "icon@2x.png", "logo.png"} <= set(imgs)
+    icon = Image.open(io.BytesIO(imgs["icon.png"]))
+    icon2x = Image.open(io.BytesIO(imgs["icon@2x.png"]))
+    assert icon.size == (29, 29)
+    assert icon2x.size == (58, 58)
+
+
+def test_download_pass_503_without_certs(client, settings):
+    settings.WALLET = {
+        **settings.WALLET,
+        "APPLE": {"PASS_TYPE_ID": "", "TEAM_ID": "", "PASS_CERT_PATH": ""},
+    }
+    card = factories.CardFactory()
+    cc = factories.CustomerCardFactory(card=card, merchant=card.merchant)
+    resp = client.get(f"/api/v1/wallet/apple/download/{cc.id}")
+    assert resp.status_code == 503

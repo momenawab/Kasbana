@@ -1,0 +1,182 @@
+"""Build Google Wallet LoyaltyClass / LoyaltyObject payloads (contract §3.4).
+
+A LoyaltyClass is created once per Card (the program template); a LoyaltyObject
+once per CustomerCard (the customer's instance). IDs are namespaced under the
+issuer id and must be `[issuerId].[alphanumeric._-]`.
+"""
+
+from __future__ import annotations
+
+from django.conf import settings
+
+from core import constants
+from core.models import Card, CustomerCard
+from wallets.google.config import issuer_id
+
+
+def class_id_for(card: Card) -> str:
+    return f"{issuer_id()}.card_{card.id.hex}"
+
+
+def object_id_for(customer_card: CustomerCard) -> str:
+    return f"{issuer_id()}.cust_{customer_card.id.hex}"
+
+
+def _hex_color(value: str, fallback: str) -> str:
+    return value if value else fallback
+
+
+def build_loyalty_class(card: Card) -> dict:
+    from wallets import design as design_mod
+
+    merchant = card.merchant
+    design = design_mod.get_design(card)
+    # Google requires a program logo on every class; fall back to the default.
+    program_logo = card.logo_url or merchant.logo_url or settings.WALLET_DEFAULT_LOGO_URL
+    payload: dict = {
+        "id": class_id_for(card),
+        "issuerName": merchant.name,
+        "programName": (design.google_title if design and design.google_title else card.name),
+        "reviewStatus": "UNDER_REVIEW",
+        "hexBackgroundColor": _hex_color(card.color_bg or merchant.color_bg, "#0b7a5b"),
+        "countryCode": "EG",
+        "programLogo": {
+            "sourceUri": {"uri": program_logo},
+            "contentDescription": {
+                "defaultValue": {"language": "en", "value": f"{merchant.name} logo"}
+            },
+        },
+    }
+    if card.reward_title:
+        payload["rewardsTier"] = card.reward_title
+    # Optional wide banner image shown across the top of the pass.
+    if card.hero_image_url:
+        payload["heroImage"] = {
+            "sourceUri": {"uri": card.hero_image_url},
+            "contentDescription": {
+                "defaultValue": {"language": "en", "value": f"{card.name} banner"}
+            },
+        }
+    # Admin overlay, "class" half. No value context: a LoyaltyClass is per-Card
+    # program-level content shared by every member, so there is no customer whose
+    # balance a {token} could resolve against — class overlays are literal.
+    from wallets import overlay as overlay_mod
+
+    return overlay_mod.apply_google(
+        payload, design.google_overlay if design else None, None, "class"
+    )
+
+
+def unit_label(card: Card) -> str:
+    """ "Points" for a points card, else "Stamps" — the wallet balance label."""
+    from core.enums import CardType
+
+    return "Points" if card.type == CardType.POINTS else "Stamps"
+
+
+def object_state_for(customer_card: CustomerCard) -> str:
+    """Google LoyaltyObject ``state`` from the card status — EXPIRED moves the
+    pass out of the wallet's active list (single-use completion / blocked)."""
+    from core.enums import CustomerCardStatus
+
+    return "ACTIVE" if customer_card.status == CustomerCardStatus.ACTIVE else "EXPIRED"
+
+
+def build_loyalty_object(customer_card: CustomerCard, ctx: dict | None = None) -> dict:
+    """The LoyaltyObject for one customer.
+
+    ``ctx`` overrides the value context module rows resolve against — see
+    ``build_pass_json`` for why the Wallet Studio needs that.
+    """
+    from wallets import design as design_mod
+    from wallets.shortcode import code_for
+
+    card = customer_card.card
+    barcode_value = f"{constants.PASS_BARCODE_PREFIX}{customer_card.id.hex}"
+    payload: dict = {
+        "id": object_id_for(customer_card),
+        "classId": class_id_for(card),
+        "state": object_state_for(customer_card),
+        "accountId": str(customer_card.id),
+        # A member may have neither (both fields optional on the join form) —
+        # Google rejects a blank accountName, so fall back to the program name.
+        "accountName": (customer_card.customer_name or customer_card.customer_phone or card.name),
+        "loyaltyPoints": {
+            "label": unit_label(card),
+            "balance": {"int": customer_card.stamp_count},
+        },
+        "secondaryLoyaltyPoints": {
+            "label": "Goal",
+            "balance": {"int": card.stamps_required},
+        },
+        "barcode": {
+            "type": "QR_CODE",
+            "value": barcode_value,
+            # Short human code under the QR — a cashier can type it on Scan (note 1).
+            "alternateText": code_for(customer_card),
+        },
+    }
+
+    # Merchant module rows + subtitle (notes 2-4). Google renders these as
+    # textModulesData under the balance; blank/empty = none (unchanged default).
+    # A layout-locked template fixes these rows (its google layout) instead of
+    # the freeform ones.
+    design = design_mod.get_design(card)
+    template = design_mod.template_for(card)
+    modules: list[dict] = []
+    if template is not None:
+        if ctx is None:
+            ctx = design_mod.field_context(customer_card)
+        google = template.get("google", {})
+        if google.get("subtitle"):
+            body = str(design_mod.render_value(google["subtitle"], ctx))
+            modules.append({"id": "subtitle", "header": "", "body": body})
+        for slot in design_mod.render_template_fields(google.get("rows", []), ctx, "g"):
+            modules.append({"id": slot["key"], "header": slot["label"], "body": str(slot["value"])})
+    elif design:
+        if design.google_subtitle:
+            modules.append({"id": "subtitle", "header": "", "body": design.google_subtitle})
+        if design.google_rows:
+            if ctx is None:
+                ctx = design_mod.field_context(customer_card)
+            for slot in design_mod.render_slots(design.google_rows, ctx):
+                modules.append(
+                    {"id": slot["key"], "header": slot["label"], "body": str(slot["value"])}
+                )
+    # Merchant contact + social links (Facebook/Instagram/WhatsApp/TikTok/Terms +
+    # phone) as tappable link chips, and branches free text as a module. Only the
+    # fields the merchant filled in appear; "Powered by Stampn" is always last.
+    from wallets import contact as contact_mod
+
+    branch_text = contact_mod.google_branch_text(card.merchant)
+    if branch_text:
+        modules.append({"id": "branches", "header": "Branches", "body": branch_text})
+    if modules:
+        payload["textModulesData"] = modules
+    payload["linksModuleData"] = {"uris": contact_mod.google_links(card.merchant)}
+
+    # Visual stamp counter / bottom image: render it into the object hero and
+    # refresh it on each stamp (Google has no Apple-style strip). Template-aware:
+    # stamps → per-count grid, image → static bottom image, none → no hero.
+    # Overrides the class hero.
+    from wallets.google.hero import hero_url_for
+
+    hero = hero_url_for(customer_card)
+    if hero:
+        payload["heroImage"] = {
+            "sourceUri": {"uri": hero},
+            "contentDescription": {
+                "defaultValue": {"language": "en", "value": f"{card.name} stamps"}
+            },
+        }
+
+    # Admin overlay, "object" half — merged last, identity keys stripped, and
+    # {tokens} resolved against this customer's balance.
+    from wallets import overlay as overlay_mod
+
+    return overlay_mod.apply_google(
+        payload,
+        design.google_overlay if design else None,
+        ctx if ctx is not None else design_mod.field_context(customer_card),
+        "object",
+    )

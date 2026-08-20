@@ -1,0 +1,75 @@
+# Stampn backend — production requirements.
+# Phase 1.0 foundation stack (see docs/Walaa_Backend_Plan_and_Contract.md §1).
+
+# --- Core framework ---
+Django>=5.1,<5.3
+djangorestframework>=3.15
+djangorestframework-simplejwt>=5.3
+drf-spectacular>=0.29,<0.30   # pinned: 0.30 changed blank Email/URL schema output → openapi.yaml drift on CI (see check_openapi)
+django-cors-headers>=4.4
+
+# --- Data / async ---
+dj-database-url>=2.2
+psycopg[binary]>=3.2          # PostgreSQL driver (prod). Local dev falls back to SQLite.
+redis>=5.0
+celery>=5.4
+django-celery-beat>=2.7
+django-celery-results>=2.5
+pyotp>=2.9  # TOTP MFA for admin console (Phase 15)
+
+# --- Config ---
+python-dotenv>=1.0
+
+# --- Server ---
+gunicorn>=22.0
+uvicorn[standard]>=0.30
+whitenoise>=6.7
+
+# --- Wallets (Phase 1.1) ---
+# Google Wallet auth uses the JWT-bearer grant directly (PyJWT + httpx); the
+# Apple pass is signed with cryptography; APNs over httpx HTTP/2.
+PyJWT>=2.9
+cryptography>=43.0
+httpx[http2]>=0.27
+
+# --- Dashboard assets (Phase 1.6 · Phase 3) ---
+# qrcode renders the enrollment code; the [pil] extra + Pillow add the raster
+# path used for the logo-in-centre PNG and the composed poster PDF (Phase 3).
+qrcode[pil]>=7.4
+Pillow>=10.4
+
+# --- Billing / Messaging (Phase 1.4) ---
+# (Paymob / Fawry / WhatsApp accessed via httpx)
+
+# --- Observability (Phase 5) ---
+sentry-sdk[django]>=2.0       # error + performance tracking, ties issues to the deployed release
+
+# --- Lead CRM import ---
+# .xlsx parsing for the CRM's lead import. CSV needs nothing (stdlib), but Sales
+# is handed .xlsx files and telling them to re-save each one is how an import
+# feature goes unused. openpyxl is the standard pure-Python reader; we open
+# workbooks read_only + data_only, which streams rows and never evaluates a
+# formula. The old binary .xls format is deliberately unsupported — it needs
+# xlrd, which dropped .xls precisely because parsing it safely was a losing game.
+openpyxl>=3.1
+
+# --- Lead generation (discovery + enrichment) ---
+# Places returns phone numbers in whatever format the listing was created with
+# ("+20 2 1234 5678", "0100 123 4567", "02-12345678"). Dedupe compares numbers
+# across listings, so they have to reach a canonical form first, and E.164
+# parsing needs a real carrier/area-code database per region — not a regex.
+phonenumbers>=8.13
+# Registrable-domain extraction, and it earns its place on .com.eg alone:
+# a naive "last two labels" split turns every Egyptian business domain into
+# "com.eg" and collapses the entire result set into one duplicate. Correctness
+# here requires the Public Suffix List. Configured offline in leadgen.dedupe —
+# tldextract fetches the PSL on first use by default, which we do not want
+# happening inside a worker.
+tldextract>=5.1
+# Website crawl parsing. bs4 for tolerant HTML (small-business sites are rarely
+# well-formed) over lxml's fast C parser. No JS execution: a headless browser
+# would triple the crawl cost for the minority of sites that need it, and the
+# fields we read — contact details, footer entity, social links, meta tags —
+# are in the served HTML on essentially all of them.
+beautifulsoup4>=4.12
+lxml>=5.2
