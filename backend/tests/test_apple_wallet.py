@@ -296,3 +296,48 @@ def test_download_pass_503_without_certs(client, settings):
     cc = factories.CustomerCardFactory(card=card, merchant=card.merchant)
     resp = client.get(f"/api/v1/wallet/apple/download/{cc.id}")
     assert resp.status_code == 503
+
+
+def test_wallet_message_makes_the_device_see_the_pass_as_updated(client, customer_card, monkeypatch):
+    """A campaign message must move the pass past ``passesUpdatedSince``.
+
+    The device answers the APNs ping by asking which serials changed. That filter
+    reads ``CustomerCard.updated_at`` only, so if sending a message doesn't bump
+    it the device gets a 204, never pulls the pass, and the customer sees nothing
+    even though APNs returned 200.
+    """
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from core.models import CustomerCard
+    from wallets import service
+
+    # The APNs ping itself is not under test here (and would hit the network).
+    monkeypatch.setattr(service, "_enqueue", lambda *a, **kw: None)
+
+    client.post(
+        _base(customer_card),
+        data=json.dumps({"pushToken": "tok"}),
+        content_type="application/json",
+        **_auth(customer_card),
+    )
+    pt = "pass.net.stampn.loyalty"
+    list_url = f"/api/v1/wallet/apple/v1/devices/DEV123/registrations/{pt}"
+
+    # ``lastUpdated`` is epoch *seconds*, so age the card to keep the assertion
+    # off the same-second boundary.
+    CustomerCard.objects.filter(pk=customer_card.pk).update(
+        updated_at=timezone.now() - timedelta(seconds=30)
+    )
+    watermark = client.get(list_url).json()["lastUpdated"]
+
+    # Baseline: nothing has changed since the watermark.
+    assert client.get(list_url, {"passesUpdatedSince": watermark}).status_code == 204
+
+    customer_card.refresh_from_db()
+    service.push_message(customer_card, "2-for-1 on iced lattes today")
+
+    resp = client.get(list_url, {"passesUpdatedSince": watermark})
+    assert resp.status_code == 200, "device would never re-pull the pass"
+    assert str(customer_card.id) in resp.json()["serialNumbers"]

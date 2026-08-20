@@ -75,4 +75,10 @@ def push_message(customer_card: CustomerCard, body: str, *, title: str = "") -> 
     from wallets.tasks import push_wallet_message
 
     WalletMessage.objects.create(customer_card=customer_card, title=title, body=body)
+    # Bump the card's mtime: the Apple web service decides "did this pass change?"
+    # purely from ``CustomerCard.updated_at`` (list_updated_serials'
+    # ``passesUpdatedSince`` filter and get_pass' If-Modified-Since). Inserting a
+    # WalletMessage alone leaves it untouched, so the device answers the APNs ping,
+    # gets a 204, and never pulls the pass — the push lands but nothing shows.
+    customer_card.save(update_fields=["updated_at"])
     _enqueue(push_wallet_message, str(customer_card.id), title, body)
